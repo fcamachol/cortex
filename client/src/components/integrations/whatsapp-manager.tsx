@@ -22,6 +22,17 @@ interface WhatsAppInstance {
   updatedAt: string;
 }
 
+interface WebSocketStatus {
+  instanceId: string;
+  instanceName: string;
+  phoneNumber: string;
+  status: string;
+  websocketConnected: boolean;
+  bridgeExists: boolean;
+  lastConnected: string | null;
+  connectionState: string;
+}
+
 export function WhatsAppInstanceManager() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -38,6 +49,12 @@ export function WhatsAppInstanceManager() {
 
   const { data: instances = [], isLoading } = useQuery<WhatsAppInstance[]>({
     queryKey: [`/api/whatsapp/instances/${userId}`],
+  });
+
+  const { data: websocketStatuses = [] } = useQuery<WebSocketStatus[]>({
+    queryKey: ['/api/whatsapp/websocket/status'],
+    refetchInterval: 3000, // Auto refresh every 3 seconds
+    refetchIntervalInBackground: true,
   });
 
   const createInstance = useMutation({
@@ -149,6 +166,36 @@ export function WhatsAppInstanceManager() {
   const handleCancelEdit = () => {
     setEditingInstanceId(null);
     setEditingDisplayName("");
+  };
+
+  const getWebSocketStatus = (instanceId: string) => {
+    return websocketStatuses.find(status => status.instanceId === instanceId);
+  };
+
+  const getWebSocketBadge = (instanceId: string) => {
+    const wsStatus = getWebSocketStatus(instanceId);
+    if (wsStatus?.websocketConnected) {
+      return (
+        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+          <Wifi className="w-3 h-3 mr-1" />
+          WebSocket Connected
+        </Badge>
+      );
+    } else if (wsStatus?.bridgeExists) {
+      return (
+        <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">
+          <WifiOff className="w-3 h-3 mr-1" />
+          WebSocket Disconnected
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100">
+          <WifiOff className="w-3 h-3 mr-1" />
+          No Bridge
+        </Badge>
+      );
+    }
   };
 
   const handleCreateInstance = async () => {
@@ -314,6 +361,9 @@ export function WhatsAppInstanceManager() {
                 </div>
                 <div className="flex items-center justify-between">
                   {getStatusBadge(instance.status)}
+                </div>
+                <div className="mt-2">
+                  {getWebSocketBadge(instance.id)}
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
