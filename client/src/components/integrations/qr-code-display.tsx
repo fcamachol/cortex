@@ -40,7 +40,21 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }:
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [profileData, setProfileData] = useState<any>(null);
   const { toast } = useToast();
+
+  const fetchProfileData = async () => {
+    try {
+      const response = await fetch(`/api/whatsapp/instances/${instanceId}/profile`);
+      if (response.ok) {
+        const profile = await response.json();
+        setProfileData(profile);
+        console.log('Profile data fetched:', profile);
+      }
+    } catch (err) {
+      console.log('Profile fetch failed:', err);
+    }
+  };
 
   const fetchInstanceStatus = async () => {
     try {
@@ -67,6 +81,10 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }:
         setQrCodeData(null);
         setError(null);
         setStatus('connected');
+        
+        // Fetch profile data when connected
+        fetchProfileData();
+        
         if (onConnectionSuccess) {
           onConnectionSuccess();
         }
@@ -197,6 +215,13 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }:
     fetchInstanceStatus();
   }, [instanceId]);
 
+  // Fetch profile data when status becomes connected
+  useEffect(() => {
+    if (status === 'connected') {
+      fetchProfileData();
+    }
+  }, [status]);
+
   const getStatusBadge = () => {
     switch (status) {
       case 'connected':
@@ -233,11 +258,25 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }:
       </CardHeader>
       <CardContent className="space-y-4">
         {status === 'connected' ? (
-          <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+          <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg space-y-3">
             <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
             <p className="text-green-700 dark:text-green-300 font-medium">
               WhatsApp Connected Successfully!
             </p>
+            {profileData && (
+              <div className="space-y-2">
+                {(profileData.wuid || profileData.jid) && (
+                  <p className="text-sm text-green-600 dark:text-green-400">
+                    Phone: +{profileData.wuid || profileData.jid?.split('@')[0]}
+                  </p>
+                )}
+                {(profileData.name || profileData.pushName) && (
+                  <p className="text-sm text-green-600 dark:text-green-400">
+                    Name: {profileData.name || profileData.pushName}
+                  </p>
+                )}
+              </div>
+            )}
             <p className="text-sm text-green-600 dark:text-green-400 mt-1">
               Your instance is ready to send and receive messages.
             </p>

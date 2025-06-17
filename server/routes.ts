@@ -574,6 +574,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // WhatsApp profile endpoint
+  app.get("/api/whatsapp/instances/:id/profile", async (req, res) => {
+    try {
+      const instance = await storage.getWhatsappInstance(req.params.id);
+      if (!instance) {
+        return res.status(404).json({ error: "Instance not found" });
+      }
+
+      if (!instance.instanceApiKey) {
+        return res.status(400).json({ error: "Instance not configured" });
+      }
+
+      try {
+        const evolutionApi = getInstanceEvolutionApi(instance.instanceApiKey);
+        const profileData = await evolutionApi.getProfile(instance.instanceName);
+        
+        console.log(`📱 Profile data for ${instance.instanceName}:`, profileData);
+        
+        // Update database with profile information if available
+        if (profileData && (profileData.wuid || profileData.jid)) {
+          const phoneNumber = profileData.wuid || profileData.jid?.split('@')[0];
+          const profileName = profileData.name || profileData.pushName;
+          
+          await storage.updateWhatsappInstance(req.params.id, {
+            phoneNumber: phoneNumber,
+            profileName: profileName
+          });
+        }
+        
+        res.json(profileData);
+      } catch (profileError: any) {
+        console.error(`Failed to get profile for ${instance.instanceName}:`, profileError);
+        res.status(503).json({ 
+          error: "Failed to get profile", 
+          message: profileError.message 
+        });
+      }
+    } catch (error) {
+      console.error("Profile fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
   // WhatsApp conversation routes
   app.get("/api/whatsapp/conversations/:userId", async (req, res) => {
     try {
