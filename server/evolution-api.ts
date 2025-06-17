@@ -175,16 +175,16 @@ export class EvolutionApi {
   // Chat Management
   async fetchChats(instanceName: string): Promise<any> {
     try {
-      // Use the correct Evolution API v2 endpoint structure
-      return await this.makeRequest(`/chat/findChats/${instanceName}`);
+      // Use the correct Evolution API v2 chat endpoint
+      return await this.makeRequest(`/chat/findMany/${instanceName}`);
     } catch (error) {
       try {
-        // Try alternative endpoint
-        return await this.makeRequest(`/chat/find/${instanceName}`);
+        // Try alternative endpoint for fetching all chats
+        return await this.makeRequest(`/chat/find/${instanceName}?where={"owner":"${instanceName}"}`);
       } catch (fallbackError) {
         try {
-          // Try instance-first structure
-          return await this.makeRequest(`/${instanceName}/chat/find`);
+          // Try simple chat list endpoint
+          return await this.makeRequest(`/chat/${instanceName}`);
         } catch (finalError) {
           console.error('All chat endpoints failed:', error, fallbackError, finalError);
           return [];
