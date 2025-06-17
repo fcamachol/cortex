@@ -225,22 +225,87 @@ export class EvolutionWebSocketBridge {
     try {
       if (!message.key) return null;
 
+      const evolutionMessageId = message.key.id;
+      const remoteJid = message.key.remoteJid;
+      const fromMe = message.key.fromMe || false;
+      const participant = message.key.participant;
+      
+      let textContent = '';
+      let messageType: any = 'conversation';
+      let mediaUrl = '';
+      let mediaCaption = '';
+      let mediaMimetype = '';
+      let mediaSize: number | undefined;
+      let mediaFilename = '';
+      
+      // Extract content based on Evolution API message structure
+      if (message.message) {
+        if (message.message.conversation) {
+          textContent = message.message.conversation;
+          messageType = 'conversation';
+        } else if (message.message.extendedTextMessage) {
+          textContent = message.message.extendedTextMessage.text;
+          messageType = 'extendedTextMessage';
+        } else if (message.message.imageMessage) {
+          textContent = message.message.imageMessage.caption || '';
+          mediaCaption = message.message.imageMessage.caption || '';
+          mediaUrl = message.message.imageMessage.url || '';
+          mediaMimetype = message.message.imageMessage.mimetype || '';
+          mediaSize = message.message.imageMessage.fileLength;
+          messageType = 'imageMessage';
+        } else if (message.message.videoMessage) {
+          mediaCaption = message.message.videoMessage.caption || '';
+          mediaUrl = message.message.videoMessage.url || '';
+          mediaMimetype = message.message.videoMessage.mimetype || '';
+          mediaSize = message.message.videoMessage.fileLength;
+          messageType = 'videoMessage';
+        } else if (message.message.audioMessage) {
+          mediaUrl = message.message.audioMessage.url || '';
+          mediaMimetype = message.message.audioMessage.mimetype || '';
+          mediaSize = message.message.audioMessage.fileLength;
+          messageType = 'audioMessage';
+        } else if (message.message.documentMessage) {
+          textContent = message.message.documentMessage.title || '';
+          mediaUrl = message.message.documentMessage.url || '';
+          mediaFilename = message.message.documentMessage.fileName || '';
+          mediaMimetype = message.message.documentMessage.mimetype || '';
+          mediaSize = message.message.documentMessage.fileLength;
+          messageType = 'documentMessage';
+        } else if (message.message.stickerMessage) {
+          mediaUrl = message.message.stickerMessage.url || '';
+          mediaMimetype = message.message.stickerMessage.mimetype || '';
+          messageType = 'stickerMessage';
+        } else if (message.message.locationMessage) {
+          messageType = 'locationMessage';
+        } else if (message.message.contactMessage) {
+          messageType = 'contactMessage';
+        }
+      }
+
       return {
         instanceId: this.instanceId,
         userId: this.userId,
-        conversationId: '', // This would need to be resolved from chat ID
-        messageId: message.key.id,
-        fromNumber: message.key.fromMe ? 'me' : message.key.remoteJid,
-        toNumber: message.key.fromMe ? message.key.remoteJid : 'me',
-        messageType: message.messageType || 'text',
-        content: this.extractMessageContent(message),
-        isFromMe: message.key.fromMe || false,
+        conversationId: '', // Will be resolved when creating/finding conversation
+        evolutionMessageId,
+        remoteJid,
+        fromMe,
+        participant,
+        messageContent: message.message || {},
+        messageType,
+        textContent: textContent || undefined,
+        mediaUrl: mediaUrl || undefined,
+        mediaMimetype: mediaMimetype || undefined,
+        mediaSize: mediaSize || undefined,
+        mediaFilename: mediaFilename || undefined,
+        mediaCaption: mediaCaption || undefined,
         timestamp: message.messageTimestamp || Date.now(),
-        status: message.status,
-        quotedMessageId: message.message?.extendedTextMessage?.contextInfo?.stanzaId,
-        mediaUrl: message.message?.imageMessage?.url || message.message?.videoMessage?.url,
-        mimeType: message.message?.documentMessage?.mimetype,
-        caption: message.message?.imageMessage?.caption || message.message?.videoMessage?.caption
+        pushName: message.pushName,
+        status: 'sent',
+        quotedMessageId: message.message?.extendedTextMessage?.contextInfo?.quotedMessage?.key?.id,
+        quotedContent: message.message?.extendedTextMessage?.contextInfo?.quotedMessage?.conversation,
+        isForwarded: message.message?.extendedTextMessage?.contextInfo?.forwardingScore > 0,
+        forwardScore: message.message?.extendedTextMessage?.contextInfo?.forwardingScore || 0,
+        contextInfo: message.message?.extendedTextMessage?.contextInfo || undefined
       };
     } catch (error) {
       console.error('Error processing message data:', error);

@@ -50,20 +50,42 @@ export const whatsappContacts = pgTable("whatsapp_contacts", {
   id: uuid("id").primaryKey().defaultRandom(),
   instanceId: uuid("instance_id").references(() => whatsappInstances.id).notNull(),
   userId: uuid("user_id").references(() => appUsers.id).notNull(),
-  whatsappId: varchar("whatsapp_id").notNull(),
-  name: varchar("name"),
-  displayName: varchar("display_name"),
+  
+  // Evolution API fields
+  remoteJid: varchar("remote_jid").notNull(), // Contact JID from Evolution
+  pushName: varchar("push_name"), // Display name from WhatsApp
+  profileName: varchar("profile_name"), // Profile name
   profilePictureUrl: varchar("profile_picture_url"),
+  profilePictureThumb: varchar("profile_picture_thumb"),
+  phoneNumber: varchar("phone_number"),
+  
+  // Business info
   isBusiness: boolean("is_business").default(false),
+  isEnterprise: boolean("is_enterprise").default(false),
+  isMyContact: boolean("is_my_contact").default(false),
+  isPsa: boolean("is_psa").default(false), // Public Service Announcement
+  isUser: boolean("is_user").default(true),
+  isWaContact: boolean("is_wa_contact").default(true),
+  statusMessage: text("status_message"),
+  
+  businessName: varchar("business_name"),
+  businessCategory: varchar("business_category"),
   businessDescription: text("business_description"),
+  businessWebsite: varchar("business_website"),
+  businessEmail: varchar("business_email"),
+  businessAddress: text("business_address"),
+  
+  // Additional custom fields for CRM
   isBlocked: boolean("is_blocked").default(false),
   isFavorite: boolean("is_favorite").default(false),
-  lastSeenAt: timestamp("last_seen_at"),
-  lastMessageAt: timestamp("last_message_at"),
   notes: text("notes"),
   tags: jsonb("tags"),
   labels: jsonb("labels"),
   customFields: jsonb("custom_fields"),
+  
+  // Timestamps
+  lastSeen: timestamp("last_seen"),
+  lastMessageAt: timestamp("last_message_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
@@ -72,18 +94,51 @@ export const whatsappConversations = pgTable("whatsapp_conversations", {
   id: uuid("id").primaryKey().defaultRandom(),
   instanceId: uuid("instance_id").references(() => whatsappInstances.id).notNull(),
   userId: uuid("user_id").references(() => appUsers.id).notNull(),
-  chatId: varchar("chat_id").notNull(),
-  type: varchar("type", { enum: ["individual", "group"] }).notNull(),
-  contactId: uuid("contact_id").references(() => whatsappContacts.id),
-  title: varchar("title"),
-  lastMessageId: uuid("last_message_id"),
-  unreadCount: integer("unread_count").default(0),
-  isPinned: boolean("is_pinned").default(false),
+  
+  // Evolution API fields
+  remoteJid: varchar("remote_jid").notNull(), // Chat JID from Evolution
+  chatName: varchar("chat_name"),
+  chatType: varchar("chat_type", { enum: ["individual", "group", "broadcast"] }).notNull(),
+  
+  // Chat status
   isArchived: boolean("is_archived").default(false),
+  isPinned: boolean("is_pinned").default(false),
+  isReadOnly: boolean("is_read_only").default(false),
   isMuted: boolean("is_muted").default(false),
   muteUntil: timestamp("mute_until"),
+  
+  // Message counts
+  unreadCount: integer("unread_count").default(0),
+  totalMessageCount: integer("total_message_count").default(0),
+  
+  // Last message info
+  lastMessageId: varchar("last_message_id"),
+  lastMessageContent: text("last_message_content"),
+  lastMessageTimestamp: bigint("last_message_timestamp", { mode: "number" }),
+  lastMessageFromMe: boolean("last_message_from_me").default(false),
+  
+  // Presence info
+  presenceStatus: varchar("presence_status", { 
+    enum: ["available", "unavailable", "composing", "recording", "paused"] 
+  }).default("unavailable"),
+  presenceLastSeen: timestamp("presence_last_seen"),
+  
+  // Group specific
+  groupOwner: varchar("group_owner"), // Group owner JID
+  groupDescription: text("group_description"),
+  groupCreationTimestamp: bigint("group_creation_timestamp", { mode: "number" }),
+  groupParticipantsCount: integer("group_participants_count").default(0),
+  
+  // Labels (Business Feature)
+  labels: jsonb("labels"), // Array of label IDs
+  
+  // Additional CRM fields
+  contactId: uuid("contact_id").references(() => whatsappContacts.id),
+  title: varchar("title"),
   customWallpaper: varchar("custom_wallpaper"),
   notificationSettings: jsonb("notification_settings"),
+  
+  // Metadata
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
@@ -93,39 +148,80 @@ export const whatsappMessages = pgTable("whatsapp_messages", {
   instanceId: uuid("instance_id").references(() => whatsappInstances.id).notNull(),
   userId: uuid("user_id").references(() => appUsers.id).notNull(),
   conversationId: uuid("conversation_id").references(() => whatsappConversations.id).notNull(),
-  messageId: varchar("message_id").notNull(),
-  fromNumber: varchar("from_number").notNull(),
-  toNumber: varchar("to_number").notNull(),
-  messageType: varchar("message_type", { enum: ["text", "image", "video", "audio", "document", "location", "contact", "sticker", "reaction", "system", "poll", "list", "button"] }).notNull(),
-  whatsappMessageType: varchar("whatsapp_message_type"),
-  content: text("content"),
+  
+  // Evolution API fields
+  evolutionMessageId: varchar("evolution_message_id").notNull(), // Evolution API message ID
+  remoteJid: varchar("remote_jid").notNull(), // Chat/Contact JID from Evolution
+  fromMe: boolean("from_me").notNull().default(false),
+  participant: varchar("participant"), // For group messages
+  
+  // Message content (JSON for flexibility as per Evolution schema)
+  messageContent: jsonb("message_content"),
+  
+  // Message types from Evolution API
+  messageType: varchar("message_type", { 
+    enum: ["conversation", "extendedTextMessage", "imageMessage", "videoMessage", 
+           "audioMessage", "documentMessage", "stickerMessage", "locationMessage",
+           "contactMessage", "listResponseMessage", "buttonsResponseMessage",
+           "templateButtonReplyMessage", "pollCreationMessage", "pollUpdateMessage"] 
+  }).notNull(),
+  
+  // Text content
+  textContent: text("text_content"),
+  
+  // Media fields
   mediaUrl: text("media_url"),
-  mediaFilename: varchar("media_filename"),
   mediaMimetype: varchar("media_mimetype"),
-  mediaSize: integer("media_size"),
-  mediaDuration: integer("media_duration"),
-  locationLatitude: numeric("location_latitude"),
-  locationLongitude: numeric("location_longitude"),
+  mediaSize: bigint("media_size", { mode: "number" }),
+  mediaFilename: varchar("media_filename"),
+  mediaCaption: text("media_caption"),
+  mediaThumbUrl: text("media_thumb_url"),
+  
+  // Document specific
+  documentTitle: varchar("document_title"),
+  documentPageCount: integer("document_page_count"),
+  
+  // Location fields
+  locationLatitude: numeric("location_latitude", { precision: 10, scale: 8 }),
+  locationLongitude: numeric("location_longitude", { precision: 11, scale: 8 }),
   locationName: varchar("location_name"),
   locationAddress: text("location_address"),
+  
+  // Contact message
+  contactDisplayName: varchar("contact_display_name"),
+  contactVcard: text("contact_vcard"),
+  
+  // Interactive messages
+  interactiveType: varchar("interactive_type"), // button, list, etc.
+  interactiveBody: text("interactive_body"),
+  interactiveFooter: text("interactive_footer"),
+  interactiveData: jsonb("interactive_data"),
+  
+  // Quoted/Reply messages
   quotedMessageId: varchar("quoted_message_id"),
-  quotedMessageContent: text("quoted_message_content"),
-  isFromMe: boolean("is_from_me").notNull(),
+  quotedRemoteJid: varchar("quoted_remote_jid"),
+  quotedParticipant: varchar("quoted_participant"),
+  quotedContent: text("quoted_content"),
+  
+  // Reactions
+  reactionEmoji: varchar("reaction_emoji"),
+  reactionFromMe: boolean("reaction_from_me").default(false),
+  
+  // Forwarding
   isForwarded: boolean("is_forwarded").default(false),
   forwardScore: integer("forward_score").default(0),
-  isStarred: boolean("is_starred").default(false),
-  mentions: jsonb("mentions"),
-  reactionEmoji: varchar("reaction_emoji"),
-  reactionTargetId: varchar("reaction_target_id"),
-  participantJid: varchar("participant_jid"),
-  remoteJid: varchar("remote_jid"),
-  pushName: varchar("push_name"),
-  broadcastListOwner: varchar("broadcast_list_owner"),
-  timestamp: bigint("timestamp", { mode: "number" }).notNull(),
-  messageTimestamp: bigint("message_timestamp", { mode: "number" }),
-  editedAt: bigint("edited_at", { mode: "number" }),
+  
+  // Business features
+  contextInfo: jsonb("context_info"),
+  
+  // Status and timestamps
   status: varchar("status", { enum: ["pending", "sent", "delivered", "read", "failed"] }).default("pending"),
+  timestamp: bigint("timestamp", { mode: "number" }).notNull(), // Unix timestamp from WhatsApp
+  pushName: varchar("push_name"), // Sender's display name
+  
+  // Metadata
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
   deletedAt: timestamp("deleted_at")
 });
 
