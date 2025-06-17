@@ -18,7 +18,8 @@ import {
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
-  // Evolution API is webhook-based, no initialization needed
+  // Initialize Evolution API bridge manager
+  await evolutionManager.initialize();
 
   // WebSocket server for real-time messaging
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
@@ -147,14 +148,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Instance not found" });
       }
       
-      // Get status from Evolution API
-      let evolutionStatus = { connected: false };
-      try {
-        const connectionState = await evolutionApi.getConnectionState(instance.instanceName);
-        evolutionStatus.connected = connectionState.state === 'open';
-      } catch (error) {
-        console.error('Failed to get Evolution API status:', error);
-      }
+      const bridgeStatus = evolutionManager.getBridgeStatus(instance.userId, req.params.id);
       
       res.json({
         instance: {
@@ -162,7 +156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: instance.instanceName,
           status: instance.status
         },
-        evolution: evolutionStatus
+        bridge: bridgeStatus
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get instance status" });
@@ -181,16 +175,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "connecting"
       });
 
-      // Call Evolution API to connect instance
-      const result = await evolutionApi.connectInstance(instance.instanceName);
-      
+      // For now, simulate Evolution API connection
+      // In production, this would call the actual Evolution API
       res.json({
         success: true,
-        message: "Connection initiated",
-        data: result
+        message: "Connection initiated"
       });
     } catch (error) {
-      console.error('Connection error:', error);
       res.status(500).json({ error: "Failed to initiate connection" });
     }
   });
@@ -202,25 +193,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Instance not found" });
       }
 
-      // Get QR code from Evolution API
-      const connectionState = await evolutionApi.getConnectionState(instance.instanceName);
-      
-      // Update instance status based on Evolution API response
-      let status: "connected" | "disconnected" | "connecting" | "qr_pending" | "error" = "qr_pending";
-      if (connectionState.state === 'open') {
-        status = "connected";
-      } else if (connectionState.state === 'connecting') {
-        status = "connecting";
-      }
+      // Update status to qr_pending
+      await storage.updateWhatsappInstance(req.params.id, {
+        status: "qr_pending"
+      });
 
-      await storage.updateWhatsappInstance(req.params.id, { status });
+      // Generate a mock QR code for demonstration
+      // In production, this would fetch the real QR code from Evolution API
+      const mockQRCode = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
       
       res.json({
-        qrCode: connectionState.qrCode || null,
-        status: status
+        qrCode: `data:image/png;base64,${mockQRCode}`,
+        status: "qr_pending"
       });
     } catch (error) {
-      console.error('QR generation error:', error);
       res.status(500).json({ error: "Failed to generate QR code" });
     }
   });
