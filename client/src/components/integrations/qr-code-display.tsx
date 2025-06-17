@@ -8,7 +8,7 @@ import { QrCode, Smartphone, Loader2, Wifi, RefreshCw, CheckCircle } from "lucid
 
 interface QRCodeDisplayProps {
   instanceId: string;
-  instanceName: string;
+  instanceName: string; // This should be the actual instance_name from database, not display_name
   onConnected: () => void;
 }
 
@@ -22,58 +22,54 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Step 1: Generate QR Code
+  // Step 1: Generate QR Code - Direct approach similar to your working code
   const generateQR = useMutation({
     mutationFn: async () => {
-      // Initiate connection with Evolution API
-      const connectResponse = await apiRequest("POST", `/api/whatsapp/instances/${instanceId}/connect`);
+      console.log('Generating QR code for instance:', instanceName);
       
-      // Wait for connection initialization
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // First connect the instance
+      await apiRequest("POST", `/api/whatsapp/instances/${instanceId}/connect`);
       
-      // Get QR code from Evolution API
+      // Wait for initialization
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Get QR code directly
       const qrResponse = await apiRequest("GET", `/api/whatsapp/instances/${instanceId}/qr`);
       return qrResponse;
     },
     onSuccess: (data: any) => {
+      console.log('QR generation response:', data);
+      
       if (data.qrCode) {
         setQrCode(data.qrCode);
         setStatus("qr_pending");
         startStatusPolling();
         
-        // Update database with QR pending status
-        apiRequest("PATCH", `/api/whatsapp/instances/${instanceId}`, {
-          status: "qr_pending",
-          qrCode: data.qrCode
-        });
-        
         toast({
-          title: "QR Code Ready",
-          description: "Scan with WhatsApp: Settings → Linked Devices → Link a Device",
+          title: "QR Code Generated!",
+          description: "Scan with WhatsApp to connect",
         });
-      } else if (data.message?.includes("connecting")) {
-        setStatus("connecting");
+      } else if (data.status === 'connected') {
+        setStatus("connected");
+        onConnected();
         toast({
-          title: "Preparing Connection",
-          description: "Initializing WhatsApp instance...",
+          title: "Already Connected",
+          description: "Instance is already connected!",
         });
-        // Retry QR generation after delay
-        setTimeout(() => {
-          generateQR.mutate();
-        }, 5000);
       } else {
         toast({
-          title: "Connection Issue",
-          description: data.message || "Unable to generate QR code. Please try again.",
+          title: "No QR Code Available",
+          description: data.message || "Try connecting the instance first",
           variant: "destructive",
         });
       }
     },
     onError: (error: any) => {
-      console.error("QR generation failed:", error);
+      console.error('Error generating QR code:', error);
+      const errorMessage = error.message || 'Failed to generate QR code';
       toast({
-        title: "Failed to Generate QR Code", 
-        description: error.message || "Please check Evolution API configuration and try again.",
+        title: "QR Generation Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     },
