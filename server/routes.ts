@@ -126,24 +126,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      const conversationId = await getOrCreateConversationId(instance.id, message.key.remoteJid || '');
-      
-      // Save the authentic WhatsApp message
-      const messageData = {
-        userId: instance.userId,
+      // Determine message type from the message content
+      let messageType = 'conversation';
+      if (message.message) {
+        const messageContent = message.message;
+        if (messageContent.conversation) messageType = 'conversation';
+        else if (messageContent.extendedTextMessage) messageType = 'extendedTextMessage';
+        else if (messageContent.imageMessage) messageType = 'imageMessage';
+        else if (messageContent.videoMessage) messageType = 'videoMessage';
+        else if (messageContent.audioMessage) messageType = 'audioMessage';
+        else if (messageContent.documentMessage) messageType = 'documentMessage';
+        else if (messageContent.stickerMessage) messageType = 'stickerMessage';
+        else if (messageContent.locationMessage) messageType = 'locationMessage';
+        else if (messageContent.contactMessage) messageType = 'contactMessage';
+      }
+
+      // Extract media information
+      const mediaUrl = message.message ? getMediaUrl(message.message) : null;
+      const mediaMimetype = message.message ? getMediaMimetype(message.message) : null;
+      const mediaSize = message.message ? getMediaSize(message.message) : null;
+      const mediaFilename = message.message ? getMediaFilename(message.message) : null;
+      const mediaCaption = message.message ? getMediaCaption(message.message) : null;
+
+      // Save to evolution_messages table (no foreign key constraints)
+      const evolutionMessageData = {
         instanceId: instance.id,
-        conversationId: conversationId,
+        instanceName: instanceName,
         evolutionMessageId: message.key.id || '',
         remoteJid: message.key.remoteJid || '',
-        textContent: extractMessageContent(message),
         fromMe: message.key.fromMe || false,
-        messageType: message.messageType || 'conversation',
+        participant: message.participant || null,
+        pushName: message.pushName || null,
+        messageContent: message.message || null,
+        messageType: messageType,
+        textContent: extractMessageContent(message),
+        mediaUrl: mediaUrl,
+        mediaMimetype: mediaMimetype,
+        mediaSize: mediaSize,
+        mediaFilename: mediaFilename,
+        mediaCaption: mediaCaption,
+        status: message.status || 'received',
         timestamp: message.messageTimestamp || Math.floor(Date.now() / 1000),
-        pushName: message.pushName || null
+        contextInfo: message.contextInfo || null,
+        rawWebhookData: data
       };
 
-      const savedMessage = await storage.saveWhatsappMessage(messageData);
-      console.log(`✅ Saved authentic WhatsApp message from ${message.pushName || 'Unknown'}: "${messageData.textContent}"`);
+      const savedMessage = await storage.createEvolutionMessage(evolutionMessageData);
+      console.log(`✅ Saved Evolution message from ${message.pushName || 'Unknown'}: "${evolutionMessageData.textContent}"`);
       
     } catch (error) {
       console.error('Error saving webhook message:', error);
@@ -159,6 +188,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
   async function handleWebhookChatsUpsert(instanceName: string, data: any) {
     console.log(`💬 Processing chats.upsert for ${instanceName}:`, data);
     // Implementation for chat/conversation updates
+  }
+
+  // Helper functions for media extraction
+  function getMediaUrl(messageContent: any): string | null {
+    if (!messageContent) return null;
+    
+    if (messageContent.imageMessage?.url) return messageContent.imageMessage.url;
+    if (messageContent.videoMessage?.url) return messageContent.videoMessage.url;
+    if (messageContent.audioMessage?.url) return messageContent.audioMessage.url;
+    if (messageContent.documentMessage?.url) return messageContent.documentMessage.url;
+    
+    return null;
+  }
+
+  function getMediaMimetype(messageContent: any): string | null {
+    if (!messageContent) return null;
+    
+    if (messageContent.imageMessage?.mimetype) return messageContent.imageMessage.mimetype;
+    if (messageContent.videoMessage?.mimetype) return messageContent.videoMessage.mimetype;
+    if (messageContent.audioMessage?.mimetype) return messageContent.audioMessage.mimetype;
+    if (messageContent.documentMessage?.mimetype) return messageContent.documentMessage.mimetype;
+    
+    return null;
+  }
+
+  function getMediaSize(messageContent: any): number | null {
+    if (!messageContent) return null;
+    
+    if (messageContent.imageMessage?.fileLength) return parseInt(messageContent.imageMessage.fileLength);
+    if (messageContent.videoMessage?.fileLength) return parseInt(messageContent.videoMessage.fileLength);
+    if (messageContent.audioMessage?.fileLength) return parseInt(messageContent.audioMessage.fileLength);
+    if (messageContent.documentMessage?.fileLength) return parseInt(messageContent.documentMessage.fileLength);
+    
+    return null;
+  }
+
+  function getMediaFilename(messageContent: any): string | null {
+    if (!messageContent) return null;
+    
+    if (messageContent.documentMessage?.fileName) return messageContent.documentMessage.fileName;
+    if (messageContent.imageMessage?.fileName) return messageContent.imageMessage.fileName;
+    if (messageContent.videoMessage?.fileName) return messageContent.videoMessage.fileName;
+    if (messageContent.audioMessage?.fileName) return messageContent.audioMessage.fileName;
+    
+    return null;
+  }
+
+  function getMediaCaption(messageContent: any): string | null {
+    if (!messageContent) return null;
+    
+    if (messageContent.imageMessage?.caption) return messageContent.imageMessage.caption;
+    if (messageContent.videoMessage?.caption) return messageContent.videoMessage.caption;
+    if (messageContent.documentMessage?.caption) return messageContent.documentMessage.caption;
+    
+    return null;
   }
 
   function extractMessageContent(message: any): string {

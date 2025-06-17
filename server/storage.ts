@@ -4,6 +4,7 @@ import {
   whatsappContacts, 
   whatsappConversations, 
   whatsappMessages,
+  evolutionMessages,
   tasks,
   contacts,
   conversations,
@@ -18,6 +19,8 @@ import {
   type InsertWhatsappConversation,
   type WhatsappMessage,
   type InsertWhatsappMessage,
+  type EvolutionMessage,
+  type InsertEvolutionMessage,
   type Task,
   type InsertTask,
   type Contact,
@@ -92,6 +95,12 @@ export interface IStorage {
   createMessage(message: InsertMessage): Promise<Message>;
   updateMessage(id: string, message: Partial<InsertMessage>): Promise<Message>;
   deleteMessage(id: string): Promise<void>;
+
+  // Evolution Messages
+  getEvolutionMessages(instanceId: string, limit?: number): Promise<EvolutionMessage[]>;
+  getEvolutionMessage(id: string): Promise<EvolutionMessage | undefined>;
+  createEvolutionMessage(message: InsertEvolutionMessage): Promise<EvolutionMessage>;
+  getWhatsappInstanceByName(instanceName: string): Promise<WhatsappInstance | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -360,6 +369,31 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMessage(id: string): Promise<void> {
     await db.delete(messages).where(eq(messages.id, id));
+  }
+
+  // Evolution Messages
+  async getEvolutionMessages(instanceId: string, limit: number = 50): Promise<EvolutionMessage[]> {
+    const result = await db.select()
+      .from(evolutionMessages)
+      .where(eq(evolutionMessages.instanceId, instanceId))
+      .orderBy(desc(evolutionMessages.timestamp))
+      .limit(limit);
+    return result as EvolutionMessage[];
+  }
+
+  async getEvolutionMessage(id: string): Promise<EvolutionMessage | undefined> {
+    const [message] = await db.select().from(evolutionMessages).where(eq(evolutionMessages.id, id));
+    return message as EvolutionMessage || undefined;
+  }
+
+  async createEvolutionMessage(insertMessage: InsertEvolutionMessage): Promise<EvolutionMessage> {
+    const [message] = await db.insert(evolutionMessages).values(insertMessage).returning();
+    return message as EvolutionMessage;
+  }
+
+  async getWhatsappInstanceByName(instanceName: string): Promise<WhatsappInstance | undefined> {
+    const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceName, instanceName));
+    return instance as WhatsappInstance || undefined;
   }
 }
 
