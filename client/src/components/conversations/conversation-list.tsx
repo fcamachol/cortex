@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,6 +12,7 @@ interface ConversationListProps {
 
 export default function ConversationList({ selectedConversation, onSelectConversation }: ConversationListProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [conversationsWithMessages, setConversationsWithMessages] = useState([]);
 
   // Mock user ID - in real app this would come from auth context
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
@@ -20,9 +21,44 @@ export default function ConversationList({ selectedConversation, onSelectConvers
     queryKey: [`/api/whatsapp/conversations/${userId}`],
   });
 
-  const filteredConversations = conversations.filter((conv: any) =>
+  // Fetch latest message for each conversation
+  useEffect(() => {
+    const fetchLatestMessages = async () => {
+      if (conversations.length === 0) return;
+
+      const conversationsWithLatestMessages = await Promise.all(
+        conversations.map(async (conversation: any) => {
+          try {
+            const response = await fetch(`/api/whatsapp/messages/${conversation.id}?limit=1`);
+            if (response.ok) {
+              const messages = await response.json();
+              const latestMessage = messages[0];
+              return {
+                ...conversation,
+                latestMessage: latestMessage ? {
+                  content: latestMessage.content,
+                  createdAt: latestMessage.createdAt,
+                  fromMe: latestMessage.fromMe,
+                  messageType: latestMessage.messageType
+                } : null
+              };
+            }
+          } catch (error) {
+            console.error('Error fetching messages for conversation:', conversation.id, error);
+          }
+          return conversation;
+        })
+      );
+
+      setConversationsWithMessages(conversationsWithLatestMessages);
+    };
+
+    fetchLatestMessages();
+  }, [conversations]);
+
+  const filteredConversations = conversationsWithMessages.filter((conv: any) =>
     conv.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.lastMessage?.toLowerCase().includes(searchQuery.toLowerCase())
+    conv.latestMessage?.content?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (isLoading) {
@@ -66,7 +102,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {filteredConversations.length === 0 ? (
           <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-            {conversations.length === 0 ? "No conversations yet" : "No conversations match your search"}
+            {conversationsWithMessages.length === 0 ? "No conversations yet" : "No conversations match your search"}
           </div>
         ) : (
           filteredConversations.map((conversation: any) => (
@@ -94,18 +130,29 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                       {conversation.title || 'Unknown Contact'}
                     </h3>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {conversation.lastMessageAt ? new Date(conversation.lastMessageAt).toLocaleTimeString([], { 
+                      {conversation.latestMessage?.createdAt ? new Date(conversation.latestMessage.createdAt).toLocaleTimeString([], { 
                         hour: '2-digit', 
                         minute: '2-digit' 
                       }) : ''}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-300 truncate mt-1">
-                    {conversation.lastMessage || 'No messages yet'}
+                    {conversation.latestMessage ? (
+                      <span className="flex items-center">
+                        {conversation.latestMessage.fromMe && (
+                          <span className="mr-1 text-gray-500">You: </span>
+                        )}
+                        {conversation.latestMessage.messageType === 'image' ? '📷 Photo' :
+                         conversation.latestMessage.messageType === 'audio' ? '🎵 Audio' :
+                         conversation.latestMessage.messageType === 'video' ? '🎥 Video' :
+                         conversation.latestMessage.messageType === 'document' ? '📄 Document' :
+                         conversation.latestMessage.content || 'Message'}
+                      </span>
+                    ) : 'No messages yet'}
                   </p>
                   <div className="flex items-center justify-between mt-2">
                     <div className="flex items-center space-x-2">
-                      {conversation.lastMessageFromMe && (
+                      {conversation.latestMessage?.fromMe && (
                         <CheckCheck className="h-3 w-3 text-blue-500" />
                       )}
                       {conversation.isPinned && (
