@@ -185,7 +185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       remoteJid,
       chatName: remoteJid.includes('@g.us') ? 'Group Chat' : remoteJid.split('@')[0],
       chatType: remoteJid.includes('@g.us') ? 'group' : 'individual',
-      lastMessageTime: new Date(),
+      lastMessageTimestamp: Math.floor(Date.now() / 1000),
       unreadCount: 0
     });
 

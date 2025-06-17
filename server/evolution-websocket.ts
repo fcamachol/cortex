@@ -42,30 +42,35 @@ export class EvolutionAPIWebSocket {
     try {
       // Convert HTTP URL to WSS for WebSocket connection
       const wsUrl = this.config.apiUrl.replace('https://', 'wss://').replace('http://', 'ws://');
-      console.log(`🔗 Connecting to Evolution API WebSocket: ${wsUrl}`);
+      console.log(`🔗 Connecting instance-specific WebSocket: ${wsUrl}`);
       console.log(`📱 Instance: ${this.config.instanceName}`);
-      console.log(`🔑 Using instance API key: ${this.config.apiKey.substring(0, 8)}...`);
+      console.log(`🔑 Using API key: ${this.config.apiKey.substring(0, 8)}...`);
       
-      // Evolution API WebSocket connection with proper authentication
+      // Instance-specific Socket.IO connection with Evolution API authentication
       this.socket = io(wsUrl, {
         transports: ['websocket'],
-        upgrade: true,
-        rememberUpgrade: true,
-        forceNew: true,
-        reconnection: true,
-        reconnectionAttempts: this.config.maxReconnectAttempts,
-        reconnectionDelay: this.config.reconnectInterval,
         timeout: 20000,
+        forceNew: true,
+        reconnection: false, // Manual reconnection handling
+        autoConnect: false,
+        upgrade: false,
         auth: {
-          apikey: this.config.apiKey
+          apikey: this.config.apiKey,
+          instance: this.config.instanceName,
+        },
+        extraHeaders: {
+          'apikey': this.config.apiKey,
+          'instance': this.config.instanceName,
+          'Authorization': `Bearer ${this.config.apiKey}`,
         },
         query: {
           apikey: this.config.apiKey,
-          instanceName: this.config.instanceName
+          instance: this.config.instanceName,
         }
       });
 
       this.setupEventHandlers();
+      this.socket.connect(); // Manual connection since autoConnect is false
     } catch (error) {
       console.error('Socket.IO connection failed:', error);
       this.scheduleReconnect();
