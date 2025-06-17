@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp QR Code - Live Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .qr-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        #qrcode {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+        .status {
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .connecting { background: #fff3cd; color: #856404; }
+        .connected { background: #d4edda; color: #155724; }
+        .instructions {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="qr-container">
+        <h1>WhatsApp Connection - Live Test</h1>
+        <p>Instance: <strong>live-test-1750199771</strong></p>
+        
+        <div id="status" class="status connecting">
+            Status: Connecting - Please scan the QR code
+        </div>
+        
+        <div id="qrcode"></div>
+        
+        <div class="instructions">
+            <h3>How to connect:</h3>
+            <ol>
+                <li>Open WhatsApp on your phone</li>
+                <li>Go to Settings → Linked Devices</li>
+                <li>Tap "Link a Device"</li>
+                <li>Scan this QR code with your phone's camera</li>
+            </ol>
+        </div>
+        
+        <button onclick="checkStatus()" style="padding: 10px 20px; background: #25d366; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Check Connection Status
+        </button>
+    </div>
+
+    <script>
+        const instanceId = 'c4f9c36c-e055-47f5-8994-aeeb359ae473';
+        const qrCodeData = '2@1WLmak9vKedhAYfg6Exf+hOo1h1ki3EH9/SUiijQLA0EFV0VURyWUQGcVXJoqyREM10RlHDV/MP7NiW9/jdXnbu6ruse/fbC438=,H1SCy54bm+wYM7fuUFmXXhnIl5VxvD+a/Ge3wdpAynk=,IGd0o1752WHQCgqwA0EXsbBEFsA1thzwbW7FJYCVgEQ=,fhqzzfJwpFeOxYEDRSNX3zRGvCSv2P+51tsq5gR6mUY=';
+        
+        // Generate QR code
+        QRCode.toCanvas(document.getElementById('qrcode'), qrCodeData, {
+            width: 300,
+            margin: 2,
+            color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+            }
+        }, function (error) {
+            if (error) console.error(error);
+            console.log('QR code generated successfully!');
+        });
+        
+        // Check connection status
+        async function checkStatus() {
+            try {
+                const response = await fetch(`http://localhost:5000/api/whatsapp/instances/${instanceId}/status`);
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('status');
+                if (data.instance.status === 'connected') {
+                    statusDiv.className = 'status connected';
+                    statusDiv.textContent = 'Status: Connected! WhatsApp is now linked.';
+                    
+                    // Load conversations
+                    loadConversations();
+                } else {
+                    statusDiv.className = 'status connecting';
+                    statusDiv.textContent = 'Status: Still connecting... Please scan the QR code.';
+                }
+            } catch (error) {
+                console.error('Error checking status:', error);
+            }
+        }
+        
+        async function loadConversations() {
+            try {
+                const response = await fetch(`http://localhost:5000/api/whatsapp/conversations/7804247f-3ae8-4eb2-8c6d-2c44f967ad42`);
+                const conversations = await response.json();
+                
+                if (conversations.length > 0) {
+                    document.body.innerHTML += `
+                        <div class="qr-container" style="margin-top: 20px;">
+                            <h2>✅ Authentic WhatsApp Conversations Loaded!</h2>
+                            <p>Found ${conversations.length} conversations from your connected WhatsApp:</p>
+                            <ul style="text-align: left;">
+                                ${conversations.map(conv => `
+                                    <li><strong>${conv.chatName || conv.remoteJid}</strong> - ${conv.unreadCount || 0} unread</li>
+                                `).join('')}
+                            </ul>
+                            <p><em>This demonstrates the Evolution API integration with real WhatsApp data!</em></p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+            }
+        }
+        
+        // Auto-check status every 3 seconds
+        setInterval(checkStatus, 3000);
+    </script>
+</body>
+</html>
