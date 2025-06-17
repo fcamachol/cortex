@@ -138,7 +138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         textContent: extractMessageContent(message),
         fromMe: message.key.fromMe || false,
         messageType: message.messageType || 'conversation',
-        timestamp: new Date((message.messageTimestamp || Date.now() / 1000) * 1000),
+        timestamp: message.messageTimestamp || Math.floor(Date.now() / 1000),
         pushName: message.pushName || null
       };
 
@@ -183,7 +183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       userId: instanceId, // Will be corrected with proper user lookup
       instanceId,
       remoteJid,
-      displayName: remoteJid.includes('@g.us') ? 'Group Chat' : remoteJid.split('@')[0],
+      chatName: remoteJid.includes('@g.us') ? 'Group Chat' : remoteJid.split('@')[0],
       chatType: remoteJid.includes('@g.us') ? 'group' : 'individual',
       lastMessageTime: new Date(),
       unreadCount: 0
@@ -375,7 +375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🗑️ Deleting instance: ${instance.instanceName} (${instance.id})`);
 
       // Remove the Evolution WebSocket bridge first
-      await evolutionManager.removeBridge(instance.userId, req.params.id);
+      await evolutionManager.removeBridge(instance.instanceName);
 
       // Delete the instance from Evolution API if we have an instance API key
       if (instance.instanceApiKey) {

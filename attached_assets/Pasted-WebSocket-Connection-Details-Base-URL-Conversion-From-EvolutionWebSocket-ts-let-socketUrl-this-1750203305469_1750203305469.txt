@@ -1,0 +1,76 @@
+WebSocket Connection Details
+Base URL Conversion
+
+// From EvolutionWebSocket.ts
+let socketUrl = this.baseUrl;
+if (socketUrl.startsWith('https://')) {
+  socketUrl = socketUrl.replace('https://', 'wss://');
+} else if (socketUrl.startsWith('http://')) {
+  socketUrl = socketUrl.replace('http://', 'ws://');
+}
+Actual WebSocket URL
+Primary URL: wss://evolution-api-evolution-api.vuswn0.easypanel.host
+
+Authentication Parameters
+The WebSocket connection uses multiple authentication methods:
+
+
+// Socket.IO configuration
+auth: {
+  apikey: selectedInstance.api_key,
+  instance: cleanInstanceName,
+},
+extraHeaders: {
+  'apikey': selectedInstance.api_key,
+  'instance': cleanInstanceName,
+  'Authorization': `Bearer ${selectedInstance.api_key}`,
+},
+query: {
+  apikey: selectedInstance.api_key,
+  instance: cleanInstanceName,
+}
+Connection Patterns Tried
+The system attempts multiple WebSocket endpoint patterns:
+
+Direct WSS: wss://evolution-api-evolution-api.vuswn0.easypanel.host
+Socket.IO path: wss://evolution-api-evolution-api.vuswn0.easypanel.host/socket.io
+Instance-specific: wss://evolution-api-evolution-api.vuswn0.easypanel.host/{instance_name}
+Events Listened To
+Once connected, the WebSocket listens for these Evolution API events:
+
+
+const evolutionEvents = [
+  'messages.upsert',
+  'messages.update', 
+  'messages.delete',
+  'presence.update',
+  'chats.upsert',
+  'chats.update',
+  'chats.delete',
+  'contacts.upsert',
+  'contacts.update',
+  'groups.upsert',
+  'connection.update',
+  'qrcode.updated',
+  'instance.status',
+  'message',
+  'status.update'
+];
+Transport Configuration
+
+transports: ['websocket'], // WebSocket-only transport
+timeout: 20000,
+forceNew: true,
+reconnection: false, // Manual reconnection handling
+autoConnect: false,
+upgrade: false
+API Keys Used
+Evolution API Key: Stored in Supabase secrets as EVOLUTION_API_KEY
+Instance API Key: Each WhatsApp instance has its own api_key stored in the database
+Instance Name: Used for filtering events to the correct instance
+Connection Flow
+WebSocket URL: wss://evolution-api-evolution-api.vuswn0.easypanel.host
+Protocol: Socket.IO over WebSocket (WSS)
+Authentication: API key-based with multiple header formats
+Event Filtering: Server-side filtering by instance name and API key
+Fallback: If WebSocket fails, falls back to webhook polling

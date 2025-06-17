@@ -62,10 +62,10 @@ export class EvolutionBridgeManager {
   }
 
   async createBridge(userId: string, instance: WhatsappInstance): Promise<void> {
-    const bridgeKey = `${userId}-${instance.id}`;
+    const bridgeKey = instance.instanceName; // Use instance name as key for per-instance isolation
     
     if (this.bridges.has(bridgeKey)) {
-      console.log(`🔄 Bridge exists for ${instance.instanceName}, reconnecting...`);
+      console.log(`🔄 Bridge exists for instance ${instance.instanceName}, reconnecting...`);
       const existingBridge = this.bridges.get(bridgeKey);
       await existingBridge?.shutdown();
       this.bridges.delete(bridgeKey);
@@ -80,43 +80,40 @@ export class EvolutionBridgeManager {
         maxReconnectAttempts: 50
       };
 
-      console.log(`🔗 Creating persistent WebSocket for: ${instance.instanceName} (+${instance.phoneNumber})`);
+      console.log(`🔗 Creating instance-specific WebSocket for: ${instance.instanceName} (${instance.phoneNumber})`);
       console.log(`📡 Evolution API URL: ${config.apiUrl}`);
 
       const bridge = new EvolutionAPIWebSocket(config, userId, instance.id);
       this.bridges.set(bridgeKey, bridge);
       
-      console.log(`✅ Created persistent WebSocket bridge for: ${instance.instanceName}`);
+      console.log(`✅ Created instance-specific WebSocket bridge for: ${instance.instanceName}`);
     } catch (error) {
       console.error(`❌ Failed to create WebSocket bridge for ${instance.instanceName}:`, error);
     }
   }
 
-  async removeBridge(userId: string, instanceId: string): Promise<void> {
-    const bridgeKey = `${userId}-${instanceId}`;
-    const bridge = this.bridges.get(bridgeKey);
+  async removeBridge(instanceName: string): Promise<void> {
+    const bridge = this.bridges.get(instanceName);
     
     if (bridge) {
       await bridge.shutdown();
-      this.bridges.delete(bridgeKey);
-      console.log(`🗑️ Removed bridge for instance: ${instanceId}`);
+      this.bridges.delete(instanceName);
+      console.log(`🗑️ Removed bridge for instance: ${instanceName}`);
     }
   }
 
-  async sendMessage(userId: string, instanceId: string, to: string, message: string, options?: any): Promise<any> {
-    const bridgeKey = `${userId}-${instanceId}`;
-    const bridge = this.bridges.get(bridgeKey);
+  async sendMessage(instanceName: string, to: string, message: string, options?: any): Promise<any> {
+    const bridge = this.bridges.get(instanceName);
     
     if (!bridge) {
-      throw new Error(`No bridge found for instance: ${instanceId}`);
+      throw new Error(`No bridge found for instance: ${instanceName}`);
     }
 
     return await bridge.sendMessage(to, message, options);
   }
 
-  getBridgeStatus(userId: string, instanceId: string): { connected: boolean; bridgeExists: boolean } {
-    const bridgeKey = `${userId}-${instanceId}`;
-    const bridge = this.bridges.get(bridgeKey);
+  getBridgeStatus(instanceName: string): { connected: boolean; bridgeExists: boolean } {
+    const bridge = this.bridges.get(instanceName);
     
     return {
       connected: bridge?.isSocketConnected() || false,
