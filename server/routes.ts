@@ -723,16 +723,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // WhatsApp conversation routes
+  // WhatsApp conversation routes - fetch from Evolution API
   app.get("/api/whatsapp/conversations/:userId", async (req, res) => {
     try {
+      const userId = req.params.userId;
       const { instanceId } = req.query;
-      const conversations = await storage.getWhatsappConversations(
-        req.params.userId, 
-        instanceId as string
-      );
-      res.json(conversations);
+      
+      // Get user's active WhatsApp instances
+      const instances = await storage.getWhatsappInstances(userId);
+      const allConversations = [];
+      
+      for (const instance of instances) {
+        if (instance.status === 'connected' && instance.instanceApiKey) {
+          try {
+            // Fetch chats from Evolution API
+            const evolutionApi = getInstanceEvolutionApi(instance.instanceApiKey);
+            const chats = await evolutionApi.fetchChats(instance.instanceName);
+            
+            if (chats && Array.isArray(chats)) {
+              for (const chat of chats) {
+                // Create or update conversation in database
+                const conversationData = {
+                  instanceId: instance.id,
+                  userId: userId,
+                  remoteJid: chat.id,
+                  chatName: chat.name || chat.id.split('@')[0],
+                  chatType: chat.id.includes('@g.us') ? 'group' as const : 'individual' as const,
+                  unreadCount: chat.unreadCount || 0,
+                  lastMessageContent: chat.lastMessage?.message || '',
+                  lastMessageTimestamp: chat.lastMessage?.messageTimestamp || 0,
+                  lastMessageFromMe: chat.lastMessage?.key?.fromMe || false,
+                  title: chat.name || chat.id.split('@')[0]
+                };
+                
+                // Check if conversation exists
+                const existingConversations = await storage.getWhatsappConversations(userId, instance.id);
+                const existing = existingConversations.find(c => c.remoteJid === chat.id);
+                
+                let conversation;
+                if (existing) {
+                  conversation = await storage.updateWhatsappConversation(existing.id, conversationData);
+                } else {
+                  conversation = await storage.createWhatsappConversation(conversationData);
+                }
+                
+                allConversations.push(conversation);
+              }
+            }
+          } catch (apiError) {
+            console.error(`Failed to fetch chats for instance ${instance.instanceName}:`, apiError);
+          }
+        }
+      }
+      
+      // Also get any existing conversations from database
+      const dbConversations = await storage.getWhatsappConversations(userId, instanceId as string);
+      
+      // Merge and deduplicate by remoteJid
+      const conversationMap = new Map();
+      [...allConversations, ...dbConversations].forEach(conv => {
+        const key = conv.remoteJid || conv.id;
+        const currentTimestamp = conv.lastMessageTimestamp || 0;
+        const existingTimestamp = conversationMap.get(key)?.lastMessageTimestamp || 0;
+        if (!conversationMap.has(key) || currentTimestamp > existingTimestamp) {
+          conversationMap.set(key, conv);
+        }
+      });
+      
+      const finalConversations = Array.from(conversationMap.values())
+        .sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
+      
+      res.json(finalConversations);
     } catch (error) {
+      console.error('Error fetching conversations:', error);
       res.status(500).json({ error: "Failed to get conversations" });
     }
   });
@@ -778,17 +841,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const messageData = insertWhatsappMessageSchema.parse(req.body);
       
       // If this is an outgoing message, send it via Evolution API
-      if (messageData.isFromMe && messageData.instanceId && messageData.toNumber) {
+      if (messageData.fromMe && messageData.instanceId && messageData.remoteJid) {
         try {
           const result = await evolutionManager.sendMessage(
             messageData.userId,
             messageData.instanceId,
-            messageData.toNumber || "",
-            messageData.content || ""
+            messageData.remoteJid || "",
+            messageData.textContent || ""
           );
           
           // Update message with Evolution API response
-          messageData.messageId = result.key?.id || messageData.messageId;
+          messageData.evolutionMessageId = result.key?.id || messageData.evolutionMessageId;
           messageData.status = 'sent';
         } catch (evolError) {
           console.error('Failed to send via Evolution API:', evolError);
