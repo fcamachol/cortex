@@ -26,10 +26,10 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
       await apiRequest("POST", `/api/whatsapp/instances/${instanceId}/connect`);
       
       // Then fetch QR code
-      const response = await apiRequest("GET", `/api/whatsapp/instances/${instanceId}/qr`);
+      const response = await apiRequest("GET", `/api/whatsapp/instances/${instanceId}/qr`) as any;
       return response;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       if (data.qrCode) {
         // Strip data URL prefix if present
         const cleanQrCode = data.qrCode.replace(/^data:image\/png;base64,/, "");
@@ -55,7 +55,7 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
   const checkStatus = async () => {
     try {
       setIsRefreshing(true);
-      const response = await apiRequest("GET", `/api/whatsapp/instances/${instanceId}/status`);
+      const response = await apiRequest("GET", `/api/whatsapp/instances/${instanceId}/status`) as any;
       
       setStatus(response.instance.status);
       

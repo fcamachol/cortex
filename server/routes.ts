@@ -198,9 +198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "qr_pending"
       });
 
-      // Generate a mock QR code for demonstration
-      // In production, this would fetch the real QR code from Evolution API
-      const mockQRCode = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
       
       res.json({
         qrCode: `data:image/png;base64,${mockQRCode}`,

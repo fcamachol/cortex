@@ -77,11 +77,11 @@ export class EvolutionBridgeManager {
 
     try {
       const config = {
-        evolutionApiUrl: process.env.EVOLUTION_API_URL || 'ws://localhost:8080',
+        evolutionApiUrl: process.env.EVOLUTION_API_URL!,
         instanceName: instance.instanceName,
-        apiKey: instance.apiKey,
-        maxReconnectAttempts: Infinity,
-        reconnectDelay: 1000,
+        apiKey: process.env.EVOLUTION_API_KEY!,
+        maxReconnectAttempts: 5,
+        reconnectDelay: 5000,
         queueOfflineMessages: true,
         retryFailedSaves: true
       };
