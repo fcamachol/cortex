@@ -227,6 +227,7 @@ export const evolutionMessages = pgTable("evolution_messages", {
   id: uuid("id").primaryKey().defaultRandom(),
   instanceId: uuid("instance_id").notNull(), // No foreign key constraint
   instanceName: varchar("instance_name").notNull(),
+  userId: uuid("user_id").notNull(), // Added for RLS
   
   // Evolution API fields
   evolutionMessageId: varchar("evolution_message_id").notNull(),
