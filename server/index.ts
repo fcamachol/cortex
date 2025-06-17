@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { updateEvolutionApiSettings, getEvolutionApi } from "./evolution-api";
+import { evolutionManager } from "./evolution-manager";
 
 const app = express();
 app.use(express.json());
@@ -85,7 +86,14 @@ app.use((req, res, next) => {
     port,
     host: "0.0.0.0",
     reusePort: true,
-  }, () => {
+  }, async () => {
     log(`serving on port ${port}`);
+    
+    // Initialize Evolution API WebSocket bridges for real WhatsApp instances
+    try {
+      await evolutionManager.initialize();
+    } catch (error) {
+      console.error('Failed to initialize Evolution WebSocket manager:', error);
+    }
   });
 })();

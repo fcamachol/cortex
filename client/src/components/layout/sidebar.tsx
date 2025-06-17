@@ -1,7 +1,8 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, CheckSquare, Users, Calendar, Plug, Settings, User } from "lucide-react";
+import { MessageCircle, CheckSquare, Users, Calendar, Plug, Settings, User, Activity } from "lucide-react";
+import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 
 interface SidebarProps {
@@ -159,9 +160,16 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
             <span className="text-xs text-gray-600 dark:text-gray-400">Connected</span>
           </div>
-          <Button variant="ghost" size="sm">
-            <Settings className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center space-x-1">
+            <Link href="/debug">
+              <Button variant="ghost" size="sm" title="WebSocket Debug Monitor">
+                <Activity className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Button variant="ghost" size="sm">
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>
