@@ -1,4 +1,4 @@
-import { io, Socket } from 'socket.io-client';
+import WebSocket from 'ws';
 import { storage } from './storage';
 import { 
   insertWhatsappMessageSchema,
@@ -27,7 +27,7 @@ interface QueuedMessage {
 }
 
 export class EvolutionWebSocketBridge {
-  private socket: Socket | null = null;
+  private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts: number;
   private reconnectDelay: number;
@@ -58,32 +58,30 @@ export class EvolutionWebSocketBridge {
   }
 
   private async connectWebSocket() {
-    const { evolutionApiUrl, instanceName, apiKey } = this.config;
-    
-    // Use the correct WebSocket namespace format for Evolution API
-    this.socket = io(evolutionApiUrl, {
-      transports: ['websocket'],
-      autoConnect: true,
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: this.reconnectDelay,
-      reconnectionDelayMax: 30000,
-      timeout: 20000,
-      forceNew: true,
-      query: {
-        instanceName: instanceName,
-        apikey: apiKey
-      }
-    });
+    try {
+      const { evolutionApiUrl, instanceName, apiKey } = this.config;
+      const wsUrl = `${evolutionApiUrl.replace(/^http/, 'ws')}/ws/${instanceName}`;
+      
+      console.log(`🔗 Connecting to Evolution API WebSocket: ${wsUrl}`);
+      
+      this.ws = new WebSocket(wsUrl, {
+        headers: {
+          'apikey': apiKey
+        }
+      });
 
-    this.setupWebSocketEvents();
+      this.setupWebSocketEvents();
+    } catch (error) {
+      console.error('❌ WebSocket connection failed:', error);
+      this.scheduleReconnect();
+    }
   }
 
   private setupWebSocketEvents() {
-    if (!this.socket) return;
+    if (!this.ws) return;
 
     // Connection Events
-    this.socket.on('connect', () => {
+    this.ws.on('open', () => {
       console.log(`🔗 Connected to Evolution API WebSocket for ${this.config.instanceName}`);
       this.isConnected = true;
       this.reconnectAttempts = 0;
@@ -93,45 +91,59 @@ export class EvolutionWebSocketBridge {
       this.requestInitialDataSync();
     });
 
-    this.socket.on('disconnect', (reason) => {
-      console.log(`🔌 Disconnected from Evolution API (${this.config.instanceName}):`, reason);
+    this.ws.on('close', (code: number, reason: Buffer) => {
+      console.log(`🔌 Disconnected from Evolution API (${this.config.instanceName}):`, code, reason.toString());
       this.isConnected = false;
       this.scheduleReconnect();
     });
 
-    this.socket.on('connect_error', (error) => {
+    this.ws.on('error', (error: Error) => {
       console.error(`❌ WebSocket connection error (${this.config.instanceName}):`, error);
       this.scheduleReconnect();
     });
 
-    // WhatsApp Events
-    this.socket.on('MESSAGES_UPSERT', (data) => {
-      this.handleMessageUpsert(data);
-    });
-
-    this.socket.on('MESSAGES_UPDATE', (data) => {
-      this.handleMessageUpdate(data);
-    });
-
-    this.socket.on('CONTACTS_UPSERT', (data) => {
-      this.handleContactsUpsert(data);
-    });
-
-    this.socket.on('CHATS_UPSERT', (data) => {
-      this.handleChatsUpsert(data);
-    });
-
-    this.socket.on('CONNECTION_UPDATE', (data) => {
-      this.handleConnectionUpdate(data);
-    });
-
-    this.socket.on('PRESENCE_UPDATE', (data) => {
-      this.handlePresenceUpdate(data);
+    // Handle incoming messages from Evolution API
+    this.ws.on('message', (data: Buffer) => {
+      try {
+        const event = JSON.parse(data.toString());
+        this.processEvolutionEvent(event);
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
     });
   }
 
+  private processEvolutionEvent(event: any) {
+    const { event: eventType, data } = event;
+    
+    console.log(`📨 Evolution API Event: ${eventType}`);
+    
+    switch (eventType) {
+      case 'messages.upsert':
+        this.handleMessageUpsert(data);
+        break;
+      case 'messages.update':
+        this.handleMessageUpdate(data);
+        break;
+      case 'contacts.upsert':
+        this.handleContactsUpsert(data);
+        break;
+      case 'chats.upsert':
+        this.handleChatsUpsert(data);
+        break;
+      case 'connection.update':
+        this.handleConnectionUpdate(data);
+        break;
+      case 'presence.update':
+        this.handlePresenceUpdate(data);
+        break;
+      default:
+        console.log(`Unhandled event type: ${eventType}`);
+    }
+  }
+
   private requestInitialDataSync() {
-    if (!this.socket || !this.isConnected) return;
+    if (!this.ws || !this.isConnected) return;
     
     console.log(`📥 Requesting authentic WhatsApp data sync for ${this.config.instanceName}`);
     
