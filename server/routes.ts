@@ -112,7 +112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const createResponse = await evolutionApi.createInstance({
           instanceName: instanceData.instanceName,
           integration: "WHATSAPP-BAILEYS",
-          webhook_url: instanceData.webhookUrl,
+          webhook_url: instanceData.webhookUrl ? instanceData.webhookUrl : undefined,
           events: [
             'APPLICATION_STARTUP',
             'QRCODE_UPDATED',
@@ -135,16 +135,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         // Capture the instance-specific API key from Evolution API response
-        const instanceApiKey = createResponse.hash;
+        const instanceApiKey = typeof createResponse.hash === 'object' ? createResponse.hash.apikey : createResponse.hash;
         
         // Store instance with the captured API key
         const instance = await storage.createWhatsappInstance({
           ...instanceData,
-          instanceApiKey: instanceApiKey || undefined,
+          instanceApiKey: typeof instanceApiKey === 'string' ? instanceApiKey : undefined,
           status: "created"
         });
 
-        console.log(`✅ Created instance: ${instanceData.instanceName} with API key: ${instanceApiKey ? instanceApiKey.substring(0, 8) + '...' : 'none'}`);
+        console.log(`✅ Created instance: ${instanceData.instanceName} with API key: ${typeof instanceApiKey === 'string' ? instanceApiKey.substring(0, 8) + '...' : 'none'}`);
         
         res.status(201).json(instance);
       } catch (evolutionError: any) {

@@ -1,302 +1,269 @@
-import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { QrCode, Smartphone, Loader2, Wifi, RefreshCw, CheckCircle } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, RefreshCw, Smartphone, CheckCircle, AlertCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface QRCodeDisplayProps {
   instanceId: string;
-  instanceName: string; // This should be the actual instance_name from database, not display_name
-  onConnected: () => void;
+  instanceName: string;
+  onConnectionSuccess?: () => void;
 }
 
-export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeDisplayProps) {
-  const [qrCode, setQrCode] = useState<string | null>(null);
-  const [status, setStatus] = useState<string>("disconnected");
-  const [isPolling, setIsPolling] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
-  const [profileName, setProfileName] = useState<string | null>(null);
-  const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+interface QRCodeData {
+  base64: string;
+  code: string;
+  pairingCode?: string;
+}
 
-  // Step 1: Generate QR Code - Direct approach similar to your working code
-  const generateQR = useMutation({
-    mutationFn: async () => {
-      console.log('Generating QR code for instance:', instanceName);
-      
-      // First connect the instance
-      await apiRequest("POST", `/api/whatsapp/instances/${instanceId}/connect`);
-      
-      // Wait for initialization
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Get QR code directly
-      const qrResponse = await apiRequest("GET", `/api/whatsapp/instances/${instanceId}/qr`);
-      return qrResponse;
-    },
-    onSuccess: (data: any) => {
-      console.log('QR generation response:', data);
-      
-      if (data.qrCode) {
-        setQrCode(data.qrCode);
-        setStatus("qr_pending");
-        startStatusPolling();
-        
-        toast({
-          title: "QR Code Generated!",
-          description: "Scan with WhatsApp to connect",
-        });
-      } else if (data.status === 'connected') {
-        setStatus("connected");
-        onConnected();
-        toast({
-          title: "Already Connected",
-          description: "Instance is already connected!",
-        });
-      } else {
-        toast({
-          title: "No QR Code Available",
-          description: data.message || "Try connecting the instance first",
-          variant: "destructive",
-        });
+interface InstanceStatus {
+  instance: {
+    id: string;
+    name: string;
+    status: string;
+  };
+  bridge: {
+    connected: boolean;
+    bridgeExists: boolean;
+  };
+  qrCode?: QRCodeData;
+  evolutionStatus?: {
+    status: string;
+    qrcode?: QRCodeData;
+  };
+}
+
+export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }: QRCodeDisplayProps) {
+  const [qrCodeData, setQrCodeData] = useState<QRCodeData | null>(null);
+  const [status, setStatus] = useState<string>('disconnected');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const { toast } = useToast();
+
+  const fetchInstanceStatus = async () => {
+    try {
+      const response = await fetch(`/api/whatsapp/instances/${instanceId}/status`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch status: ${response.statusText}`);
       }
-    },
-    onError: (error: any) => {
-      console.error('Error generating QR code:', error);
-      const errorMessage = error.message || 'Failed to generate QR code';
+      
+      const data: InstanceStatus = await response.json();
+      
+      setStatus(data.instance.status);
+      
+      // Check for QR code from multiple sources
+      const qrCode = data.qrCode || data.evolutionStatus?.qrcode;
+      if (qrCode) {
+        setQrCodeData(qrCode);
+        setError(null);
+      } else if (data.instance.status === 'connected') {
+        // Instance is connected, no QR needed
+        setQrCodeData(null);
+        setError(null);
+        if (onConnectionSuccess) {
+          onConnectionSuccess();
+        }
+        toast({
+          title: "WhatsApp Connected",
+          description: `Instance ${instanceName} is now connected!`,
+        });
+      } else if (data.instance.status === 'disconnected' && !qrCode) {
+        setError('No QR Code Available - Instance may need to be restarted');
+      }
+      
+    } catch (err) {
+      console.error('Error fetching instance status:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch instance status');
+    }
+  };
+
+  const initiateConnection = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/whatsapp/instances/${instanceId}/connect`, {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Connection failed: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "Connection Initiated",
+          description: "WhatsApp connection process started. Generating QR code...",
+        });
+        
+        // Start polling for QR code and status updates
+        startPolling();
+      } else {
+        throw new Error(result.message || 'Connection initiation failed');
+      }
+      
+    } catch (err) {
+      console.error('Error initiating connection:', err);
+      setError(err instanceof Error ? err.message : 'Connection failed');
       toast({
-        title: "QR Generation Failed",
-        description: errorMessage,
+        title: "Connection Failed",
+        description: err instanceof Error ? err.message : 'Failed to initiate connection',
         variant: "destructive",
       });
-    },
-  });
-
-  // Step 2: Status polling function - checks every 3 seconds for connection
-  const checkConnectionStatus = async () => {
-    try {
-      const response: any = await apiRequest("GET", `/api/whatsapp/instances/${instanceId}/status`);
-      return response;
-    } catch (error) {
-      console.error("Status check failed:", error);
-      return null;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Step 3: Start polling for connection status changes
-  const startStatusPolling = () => {
-    if (pollInterval) {
-      clearInterval(pollInterval);
+  const startPolling = () => {
+    // Clear existing interval
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
     }
     
-    setIsPolling(true);
-    const interval = setInterval(async () => {
-      const statusData = await checkConnectionStatus();
-      
-      if (statusData?.evolutionStatus?.instance) {
-        const evolutionState = statusData.evolutionStatus.instance.state;
-        const phoneNum = statusData.evolutionStatus.instance.phoneNumber;
-        const profileNm = statusData.evolutionStatus.instance.profileName;
-        
-        if (evolutionState === "open") {
-          // Connection successful!
-          setStatus("connected");
-          setPhoneNumber(phoneNum);
-          setProfileName(profileNm);
-          setIsPolling(false);
-          clearInterval(interval);
-          setPollInterval(null);
-          setQrCode(null); // Clear QR code
-          
-          // Update database with connection success
-          apiRequest("PATCH", `/api/whatsapp/instances/${instanceId}`, {
-            status: "connected",
-            phoneNumber: phoneNum,
-            profileName: profileNm,
-            qrCode: null,
-            lastConnectedAt: new Date().toISOString()
-          });
-          
-          onConnected();
-          
-          toast({
-            title: "WhatsApp Connected!",
-            description: `Successfully connected ${profileNm || phoneNum}`,
-          });
-        } else if (evolutionState === "close") {
-          // Connection lost or QR expired
-          setStatus("disconnected");
-          setIsPolling(false);
-          clearInterval(interval);
-          setPollInterval(null);
-          setQrCode(null);
-          
-          toast({
-            title: "Connection Lost",
-            description: "QR code expired or connection failed. Please try again.",
-            variant: "destructive",
-          });
-        }
-        // If state is still "qr" or "connecting", continue polling
-      }
-    }, 3000); // Poll every 3 seconds
+    // Poll every 3 seconds for updates
+    const interval = setInterval(fetchInstanceStatus, 3000);
+    setPollingInterval(interval);
     
-    setPollInterval(interval);
+    // Initial fetch
+    fetchInstanceStatus();
   };
-
-  // Cleanup polling on component unmount
-  useEffect(() => {
-    return () => {
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
-    };
-  }, [pollInterval]);
 
   const stopPolling = () => {
-    if (pollInterval) {
-      clearInterval(pollInterval);
-      setPollInterval(null);
-    }
-    setIsPolling(false);
-  };
-
-  const getStatusIcon = () => {
-    switch (status) {
-      case "connected":
-        return <CheckCircle className="w-6 h-6 text-green-600" />;
-      case "qr_pending":
-        return <QrCode className="w-6 h-6 text-blue-600" />;
-      case "connecting":
-        return <Loader2 className="w-6 h-6 text-yellow-600 animate-spin" />;
-      default:
-        return <Smartphone className="w-6 h-6 text-gray-600" />;
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
     }
   };
 
-  const getStatusText = () => {
+  const handleRefresh = () => {
+    fetchInstanceStatus();
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopPolling();
+    };
+  }, []);
+
+  // Auto-start polling if instance is connecting
+  useEffect(() => {
+    if (status === 'connecting' && !pollingInterval) {
+      startPolling();
+    } else if (status === 'connected' && pollingInterval) {
+      stopPolling();
+    }
+  }, [status]);
+
+  const getStatusBadge = () => {
     switch (status) {
-      case "connected":
-        return "Connected Successfully";
-      case "qr_pending":
-        return "Scan QR Code";
-      case "connecting":
-        return "Preparing Connection...";
+      case 'connected':
+        return <Badge variant="default" className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" />Connected</Badge>;
+      case 'connecting':
+        return <Badge variant="secondary"><Loader2 className="w-3 h-3 mr-1 animate-spin" />Connecting</Badge>;
+      case 'disconnected':
+        return <Badge variant="destructive"><AlertCircle className="w-3 h-3 mr-1" />Disconnected</Badge>;
       default:
-        return "Ready to Connect";
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="flex items-center justify-center gap-2">
-            {getStatusIcon()}
-            {getStatusText()}
-          </CardTitle>
-          <CardDescription>
-            {status === "connected" && profileName && (
-              <div className="space-y-1">
-                <div>Profile: {profileName}</div>
-                {phoneNumber && <div>Phone: {phoneNumber}</div>}
-              </div>
-            )}
-            {status === "qr_pending" && (
-              "Open WhatsApp mobile app → Settings → Linked Devices → Link a Device"
-            )}
-            {status === "connecting" && (
-              "Setting up your WhatsApp instance..."
-            )}
-            {status === "disconnected" && (
-              "Click the button below to start the connection process"
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* QR Code Display */}
-          {qrCode && status === "qr_pending" && (
-            <div className="flex justify-center">
-              <div className="p-4 bg-white rounded-lg border-2 border-gray-200">
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span className="flex items-center">
+            <Smartphone className="w-5 h-5 mr-2" />
+            {instanceName}
+          </span>
+          {getStatusBadge()}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {status === 'connected' ? (
+          <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
+            <p className="text-green-700 dark:text-green-300 font-medium">
+              WhatsApp Connected Successfully!
+            </p>
+            <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+              Your instance is ready to send and receive messages.
+            </p>
+          </div>
+        ) : qrCodeData ? (
+          <div className="space-y-4">
+            <div className="text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                Scan this QR code with WhatsApp on your phone
+              </p>
+              <div className="bg-white p-4 rounded-lg inline-block">
                 <img 
-                  src={qrCode} 
-                  alt="WhatsApp QR Code" 
-                  className="w-64 h-64 object-contain"
+                  src={`data:image/png;base64,${qrCodeData.base64}`}
+                  alt="WhatsApp QR Code"
+                  className="w-48 h-48 mx-auto"
                 />
               </div>
+              {qrCodeData.pairingCode && (
+                <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    Pairing Code: <span className="font-mono font-bold">{qrCodeData.pairingCode}</span>
+                  </p>
+                </div>
+              )}
             </div>
-          )}
-
-          {/* Status Indicators */}
-          {isPolling && status === "qr_pending" && (
-            <div className="flex items-center justify-center gap-2 text-sm text-blue-600">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Waiting for QR scan...
+            <div className="flex justify-center">
+              <Button
+                onClick={handleRefresh}
+                variant="outline"
+                size="sm"
+                disabled={isLoading}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh QR Code
+              </Button>
             </div>
-          )}
-
-          {status === "connected" && (
-            <div className="flex items-center justify-center gap-2 text-sm text-green-600">
-              <Wifi className="w-4 h-4" />
-              Instance connected and ready
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex gap-2 justify-center">
-            {status === "disconnected" && (
-              <Button 
-                onClick={() => generateQR.mutate()}
-                disabled={generateQR.isPending}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {error && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+              </div>
+            )}
+            <div className="text-center">
+              <Button
+                onClick={initiateConnection}
+                disabled={isLoading}
                 className="w-full"
               >
-                {generateQR.isPending ? (
+                {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating QR...
+                    Connecting...
                   </>
                 ) : (
                   <>
-                    <QrCode className="w-4 h-4 mr-2" />
-                    Generate QR Code
+                    <Smartphone className="w-4 h-4 mr-2" />
+                    Connect WhatsApp
                   </>
                 )}
               </Button>
-            )}
-
-            {status === "qr_pending" && (
-              <>
-                <Button 
-                  variant="outline"
-                  onClick={() => generateQR.mutate()}
-                  disabled={generateQR.isPending}
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Refresh QR
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={stopPolling}
-                >
-                  Cancel
-                </Button>
-              </>
-            )}
-
-            {status === "connecting" && (
-              <Button 
-                variant="outline"
-                onClick={stopPolling}
-              >
-                Cancel
-              </Button>
-            )}
+            </div>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        )}
+        
+        {status === 'connecting' && (
+          <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+            <Loader2 className="w-4 h-4 animate-spin mx-auto mb-1" />
+            Waiting for QR code...
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
