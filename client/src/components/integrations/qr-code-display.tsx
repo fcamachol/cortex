@@ -31,8 +31,11 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
     },
     onSuccess: (data: any) => {
       if (data.qrCode) {
-        // Strip data URL prefix if present
-        const cleanQrCode = data.qrCode.replace(/^data:image\/png;base64,/, "");
+        // Handle both raw base64 and data URL formats
+        let cleanQrCode = data.qrCode;
+        if (cleanQrCode.startsWith('data:')) {
+          cleanQrCode = cleanQrCode.replace(/^data:image\/png;base64,/, "");
+        }
         setQrCode(cleanQrCode);
         setStatus(data.status || "qr_pending");
         startRefreshing();
@@ -41,6 +44,14 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
           title: "QR Code Generated",
           description: "Scan the QR code with your WhatsApp mobile app to connect.",
         });
+      } else if (data.message && data.message.includes("connecting")) {
+        setStatus("connecting");
+        toast({
+          title: "Connecting",
+          description: "WhatsApp instance is being prepared. QR code will appear shortly.",
+        });
+        // Retry to get QR code after a short delay
+        setTimeout(() => checkStatus(), 3000);
       } else if (data.needsConfiguration) {
         toast({
           title: "Configuration Required",
@@ -66,7 +77,11 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
       const qrResponse: any = await apiRequest("GET", `/api/whatsapp/instances/${instanceId}/qr`);
       
       if (qrResponse.qrCode) {
-        const cleanQrCode = qrResponse.qrCode.replace(/^data:image\/png;base64,/, "");
+        // Handle both raw base64 and data URL formats
+        let cleanQrCode = qrResponse.qrCode;
+        if (cleanQrCode.startsWith('data:')) {
+          cleanQrCode = cleanQrCode.replace(/^data:image\/png;base64,/, "");
+        }
         setQrCode(cleanQrCode);
         setStatus("qr_pending");
       } else if (qrResponse.status === "connected") {
@@ -81,6 +96,10 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
         });
       } else {
         setStatus(qrResponse.status || "connecting");
+        if (qrResponse.status === "connecting") {
+          // Retry in a few seconds when connecting
+          setTimeout(() => checkStatus(), 2000);
+        }
       }
     } catch (error) {
       console.error("Status check failed:", error);
@@ -96,7 +115,7 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
     
     const interval = setInterval(() => {
       checkStatus();
-    }, 3000); // Check every 3 seconds
+    }, 5000); // Check every 5 seconds
     
     setRefreshInterval(interval);
   };
@@ -180,7 +199,7 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
                 <div className="text-center">
                   <QrCode className="w-16 h-16 text-gray-400 mx-auto mb-2" />
                   <p className="text-gray-500 dark:text-gray-400">
-                    QR code will appear here
+                    {status === "connecting" ? "Generating QR code..." : "QR code will appear here"}
                   </p>
                 </div>
               </div>
@@ -196,7 +215,7 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
                   <RefreshCw className="w-4 h-4" />
                 )}
                 <span>
-                  {isRefreshing ? "Checking status..." : "Auto-refreshing every 3 seconds"}
+                  {isRefreshing ? "Checking status..." : "Auto-refreshing every 5 seconds"}
                 </span>
               </div>
             </div>
