@@ -9,17 +9,20 @@ async function configureWebhook() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        url: 'https://cf94481b-abb0-462d-99ce-66c0beae05d0-00-25qqlo4pnl49g.worf.replit.dev/api/evolution/webhook/live-test-1750199771',
-        webhook_by_events: false,
-        webhook_base64: false,
-        events: [
-          'MESSAGES_UPSERT',
-          'MESSAGES_UPDATE', 
-          'CONTACTS_UPSERT',
-          'CHATS_UPSERT',
-          'PRESENCE_UPDATE',
-          'CONNECTION_UPDATE'
-        ]
+        webhook: {
+          enabled: true,
+          url: 'https://cf94481b-abb0-462d-99ce-66c0beae05d0-00-25qqlo4pnl49g.worf.replit.dev/api/evolution/webhook/live-test-1750199771',
+          by_events: false,
+          base64: false,
+          events: [
+            'MESSAGES_UPSERT',
+            'MESSAGES_UPDATE', 
+            'CONTACTS_UPSERT',
+            'CHATS_UPSERT',
+            'PRESENCE_UPDATE',
+            'CONNECTION_UPDATE'
+          ]
+        }
       })
     });
 
