@@ -31,12 +31,8 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
     },
     onSuccess: (data: any) => {
       if (data.qrCode) {
-        // Handle both raw base64 and data URL formats
-        let cleanQrCode = data.qrCode;
-        if (cleanQrCode.startsWith('data:')) {
-          cleanQrCode = cleanQrCode.replace(/^data:image\/png;base64,/, "");
-        }
-        setQrCode(cleanQrCode);
+        // Store the complete data URL as received from API
+        setQrCode(data.qrCode);
         setStatus(data.status || "qr_pending");
         startRefreshing();
         
@@ -77,12 +73,8 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
       const qrResponse: any = await apiRequest("GET", `/api/whatsapp/instances/${instanceId}/qr`);
       
       if (qrResponse.qrCode) {
-        // Handle both raw base64 and data URL formats
-        let cleanQrCode = qrResponse.qrCode;
-        if (cleanQrCode.startsWith('data:')) {
-          cleanQrCode = cleanQrCode.replace(/^data:image\/png;base64,/, "");
-        }
-        setQrCode(cleanQrCode);
+        // Store the complete data URL as received from API
+        setQrCode(qrResponse.qrCode);
         setStatus("qr_pending");
       } else if (qrResponse.status === "connected") {
         setQrCode(null);
@@ -187,7 +179,7 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
             <div className="flex justify-center">
               <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
                 <img
-                  src={`data:image/png;base64,${qrCode}`}
+                  src={qrCode}
                   alt="WhatsApp QR Code"
                   className="w-64 h-64"
                 />
