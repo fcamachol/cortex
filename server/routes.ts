@@ -19,8 +19,8 @@ import {
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
-  // Initialize Evolution API bridge manager
-  await evolutionManager.initialize();
+  // Initialize Evolution API bridge manager - Disabled due to WebSocket namespace errors
+  // await evolutionManager.initialize();
 
   // WebSocket server for real-time messaging
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
@@ -346,8 +346,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        // Now connect the instance
-        await evolutionApi.connectInstance(instance.instanceName);
+        // Now connect the instance and ensure it's ready
+        try {
+          await evolutionApi.connectInstance(instance.instanceName);
+          console.log(`✅ Instance connected: ${instance.instanceName}`);
+        } catch (connectError: any) {
+          console.log(`Connection attempt for ${instance.instanceName}:`, connectError.message);
+        }
         
         res.json({
           success: true,

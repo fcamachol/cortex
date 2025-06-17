@@ -60,16 +60,18 @@ export class EvolutionWebSocketBridge {
   private async connectWebSocket() {
     const { evolutionApiUrl, instanceName, apiKey } = this.config;
     
-    this.socket = io(`${evolutionApiUrl}/${instanceName}`, {
+    // Use the correct WebSocket namespace format for Evolution API
+    this.socket = io(evolutionApiUrl, {
       transports: ['websocket'],
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: Infinity,
+      reconnectionAttempts: 5,
       reconnectionDelay: this.reconnectDelay,
-      reconnectionDelayMax: 5000,
+      reconnectionDelayMax: 30000,
       timeout: 20000,
       forceNew: true,
-      auth: {
+      query: {
+        instanceName: instanceName,
         apikey: apiKey
       }
     });
