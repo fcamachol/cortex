@@ -199,13 +199,11 @@ export const whatsappMessages = pgTable("whatsapp_messages", {
   
   // Quoted/Reply messages
   quotedMessageId: varchar("quoted_message_id"),
-  quotedRemoteJid: varchar("quoted_remote_jid"),
-  quotedParticipant: varchar("quoted_participant"),
   quotedContent: text("quoted_content"),
   
-  // Reactions
-  reactionEmoji: varchar("reaction_emoji"),
-  reactionFromMe: boolean("reaction_from_me").default(false),
+  // Reactions and mentions stored in JSONB
+  reactions: jsonb("reactions"),
+  mentions: jsonb("mentions"),
   
   // Forwarding
   isForwarded: boolean("is_forwarded").default(false),
