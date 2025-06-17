@@ -225,22 +225,23 @@ export class DatabaseStorage implements IStorage {
 
   // Tasks
   async getTasks(userId: string): Promise<Task[]> {
-    return await db.select().from(tasks).where(eq(tasks.userId, userId)).orderBy(desc(tasks.createdAt));
+    const result = await db.select().from(tasks).where(eq(tasks.userId, userId)).orderBy(desc(tasks.createdAt));
+    return result as Task[];
   }
 
   async getTask(id: string): Promise<Task | undefined> {
     const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
-    return task || undefined;
+    return task as Task || undefined;
   }
 
   async createTask(insertTask: InsertTask): Promise<Task> {
     const [task] = await db.insert(tasks).values(insertTask).returning();
-    return task;
+    return task as Task;
   }
 
   async updateTask(id: string, updateTask: Partial<InsertTask>): Promise<Task> {
     const [task] = await db.update(tasks).set({ ...updateTask, updatedAt: new Date() }).where(eq(tasks.id, id)).returning();
-    return task;
+    return task as Task;
   }
 
   async deleteTask(id: string): Promise<void> {
@@ -259,7 +260,7 @@ export class DatabaseStorage implements IStorage {
           ilike(contacts.email, `%${search}%`),
           ilike(contacts.phone, `%${search}%`)
         )
-      );
+      ) as any;
     }
     
     return await db.select().from(contacts).where(whereClause).orderBy(contacts.name);
@@ -310,25 +311,26 @@ export class DatabaseStorage implements IStorage {
 
   // Messages
   async getMessages(conversationId: string, limit: number = 50): Promise<Message[]> {
-    return await db.select().from(messages)
+    const result = await db.select().from(messages)
       .where(eq(messages.conversationId, conversationId))
       .orderBy(desc(messages.timestamp))
       .limit(limit);
+    return result as Message[];
   }
 
   async getMessage(id: string): Promise<Message | undefined> {
     const [message] = await db.select().from(messages).where(eq(messages.id, id));
-    return message || undefined;
+    return message as Message || undefined;
   }
 
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
     const [message] = await db.insert(messages).values(insertMessage).returning();
-    return message;
+    return message as Message;
   }
 
   async updateMessage(id: string, updateMessage: Partial<InsertMessage>): Promise<Message> {
     const [message] = await db.update(messages).set(updateMessage).where(eq(messages.id, id)).returning();
-    return message;
+    return message as Message;
   }
 
   async deleteMessage(id: string): Promise<void> {

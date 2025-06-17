@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
-import { SiWhatsapp, SiGoogle, SiSlack, SiTrello, SiNotion, SiMicrosoft } from "react-icons/si";
+import { SiWhatsapp, SiGoogle, SiSlack, SiTrello, SiNotion } from "react-icons/si";
 
 export default function IntegrationModule() {
   // Mock data for integrations
@@ -68,7 +68,7 @@ export default function IntegrationModule() {
       id: "microsoft-teams",
       name: "Microsoft Teams",
       description: "Video conferencing",
-      icon: SiMicrosoft
+      icon: null
     }
   ];
 

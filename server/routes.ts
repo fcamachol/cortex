@@ -47,12 +47,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     ws.on('close', () => {
       // Remove client from active connections
-      for (const [userId, client] of clients.entries()) {
+      clients.forEach((client, userId) => {
         if (client === ws) {
           clients.delete(userId);
-          break;
         }
-      }
+      });
       console.log('WebSocket client disconnected');
     });
   });

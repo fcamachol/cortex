@@ -133,7 +133,7 @@ export const whatsappMessages = pgTable("whatsapp_messages", {
 export const tasks = pgTable("tasks", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").references(() => appUsers.id).notNull(),
-  parentTaskId: uuid("parent_task_id").references(() => tasks.id),
+  parentTaskId: uuid("parent_task_id"),
   title: text("title").notNull(),
   description: text("description"),
   taskStatus: text("task_status").default("to_do"),
@@ -185,7 +185,7 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   messageType: text("message_type").default("text"),
   isFromUser: boolean("is_from_user").default(false),
-  replyToMessageId: uuid("reply_to_message_id").references(() => messages.id),
+  replyToMessageId: uuid("reply_to_message_id"),
   timestamp: timestamp("timestamp").defaultNow(),
   createdAt: timestamp("created_at").defaultNow()
 });
