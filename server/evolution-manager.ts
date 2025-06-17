@@ -95,7 +95,13 @@ export class EvolutionBridgeManager {
         retryFailedSaves: true
       };
 
-      const bridge = new EvolutionWebSocketBridge(config, userId, instance.id);
+      const bridge = new EvolutionAPIWebSocket({
+        apiUrl: config.evolutionApiUrl,
+        instanceName: config.instanceName,
+        apiKey: config.apiKey,
+        maxReconnectAttempts: config.maxReconnectAttempts,
+        reconnectInterval: config.reconnectDelay
+      }, userId, instance.id);
       this.bridges.set(bridgeKey, bridge);
       
       console.log(`✅ Created bridge for instance: ${instance.instanceName}`);
