@@ -198,10 +198,15 @@ export class DatabaseStorage implements IStorage {
 
   // WhatsApp messages
   async getWhatsappMessages(conversationId: string, limit: number = 50): Promise<WhatsappMessage[]> {
-    return await db.select().from(whatsappMessages)
-      .where(eq(whatsappMessages.conversationId, conversationId))
-      .orderBy(desc(whatsappMessages.timestamp))
-      .limit(limit);
+    try {
+      return await db.select().from(whatsappMessages)
+        .where(eq(whatsappMessages.conversationId, conversationId))
+        .orderBy(desc(whatsappMessages.timestamp))
+        .limit(limit);
+    } catch (error) {
+      console.error('Error fetching WhatsApp messages:', error);
+      return [];
+    }
   }
 
   async getWhatsappMessage(id: string): Promise<WhatsappMessage | undefined> {
