@@ -30,7 +30,7 @@ export function WhatsAppInstanceManager() {
   const queryClient = useQueryClient();
 
   // Mock user ID - in real app this would come from auth context
-  const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
+  const userId = "ad3182fd-dde2-4198-9ed1-f4b53fb9bc67";
 
   const { data: instances = [], isLoading } = useQuery<WhatsAppInstance[]>({
     queryKey: [`/api/whatsapp/instances/${userId}`],
