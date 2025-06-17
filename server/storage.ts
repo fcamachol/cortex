@@ -215,8 +215,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createWhatsappMessage(insertMessage: InsertWhatsappMessage): Promise<WhatsappMessage> {
-    const [message] = await db.insert(whatsappMessages).values(insertMessage).returning();
-    return message;
+    try {
+      const [message] = await db.insert(whatsappMessages).values(insertMessage).returning();
+      return message;
+    } catch (error) {
+      console.error('Error creating WhatsApp message:', error);
+      console.error('Insert data:', insertMessage);
+      throw error;
+    }
   }
 
   async updateWhatsappMessage(id: string, updateMessage: Partial<InsertWhatsappMessage>): Promise<WhatsappMessage> {
@@ -225,7 +231,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteWhatsappMessage(id: string): Promise<void> {
-    await db.update(whatsappMessages).set({ deletedAt: new Date() }).where(eq(whatsappMessages.id, id));
+    await db.delete(whatsappMessages).where(eq(whatsappMessages.id, id));
+  }
+
+  // Alias methods for compatibility
+  async getWhatsappInstanceByName(name: string): Promise<WhatsappInstance | undefined> {
+    const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceName, name));
+    return instance || undefined;
+  }
+
+  async saveWhatsappMessage(insertMessage: InsertWhatsappMessage): Promise<WhatsappMessage> {
+    return this.createWhatsappMessage(insertMessage);
+  }
+
+  async saveWhatsappConversation(insertConversation: InsertWhatsappConversation): Promise<WhatsappConversation> {
+    return this.createWhatsappConversation(insertConversation);
   }
 
   // Tasks

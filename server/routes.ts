@@ -102,39 +102,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Webhook handler functions for Evolution API events
   async function handleWebhookMessagesUpsert(instanceName: string, data: any) {
-    console.log(`📩 Processing messages.upsert for ${instanceName}:`, data);
+    console.log(`📩 Processing messages.upsert for ${instanceName}:`, JSON.stringify(data, null, 2));
     
-    if (data && data.messages) {
-      for (const message of data.messages) {
-        try {
-          // Find the instance in our database
-          const instance = await storage.getWhatsappInstanceByName(instanceName);
-          if (!instance) {
-            console.error(`Instance ${instanceName} not found in database`);
-            continue;
-          }
-
-          // Save the authentic WhatsApp message
-          await storage.saveWhatsappMessage({
-            userId: instance.userId,
-            instanceId: instance.id,
-            conversationId: await getOrCreateConversationId(instance.id, message.key?.remoteJid || ''),
-            evolutionMessageId: message.key?.id || '',
-            remoteJid: message.key?.remoteJid || '',
-            content: extractMessageContent(message),
-            isFromMe: message.key?.fromMe || false,
-            messageType: 'text',
-            status: 'delivered',
-            timestamp: new Date(message.messageTimestamp * 1000 || Date.now()),
-            pushName: message.pushName || null,
-            rawData: message
-          });
-
-          console.log(`✅ Saved authentic WhatsApp message from ${message.pushName || 'Unknown'}`);
-        } catch (error) {
-          console.error('Error saving webhook message:', error);
-        }
+    try {
+      // Find the instance in our database
+      const instance = await storage.getWhatsappInstanceByName(instanceName);
+      if (!instance) {
+        console.error(`Instance ${instanceName} not found in database`);
+        return;
       }
+
+      // Handle single message from Evolution API webhook format
+      const message = data; // Evolution API sends single message object, not array
+      
+      if (!message || !message.key) {
+        console.log('Invalid message format received');
+        return;
+      }
+
+      const conversationId = await getOrCreateConversationId(instance.id, message.key.remoteJid || '');
+      
+      // Save the authentic WhatsApp message
+      const messageData = {
+        userId: instance.userId,
+        instanceId: instance.id,
+        conversationId: conversationId,
+        evolutionMessageId: message.key.id || '',
+        remoteJid: message.key.remoteJid || '',
+        textContent: extractMessageContent(message),
+        fromMe: message.key.fromMe || false,
+        messageType: message.messageType || 'conversation',
+        timestamp: new Date((message.messageTimestamp || Date.now() / 1000) * 1000),
+        pushName: message.pushName || null
+      };
+
+      await storage.saveWhatsappMessage(messageData);
+      console.log(`✅ Saved authentic WhatsApp message from ${message.pushName || 'Unknown'}: "${messageData.textContent}"`);
+      
+    } catch (error) {
+      console.error('Error saving webhook message:', error);
     }
   }
 
