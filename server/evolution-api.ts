@@ -174,7 +174,18 @@ export class EvolutionApi {
 
   // Chat Management
   async fetchChats(instanceName: string): Promise<any> {
-    return this.makeRequest(`/chat/fetchAllChats/${instanceName}`);
+    try {
+      // Try the standard chat endpoint
+      return await this.makeRequest(`/chat/findChats/${instanceName}`);
+    } catch (error) {
+      try {
+        // Fallback to alternative endpoint structure
+        return await this.makeRequest(`/${instanceName}/chat/findChats`);
+      } catch (fallbackError) {
+        console.error('Both chat endpoints failed:', error, fallbackError);
+        return [];
+      }
+    }
   }
 
   async fetchMessages(instanceName: string, remoteJid: string, limit: number = 20): Promise<any> {

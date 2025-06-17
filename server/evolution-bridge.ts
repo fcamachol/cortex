@@ -323,7 +323,7 @@ export class EvolutionWebSocketBridge {
         profileName: contact.name || contact.pushName || contact.notify,
         profilePictureUrl: contact.profilePictureUrl,
         isMyContact: contact.isMyContact || false,
-        isWAContact: contact.isWAContact || true,
+        isWaContact: contact.isWAContact || true,
         isBlocked: contact.isBlocked || false,
         isBusiness: contact.isBusiness || false,
         businessDescription: contact.businessProfile?.description,
@@ -377,7 +377,7 @@ export class EvolutionWebSocketBridge {
       // Validate the data before saving
       const validatedData = insertWhatsappMessageSchema.parse(messageData);
       await storage.createWhatsappMessage(validatedData);
-      console.log(`✅ Saved message: ${messageData.messageId}`);
+      console.log(`✅ Saved message: ${messageData.evolutionMessageId}`);
     } catch (error) {
       console.error('❌ Failed to save message:', error);
       this.queueMessage('MESSAGES_UPSERT', messageData, 'insert');
@@ -390,7 +390,7 @@ export class EvolutionWebSocketBridge {
       
       // Check if contact exists and update or create
       const existingContact = await storage.getWhatsappContacts(this.userId, this.instanceId)
-        .then(contacts => contacts.find(c => c.whatsappId === contactData.whatsappId));
+        .then(contacts => contacts.find(c => c.remoteJid === contactData.remoteJid));
       
       if (existingContact) {
         await storage.updateWhatsappContact(existingContact.id, validatedData);
@@ -398,7 +398,7 @@ export class EvolutionWebSocketBridge {
         await storage.createWhatsappContact(validatedData);
       }
       
-      console.log(`✅ Saved contact: ${contactData.name}`);
+      console.log(`✅ Saved contact: ${contactData.profileName}`);
     } catch (error) {
       console.error('❌ Failed to save contact:', error);
       this.queueMessage('CONTACTS_UPSERT', contactData, 'upsert');
@@ -411,7 +411,7 @@ export class EvolutionWebSocketBridge {
       
       // Check if conversation exists and update or create
       const existingConversations = await storage.getWhatsappConversations(this.userId, this.instanceId);
-      const existingConversation = existingConversations.find(c => c.chatId === conversationData.chatId);
+      const existingConversation = existingConversations.find(c => c.remoteJid === conversationData.remoteJid);
       
       if (existingConversation) {
         await storage.updateWhatsappConversation(existingConversation.id, validatedData);
@@ -419,7 +419,7 @@ export class EvolutionWebSocketBridge {
         await storage.createWhatsappConversation(validatedData);
       }
       
-      console.log(`✅ Saved conversation: ${conversationData.title}`);
+      console.log(`✅ Saved conversation: ${conversationData.chatName}`);
     } catch (error) {
       console.error('❌ Failed to save conversation:', error);
       this.queueMessage('CHATS_UPSERT', conversationData, 'upsert');
