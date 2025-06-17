@@ -208,18 +208,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         const evolutionApi = getEvolutionApi();
+        
+        // First create the instance in Evolution API if it doesn't exist
+        try {
+          await evolutionApi.createInstance({
+            instanceName: instance.instanceName,
+            integration: "WHATSAPP-BAILEYS",
+            webhook_url: instance.webhookUrl,
+            events: [
+              'APPLICATION_STARTUP',
+              'QRCODE_UPDATED', 
+              'CONNECTION_UPDATE',
+              'MESSAGES_UPSERT',
+              'MESSAGES_UPDATE',
+              'CONTACTS_UPSERT',
+              'CHATS_UPSERT'
+            ]
+          });
+        } catch (createError: any) {
+          // Instance might already exist, continue with connection
+          if (!createError.message?.includes('already exists') && !createError.message?.includes('Instance already')) {
+            console.log("Instance creation result:", createError.message);
+          }
+        }
+        
+        // Now connect the instance
         await evolutionApi.connectInstance(instance.instanceName);
         
         res.json({
           success: true,
           message: "Connection initiated successfully"
         });
-      } catch (apiError) {
-        // If Evolution API is not configured, provide instructions
+      } catch (apiError: any) {
+        console.error("Evolution API connection error:", apiError);
         res.json({
           success: false,
-          message: "Evolution API not configured. Please provide API credentials.",
-          needsConfiguration: true
+          message: apiError.message || "Failed to connect to Evolution API",
+          needsConfiguration: false
         });
       }
     } catch (error) {
@@ -248,17 +273,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: "qr_pending"
           });
         } else {
-          res.json({
-            qrCode: null,
-            status: connectionState.instance.state || "disconnected",
-            message: "No QR code available"
-          });
+          // Try to generate QR code by connecting first
+          try {
+            await evolutionApi.connectInstance(instance.instanceName);
+            const newConnectionState = await evolutionApi.getConnectionState(instance.instanceName);
+            
+            if (newConnectionState.qrcode?.base64) {
+              await storage.updateWhatsappInstance(req.params.id, {
+                status: "qr_pending"
+              });
+
+              res.json({
+                qrCode: newConnectionState.qrcode.base64,
+                status: "qr_pending"
+              });
+            } else {
+              res.json({
+                qrCode: null,
+                status: newConnectionState.instance.state || "disconnected",
+                message: "QR code generation in progress"
+              });
+            }
+          } catch (connectError) {
+            res.json({
+              qrCode: null,
+              status: connectionState.instance.state || "disconnected",
+              message: "Unable to generate QR code at this time"
+            });
+          }
         }
-      } catch (apiError) {
+      } catch (apiError: any) {
+        console.error("Evolution API QR error:", apiError);
         res.status(503).json({ 
           error: "Evolution API not available",
-          message: "Please configure Evolution API credentials",
-          needsConfiguration: true
+          message: apiError.message || "Failed to get QR code",
+          needsConfiguration: false
         });
       }
     } catch (error) {
