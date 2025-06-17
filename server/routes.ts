@@ -597,18 +597,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const instanceInfo = await evolutionApi.getInstanceInfo(instance.instanceName);
           console.log(`📱 Instance info for ${instance.instanceName}:`, instanceInfo);
           
-          if (instanceInfo.instance) {
-            profileData = {
-              instanceName: instanceInfo.instance.instanceName,
-              owner: instanceInfo.instance.owner,
-              profileName: instanceInfo.instance.profileName,
-              profilePictureUrl: instanceInfo.instance.profilePictureUrl,
-              status: instanceInfo.instance.status
-            };
+          if (instanceInfo) {
+            // Handle both array and object responses from Evolution API
+            const instanceData = Array.isArray(instanceInfo) ? instanceInfo[0] : instanceInfo;
+            console.log(`📱 Processing instance data:`, instanceData);
             
-            // Extract phone number from owner field if available
-            if (instanceInfo.instance.owner && instanceInfo.instance.owner.includes('@')) {
-              profileData.phoneNumber = instanceInfo.instance.owner.split('@')[0];
+            if (instanceData) {
+              profileData = {
+                instanceName: instanceData.name || instanceData.instanceName,
+                owner: instanceData.ownerJid,
+                profileName: instanceData.profileName,
+                profilePictureUrl: instanceData.profilePicUrl,
+                status: instanceData.connectionStatus || instanceData.status,
+                phoneNumber: instanceData.ownerJid ? instanceData.ownerJid.split('@')[0] : null
+              };
+              console.log(`📱 Created profile data:`, profileData);
             }
           }
         } catch (infoError) {
@@ -653,7 +656,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        res.json(profileData || { error: "No profile data available" });
+        if (!profileData) {
+          profileData = { error: "No profile data available" };
+        }
+        
+        res.json(profileData);
       } catch (profileError: any) {
         console.error(`Failed to get profile for ${instance.instanceName}:`, profileError);
         res.status(503).json({ 
