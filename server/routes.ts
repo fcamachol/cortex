@@ -239,6 +239,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  // WebSocket connection status endpoint
+  app.get('/api/whatsapp/websocket/status', async (req, res) => {
+    try {
+      const allStatuses = evolutionManager.getAllBridgeStatuses();
+      const instances = await storage.getWhatsappInstances(req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
+      
+      const statusWithDetails = instances.map(instance => {
+        const status = allStatuses.find(s => s.key === instance.instanceName);
+        return {
+          instanceId: instance.id,
+          instanceName: instance.instanceName,
+          phoneNumber: instance.phoneNumber,
+          status: instance.status,
+          websocketConnected: status?.connected || false,
+          bridgeExists: !!status,
+          lastConnected: instance.lastConnectedAt,
+          connectionState: instance.connectionState || 'unknown'
+        };
+      });
+
+      res.json(statusWithDetails);
+    } catch (error) {
+      console.error('Error getting WebSocket status:', error);
+      res.status(500).json({ error: 'Failed to get WebSocket status' });
+    }
+  });
+
+  app.get('/api/whatsapp/websocket/status/:instanceName', async (req, res) => {
+    try {
+      const { instanceName } = req.params;
+      const status = evolutionManager.getBridgeStatus(instanceName);
+      const instance = await storage.getWhatsappInstanceByName(instanceName);
+      
+      if (!instance) {
+        return res.status(404).json({ error: 'Instance not found' });
+      }
+
+      res.json({
+        instanceId: instance.id,
+        instanceName: instance.instanceName,
+        phoneNumber: instance.phoneNumber,
+        status: instance.status,
+        websocketConnected: status.connected,
+        bridgeExists: status.bridgeExists,
+        lastConnected: instance.lastConnectedAt,
+        connectionState: 'open',
+        serverUrl: 'https://evolution-api-evolution-api.vuswn0.easypanel.host'
+      });
+    } catch (error) {
+      console.error('Error getting instance WebSocket status:', error);
+      res.status(500).json({ error: 'Failed to get instance WebSocket status' });
+    }
+  });
+
   // User routes
   app.get("/api/user/:id", async (req, res) => {
     try {
