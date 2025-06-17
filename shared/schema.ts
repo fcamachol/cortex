@@ -222,6 +222,44 @@ export const whatsappMessages = pgTable("whatsapp_messages", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
+// Evolution API raw messages table (no foreign key constraints)
+export const evolutionMessages = pgTable("evolution_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  instanceId: uuid("instance_id").notNull(), // No foreign key constraint
+  instanceName: varchar("instance_name").notNull(),
+  
+  // Evolution API fields
+  evolutionMessageId: varchar("evolution_message_id").notNull(),
+  remoteJid: varchar("remote_jid").notNull(),
+  fromMe: boolean("from_me").notNull().default(false),
+  participant: varchar("participant"),
+  pushName: varchar("push_name"),
+  
+  // Message content
+  messageContent: jsonb("message_content"),
+  messageType: varchar("message_type").notNull(),
+  textContent: text("text_content"),
+  
+  // Media fields
+  mediaUrl: text("media_url"),
+  mediaMimetype: varchar("media_mimetype"),
+  mediaSize: bigint("media_size", { mode: "number" }),
+  mediaFilename: varchar("media_filename"),
+  mediaCaption: text("media_caption"),
+  
+  // Status and metadata
+  status: varchar("status").default("received"),
+  timestamp: bigint("timestamp", { mode: "number" }).notNull(),
+  contextInfo: jsonb("context_info"),
+  
+  // Raw webhook data for debugging
+  rawWebhookData: jsonb("raw_webhook_data"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
 // Task management
 export const tasks = pgTable("tasks", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -434,6 +472,12 @@ export const insertWhatsappMessageSchema = createInsertSchema(whatsappMessages).
   updatedAt: true
 });
 
+export const insertEvolutionMessageSchema = createInsertSchema(evolutionMessages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
 export const insertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
   createdAt: true,
@@ -484,3 +528,6 @@ export type InsertConversation = z.infer<typeof insertConversationSchema>;
 
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+export type EvolutionMessage = typeof evolutionMessages.$inferSelect;
+export type InsertEvolutionMessage = z.infer<typeof insertEvolutionMessageSchema>;

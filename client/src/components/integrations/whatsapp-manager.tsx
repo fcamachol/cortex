@@ -183,7 +183,7 @@ export function WhatsAppInstanceManager() {
       );
     } else if (wsStatus?.bridgeExists) {
       return (
-        <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">
+        <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">
           <WifiOff className="w-3 h-3 mr-1" />
           WebSocket Disconnected
         </Badge>
