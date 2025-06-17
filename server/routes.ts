@@ -588,22 +588,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         const evolutionApi = getInstanceEvolutionApi(instance.instanceApiKey);
-        const profileData = await evolutionApi.getProfile(instance.instanceName);
         
-        console.log(`📱 Profile data for ${instance.instanceName}:`, profileData);
+        // Try multiple approaches to get phone number
+        let profileData = null;
         
-        // Update database with profile information if available
-        if (profileData && (profileData.wuid || profileData.jid)) {
-          const phoneNumber = profileData.wuid || profileData.jid?.split('@')[0];
-          const profileName = profileData.name || profileData.pushName;
+        try {
+          // First try: Get instance info which might contain owner details
+          const instanceInfo = await evolutionApi.getInstanceInfo(instance.instanceName);
+          console.log(`📱 Instance info for ${instance.instanceName}:`, instanceInfo);
           
+          if (instanceInfo.instance) {
+            profileData = {
+              instanceName: instanceInfo.instance.instanceName,
+              owner: instanceInfo.instance.owner,
+              profileName: instanceInfo.instance.profileName,
+              profilePictureUrl: instanceInfo.instance.profilePictureUrl,
+              status: instanceInfo.instance.status
+            };
+            
+            // Extract phone number from owner field if available
+            if (instanceInfo.instance.owner && instanceInfo.instance.owner.includes('@')) {
+              profileData.phoneNumber = instanceInfo.instance.owner.split('@')[0];
+            }
+          }
+        } catch (infoError) {
+          console.log('Instance info fetch failed, trying contacts...');
+          
+          try {
+            // Second try: Fetch contacts to find owner number
+            const contacts = await evolutionApi.fetchContacts(instance.instanceName);
+            console.log(`📱 Contacts for ${instance.instanceName}:`, contacts);
+            
+            if (contacts && contacts.length > 0) {
+              // Look for the owner's contact (usually the first one or marked as owner)
+              const ownerContact = contacts.find((c: any) => c.isMyContact || c.owner) || contacts[0];
+              if (ownerContact) {
+                profileData = {
+                  phoneNumber: ownerContact.id?.split('@')[0] || ownerContact.number,
+                  profileName: ownerContact.name || ownerContact.pushName,
+                  profilePictureUrl: ownerContact.profilePictureUrl
+                };
+              }
+            }
+          } catch (contactsError) {
+            console.log('Contacts fetch failed, using instance data...');
+            
+            // Fallback: Use any available data from database
+            profileData = {
+              phoneNumber: instance.phoneNumber,
+              profileName: instance.profileName,
+              instanceName: instance.instanceName,
+              status: 'connected'
+            };
+          }
+        }
+        
+        console.log(`📱 Final profile data for ${instance.instanceName}:`, profileData);
+        
+        // Update database with any phone number we found
+        if (profileData?.phoneNumber) {
           await storage.updateWhatsappInstance(req.params.id, {
-            phoneNumber: phoneNumber,
-            profileName: profileName
+            phoneNumber: profileData.phoneNumber,
+            profileName: profileData.profileName || null
           });
         }
         
-        res.json(profileData);
+        res.json(profileData || { error: "No profile data available" });
       } catch (profileError: any) {
         console.error(`Failed to get profile for ${instance.instanceName}:`, profileError);
         res.status(503).json({ 

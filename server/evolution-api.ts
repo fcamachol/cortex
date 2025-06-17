@@ -213,7 +213,23 @@ export class EvolutionApi {
 
   // Profile Management
   async getProfile(instanceName: string): Promise<any> {
-    return this.makeRequest(`/chat/fetchProfile/${instanceName}`);
+    try {
+      // Try the standard profile endpoint first
+      return await this.makeRequest(`/chat/fetchProfile/${instanceName}`);
+    } catch (error) {
+      try {
+        // Fallback: try getting instance info which might contain owner info
+        const instanceInfo = await this.getInstanceInfo(instanceName);
+        return instanceInfo;
+      } catch (fallbackError) {
+        try {
+          // Another fallback: try getting own contact info
+          return await this.makeRequest(`/chat/whatsappNumbers/${instanceName}`);
+        } catch (finalError) {
+          throw error; // Throw original error
+        }
+      }
+    }
   }
 
   async updateProfileName(instanceName: string, name: string): Promise<any> {
