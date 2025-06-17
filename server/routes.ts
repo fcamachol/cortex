@@ -378,39 +378,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let instanceApiKey = instance.instanceApiKey;
         
         if (!instanceApiKey) {
-          console.log(`No API key found for instance ${instance.instanceName}, creating instance in Evolution API`);
+          console.log(`No API key found for instance ${instance.instanceName}, retrieving from Evolution API`);
           try {
             const evolutionApi = getEvolutionApi();
-            const createResponse = await evolutionApi.createInstance({
-              instanceName: instance.instanceName,
-              integration: "WHATSAPP-BAILEYS",
-              webhook_url: instance.webhookUrl || undefined,
-              events: [
-                'APPLICATION_STARTUP',
-                'QRCODE_UPDATED', 
-                'CONNECTION_UPDATE',
-                'MESSAGES_UPSERT',
-                'MESSAGES_UPDATE',
-                'CONTACTS_UPSERT',
-                'CHATS_UPSERT'
-              ]
-            });
-
-            if (createResponse.hash?.apikey) {
-              instanceApiKey = createResponse.hash.apikey;
-              await storage.updateWhatsappInstance(req.params.id, {
-                instanceApiKey: instanceApiKey
+            
+            // Try to get existing instance info first
+            try {
+              const instanceInfo = await evolutionApi.getInstanceInfo(instance.instanceName);
+              if (instanceInfo.hash?.apikey) {
+                instanceApiKey = instanceInfo.hash.apikey;
+                await storage.updateWhatsappInstance(req.params.id, {
+                  instanceApiKey: instanceApiKey
+                });
+                console.log(`✅ Retrieved and stored API key for existing instance: ${instance.instanceName}`);
+              }
+            } catch (getError: any) {
+              // Instance doesn't exist, try to create it
+              console.log(`Instance ${instance.instanceName} not found, creating new instance`);
+              const createResponse = await evolutionApi.createInstance({
+                instanceName: instance.instanceName,
+                integration: "WHATSAPP-BAILEYS",
+                webhook_url: instance.webhookUrl || undefined,
+                events: [
+                  'APPLICATION_STARTUP',
+                  'QRCODE_UPDATED', 
+                  'CONNECTION_UPDATE',
+                  'MESSAGES_UPSERT',
+                  'MESSAGES_UPDATE',
+                  'CONTACTS_UPSERT',
+                  'CHATS_UPSERT'
+                ]
               });
-              console.log(`✅ Created instance and stored API key: ${instance.instanceName}`);
-            } else {
-              throw new Error("No API key returned from instance creation");
+
+              if (createResponse.hash?.apikey) {
+                instanceApiKey = createResponse.hash.apikey;
+                await storage.updateWhatsappInstance(req.params.id, {
+                  instanceApiKey: instanceApiKey
+                });
+                console.log(`✅ Created instance and stored API key: ${instance.instanceName}`);
+              }
             }
-          } catch (createError: any) {
-            console.error(`Failed to create instance ${instance.instanceName}:`, createError.message);
+
+            if (!instanceApiKey) {
+              throw new Error("Could not obtain API key for instance");
+            }
+          } catch (apiError: any) {
+            console.error(`Failed to get/create instance ${instance.instanceName}:`, apiError.message);
             return res.status(500).json({
               qrCode: null,
               status: "error",
-              message: `Failed to create instance: ${createError.message}`
+              message: `Failed to setup instance: ${apiError.message}`
             });
           }
         }
