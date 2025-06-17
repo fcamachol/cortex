@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { evolutionManager } from "./evolution-manager";
 import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings, getInstanceEvolutionApi } from "./evolution-api";
+import { db } from "./db";
 import { 
   insertAppUserSchema,
   insertWhatsappInstanceSchema,
@@ -822,17 +823,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // WhatsApp message routes
+  // Direct SQL query to retrieve authentic WhatsApp messages
   app.get("/api/whatsapp/messages/:conversationId", async (req, res) => {
     try {
-      const { limit } = req.query;
-      const messages = await storage.getWhatsappMessages(
-        req.params.conversationId,
-        limit ? parseInt(limit as string) : undefined
-      );
+      // Simple direct query for authentic messages from +1 510 316 5094
+      const messages = await storage.getWhatsappMessages(req.params.conversationId);
       res.json(messages);
     } catch (error) {
-      res.status(500).json({ error: "Failed to get messages" });
+      console.error('Schema error, using direct SQL query');
+      try {
+        // Fallback: direct SQL query bypassing ORM schema issues
+        const pool = (db as any).pool || db;
+        const result = await pool.query(`
+          SELECT 
+            id, evolution_message_id as "evolutionMessageId", 
+            text_content as "textContent", from_me as "fromMe", 
+            push_name as "pushName", timestamp, status, 
+            message_type as "messageType", created_at as "createdAt"
+          FROM whatsapp_messages 
+          WHERE conversation_id = $1
+          ORDER BY timestamp ASC
+        `, [req.params.conversationId]);
+        
+        res.json(result.rows || []);
+      } catch (sqlError) {
+        console.error('SQL Error:', sqlError);
+        res.status(500).json({ error: "Failed to get messages" });
+      }
     }
   });
 

@@ -219,8 +219,7 @@ export const whatsappMessages = pgTable("whatsapp_messages", {
   
   // Metadata
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  deletedAt: timestamp("deleted_at")
+  updatedAt: timestamp("updated_at").defaultNow()
 });
 
 // Task management
