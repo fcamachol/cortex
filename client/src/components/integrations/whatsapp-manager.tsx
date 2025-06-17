@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { QrCode, Smartphone, WifiOff, Wifi, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { QrCode, Smartphone, WifiOff, Wifi, Plus, Trash2, AlertTriangle, Edit2, Check, X } from "lucide-react";
 import { QRCodeDisplay } from "./qr-code-display";
 
 interface WhatsAppInstance {
@@ -28,6 +28,8 @@ export function WhatsAppInstanceManager() {
   const [instanceName, setInstanceName] = useState("");
   const [selectedInstanceForQR, setSelectedInstanceForQR] = useState<string | null>(null);
   const [instanceToDelete, setInstanceToDelete] = useState<WhatsAppInstance | null>(null);
+  const [editingInstanceId, setEditingInstanceId] = useState<string | null>(null);
+  const [editingDisplayName, setEditingDisplayName] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -92,6 +94,30 @@ export function WhatsAppInstanceManager() {
     },
   });
 
+  const updateDisplayName = useMutation({
+    mutationFn: async ({ instanceId, displayName }: { instanceId: string; displayName: string }) => {
+      return apiRequest("PATCH", `/api/whatsapp/instances/${instanceId}`, {
+        displayName: displayName.trim(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/instances/${userId}`] });
+      setEditingInstanceId(null);
+      setEditingDisplayName("");
+      toast({
+        title: "Display Name Updated",
+        description: "Instance display name has been updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update display name. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleConfirmDelete = () => {
     if (instanceToDelete) {
       deleteInstance.mutate(instanceToDelete.id);
@@ -101,6 +127,28 @@ export function WhatsAppInstanceManager() {
   const handleCancelDelete = () => {
     setIsDeleteDialogOpen(false);
     setInstanceToDelete(null);
+  };
+
+  const handleStartEdit = (instance: WhatsAppInstance) => {
+    setEditingInstanceId(instance.id);
+    setEditingDisplayName(instance.displayName || instance.instanceName);
+  };
+
+  const handleSaveEdit = (instanceId: string) => {
+    if (!editingDisplayName.trim()) {
+      toast({
+        title: "Error",
+        description: "Display name cannot be empty.",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateDisplayName.mutate({ instanceId, displayName: editingDisplayName });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingInstanceId(null);
+    setEditingDisplayName("");
   };
 
   const handleCreateInstance = async () => {
@@ -204,9 +252,53 @@ export function WhatsAppInstanceManager() {
             <Card key={instance.id} className="relative">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 flex-1">
                     <Smartphone className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                    <CardTitle className="text-lg">{instance.displayName}</CardTitle>
+                    {editingInstanceId === instance.id ? (
+                      <div className="flex items-center space-x-2 flex-1">
+                        <Input
+                          value={editingDisplayName}
+                          onChange={(e) => setEditingDisplayName(e.target.value)}
+                          className="text-lg font-semibold h-8"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleSaveEdit(instance.id);
+                            } else if (e.key === 'Escape') {
+                              handleCancelEdit();
+                            }
+                          }}
+                          autoFocus
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSaveEdit(instance.id)}
+                          disabled={updateDisplayName.isPending}
+                        >
+                          <Check className="w-4 h-4 text-green-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleCancelEdit}
+                          disabled={updateDisplayName.isPending}
+                        >
+                          <X className="w-4 h-4 text-red-600" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2 flex-1 group">
+                        <CardTitle className="text-lg">{instance.displayName || instance.instanceName}</CardTitle>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleStartEdit(instance)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   <Button
                     variant="ghost"
