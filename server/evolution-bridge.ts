@@ -88,6 +88,9 @@ export class EvolutionWebSocketBridge {
       this.isConnected = true;
       this.reconnectAttempts = 0;
       this.processQueuedMessages();
+      
+      // Request initial data sync for authentic WhatsApp conversations
+      this.requestInitialDataSync();
     });
 
     this.socket.on('disconnect', (reason) => {
@@ -125,6 +128,61 @@ export class EvolutionWebSocketBridge {
     this.socket.on('PRESENCE_UPDATE', (data) => {
       this.handlePresenceUpdate(data);
     });
+  }
+
+  private requestInitialDataSync() {
+    if (!this.socket || !this.isConnected) return;
+    
+    console.log(`📥 Requesting authentic WhatsApp data sync for ${this.config.instanceName}`);
+    
+    // Send requests for initial data synchronization
+    this.socket.emit('fetchChats', { 
+      instanceName: this.config.instanceName,
+      limit: 100 
+    });
+    
+    this.socket.emit('fetchContacts', { 
+      instanceName: this.config.instanceName,
+      limit: 100 
+    });
+    
+    // Set up listeners for bulk data responses
+    this.socket.on('chats.bulk', (data) => this.handleChatsBulk(data));
+    this.socket.on('contacts.bulk', (data) => this.handleContactsBulk(data));
+  }
+
+  private async handleChatsBulk(data: any) {
+    if (!data?.chats || !Array.isArray(data.chats)) return;
+    
+    console.log(`📱 Processing ${data.chats.length} authentic WhatsApp conversations`);
+    
+    for (const chat of data.chats) {
+      try {
+        const conversationData = this.processConversationData(chat);
+        if (conversationData) {
+          await this.saveConversation(conversationData);
+        }
+      } catch (error) {
+        console.error('Error processing chat:', error);
+      }
+    }
+  }
+
+  private async handleContactsBulk(data: any) {
+    if (!data?.contacts || !Array.isArray(data.contacts)) return;
+    
+    console.log(`👥 Processing ${data.contacts.length} authentic WhatsApp contacts`);
+    
+    for (const contact of data.contacts) {
+      try {
+        const contactData = this.processContactData(contact);
+        if (contactData) {
+          await this.saveContact(contactData);
+        }
+      } catch (error) {
+        console.error('Error processing contact:', error);
+      }
+    }
   }
 
   private async handleMessageUpsert(data: any) {

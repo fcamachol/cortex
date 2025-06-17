@@ -1,0 +1,888 @@
+// ===================================================
+// EVOLUTION API WEBSOCKET INTEGRATION
+// Complete implementation with database sync
+// ===================================================
+
+const WebSocket = require('ws');
+const mysql = require('mysql2/promise');
+const fs = require('fs').promises;
+const path = require('path');
+const crypto = require('crypto');
+
+class EvolutionAPIWebSocket {
+    constructor(config) {
+        this.config = {
+            // Evolution API Configuration
+            apiUrl: config.apiUrl || 'ws://localhost:8080',
+            instanceName: config.instanceName,
+            apiKey: config.apiKey,
+            
+            // Database Configuration
+            database: config.database,
+            
+            // WebSocket Configuration
+            reconnectInterval: config.reconnectInterval || 5000,
+            maxReconnectAttempts: config.maxReconnectAttempts || 10,
+            
+            // Media Configuration
+            mediaDownload: config.mediaDownload || true,
+            mediaPath: config.mediaPath || './media',
+            
+            // Event Handlers
+            onMessage: config.onMessage || (() => {}),
+            onConnect: config.onConnect || (() => {}),
+            onDisconnect: config.onDisconnect || (() => {}),
+            onError: config.onError || console.error
+        };
+        
+        this.ws = null;
+        this.db = null;
+        this.reconnectAttempts = 0;
+        this.isConnected = false;
+        this.instanceId = null;
+        
+        this.init();
+    }
+    
+    async init() {
+        try {
+            // Initialize database connection
+            await this.initDatabase();
+            
+            // Get or create instance
+            await this.initInstance();
+            
+            // Connect to WebSocket
+            await this.connect();
+            
+        } catch (error) {
+            this.config.onError('Initialization failed:', error);
+        }
+    }
+    
+    async initDatabase() {
+        this.db = await mysql.createConnection(this.config.database);
+        console.log('Database connected successfully');
+    }
+    
+    async initInstance() {
+        try {
+            // Get existing instance or create new one
+            const [rows] = await this.db.execute(
+                'SELECT id FROM instances WHERE instance_name = ?',
+                [this.config.instanceName]
+            );
+            
+            if (rows.length > 0) {
+                this.instanceId = rows[0].id;
+            } else {
+                // Create new instance
+                const [result] = await this.db.execute(
+                    `INSERT INTO instances (instance_name, api_key, server_url, created_at) 
+                     VALUES (?, ?, ?, NOW())`,
+                    [this.config.instanceName, this.config.apiKey, this.config.apiUrl]
+                );
+                this.instanceId = result.insertId;
+            }
+            
+            console.log(`Instance initialized: ${this.instanceId}`);
+            
+        } catch (error) {
+            throw new Error(`Instance initialization failed: ${error.message}`);
+        }
+    }
+    
+    async connect() {
+        try {
+            const wsUrl = `${this.config.apiUrl}/ws/${this.config.instanceName}`;
+            
+            this.ws = new WebSocket(wsUrl, {
+                headers: {
+                    'apikey': this.config.apiKey
+                }
+            });
+            
+            this.ws.on('open', () => this.onOpen());
+            this.ws.on('message', (data) => this.onMessage(data));
+            this.ws.on('close', (code, reason) => this.onClose(code, reason));
+            this.ws.on('error', (error) => this.onError(error));
+            
+        } catch (error) {
+            this.config.onError('WebSocket connection failed:', error);
+            this.scheduleReconnect();
+        }
+    }
+    
+    onOpen() {
+        console.log('WebSocket connected successfully');
+        this.isConnected = true;
+        this.reconnectAttempts = 0;
+        
+        // Update instance connection status
+        this.updateInstanceStatus('open');
+        
+        // Log connection
+        this.logConnection('connect', 'open');
+        
+        this.config.onConnect();
+    }
+    
+    async onMessage(data) {
+        try {
+            const event = JSON.parse(data.toString());
+            
+            // Log webhook event
+            await this.logWebhookEvent(event);
+            
+            // Process event based on type
+            await this.processEvent(event);
+            
+            // Call custom message handler
+            this.config.onMessage(event);
+            
+        } catch (error) {
+            this.config.onError('Message processing failed:', error);
+        }
+    }
+    
+    onClose(code, reason) {
+        console.log(`WebSocket closed: ${code} - ${reason}`);
+        this.isConnected = false;
+        
+        // Update instance status
+        this.updateInstanceStatus('close');
+        
+        // Log disconnection
+        this.logConnection('disconnect', 'close');
+        
+        this.config.onDisconnect(code, reason);
+        
+        // Schedule reconnection
+        this.scheduleReconnect();
+    }
+    
+    onError(error) {
+        console.error('WebSocket error:', error);
+        this.config.onError(error);
+    }
+    
+    scheduleReconnect() {
+        if (this.reconnectAttempts < this.config.maxReconnectAttempts) {
+            this.reconnectAttempts++;
+            console.log(`Reconnection attempt ${this.reconnectAttempts}/${this.config.maxReconnectAttempts} in ${this.config.reconnectInterval}ms`);
+            
+            setTimeout(() => {
+                this.connect();
+            }, this.config.reconnectInterval);
+        } else {
+            console.error('Max reconnection attempts reached. Giving up.');
+        }
+    }
+    
+    // ===================================================
+    // EVENT PROCESSING
+    // ===================================================
+    
+    async processEvent(event) {
+        const { event: eventType, data } = event;
+        
+        switch (eventType) {
+            case 'messages.upsert':
+                await this.handleMessagesUpsert(data);
+                break;
+                
+            case 'messages.update':
+                await this.handleMessagesUpdate(data);
+                break;
+                
+            case 'messages.delete':
+                await this.handleMessagesDelete(data);
+                break;
+                
+            case 'contacts.upsert':
+                await this.handleContactsUpsert(data);
+                break;
+                
+            case 'contacts.update':
+                await this.handleContactsUpdate(data);
+                break;
+                
+            case 'chats.upsert':
+                await this.handleChatsUpsert(data);
+                break;
+                
+            case 'chats.update':
+                await this.handleChatsUpdate(data);
+                break;
+                
+            case 'chats.delete':
+                await this.handleChatsDelete(data);
+                break;
+                
+            case 'groups.upsert':
+                await this.handleGroupsUpsert(data);
+                break;
+                
+            case 'groups.update':
+                await this.handleGroupsUpdate(data);
+                break;
+                
+            case 'group-participants.update':
+                await this.handleGroupParticipantsUpdate(data);
+                break;
+                
+            case 'presence.update':
+                await this.handlePresenceUpdate(data);
+                break;
+                
+            case 'connection.update':
+                await this.handleConnectionUpdate(data);
+                break;
+                
+            case 'call':
+                await this.handleCall(data);
+                break;
+                
+            case 'labels.edit':
+                await this.handleLabelsEdit(data);
+                break;
+                
+            case 'labels.association':
+                await this.handleLabelsAssociation(data);
+                break;
+                
+            default:
+                console.log(`Unhandled event type: ${eventType}`);
+        }
+    }
+    
+    // ===================================================
+    // MESSAGE HANDLERS
+    // ===================================================
+    
+    async handleMessagesUpsert(data) {
+        const { messages } = data;
+        
+        for (const message of messages) {
+            try {
+                await this.saveMessage(message);
+                
+                // Download media if enabled
+                if (this.config.mediaDownload && this.hasMedia(message)) {
+                    await this.downloadMedia(message);
+                }
+                
+            } catch (error) {
+                console.error('Error saving message:', error);
+            }
+        }
+    }
+    
+    async saveMessage(message) {
+        const {
+            key,
+            message: messageContent,
+            messageTimestamp,
+            status,
+            pushName,
+            participant
+        } = message;
+        
+        // Extract message content based on type
+        const contentData = this.extractMessageContent(messageContent);
+        
+        const messageData = {
+            instance_id: this.instanceId,
+            message_id: key.id,
+            remote_jid: key.remoteJid,
+            from_me: key.fromMe,
+            participant: participant || null,
+            message_type: contentData.type,
+            message_content: JSON.stringify(messageContent),
+            text_content: contentData.text,
+            media_url: contentData.mediaUrl,
+            media_mimetype: contentData.mimetype,
+            media_size: contentData.fileLength,
+            media_filename: contentData.fileName,
+            media_caption: contentData.caption,
+            status: status || 'pending',
+            timestamp: messageTimestamp,
+            push_name: pushName,
+            quoted_message_id: contentData.quotedMessageId,
+            quoted_content: contentData.quotedContent,
+            is_forwarded: contentData.isForwarded || false,
+            context_info: contentData.contextInfo ? JSON.stringify(contentData.contextInfo) : null
+        };
+        
+        // Insert or update message
+        const sql = `
+            INSERT INTO messages (
+                instance_id, message_id, remote_jid, from_me, participant,
+                message_type, message_content, text_content, media_url,
+                media_mimetype, media_size, media_filename, media_caption,
+                status, timestamp, push_name, quoted_message_id, quoted_content,
+                is_forwarded, context_info
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                status = VALUES(status),
+                message_content = VALUES(message_content),
+                updated_at = CURRENT_TIMESTAMP
+        `;
+        
+        await this.db.execute(sql, [
+            messageData.instance_id, messageData.message_id, messageData.remote_jid,
+            messageData.from_me, messageData.participant, messageData.message_type,
+            messageData.message_content, messageData.text_content, messageData.media_url,
+            messageData.media_mimetype, messageData.media_size, messageData.media_filename,
+            messageData.media_caption, messageData.status, messageData.timestamp,
+            messageData.push_name, messageData.quoted_message_id, messageData.quoted_content,
+            messageData.is_forwarded, messageData.context_info
+        ]);
+        
+        console.log(`Message saved: ${messageData.message_id}`);
+    }
+    
+    extractMessageContent(messageContent) {
+        // Handle different message types
+        if (messageContent.conversation) {
+            return {
+                type: 'conversation',
+                text: messageContent.conversation
+            };
+        }
+        
+        if (messageContent.extendedTextMessage) {
+            const ext = messageContent.extendedTextMessage;
+            return {
+                type: 'extendedTextMessage',
+                text: ext.text,
+                quotedMessageId: ext.contextInfo?.stanzaId,
+                quotedContent: ext.contextInfo?.quotedMessage,
+                contextInfo: ext.contextInfo
+            };
+        }
+        
+        if (messageContent.imageMessage) {
+            const img = messageContent.imageMessage;
+            return {
+                type: 'imageMessage',
+                caption: img.caption,
+                mediaUrl: img.url,
+                mimetype: img.mimetype,
+                fileLength: img.fileLength,
+                fileName: img.fileName || 'image.jpg'
+            };
+        }
+        
+        if (messageContent.videoMessage) {
+            const video = messageContent.videoMessage;
+            return {
+                type: 'videoMessage',
+                caption: video.caption,
+                mediaUrl: video.url,
+                mimetype: video.mimetype,
+                fileLength: video.fileLength,
+                fileName: video.fileName || 'video.mp4'
+            };
+        }
+        
+        if (messageContent.audioMessage) {
+            const audio = messageContent.audioMessage;
+            return {
+                type: 'audioMessage',
+                mediaUrl: audio.url,
+                mimetype: audio.mimetype,
+                fileLength: audio.fileLength,
+                fileName: audio.fileName || 'audio.ogg'
+            };
+        }
+        
+        if (messageContent.documentMessage) {
+            const doc = messageContent.documentMessage;
+            return {
+                type: 'documentMessage',
+                caption: doc.caption,
+                mediaUrl: doc.url,
+                mimetype: doc.mimetype,
+                fileLength: doc.fileLength,
+                fileName: doc.fileName || 'document'
+            };
+        }
+        
+        if (messageContent.stickerMessage) {
+            const sticker = messageContent.stickerMessage;
+            return {
+                type: 'stickerMessage',
+                mediaUrl: sticker.url,
+                mimetype: sticker.mimetype,
+                fileLength: sticker.fileLength,
+                fileName: 'sticker.webp'
+            };
+        }
+        
+        if (messageContent.locationMessage) {
+            const loc = messageContent.locationMessage;
+            return {
+                type: 'locationMessage',
+                latitude: loc.degreesLatitude,
+                longitude: loc.degreesLongitude,
+                name: loc.name,
+                address: loc.address
+            };
+        }
+        
+        // Default fallback
+        return {
+            type: 'unknown',
+            text: JSON.stringify(messageContent)
+        };
+    }
+    
+    // ===================================================
+    // CONTACT HANDLERS
+    // ===================================================
+    
+    async handleContactsUpsert(data) {
+        const { contacts } = data;
+        
+        for (const contact of contacts) {
+            await this.saveContact(contact);
+        }
+    }
+    
+    async saveContact(contact) {
+        const contactData = {
+            instance_id: this.instanceId,
+            remote_jid: contact.id,
+            push_name: contact.pushname || contact.name,
+            profile_name: contact.name,
+            profile_picture_url: contact.profilePictureUrl,
+            phone_number: contact.id.split('@')[0],
+            is_business: contact.isBusiness || false,
+            is_enterprise: contact.isEnterprise || false,
+            is_my_contact: contact.isMyContact || false,
+            is_user: contact.isUser || true,
+            is_wa_contact: contact.isWAContact || true,
+            status_message: contact.status
+        };
+        
+        const sql = `
+            INSERT INTO contacts (
+                instance_id, remote_jid, push_name, profile_name,
+                profile_picture_url, phone_number, is_business,
+                is_enterprise, is_my_contact, is_user, is_wa_contact,
+                status_message
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                push_name = VALUES(push_name),
+                profile_name = VALUES(profile_name),
+                profile_picture_url = VALUES(profile_picture_url),
+                is_business = VALUES(is_business),
+                is_enterprise = VALUES(is_enterprise),
+                status_message = VALUES(status_message),
+                updated_at = CURRENT_TIMESTAMP
+        `;
+        
+        await this.db.execute(sql, [
+            contactData.instance_id, contactData.remote_jid, contactData.push_name,
+            contactData.profile_name, contactData.profile_picture_url, contactData.phone_number,
+            contactData.is_business, contactData.is_enterprise, contactData.is_my_contact,
+            contactData.is_user, contactData.is_wa_contact, contactData.status_message
+        ]);
+    }
+    
+    // ===================================================
+    // CHAT HANDLERS
+    // ===================================================
+    
+    async handleChatsUpsert(data) {
+        const { chats } = data;
+        
+        for (const chat of chats) {
+            await this.saveChat(chat);
+        }
+    }
+    
+    async saveChat(chat) {
+        const chatData = {
+            instance_id: this.instanceId,
+            remote_jid: chat.id,
+            chat_name: chat.name,
+            chat_type: this.getChatType(chat.id),
+            is_archived: chat.archived || false,
+            is_pinned: chat.pinned || false,
+            is_read_only: chat.readOnly || false,
+            unread_count: chat.unreadCount || 0,
+            last_message_timestamp: chat.conversationTimestamp
+        };
+        
+        const sql = `
+            INSERT INTO chats (
+                instance_id, remote_jid, chat_name, chat_type,
+                is_archived, is_pinned, is_read_only, unread_count,
+                last_message_timestamp
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                chat_name = VALUES(chat_name),
+                is_archived = VALUES(is_archived),
+                is_pinned = VALUES(is_pinned),
+                is_read_only = VALUES(is_read_only),
+                unread_count = VALUES(unread_count),
+                last_message_timestamp = VALUES(last_message_timestamp),
+                updated_at = CURRENT_TIMESTAMP
+        `;
+        
+        await this.db.execute(sql, [
+            chatData.instance_id, chatData.remote_jid, chatData.chat_name,
+            chatData.chat_type, chatData.is_archived, chatData.is_pinned,
+            chatData.is_read_only, chatData.unread_count, chatData.last_message_timestamp
+        ]);
+    }
+    
+    // ===================================================
+    // GROUP HANDLERS
+    // ===================================================
+    
+    async handleGroupsUpsert(data) {
+        const { groups } = data;
+        
+        for (const group of groups) {
+            await this.saveGroup(group);
+        }
+    }
+    
+    async saveGroup(group) {
+        const groupData = {
+            instance_id: this.instanceId,
+            group_jid: group.id,
+            group_name: group.subject,
+            group_description: group.desc,
+            owner_jid: group.owner,
+            creation_timestamp: group.creation,
+            is_announce: group.announce || false,
+            is_restricted: group.restrict || false,
+            participants_count: group.participants ? group.participants.length : 0
+        };
+        
+        const sql = `
+            INSERT INTO groups (
+                instance_id, group_jid, group_name, group_description,
+                owner_jid, creation_timestamp, is_announce, is_restricted,
+                participants_count
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                group_name = VALUES(group_name),
+                group_description = VALUES(group_description),
+                is_announce = VALUES(is_announce),
+                is_restricted = VALUES(is_restricted),
+                participants_count = VALUES(participants_count),
+                updated_at = CURRENT_TIMESTAMP
+        `;
+        
+        await this.db.execute(sql, [
+            groupData.instance_id, groupData.group_jid, groupData.group_name,
+            groupData.group_description, groupData.owner_jid, groupData.creation_timestamp,
+            groupData.is_announce, groupData.is_restricted, groupData.participants_count
+        ]);
+        
+        // Save participants
+        if (group.participants) {
+            await this.saveGroupParticipants(group.id, group.participants);
+        }
+    }
+    
+    async saveGroupParticipants(groupJid, participants) {
+        // Clear existing participants
+        await this.db.execute(
+            'UPDATE group_participants SET is_active = false WHERE instance_id = ? AND group_jid = ?',
+            [this.instanceId, groupJid]
+        );
+        
+        // Add current participants
+        for (const participant of participants) {
+            const sql = `
+                INSERT INTO group_participants (
+                    instance_id, group_jid, participant_jid, role, is_active
+                ) VALUES (?, ?, ?, ?, true)
+                ON DUPLICATE KEY UPDATE
+                    role = VALUES(role),
+                    is_active = true,
+                    updated_at = CURRENT_TIMESTAMP
+            `;
+            
+            await this.db.execute(sql, [
+                this.instanceId, groupJid, participant.id, participant.admin || 'member'
+            ]);
+        }
+    }
+    
+    // ===================================================
+    // PRESENCE HANDLERS
+    // ===================================================
+    
+    async handlePresenceUpdate(data) {
+        const { id, presences } = data;
+        
+        for (const [jid, presence] of Object.entries(presences)) {
+            await this.savePresence(jid, presence);
+        }
+    }
+    
+    async savePresence(jid, presence) {
+        const presenceData = {
+            instance_id: this.instanceId,
+            remote_jid: jid,
+            status: presence.lastKnownPresence || 'unavailable',
+            last_seen: presence.lastSeen ? new Date(presence.lastSeen * 1000) : null,
+            timestamp: Date.now()
+        };
+        
+        const sql = `
+            INSERT INTO presence (
+                instance_id, remote_jid, status, last_seen, timestamp
+            ) VALUES (?, ?, ?, ?, ?)
+        `;
+        
+        await this.db.execute(sql, [
+            presenceData.instance_id, presenceData.remote_jid,
+            presenceData.status, presenceData.last_seen, presenceData.timestamp
+        ]);
+    }
+    
+    // ===================================================
+    // CONNECTION HANDLERS
+    // ===================================================
+    
+    async handleConnectionUpdate(data) {
+        const { connection, lastDisconnect, qr } = data;
+        
+        // Update instance status
+        await this.updateInstanceStatus(connection, {
+            qr_code: qr,
+            last_connected_at: connection === 'open' ? new Date() : null
+        });
+        
+        // Log connection event
+        await this.logConnection(
+            connection === 'open' ? 'connect' : 'disconnect',
+            connection,
+            { qr_code: qr, error: lastDisconnect?.error?.message }
+        );
+    }
+    
+    // ===================================================
+    // UTILITY METHODS
+    // ===================================================
+    
+    async updateInstanceStatus(status, additionalData = {}) {
+        const updateData = {
+            connection_status: status,
+            updated_at: new Date(),
+            ...additionalData
+        };
+        
+        const fields = Object.keys(updateData).map(key => `${key} = ?`).join(', ');
+        const values = Object.values(updateData);
+        values.push(this.instanceId);
+        
+        await this.db.execute(
+            `UPDATE instances SET ${fields} WHERE id = ?`,
+            values
+        );
+    }
+    
+    async logConnection(eventType, connectionStatus, additionalData = {}) {
+        const sql = `
+            INSERT INTO connection_logs (
+                instance_id, event_type, connection_status, qr_code,
+                error_message, timestamp
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        `;
+        
+        await this.db.execute(sql, [
+            this.instanceId, eventType, connectionStatus,
+            additionalData.qr_code, additionalData.error, Date.now()
+        ]);
+    }
+    
+    async logWebhookEvent(event) {
+        const sql = `
+            INSERT INTO webhooks_log (
+                instance_id, event_type, event_data, processing_status
+            ) VALUES (?, ?, ?, 'completed')
+        `;
+        
+        await this.db.execute(sql, [
+            this.instanceId, event.event, JSON.stringify(event.data)
+        ]);
+    }
+    
+    hasMedia(message) {
+        const messageContent = message.message;
+        return !!(
+            messageContent.imageMessage ||
+            messageContent.videoMessage ||
+            messageContent.audioMessage ||
+            messageContent.documentMessage ||
+            messageContent.stickerMessage
+        );
+    }
+    
+    getChatType(jid) {
+        if (jid.endsWith('@g.us')) return 'group';
+        if (jid.endsWith('@broadcast')) return 'broadcast';
+        return 'individual';
+    }
+    
+    async downloadMedia(message) {
+        // Implementation for media download
+        // This would integrate with Evolution API's media endpoint
+        console.log('Media download requested for message:', message.key.id);
+    }
+    
+    // ===================================================
+    // PUBLIC METHODS
+    // ===================================================
+    
+    async sendMessage(jid, content, options = {}) {
+        if (!this.isConnected) {
+            throw new Error('WebSocket not connected');
+        }
+        
+        const payload = {
+            action: 'send-message',
+            data: {
+                number: jid,
+                text: content,
+                ...options
+            }
+        };
+        
+        this.ws.send(JSON.stringify(payload));
+    }
+    
+    async getMessages(jid, limit = 50) {
+        const [rows] = await this.db.execute(
+            `SELECT * FROM messages 
+             WHERE instance_id = ? AND remote_jid = ? 
+             ORDER BY timestamp DESC LIMIT ?`,
+            [this.instanceId, jid, limit]
+        );
+        
+        return rows;
+    }
+    
+    async getChats() {
+        const [rows] = await this.db.execute(
+            `SELECT c.*, co.push_name, co.profile_picture_url
+             FROM chats c
+             LEFT JOIN contacts co ON c.instance_id = co.instance_id AND c.remote_jid = co.remote_jid
+             WHERE c.instance_id = ?
+             ORDER BY c.last_message_timestamp DESC`,
+            [this.instanceId]
+        );
+        
+        return rows;
+    }
+    
+    async getContacts() {
+        const [rows] = await this.db.execute(
+            'SELECT * FROM contacts WHERE instance_id = ? ORDER BY push_name',
+            [this.instanceId]
+        );
+        
+        return rows;
+    }
+    
+    disconnect() {
+        if (this.ws) {
+            this.ws.close();
+        }
+        
+        if (this.db) {
+            this.db.end();
+        }
+    }
+}
+
+// ===================================================
+// USAGE EXAMPLE
+// ===================================================
+
+// Configuration
+const config = {
+    // Evolution API
+    apiUrl: 'ws://localhost:8080',
+    instanceName: 'my-whatsapp-instance',
+    apiKey: 'your-api-key-here',
+    
+    // Database
+    database: {
+        host: 'localhost',
+        user: 'your-db-user',
+        password: 'your-db-password',
+        database: 'whatsapp_evolution'
+    },
+    
+    // Media
+    mediaDownload: true,
+    mediaPath: './media',
+    
+    // Event Handlers
+    onMessage: (event) => {
+        console.log('New event received:', event.event);
+        
+        // Custom message processing
+        if (event.event === 'messages.upsert') {
+            const messages = event.data.messages;
+            messages.forEach(msg => {
+                if (!msg.key.fromMe && msg.message?.conversation) {
+                    console.log(`New message from ${msg.pushName}: ${msg.message.conversation}`);
+                }
+            });
+        }
+    },
+    
+    onConnect: () => {
+        console.log('WhatsApp WebSocket connected and ready!');
+    },
+    
+    onDisconnect: (code, reason) => {
+        console.log(`WebSocket disconnected: ${code} - ${reason}`);
+    },
+    
+    onError: (error) => {
+        console.error('WebSocket error:', error);
+    }
+};
+
+// Initialize WebSocket connection
+const whatsapp = new EvolutionAPIWebSocket(config);
+
+// Example usage after connection
+setTimeout(async () => {
+    try {
+        // Send a message
+        await whatsapp.sendMessage('5511999999999@s.whatsapp.net', 'Hello from WebSocket!');
+        
+        // Get recent messages
+        const messages = await whatsapp.getMessages('5511999999999@s.whatsapp.net', 10);
+        console.log('Recent messages:', messages);
+        
+        // Get all chats
+        const chats = await whatsapp.getChats();
+        console.log('All chats:', chats);
+        
+    } catch (error) {
+        console.error('Usage example error:', error);
+    }
+}, 5000);
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+    console.log('Shutting down gracefully...');
+    whatsapp.disconnect();
+    process.exit(0);
+});
+
+module.exports = EvolutionAPIWebSocket;
