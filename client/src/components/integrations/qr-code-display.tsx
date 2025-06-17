@@ -50,14 +50,18 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }:
       }
       
       const data: InstanceStatus = await response.json();
+      console.log('Fetched instance status:', data);
       
       setStatus(data.instance.status);
       
       // Check for QR code from multiple sources
       const qrCode = data.qrCode || data.evolutionStatus?.qrcode;
+      console.log('QR Code data found:', qrCode);
+      
       if (qrCode) {
         setQrCodeData(qrCode);
         setError(null);
+        console.log('QR Code set:', qrCode);
       } else if (data.instance.status === 'connected') {
         // Instance is connected, no QR needed
         setQrCodeData(null);
@@ -181,6 +185,12 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }:
     }
   }, [status]);
 
+  // Initial fetch on component mount
+  useEffect(() => {
+    console.log('QRCodeDisplay mounted for instance:', instanceId, instanceName);
+    fetchInstanceStatus();
+  }, [instanceId]);
+
   const getStatusBadge = () => {
     switch (status) {
       case 'connected':
@@ -224,7 +234,7 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }:
               </p>
               <div className="bg-white p-4 rounded-lg inline-block">
                 <img 
-                  src={`data:image/png;base64,${qrCodeData.base64}`}
+                  src={qrCodeData.base64.startsWith('data:') ? qrCodeData.base64 : `data:image/png;base64,${qrCodeData.base64}`}
                   alt="WhatsApp QR Code"
                   className="w-48 h-48 mx-auto"
                 />
