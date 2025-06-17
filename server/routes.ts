@@ -16,6 +16,48 @@ import {
   insertMessageSchema
 } from "@shared/schema";
 
+// Format phone number to E.164 International Format
+function formatToE164(phoneNumber: string): string {
+  // Remove all non-digit characters
+  const cleanNumber = phoneNumber.replace(/\D/g, '');
+  
+  // Handle different country codes and formats
+  if (cleanNumber.startsWith('1') && cleanNumber.length === 11) {
+    // US/Canada: +1 XXXXXXXXXX
+    return `+1 ${cleanNumber.slice(1, 4)} ${cleanNumber.slice(4, 7)} ${cleanNumber.slice(7)}`;
+  } else if (cleanNumber.startsWith('52') && cleanNumber.length === 12) {
+    // Mexico: +52 XX XXXX XXXX
+    return `+52 ${cleanNumber.slice(2, 4)} ${cleanNumber.slice(4, 8)} ${cleanNumber.slice(8)}`;
+  } else if (cleanNumber.startsWith('34') && cleanNumber.length === 11) {
+    // Spain: +34 XXX XXX XXX
+    return `+34 ${cleanNumber.slice(2, 5)} ${cleanNumber.slice(5, 8)} ${cleanNumber.slice(8)}`;
+  } else if (cleanNumber.startsWith('44') && cleanNumber.length >= 10) {
+    // UK: +44 XXXX XXXXXX
+    return `+44 ${cleanNumber.slice(2, 6)} ${cleanNumber.slice(6)}`;
+  } else if (cleanNumber.startsWith('49') && cleanNumber.length >= 11) {
+    // Germany: +49 XXX XXXXXXXX
+    return `+49 ${cleanNumber.slice(2, 5)} ${cleanNumber.slice(5)}`;
+  } else if (cleanNumber.startsWith('33') && cleanNumber.length === 11) {
+    // France: +33 X XX XX XX XX
+    return `+33 ${cleanNumber.slice(2, 3)} ${cleanNumber.slice(3, 5)} ${cleanNumber.slice(5, 7)} ${cleanNumber.slice(7, 9)} ${cleanNumber.slice(9)}`;
+  } else if (cleanNumber.startsWith('55') && cleanNumber.length >= 12) {
+    // Brazil: +55 XX XXXXX XXXX
+    return `+55 ${cleanNumber.slice(2, 4)} ${cleanNumber.slice(4, 9)} ${cleanNumber.slice(9)}`;
+  } else if (cleanNumber.startsWith('91') && cleanNumber.length >= 12) {
+    // India: +91 XXXXX XXXXX
+    return `+91 ${cleanNumber.slice(2, 7)} ${cleanNumber.slice(7)}`;
+  } else {
+    // Default fallback: add + and format with spaces every 3-4 digits
+    const countryCode = cleanNumber.slice(0, 2);
+    const remaining = cleanNumber.slice(2);
+    if (remaining.length >= 8) {
+      return `+${countryCode} ${remaining.slice(0, 4)} ${remaining.slice(4)}`;
+    } else {
+      return `+${countryCode} ${remaining}`;
+    }
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
@@ -603,13 +645,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`📱 Processing instance data:`, instanceData);
             
             if (instanceData) {
+              // Extract and format phone number to E.164 International Format
+              let formattedPhone = null;
+              if (instanceData.ownerJid) {
+                const rawNumber = instanceData.ownerJid.split('@')[0];
+                formattedPhone = formatToE164(rawNumber);
+              }
+              
               profileData = {
                 instanceName: instanceData.name || instanceData.instanceName,
                 owner: instanceData.ownerJid,
                 profileName: instanceData.profileName,
                 profilePictureUrl: instanceData.profilePicUrl,
                 status: instanceData.connectionStatus || instanceData.status,
-                phoneNumber: instanceData.ownerJid ? instanceData.ownerJid.split('@')[0] : null
+                phoneNumber: formattedPhone
               };
               console.log(`📱 Created profile data:`, profileData);
             }
