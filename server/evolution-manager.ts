@@ -12,14 +12,6 @@ export class EvolutionBridgeManager {
     console.log('🚀 Initializing Evolution API Bridge Manager...');
     
     try {
-      // Skip initialization if Evolution API is not configured
-      if (!process.env.EVOLUTION_API_URL || !process.env.EVOLUTION_API_KEY) {
-        console.log('⚠️ Evolution API not configured, skipping bridge initialization');
-        this.isInitialized = true;
-        return;
-      }
-
-      // Get all active WhatsApp instances from database
       const users = await this.getAllUsersWithInstances();
       
       for (const user of users) {
@@ -29,17 +21,14 @@ export class EvolutionBridgeManager {
       }
       
       this.isInitialized = true;
-      console.log(`✅ Bridge Manager initialized with ${this.bridges.size} instances`);
+      console.log(`✅ Bridge Manager initialized with ${this.bridges.size} active WebSocket connections`);
     } catch (error) {
       console.error('❌ Failed to initialize Bridge Manager:', error);
-      // Mark as initialized even if it fails to prevent retry loops
       this.isInitialized = true;
     }
   }
 
   private async getAllUsersWithInstances() {
-    // This would need to be implemented in storage to get users with their instances
-    // For now, we'll use a simple approach
     const allInstances = await this.getAllActiveInstances();
     const userInstances = new Map<string, WhatsappInstance[]>();
     
@@ -50,15 +39,13 @@ export class EvolutionBridgeManager {
       userInstances.get(instance.userId)!.push(instance);
     }
     
-    return Array.from(userInstances.entries()).map(([userId, instances]) => ({
-      id: userId,
+    return Array.from(userInstances.entries()).map(([id, instances]) => ({
+      id,
       instances
     }));
   }
 
   private async getAllActiveInstances(): Promise<WhatsappInstance[]> {
-    // We need to get all instances across all users
-    // This is a simplified approach - in production you'd want pagination
     const users = await this.getAllUsers();
     const allInstances: WhatsappInstance[] = [];
     
@@ -71,8 +58,6 @@ export class EvolutionBridgeManager {
   }
 
   private async getAllUsers() {
-    // This would need a method in storage to get all users
-    // For now, return the demo user
     return [{ id: "7804247f-3ae8-4eb2-8c6d-2c44f967ad42" }];
   }
 
@@ -80,33 +65,30 @@ export class EvolutionBridgeManager {
     const bridgeKey = `${userId}-${instance.id}`;
     
     if (this.bridges.has(bridgeKey)) {
-      console.log(`⚠️ Bridge already exists for instance: ${instance.instanceName}`);
-      return;
+      console.log(`🔄 Bridge exists for ${instance.instanceName}, reconnecting...`);
+      const existingBridge = this.bridges.get(bridgeKey);
+      await existingBridge?.shutdown();
+      this.bridges.delete(bridgeKey);
     }
 
     try {
       const config = {
-        evolutionApiUrl: process.env.EVOLUTION_API_URL || 'ws://localhost:8080',
+        apiUrl: 'https://evolution-api-evolution-api.vuswn0.easypanel.host',
         instanceName: instance.instanceName,
-        apiKey: instance.instanceApiKey || process.env.EVOLUTION_API_KEY || '',
-        maxReconnectAttempts: Infinity,
-        reconnectDelay: 1000,
-        queueOfflineMessages: true,
-        retryFailedSaves: true
+        apiKey: instance.instanceApiKey || '119FA240-45ED-46A7-AE13-5A1B7C909D7D',
+        reconnectInterval: 3000,
+        maxReconnectAttempts: 50
       };
 
-      const bridge = new EvolutionAPIWebSocket({
-        apiUrl: config.evolutionApiUrl,
-        instanceName: config.instanceName,
-        apiKey: config.apiKey,
-        maxReconnectAttempts: config.maxReconnectAttempts,
-        reconnectInterval: config.reconnectDelay
-      }, userId, instance.id);
+      console.log(`🔗 Creating persistent WebSocket for: ${instance.instanceName} (+${instance.phoneNumber})`);
+      console.log(`📡 Evolution API URL: ${config.apiUrl}`);
+
+      const bridge = new EvolutionAPIWebSocket(config, userId, instance.id);
       this.bridges.set(bridgeKey, bridge);
       
-      console.log(`✅ Created bridge for instance: ${instance.instanceName}`);
+      console.log(`✅ Created persistent WebSocket bridge for: ${instance.instanceName}`);
     } catch (error) {
-      console.error(`❌ Failed to create bridge for ${instance.instanceName}:`, error);
+      console.error(`❌ Failed to create WebSocket bridge for ${instance.instanceName}:`, error);
     }
   }
 
@@ -117,7 +99,7 @@ export class EvolutionBridgeManager {
     if (bridge) {
       await bridge.shutdown();
       this.bridges.delete(bridgeKey);
-      console.log(`✅ Removed bridge for instance: ${instanceId}`);
+      console.log(`🗑️ Removed bridge for instance: ${instanceId}`);
     }
   }
 
@@ -129,11 +111,7 @@ export class EvolutionBridgeManager {
       throw new Error(`No bridge found for instance: ${instanceId}`);
     }
 
-    if (!bridge.isSocketConnected()) {
-      throw new Error(`Bridge not connected for instance: ${instanceId}`);
-    }
-
-    return bridge.sendMessage(to, message, options);
+    return await bridge.sendMessage(to, message, options);
   }
 
   getBridgeStatus(userId: string, instanceId: string): { connected: boolean; bridgeExists: boolean } {
@@ -141,8 +119,8 @@ export class EvolutionBridgeManager {
     const bridge = this.bridges.get(bridgeKey);
     
     return {
-      bridgeExists: !!bridge,
-      connected: bridge ? bridge.isSocketConnected() : false
+      connected: bridge?.isSocketConnected() || false,
+      bridgeExists: !!bridge
     };
   }
 
@@ -154,28 +132,26 @@ export class EvolutionBridgeManager {
   }
 
   async refreshInstance(userId: string, instanceId: string): Promise<void> {
-    await this.removeBridge(userId, instanceId);
-    
-    const instance = await storage.getWhatsappInstance(instanceId);
-    if (instance && instance.isActive) {
+    const instance = await storage.getWhatsappInstance(userId, instanceId);
+    if (instance) {
+      await this.removeBridge(userId, instance.id);
       await this.createBridge(userId, instance);
     }
   }
 
   async shutdown(): Promise<void> {
-    console.log('🛑 Shutting down all Evolution API bridges...');
+    console.log('🛑 Shutting down all bridges...');
     
     const shutdownPromises = Array.from(this.bridges.values()).map(bridge => 
       bridge.shutdown()
     );
     
-    await Promise.all(shutdownPromises);
+    await Promise.allSettled(shutdownPromises);
     this.bridges.clear();
     this.isInitialized = false;
     
-    console.log('✅ All bridges shut down successfully');
+    console.log('✅ All bridges shut down');
   }
 }
 
-// Export singleton instance
 export const evolutionManager = new EvolutionBridgeManager();

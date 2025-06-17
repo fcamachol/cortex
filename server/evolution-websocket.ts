@@ -40,17 +40,24 @@ export class EvolutionAPIWebSocket {
 
   private async connect() {
     try {
-      console.log(`Connecting to Evolution API: ${this.config.apiUrl}`);
+      console.log(`🔗 Connecting to Evolution API WebSocket: ${this.config.apiUrl}`);
+      console.log(`📱 Instance: ${this.config.instanceName}`);
       
+      // Connect to Evolution API WebSocket with proper authentication
       this.socket = io(this.config.apiUrl, {
         transports: ['websocket', 'polling'],
+        forceNew: true,
+        reconnection: true,
+        reconnectionAttempts: this.config.maxReconnectAttempts,
+        reconnectionDelay: this.config.reconnectInterval,
         auth: {
           apikey: this.config.apiKey,
           instanceName: this.config.instanceName
         },
-        reconnection: true,
-        reconnectionAttempts: this.config.maxReconnectAttempts || 10,
-        reconnectionDelay: this.config.reconnectInterval || 5000
+        query: {
+          instanceName: this.config.instanceName,
+          apikey: this.config.apiKey
+        }
       });
 
       this.setupEventHandlers();
