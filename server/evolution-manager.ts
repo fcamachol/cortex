@@ -1,30 +1,24 @@
-import { EvolutionWebSocketBridge } from './evolution-bridge';
 import { storage } from './storage';
 import type { WhatsappInstance } from '@shared/schema';
 
-export class EvolutionBridgeManager {
-  private bridges = new Map<string, EvolutionWebSocketBridge>();
+export class EvolutionApiManager {
   private isInitialized = false;
 
   async initialize() {
     if (this.isInitialized) return;
 
-    console.log('🚀 Initializing Evolution API Bridge Manager...');
+    console.log('🚀 Initializing Evolution API Manager...');
     
     try {
-      // Get all active WhatsApp instances from database
-      const users = await this.getAllUsersWithInstances();
-      
-      for (const user of users) {
-        for (const instance of user.instances) {
-          await this.createBridge(user.id, instance);
-        }
-      }
+      // For HTTP API, we don't need persistent bridges
+      // Just verify API connectivity
+      const evolutionApi = await import('./evolution-api').then(m => m.getEvolutionApi());
+      const healthCheck = await evolutionApi.healthCheck();
       
       this.isInitialized = true;
-      console.log(`✅ Bridge Manager initialized with ${this.bridges.size} instances`);
+      console.log(`✅ Evolution API Manager initialized - Health: ${healthCheck.status}`);
     } catch (error) {
-      console.error('❌ Failed to initialize Bridge Manager:', error);
+      console.error('❌ Failed to initialize Evolution API Manager:', error);
     }
   }
 
@@ -68,31 +62,8 @@ export class EvolutionBridgeManager {
   }
 
   async createBridge(userId: string, instance: WhatsappInstance): Promise<void> {
-    const bridgeKey = `${userId}-${instance.id}`;
-    
-    if (this.bridges.has(bridgeKey)) {
-      console.log(`⚠️ Bridge already exists for instance: ${instance.instanceName}`);
-      return;
-    }
-
-    try {
-      const config = {
-        evolutionApiUrl: process.env.EVOLUTION_API_URL || 'ws://localhost:8080',
-        instanceName: instance.instanceName,
-        apiKey: instance.apiKey,
-        maxReconnectAttempts: Infinity,
-        reconnectDelay: 1000,
-        queueOfflineMessages: true,
-        retryFailedSaves: true
-      };
-
-      const bridge = new EvolutionWebSocketBridge(config, userId, instance.id);
-      this.bridges.set(bridgeKey, bridge);
-      
-      console.log(`✅ Created bridge for instance: ${instance.instanceName}`);
-    } catch (error) {
-      console.error(`❌ Failed to create bridge for ${instance.instanceName}:`, error);
-    }
+    // For HTTP API, no persistent bridge needed
+    console.log(`✅ Instance ready for HTTP API calls: ${instance.instanceName}`);
   }
 
   async removeBridge(userId: string, instanceId: string): Promise<void> {
