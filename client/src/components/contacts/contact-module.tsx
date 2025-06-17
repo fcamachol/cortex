@@ -1,16 +1,16 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, MessageCircle, Star, MoreVertical, Phone, Mail, MapPin } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import ContactForm from "@/components/forms/contact-form";
 
 export default function ContactModule() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
-  const queryClient = useQueryClient();
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   // Mock user ID - in real app this would come from auth context
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
@@ -18,25 +18,6 @@ export default function ContactModule() {
   const { data: contacts = [], isLoading } = useQuery({
     queryKey: [`/api/contacts/${userId}`, searchQuery],
   });
-
-  const createContactMutation = useMutation({
-    mutationFn: async (contactData: any) => {
-      return apiRequest("POST", "/api/contacts", contactData);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/contacts/${userId}`] });
-    },
-  });
-
-  const handleCreateContact = () => {
-    const newContact = {
-      userId,
-      name: "New Contact",
-      phone: "+1234567890",
-      email: "contact@example.com"
-    };
-    createContactMutation.mutate(newContact);
-  };
 
   const filteredContacts = contacts.filter((contact: any) => {
     const matchesSearch = contact.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -67,8 +48,7 @@ export default function ContactModule() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Contacts</h1>
           <Button 
             className="bg-green-500 hover:bg-green-600 text-white"
-            onClick={handleCreateContact}
-            disabled={createContactMutation.isPending}
+            onClick={() => setIsFormOpen(true)}
           >
             <Plus className="mr-2 h-4 w-4" />
             Add Contact
@@ -115,7 +95,7 @@ export default function ContactModule() {
             </p>
             <Button 
               className="bg-green-500 hover:bg-green-600 text-white"
-              onClick={handleCreateContact}
+              onClick={() => setIsFormOpen(true)}
             >
               <Plus className="mr-2 h-4 w-4" />
               Add Contact
@@ -198,6 +178,12 @@ export default function ContactModule() {
             ))}
           </div>
         )}
+
+        <ContactForm
+          isOpen={isFormOpen}
+          onClose={() => setIsFormOpen(false)}
+          userId={userId}
+        />
       </div>
     </div>
   );

@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Plus, MoreVertical, Users } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import TaskForm from "@/components/forms/task-form";
 
 export default function TaskModule() {
   const [activeFilter, setActiveFilter] = useState("all");
