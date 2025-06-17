@@ -18,7 +18,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
     avatar: null
   };
 
-  const { data: whatsappInstances = [] } = useQuery({
+  const { data: whatsappInstances = [] } = useQuery<any[]>({
     queryKey: [`/api/whatsapp/instances/${currentUser.id}`],
   });
 

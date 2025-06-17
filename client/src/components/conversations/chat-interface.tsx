@@ -27,7 +27,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     enabled: !!conversationId,
   });
 
-  const { data: messages = [], isLoading } = useQuery({
+  const { data: messages = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/whatsapp/messages/${conversationId}`],
     enabled: !!conversationId,
   });

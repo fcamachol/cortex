@@ -13,7 +13,7 @@ export default function TaskModule() {
   // Mock user ID - in real app this would come from auth context
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
 
-  const { data: tasks = [], isLoading } = useQuery({
+  const { data: tasks = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/tasks/${userId}`],
   });
 
