@@ -144,7 +144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: "created"
         });
 
-        console.log(`✅ Created instance: ${instanceData.instanceName} with API key: ${instanceApiKey?.substring(0, 8)}...`);
+        console.log(`✅ Created instance: ${instanceData.instanceName} with API key: ${instanceApiKey ? instanceApiKey.substring(0, 8) + '...' : 'none'}`);
         
         res.status(201).json(instance);
       } catch (evolutionError: any) {
