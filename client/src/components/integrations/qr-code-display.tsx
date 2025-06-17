@@ -10,6 +10,7 @@ interface QRCodeDisplayProps {
   instanceId: string;
   instanceName: string;
   onConnectionSuccess?: () => void;
+  onConnected?: () => void;
 }
 
 interface QRCodeData {
@@ -35,7 +36,7 @@ interface InstanceStatus {
   };
 }
 
-export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }: QRCodeDisplayProps) {
+export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess, onConnected }: QRCodeDisplayProps) {
   const [qrCodeData, setQrCodeData] = useState<QRCodeData | null>(null);
   const [status, setStatus] = useState<string>('disconnected');
   const [isLoading, setIsLoading] = useState(false);
@@ -207,6 +208,9 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }:
         title: "WhatsApp Connected",
         description: `Instance ${instanceName} is now connected and ready!`,
       });
+      // Call both callback functions if provided
+      onConnectionSuccess?.();
+      onConnected?.();
     }
   }, [status]);
 
