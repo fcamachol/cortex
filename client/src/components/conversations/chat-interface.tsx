@@ -27,10 +27,17 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     enabled: !!conversationId,
   });
 
-  const { data: messages = [], isLoading } = useQuery<any[]>({
+  const { data: rawMessages = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/whatsapp/messages/${conversationId}`],
     enabled: !!conversationId,
   });
+
+  // Transform messages to match frontend expectations
+  const messages = rawMessages.map((msg: any) => ({
+    ...msg,
+    content: msg.textContent || msg.content,
+    isFromMe: msg.fromMe || msg.isFromMe
+  }));
 
   const sendMessageMutation = useMutation({
     mutationFn: async (messageData: any) => {

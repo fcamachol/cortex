@@ -36,7 +36,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
               return {
                 ...conversation,
                 latestMessage: latestMessage ? {
-                  content: latestMessage.content,
+                  content: latestMessage.textContent || latestMessage.content,
                   createdAt: latestMessage.createdAt,
                   fromMe: latestMessage.fromMe,
                   messageType: latestMessage.messageType
