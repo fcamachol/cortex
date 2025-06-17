@@ -184,6 +184,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PATCH route for partial instance updates (used by QR flow)
+  app.patch("/api/whatsapp/instances/:id", async (req, res) => {
+    try {
+      const updateData = req.body;
+      const instance = await storage.updateWhatsappInstance(req.params.id, updateData);
+      res.json(instance);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update instance" });
+    }
+  });
+
   app.delete("/api/whatsapp/instances/:id", async (req, res) => {
     try {
       const instance = await storage.getWhatsappInstance(req.params.id);

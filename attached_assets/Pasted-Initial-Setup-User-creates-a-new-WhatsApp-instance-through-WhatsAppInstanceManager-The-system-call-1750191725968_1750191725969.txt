@@ -1,0 +1,95 @@
+Initial Setup:
+
+User creates a new WhatsApp instance through WhatsAppInstanceManager
+The system calls the create-whatsapp-instance edge function
+Instance is stored in the whatsapp_instances table with status 'disconnected'
+Each instance gets a unique instance_name and api_key
+2. Connection Initiation
+User Triggers Connection:
+
+User clicks "Connect" button on the WhatsAppInstanceCard
+This opens the WhatsAppConnectionFlow modal
+The modal contains the QRCodeGenerator component
+3. QR Code Generation Phase
+API Call Sequence:
+
+QRCodeGenerator.generateQRCode() calls the whatsapp-qr-generate edge function
+Edge function makes HTTP request to Evolution API:
+GET https://evolution-api-evolution-api.vuswn0.easypanel.host/instance/connect/{instance_name}
+Headers: { 'apikey': EVOLUTION_API_KEY }
+If QR not immediately available, waits 5 seconds then calls:
+GET https://evolution-api-evolution-api.vuswn0.easypanel.host/instance/connectionState/{instance_name}
+QR Code Response:
+
+Evolution API returns QR code as base64 image
+QR code is displayed to user in the UI
+Database is updated with status: 'qr_pending' and the QR code
+4. Connection Status Polling
+Real-time Monitoring:
+
+QRCodeGenerator starts polling every 3 seconds via whatsapp-status-check edge function
+Edge function calls Evolution API's connection state endpoint
+Checks for instance.state === 'open' (connected)
+Status Detection:
+
+
+// Evolution API response structure
+{
+  instance: {
+    state: 'open' | 'close' | 'connecting' | 'qr',
+    phoneNumber: '5521999999999',
+    profileName: 'User Name'
+  }
+}
+5. WhatsApp Mobile App Scanning
+User Action:
+
+User opens WhatsApp mobile app
+Goes to Settings → Linked Devices → Link a Device
+Scans the QR code displayed in the web interface
+6. Connection Establishment
+Evolution API Handles:
+
+WhatsApp authentication via QR scan
+Establishes WebSocket connection with WhatsApp servers
+Instance state changes from 'qr' to 'open'
+7. Success Detection & Database Update
+Automatic Detection:
+
+Status polling detects state: 'open'
+Database is updated:
+
+{
+  status: 'connected',
+  phone_number: data.phoneNumber,
+  profile_name: data.profileName,
+  last_connected_at: new Date().toISOString(),
+  qr_code: null // Cleared
+}
+8. Real-time Updates (Post-Connection)
+Webhook Configuration:
+
+Each instance has a webhook URL: ${window.location.origin}/functions/v1/whatsapp-webhook
+Evolution API sends events to this webhook
+Events are stored in webhook_events table
+UI components use useWhatsAppRealtime hook to poll for updates
+Key Components in the Flow:
+Frontend Components:
+
+WhatsAppInstanceManager - Instance management
+WhatsAppConnectionFlow - Modal wrapper
+QRCodeGenerator - QR display & polling
+Edge Functions:
+
+whatsapp-qr-generate - Initiates connection & gets QR
+whatsapp-status-check - Polls connection status
+whatsapp-webhook - Receives real-time events
+Database Tables:
+
+whatsapp_instances - Instance data & status
+webhook_events - Real-time event storage
+Error Handling:
+Connection timeouts after reasonable delays
+Retry mechanisms for failed API calls
+User feedback through toast notifications
+Fallback to webhook polling if WebSocket fails
