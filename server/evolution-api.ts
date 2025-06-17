@@ -318,3 +318,11 @@ export function updateEvolutionApiSettings(settings: Partial<EvolutionApiSetting
 export function getEvolutionApiSettings(): EvolutionApiSettings {
   return { ...currentSettings };
 }
+
+export function getInstanceEvolutionApi(instanceApiKey: string): EvolutionApi {
+  const settings = getEvolutionApiSettings();
+  return new EvolutionApi({
+    baseUrl: settings.baseUrl,
+    apiKey: instanceApiKey
+  });
+}

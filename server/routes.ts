@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { evolutionManager } from "./evolution-manager";
-import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings } from "./evolution-api";
+import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings, getInstanceEvolutionApi } from "./evolution-api";
 import { 
   insertAppUserSchema,
   insertWhatsappInstanceSchema,
@@ -211,7 +211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // First create the instance in Evolution API if it doesn't exist
         try {
-          await evolutionApi.createInstance({
+          const createResponse = await evolutionApi.createInstance({
             instanceName: instance.instanceName,
             integration: "WHATSAPP-BAILEYS",
             webhook_url: instance.webhookUrl,
@@ -225,6 +225,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               'CHATS_UPSERT'
             ]
           });
+
+          // Store the instance API key if we got one
+          if (createResponse.hash?.apikey) {
+            await storage.updateWhatsappInstance(req.params.id, {
+              apiKey: createResponse.hash.apikey
+            });
+          }
         } catch (createError: any) {
           // Instance might already exist, continue with connection
           if (!createError.message?.includes('already exists') && !createError.message?.includes('Instance already')) {
@@ -260,7 +267,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       try {
-        const evolutionApi = getEvolutionApi();
+        // Use instance-specific API key if available, otherwise fall back to global
+        const evolutionApi = instance.apiKey 
+          ? getInstanceEvolutionApi(instance.apiKey)
+          : getEvolutionApi();
         
         // Direct QR code fetch from Evolution API
         try {
