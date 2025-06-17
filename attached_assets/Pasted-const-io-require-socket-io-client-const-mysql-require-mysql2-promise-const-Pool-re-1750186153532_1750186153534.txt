@@ -1,0 +1,389 @@
+const io = require('socket.io-client');
+const mysql = require('mysql2/promise');
+const { Pool } = require('pg'); // For PostgreSQL
+const mongoose = require('mongoose'); // For MongoDB
+
+class EvolutionWebSocketBridge {
+  constructor(config) {
+    this.config = config;
+    this.socket = null;
+    this.db = null;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = config.maxReconnectAttempts || Infinity;
+    this.reconnectDelay = config.reconnectDelay || 1000;
+    this.isConnected = false;
+    this.messageQueue = []; // Queue for offline messages
+    
+    this.init();
+  }
+
+  async init() {
+    try {
+      await this.connectDatabase();
+      await this.connectWebSocket();
+      this.startHealthCheck();
+      console.log('✅ Evolution API Bridge initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize bridge:', error);
+      this.scheduleReconnect();
+    }
+  }
+
+  // Database Connection Methods
+  async connectDatabase() {
+    const { dbType, dbConfig } = this.config;
+    
+    switch (dbType) {
+      case 'mysql':
+        this.db = await mysql.createConnection({
+          host: dbConfig.host,
+          user: dbConfig.user,
+          password: dbConfig.password,
+          database: dbConfig.database,
+          reconnect: true,
+          acquireTimeout: 60000,
+          timeout: 60000
+        });
+        break;
+        
+      case 'postgresql':
+        this.db = new Pool({
+          host: dbConfig.host,
+          user: dbConfig.user,
+          password: dbConfig.password,
+          database: dbConfig.database,
+          port: dbConfig.port || 5432,
+          max: 20,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 2000,
+        });
+        break;
+        
+      case 'mongodb':
+        await mongoose.connect(dbConfig.connectionString, {
+          useNewUrlParser: true,
+          useUnifiedTopology: true,
+          maxPoolSize: 10,
+          serverSelectionTimeoutMS: 5000,
+          socketTimeoutMS: 45000,
+        });
+        this.db = mongoose.connection;
+        break;
+    }
+    
+    console.log(`✅ Database (${dbType}) connected successfully`);
+  }
+
+  // WebSocket Connection with Auto-Reconnect
+  async connectWebSocket() {
+    const { evolutionApiUrl, instanceName, apiKey } = this.config;
+    
+    this.socket = io(`${evolutionApiUrl}/${instanceName}`, {
+      transports: ['websocket'],
+      autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: this.reconnectDelay,
+      reconnectionDelayMax: 5000,
+      maxReconnectionAttempts: Infinity,
+      timeout: 20000,
+      forceNew: true,
+      auth: {
+        apikey: apiKey
+      }
+    });
+
+    this.setupWebSocketEvents();
+  }
+
+  setupWebSocketEvents() {
+    // Connection Events
+    this.socket.on('connect', () => {
+      console.log('🔗 Connected to Evolution API WebSocket');
+      this.isConnected = true;
+      this.reconnectAttempts = 0;
+      this.processQueuedMessages();
+    });
+
+    this.socket.on('disconnect', (reason) => {
+      console.log('🔌 Disconnected from Evolution API:', reason);
+      this.isConnected = false;
+      this.scheduleReconnect();
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('❌ WebSocket connection error:', error);
+      this.scheduleReconnect();
+    });
+
+    // WhatsApp Events - Direct to Database
+    this.socket.on('MESSAGES_UPSERT', (data) => {
+      this.saveToDatabase('messages', data, 'upsert');
+    });
+
+    this.socket.on('MESSAGES_UPDATE', (data) => {
+      this.saveToDatabase('messages', data, 'update');
+    });
+
+    this.socket.on('SEND_MESSAGE', (data) => {
+      this.saveToDatabase('sent_messages', data, 'insert');
+    });
+
+    this.socket.on('CONNECTION_UPDATE', (data) => {
+      this.saveToDatabase('connection_status', data, 'upsert');
+    });
+
+    this.socket.on('CONTACTS_UPSERT', (data) => {
+      this.saveToDatabase('contacts', data, 'upsert');
+    });
+
+    this.socket.on('CHATS_UPSERT', (data) => {
+      this.saveToDatabase('chats', data, 'upsert');
+    });
+
+    this.socket.on('PRESENCE_UPDATE', (data) => {
+      this.saveToDatabase('presence', data, 'update');
+    });
+
+    this.socket.on('GROUPS_UPDATE', (data) => {
+      this.saveToDatabase('groups', data, 'update');
+    });
+  }
+
+  // Universal Database Save Method
+  async saveToDatabase(table, data, operation) {
+    if (!this.isConnected && this.config.queueOfflineMessages) {
+      this.messageQueue.push({ table, data, operation, timestamp: Date.now() });
+      return;
+    }
+
+    try {
+      const processedData = this.processEventData(data);
+      
+      switch (this.config.dbType) {
+        case 'mysql':
+          await this.saveMysql(table, processedData, operation);
+          break;
+        case 'postgresql':
+          await this.savePostgreSQL(table, processedData, operation);
+          break;
+        case 'mongodb':
+          await this.saveMongoDB(table, processedData, operation);
+          break;
+      }
+      
+      console.log(`✅ Saved ${operation} to ${table}:`, processedData.id || 'new record');
+      
+    } catch (error) {
+      console.error(`❌ Failed to save to ${table}:`, error);
+      
+      // Retry mechanism
+      if (this.config.retryFailedSaves) {
+        setTimeout(() => {
+          this.saveToDatabase(table, data, operation);
+        }, 2000);
+      }
+    }
+  }
+
+  // Database-specific save methods
+  async saveMysql(table, data, operation) {
+    const fields = Object.keys(data).join(', ');
+    const values = Object.values(data);
+    const placeholders = values.map(() => '?').join(', ');
+    
+    let query;
+    switch (operation) {
+      case 'insert':
+        query = `INSERT INTO ${table} (${fields}) VALUES (${placeholders})`;
+        break;
+      case 'upsert':
+        const updateFields = Object.keys(data).map(key => `${key} = ?`).join(', ');
+        query = `INSERT INTO ${table} (${fields}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateFields}`;
+        values.push(...values); // Duplicate values for UPDATE part
+        break;
+      case 'update':
+        const whereClause = data.id ? 'WHERE id = ?' : 'WHERE message_id = ?';
+        const updateCols = Object.keys(data).filter(k => k !== 'id').map(k => `${k} = ?`).join(', ');
+        query = `UPDATE ${table} SET ${updateCols} ${whereClause}`;
+        break;
+    }
+    
+    await this.db.execute(query, values);
+  }
+
+  async savePostgreSQL(table, data, operation) {
+    const client = await this.db.connect();
+    try {
+      const fields = Object.keys(data);
+      const values = Object.values(data);
+      
+      let query;
+      switch (operation) {
+        case 'insert':
+          query = `INSERT INTO ${table} (${fields.join(', ')}) VALUES (${fields.map((_, i) => `$${i + 1}`).join(', ')})`;
+          break;
+        case 'upsert':
+          const conflictField = data.id ? 'id' : 'message_id';
+          const updateSet = fields.filter(f => f !== conflictField).map(f => `${f} = EXCLUDED.${f}`).join(', ');
+          query = `INSERT INTO ${table} (${fields.join(', ')}) VALUES (${fields.map((_, i) => `$${i + 1}`).join(', ')}) 
+                   ON CONFLICT (${conflictField}) DO UPDATE SET ${updateSet}`;
+          break;
+        case 'update':
+          const whereField = data.id ? 'id' : 'message_id';
+          const updateFields = fields.filter(f => f !== whereField).map((f, i) => `${f} = $${i + 1}`).join(', ');
+          query = `UPDATE ${table} SET ${updateFields} WHERE ${whereField} = $${fields.length}`;
+          break;
+      }
+      
+      await client.query(query, values);
+    } finally {
+      client.release();
+    }
+  }
+
+  async saveMongoDB(collection, data, operation) {
+    const Collection = mongoose.model(collection, new mongoose.Schema({}, { strict: false }));
+    
+    switch (operation) {
+      case 'insert':
+        await new Collection(data).save();
+        break;
+      case 'upsert':
+        const filter = data.id ? { id: data.id } : { message_id: data.message_id };
+        await Collection.findOneAndUpdate(filter, data, { upsert: true, new: true });
+        break;
+      case 'update':
+        const updateFilter = data.id ? { id: data.id } : { message_id: data.message_id };
+        await Collection.findOneAndUpdate(updateFilter, data, { new: true });
+        break;
+    }
+  }
+
+  // Process and normalize event data
+  processEventData(rawData) {
+    return {
+      id: rawData.key?.id || rawData.id,
+      message_id: rawData.key?.id,
+      from_me: rawData.key?.fromMe || false,
+      remote_jid: rawData.key?.remoteJid,
+      message_type: rawData.messageType,
+      message_content: JSON.stringify(rawData.message || rawData),
+      timestamp: rawData.messageTimestamp || Date.now(),
+      status: rawData.status,
+      instance_name: this.config.instanceName,
+      created_at: new Date(),
+      updated_at: new Date(),
+      raw_data: JSON.stringify(rawData)
+    };
+  }
+
+  // Process queued messages when connection is restored
+  async processQueuedMessages() {
+    if (this.messageQueue.length === 0) return;
+    
+    console.log(`📤 Processing ${this.messageQueue.length} queued messages`);
+    
+    for (const queuedMessage of this.messageQueue) {
+      await this.saveToDatabase(
+        queuedMessage.table, 
+        queuedMessage.data, 
+        queuedMessage.operation
+      );
+    }
+    
+    this.messageQueue = [];
+    console.log('✅ All queued messages processed');
+  }
+
+  // Auto-reconnection logic
+  scheduleReconnect() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('❌ Max reconnection attempts reached');
+      return;
+    }
+
+    this.reconnectAttempts++;
+    const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts), 30000);
+    
+    console.log(`🔄 Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+    
+    setTimeout(() => {
+      this.init();
+    }, delay);
+  }
+
+  // Health check to ensure connection stability
+  startHealthCheck() {
+    setInterval(() => {
+      if (!this.socket.connected) {
+        console.log('🏥 Health check failed - reconnecting...');
+        this.scheduleReconnect();
+      }
+    }, 30000); // Check every 30 seconds
+  }
+
+  // Graceful shutdown
+  async shutdown() {
+    console.log('🛑 Shutting down Evolution API Bridge...');
+    
+    if (this.socket) {
+      this.socket.disconnect();
+    }
+    
+    if (this.db) {
+      switch (this.config.dbType) {
+        case 'mysql':
+          await this.db.end();
+          break;
+        case 'postgresql':
+          await this.db.end();
+          break;
+        case 'mongodb':
+          await mongoose.connection.close();
+          break;
+      }
+    }
+    
+    console.log('✅ Bridge shutdown complete');
+  }
+}
+
+// Usage Example
+const bridgeConfig = {
+  // Evolution API Settings
+  evolutionApiUrl: 'https://your-evolution-api.com',
+  instanceName: 'your-instance',
+  apiKey: 'your-api-key',
+  
+  // Database Settings
+  dbType: 'mysql', // 'mysql', 'postgresql', 'mongodb'
+  dbConfig: {
+    host: 'localhost',
+    user: 'username',
+    password: 'password',
+    database: 'whatsapp_data'
+  },
+  
+  // Reliability Settings
+  maxReconnectAttempts: Infinity,
+  reconnectDelay: 1000,
+  queueOfflineMessages: true,
+  retryFailedSaves: true
+};
+
+// Initialize the bridge
+const bridge = new EvolutionWebSocketBridge(bridgeConfig);
+
+// Graceful shutdown handling
+process.on('SIGINT', async () => {
+  await bridge.shutdown();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  await bridge.shutdown();
+  process.exit(0);
+});
+
+module.exports = EvolutionWebSocketBridge;
