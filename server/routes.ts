@@ -105,9 +105,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/whatsapp/instances", async (req, res) => {
     try {
       const instanceData = insertWhatsappInstanceSchema.parse(req.body);
-      const instance = await storage.createWhatsappInstance(instanceData);
-      res.status(201).json(instance);
+      
+      // Create instance in Evolution API using global API key
+      try {
+        const evolutionApi = getEvolutionApi();
+        const createResponse = await evolutionApi.createInstance({
+          instanceName: instanceData.instanceName,
+          integration: "WHATSAPP-BAILEYS",
+          webhook_url: instanceData.webhookUrl,
+          events: [
+            'APPLICATION_STARTUP',
+            'QRCODE_UPDATED',
+            'CONNECTION_UPDATE',
+            'MESSAGES_UPSERT',
+            'MESSAGES_UPDATE',
+            'MESSAGES_DELETE',
+            'SEND_MESSAGE',
+            'CONTACTS_UPDATE',
+            'CONTACTS_UPSERT',
+            'PRESENCE_UPDATE',
+            'CHATS_UPDATE',
+            'CHATS_UPSERT',
+            'CHATS_DELETE',
+            'GROUPS_UPSERT',
+            'GROUP_UPDATE',
+            'GROUP_PARTICIPANTS_UPDATE',
+            'NEW_JWT_TOKEN'
+          ]
+        });
+
+        // Capture the instance-specific API key from Evolution API response
+        const instanceApiKey = createResponse.hash?.apikey;
+        
+        // Store instance with the captured API key
+        const instance = await storage.createWhatsappInstance({
+          ...instanceData,
+          apiKey: instanceApiKey || undefined,
+          status: "created"
+        });
+
+        console.log(`✅ Created instance: ${instanceData.instanceName} with API key: ${instanceApiKey?.substring(0, 8)}...`);
+        
+        res.status(201).json(instance);
+      } catch (evolutionError: any) {
+        console.error("Evolution API creation failed:", evolutionError);
+        
+        // Fall back to creating instance without Evolution API
+        const instance = await storage.createWhatsappInstance({
+          ...instanceData,
+          status: "creation_failed"
+        });
+        
+        res.status(201).json({
+          ...instance,
+          warning: "Instance created locally but failed to register with Evolution API"
+        });
+      }
     } catch (error) {
+      console.error("Instance creation error:", error);
       res.status(400).json({ error: "Invalid instance data" });
     }
   });
@@ -214,7 +269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const createResponse = await evolutionApi.createInstance({
             instanceName: instance.instanceName,
             integration: "WHATSAPP-BAILEYS",
-            webhook_url: instance.webhookUrl,
+            webhook_url: instance.webhookUrl || undefined,
             events: [
               'APPLICATION_STARTUP',
               'QRCODE_UPDATED', 
