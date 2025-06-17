@@ -12,9 +12,9 @@ interface SidebarProps {
 export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProps) {
   // Mock user data - in real app this would come from auth context
   const currentUser = {
-    id: "user-1",
-    name: "John Doe",
-    email: "john@example.com",
+    id: "7804247f-3ae8-4eb2-8c6d-2c44f967ad42",
+    name: "Demo User",
+    email: "demo@example.com",
     avatar: null
   };
 
