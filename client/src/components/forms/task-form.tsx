@@ -150,7 +150,7 @@ export default function TaskForm({ isOpen, onClose, userId }: TaskFormProps) {
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {form.watch("dueDate") ? (
-                    format(new Date(form.watch("dueDate")), "PPP")
+                    format(form.watch("dueDate"), "PPP")
                   ) : (
                     <span>Pick a due date</span>
                   )}

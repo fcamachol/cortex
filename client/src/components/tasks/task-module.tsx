@@ -8,7 +8,7 @@ import TaskForm from "@/components/forms/task-form";
 
 export default function TaskModule() {
   const [activeFilter, setActiveFilter] = useState("all");
-  const queryClient = useQueryClient();
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   // Mock user ID - in real app this would come from auth context
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
@@ -17,39 +17,10 @@ export default function TaskModule() {
     queryKey: [`/api/tasks/${userId}`],
   });
 
-  const createTaskMutation = useMutation({
-    mutationFn: async (taskData: any) => {
-      return apiRequest("POST", "/api/tasks", taskData);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/tasks/${userId}`] });
-    },
-  });
-
-  const updateTaskMutation = useMutation({
-    mutationFn: async ({ id, ...data }: any) => {
-      return apiRequest("PUT", `/api/tasks/${id}`, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/tasks/${userId}`] });
-    },
-  });
-
   const filteredTasks = tasks.filter((task: any) => {
     if (activeFilter === "all") return true;
     return task.taskStatus === activeFilter;
   });
-
-  const handleCreateTask = () => {
-    const newTask = {
-      userId,
-      title: "New Task",
-      description: "Task description",
-      taskStatus: "to_do",
-      priority: "medium"
-    };
-    createTaskMutation.mutate(newTask);
-  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -98,8 +69,7 @@ export default function TaskModule() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Tasks</h1>
           <Button 
             className="bg-green-500 hover:bg-green-600 text-white"
-            onClick={handleCreateTask}
-            disabled={createTaskMutation.isPending}
+            onClick={() => setIsFormOpen(true)}
           >
             <Plus className="mr-2 h-4 w-4" />
             New Task
@@ -142,7 +112,7 @@ export default function TaskModule() {
             </p>
             <Button 
               className="bg-green-500 hover:bg-green-600 text-white"
-              onClick={handleCreateTask}
+              onClick={() => setIsFormOpen(true)}
             >
               <Plus className="mr-2 h-4 w-4" />
               Create Task
@@ -205,6 +175,12 @@ export default function TaskModule() {
             ))}
           </div>
         )}
+
+        <TaskForm
+          isOpen={isFormOpen}
+          onClose={() => setIsFormOpen(false)}
+          userId={userId}
+        />
       </div>
     </div>
   );
