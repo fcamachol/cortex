@@ -76,22 +76,11 @@ export class EvolutionBridgeManager {
     }
 
     try {
-      const config = {
-        evolutionApiUrl: process.env.EVOLUTION_API_URL!,
-        instanceName: instance.instanceName,
-        apiKey: process.env.EVOLUTION_API_KEY!,
-        maxReconnectAttempts: 5,
-        reconnectDelay: 5000,
-        queueOfflineMessages: true,
-        retryFailedSaves: true
-      };
-
-      const bridge = new EvolutionWebSocketBridge(config, userId, instance.id);
-      this.bridges.set(bridgeKey, bridge);
-      
-      console.log(`✅ Created bridge for instance: ${instance.instanceName}`);
+      // For webhook-based Evolution API, we don't need active bridges
+      // Just log that the instance is ready for webhook communication
+      console.log(`✅ Instance ready for webhook communication: ${instance.instanceName}`);
     } catch (error) {
-      console.error(`❌ Failed to create bridge for ${instance.instanceName}:`, error);
+      console.error(`❌ Failed to setup instance ${instance.instanceName}:`, error);
     }
   }
 
