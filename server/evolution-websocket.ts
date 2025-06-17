@@ -40,12 +40,14 @@ export class EvolutionAPIWebSocket {
 
   private async connect() {
     try {
-      console.log(`🔗 Connecting to Evolution API WebSocket: ${this.config.apiUrl}`);
+      // Convert HTTP URL to WSS for WebSocket connection
+      const wsUrl = this.config.apiUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+      console.log(`🔗 Connecting to Evolution API WebSocket: ${wsUrl}`);
       console.log(`📱 Instance: ${this.config.instanceName}`);
       console.log(`🔑 Using instance API key: ${this.config.apiKey.substring(0, 8)}...`);
       
       // Evolution API WebSocket connection with proper authentication
-      this.socket = io(this.config.apiUrl, {
+      this.socket = io(wsUrl, {
         transports: ['websocket'],
         upgrade: true,
         rememberUpgrade: true,
