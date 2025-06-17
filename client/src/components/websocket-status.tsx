@@ -19,7 +19,7 @@ interface WebSocketStatus {
 export function WebSocketStatus() {
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  const { data: statuses, isLoading, refetch } = useQuery({
+  const { data: statuses, isLoading, refetch } = useQuery<WebSocketStatus[]>({
     queryKey: ['/api/whatsapp/websocket/status'],
     refetchInterval: autoRefresh ? 3000 : false, // Auto refresh every 3 seconds
     refetchIntervalInBackground: true,
@@ -95,7 +95,7 @@ export function WebSocketStatus() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {statuses?.map((status: WebSocketStatus) => (
+          {Array.isArray(statuses) && statuses.map((status: WebSocketStatus) => (
             <div
               key={status.instanceId}
               className="flex items-center justify-between p-4 border rounded-lg bg-card"
@@ -136,7 +136,7 @@ export function WebSocketStatus() {
             </div>
           ))}
 
-          {(!statuses || statuses.length === 0) && (
+          {(!Array.isArray(statuses) || statuses.length === 0) && (
             <div className="text-center py-8 text-muted-foreground">
               No WhatsApp instances found
             </div>
