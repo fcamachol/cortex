@@ -1,9 +1,9 @@
-import { EvolutionWebSocketBridge } from './evolution-bridge';
+import { EvolutionAPIWebSocket } from './evolution-websocket';
 import { storage } from './storage';
 import type { WhatsappInstance } from '@shared/schema';
 
 export class EvolutionBridgeManager {
-  private bridges = new Map<string, EvolutionWebSocketBridge>();
+  private bridges = new Map<string, EvolutionAPIWebSocket>();
   private isInitialized = false;
 
   async initialize() {

@@ -1,4 +1,4 @@
-import WebSocket from 'ws';
+import { io, Socket } from 'socket.io-client';
 import { storage } from './storage';
 import { 
   type InsertWhatsappMessage,
@@ -15,7 +15,7 @@ interface EvolutionConfig {
 }
 
 export class EvolutionAPIWebSocket {
-  private ws: WebSocket | null = null;
+  private socket: Socket | null = null;
   private reconnectAttempts = 0;
   private isConnected = false;
   private userId: string;
@@ -40,48 +40,68 @@ export class EvolutionAPIWebSocket {
 
   private async connect() {
     try {
-      const wsUrl = `${this.config.apiUrl.replace(/^http/, 'ws')}/ws/${this.config.instanceName}`;
-      console.log(`Connecting to Evolution API WebSocket: ${wsUrl}`);
+      console.log(`Connecting to Evolution API: ${this.config.apiUrl}`);
       
-      this.ws = new WebSocket(wsUrl, {
-        headers: {
-          'apikey': this.config.apiKey
-        }
+      this.socket = io(this.config.apiUrl, {
+        transports: ['websocket', 'polling'],
+        auth: {
+          apikey: this.config.apiKey,
+          instanceName: this.config.instanceName
+        },
+        reconnection: true,
+        reconnectionAttempts: this.config.maxReconnectAttempts || 10,
+        reconnectionDelay: this.config.reconnectInterval || 5000
       });
 
       this.setupEventHandlers();
     } catch (error) {
-      console.error('WebSocket connection failed:', error);
+      console.error('Socket.IO connection failed:', error);
       this.scheduleReconnect();
     }
   }
 
   private setupEventHandlers() {
-    if (!this.ws) return;
+    if (!this.socket) return;
 
-    this.ws.on('open', () => {
-      console.log(`Evolution WebSocket connected for ${this.config.instanceName}`);
+    this.socket.on('connect', () => {
+      console.log(`Evolution Socket.IO connected for ${this.config.instanceName}`);
       this.isConnected = true;
       this.reconnectAttempts = 0;
     });
 
-    this.ws.on('message', async (data: Buffer) => {
-      try {
-        const event = JSON.parse(data.toString());
-        await this.processEvent(event);
-      } catch (error) {
-        console.error('Error processing WebSocket message:', error);
-      }
-    });
-
-    this.ws.on('close', (code: number, reason: Buffer) => {
-      console.log(`Evolution WebSocket closed: ${code} - ${reason.toString()}`);
+    this.socket.on('disconnect', (reason) => {
+      console.log(`Evolution Socket.IO disconnected: ${reason}`);
       this.isConnected = false;
       this.scheduleReconnect();
     });
 
-    this.ws.on('error', (error: Error) => {
-      console.error('Evolution WebSocket error:', error);
+    this.socket.on('connect_error', (error) => {
+      console.error('Evolution Socket.IO connection error:', error);
+    });
+
+    // Evolution API event handlers for authentic WhatsApp data
+    this.socket.on('messages.upsert', async (data) => {
+      await this.handleMessagesUpsert(data);
+    });
+
+    this.socket.on('messages.update', async (data) => {
+      await this.handleMessagesUpdate(data);
+    });
+
+    this.socket.on('contacts.upsert', async (data) => {
+      await this.handleContactsUpsert(data);
+    });
+
+    this.socket.on('chats.upsert', async (data) => {
+      await this.handleChatsUpsert(data);
+    });
+
+    this.socket.on('connection.update', async (data) => {
+      await this.handleConnectionUpdate(data);
+    });
+
+    this.socket.on('presence.update', async (data) => {
+      await this.handlePresenceUpdate(data);
     });
   }
 
@@ -142,7 +162,7 @@ export class EvolutionAPIWebSocket {
       fromMe: key.fromMe,
       participant: participant || null,
       messageContent: messageContent,
-      messageType: contentData.type,
+      messageType: contentData.type as any,
       textContent: contentData.text || null,
       mediaUrl: contentData.mediaUrl || null,
       mediaMimetype: contentData.mimetype || null,
@@ -296,8 +316,9 @@ export class EvolutionAPIWebSocket {
       userId: this.userId,
       instanceId: this.instanceId,
       remoteJid: contact.id,
-      displayName: contact.name || contact.notify || contact.id.split('@')[0],
       pushName: contact.notify || null,
+      phoneNumber: contact.id.split('@')[0],
+      profileName: contact.name || null,
       profilePictureUrl: contact.imgUrl || null,
       isMyContact: contact.isMyContact || false,
       isWaContact: contact.isWAContact || false,
@@ -364,11 +385,22 @@ export class EvolutionAPIWebSocket {
   }
 
   public async shutdown() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
     }
     this.isConnected = false;
+  }
+
+  public async sendMessage(to: string, message: string, options?: any) {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('sendMessage', {
+        instanceName: this.config.instanceName,
+        to: to,
+        message: message,
+        ...options
+      });
+    }
   }
 
   public isSocketConnected(): boolean {
