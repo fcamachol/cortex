@@ -194,46 +194,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/whatsapp/instances/:id/refresh-key", async (req, res) => {
-    try {
-      const instance = await storage.getWhatsappInstance(req.params.id);
-      if (!instance) {
-        return res.status(404).json({ error: "Instance not found" });
-      }
-
-      try {
-        const evolutionApi = getEvolutionApi();
-        const instanceInfo = await evolutionApi.getInstanceInfo(instance.instanceName);
-        
-        if (instanceInfo.hash?.apikey) {
-          await storage.updateWhatsappInstance(req.params.id, {
-            apiKey: instanceInfo.hash.apikey
-          });
-          console.log(`✅ Updated API key for ${instance.instanceName}: ${instanceInfo.hash.apikey}`);
-          
-          res.json({
-            success: true,
-            message: "Instance API key updated successfully",
-            apiKey: instanceInfo.hash.apikey
-          });
-        } else {
-          res.json({
-            success: false,
-            message: "No API key found in instance response"
-          });
-        }
-      } catch (apiError: any) {
-        console.error("Evolution API refresh error:", apiError);
-        res.status(500).json({
-          success: false,
-          message: apiError.message || "Failed to refresh instance API key"
-        });
-      }
-    } catch (error) {
-      res.status(500).json({ error: "Failed to refresh instance API key" });
-    }
-  });
-
   app.post("/api/whatsapp/instances/:id/connect", async (req, res) => {
     try {
       const instance = await storage.getWhatsappInstance(req.params.id);
@@ -251,7 +211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // First create the instance in Evolution API if it doesn't exist
         try {
-          const instanceResponse = await evolutionApi.createInstance({
+          await evolutionApi.createInstance({
             instanceName: instance.instanceName,
             integration: "WHATSAPP-BAILEYS",
             webhook_url: instance.webhookUrl,
@@ -265,29 +225,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               'CHATS_UPSERT'
             ]
           });
-          
-          // Store the instance-specific API key from Evolution API response
-          if (instanceResponse.hash?.apikey) {
-            await storage.updateWhatsappInstance(req.params.id, {
-              apiKey: instanceResponse.hash.apikey
-            });
-            console.log(`✅ Stored instance API key for ${instance.instanceName}: ${instanceResponse.hash.apikey}`);
-          }
         } catch (createError: any) {
-          // Instance might already exist, try to get existing instance info
-          if (createError.message?.includes('already exists') || createError.message?.includes('Instance already')) {
-            try {
-              const existingInstance = await evolutionApi.getInstanceInfo(instance.instanceName);
-              if (existingInstance.hash?.apikey) {
-                await storage.updateWhatsappInstance(req.params.id, {
-                  apiKey: existingInstance.hash.apikey
-                });
-                console.log(`✅ Retrieved existing instance API key for ${instance.instanceName}: ${existingInstance.hash.apikey}`);
-              }
-            } catch (getError) {
-              console.log("Could not retrieve existing instance info:", getError);
-            }
-          } else {
+          // Instance might already exist, continue with connection
+          if (!createError.message?.includes('already exists') && !createError.message?.includes('Instance already')) {
             console.log("Instance creation result:", createError.message);
           }
         }
