@@ -62,8 +62,43 @@ function formatToE164(phoneNumber: string): string {
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
-  // Initialize Evolution API bridge manager - Disabled due to WebSocket namespace errors
-  // await evolutionManager.initialize();
+  // Evolution API Webhook endpoint for real-time WhatsApp events
+  app.post('/api/evolution/webhook/:instanceName', async (req, res) => {
+    try {
+      const { instanceName } = req.params;
+      const webhookData = req.body;
+      
+      console.log(`📨 Evolution API Webhook for ${instanceName}:`, JSON.stringify(webhookData, null, 2));
+      
+      // Process different event types from Evolution API
+      const { event, data } = webhookData;
+      
+      switch (event) {
+        case 'messages.upsert':
+          await handleWebhookMessagesUpsert(instanceName, data);
+          break;
+        case 'contacts.upsert':
+          await handleWebhookContactsUpsert(instanceName, data);
+          break;
+        case 'chats.upsert':
+          await handleWebhookChatsUpsert(instanceName, data);
+          break;
+        case 'presence.update':
+          console.log(`👁️ Presence update for ${instanceName}:`, data);
+          break;
+        case 'connection.update':
+          console.log(`🔗 Connection update for ${instanceName}:`, data);
+          break;
+        default:
+          console.log(`🎯 Unhandled Evolution API event: ${event}`, data);
+      }
+      
+      res.status(200).json({ status: 'received' });
+    } catch (error) {
+      console.error('Evolution API webhook error:', error);
+      res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  });
 
   // WebSocket server for real-time messaging
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });

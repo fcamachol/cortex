@@ -42,22 +42,24 @@ export class EvolutionAPIWebSocket {
     try {
       console.log(`🔗 Connecting to Evolution API WebSocket: ${this.config.apiUrl}`);
       console.log(`📱 Instance: ${this.config.instanceName}`);
-      
-      // Connect to Evolution API WebSocket with proper namespace
       console.log(`🔑 Using instance API key: ${this.config.apiKey.substring(0, 8)}...`);
       
+      // Evolution API WebSocket connection with proper authentication
       this.socket = io(this.config.apiUrl, {
-        transports: ['websocket', 'polling'],
+        transports: ['websocket'],
+        upgrade: true,
+        rememberUpgrade: true,
         forceNew: true,
         reconnection: true,
         reconnectionAttempts: this.config.maxReconnectAttempts,
         reconnectionDelay: this.config.reconnectInterval,
+        timeout: 20000,
+        auth: {
+          apikey: this.config.apiKey
+        },
         query: {
           apikey: this.config.apiKey,
           instanceName: this.config.instanceName
-        },
-        extraHeaders: {
-          'apikey': this.config.apiKey
         }
       });
 
