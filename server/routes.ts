@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
+import { evolutionManager } from "./evolution-manager";
 import { 
   insertAppUserSchema,
   insertWhatsappInstanceSchema,
@@ -16,6 +17,9 @@ import {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+  
+  // Initialize Evolution API bridge manager
+  await evolutionManager.initialize();
 
   // WebSocket server for real-time messaging
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
@@ -111,9 +115,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const updateData = req.body;
       const instance = await storage.updateWhatsappInstance(req.params.id, updateData);
+      
+      // Refresh the Evolution API bridge for this instance
+      const oldInstance = await storage.getWhatsappInstance(req.params.id);
+      if (oldInstance) {
+        await evolutionManager.refreshInstance(oldInstance.userId, req.params.id);
+      }
+      
       res.json(instance);
     } catch (error) {
       res.status(400).json({ error: "Failed to update instance" });
+    }
+  });
+
+  app.delete("/api/whatsapp/instances/:id", async (req, res) => {
+    try {
+      const instance = await storage.getWhatsappInstance(req.params.id);
+      if (instance) {
+        await evolutionManager.removeBridge(instance.userId, req.params.id);
+        await storage.deleteWhatsappInstance(req.params.id);
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ error: "Failed to delete instance" });
+    }
+  });
+
+  app.get("/api/whatsapp/instances/:id/status", async (req, res) => {
+    try {
+      const instance = await storage.getWhatsappInstance(req.params.id);
+      if (!instance) {
+        return res.status(404).json({ error: "Instance not found" });
+      }
+      
+      const bridgeStatus = evolutionManager.getBridgeStatus(instance.userId, req.params.id);
+      
+      res.json({
+        instance: {
+          id: instance.id,
+          name: instance.instanceName,
+          status: instance.status
+        },
+        bridge: bridgeStatus
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get instance status" });
     }
   });
 
@@ -170,6 +216,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/whatsapp/messages", async (req, res) => {
     try {
       const messageData = insertWhatsappMessageSchema.parse(req.body);
+      
+      // If this is an outgoing message, send it via Evolution API
+      if (messageData.isFromMe && messageData.instanceId && messageData.toNumber) {
+        try {
+          const result = await evolutionManager.sendMessage(
+            messageData.userId,
+            messageData.instanceId,
+            messageData.toNumber || "",
+            messageData.content || ""
+          );
+          
+          // Update message with Evolution API response
+          messageData.messageId = result.key?.id || messageData.messageId;
+          messageData.status = 'sent';
+        } catch (evolError) {
+          console.error('Failed to send via Evolution API:', evolError);
+          messageData.status = 'failed';
+        }
+      }
+      
       const message = await storage.createWhatsappMessage(messageData);
       
       // Broadcast to connected clients

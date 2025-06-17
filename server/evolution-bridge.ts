@@ -151,8 +151,7 @@ export class EvolutionWebSocketBridge {
         if (messageId) {
           // Update message status or other properties
           await storage.updateWhatsappMessage(messageId, {
-            status: message.status,
-            updatedAt: new Date()
+            status: message.status
           });
         }
       }
