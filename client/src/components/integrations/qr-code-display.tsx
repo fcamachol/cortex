@@ -265,14 +265,14 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }:
             </p>
             {profileData && (
               <div className="space-y-2">
-                {(profileData.wuid || profileData.jid) && (
+                {profileData.phoneNumber && (
                   <p className="text-sm text-green-600 dark:text-green-400">
-                    Phone: +{profileData.wuid || profileData.jid?.split('@')[0]}
+                    Phone: +{profileData.phoneNumber}
                   </p>
                 )}
-                {(profileData.name || profileData.pushName) && (
+                {profileData.profileName && (
                   <p className="text-sm text-green-600 dark:text-green-400">
-                    Name: {profileData.name || profileData.pushName}
+                    Name: {profileData.profileName}
                   </p>
                 )}
               </div>
