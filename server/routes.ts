@@ -135,7 +135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         // Capture the instance-specific API key from Evolution API response
-        const instanceApiKey = createResponse.hash?.apikey;
+        const instanceApiKey = createResponse.hash;
         
         // Store instance with the captured API key
         const instance = await storage.createWhatsappInstance({
