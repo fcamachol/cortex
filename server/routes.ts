@@ -187,12 +187,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/whatsapp/instances/:id", async (req, res) => {
     try {
       const instance = await storage.getWhatsappInstance(req.params.id);
-      if (instance) {
-        await evolutionManager.removeBridge(instance.userId, req.params.id);
-        await storage.deleteWhatsappInstance(req.params.id);
+      if (!instance) {
+        return res.status(404).json({ error: "Instance not found" });
       }
+
+      console.log(`🗑️ Deleting instance: ${instance.instanceName} (${instance.id})`);
+
+      // Remove the Evolution WebSocket bridge first
+      await evolutionManager.removeBridge(instance.userId, req.params.id);
+
+      // Delete the instance from Evolution API if we have an instance API key
+      if (instance.instanceApiKey) {
+        try {
+          const instanceEvolutionApi = getInstanceEvolutionApi(instance.instanceApiKey);
+          await instanceEvolutionApi.deleteInstance(instance.instanceName);
+          console.log(`✅ Instance ${instance.instanceName} deleted from Evolution API`);
+        } catch (evolutionError: any) {
+          console.error(`❌ Failed to delete instance from Evolution API:`, evolutionError);
+          // Continue with database deletion even if Evolution API fails
+        }
+      } else if (instance.instanceName) {
+        try {
+          // Fallback to global API key if no instance-specific key
+          const globalEvolutionApi = getEvolutionApi();
+          await globalEvolutionApi.deleteInstance(instance.instanceName);
+          console.log(`✅ Instance ${instance.instanceName} deleted from Evolution API (global key)`);
+        } catch (evolutionError: any) {
+          console.error(`❌ Failed to delete instance from Evolution API with global key:`, evolutionError);
+        }
+      }
+
+      // Delete from database
+      await storage.deleteWhatsappInstance(req.params.id);
+      console.log(`✅ Instance ${instance.instanceName} deleted from database`);
+
       res.status(204).send();
     } catch (error) {
+      console.error("Failed to delete instance:", error);
       res.status(400).json({ error: "Failed to delete instance" });
     }
   });
