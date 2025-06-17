@@ -261,6 +261,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         const evolutionApi = getEvolutionApi();
+        
+        // Direct QR code fetch from Evolution API
+        try {
+          const qrResponse = await evolutionApi.getQRCode(instance.instanceName);
+          
+          if (qrResponse.base64) {
+            await storage.updateWhatsappInstance(req.params.id, {
+              status: "qr_pending"
+            });
+
+            res.json({
+              qrCode: qrResponse.base64,
+              status: "qr_pending",
+              pairingCode: qrResponse.pairingCode || null
+            });
+            return;
+          }
+        } catch (qrError: any) {
+          console.log("Direct QR fetch failed, trying connection state:", qrError.message);
+        }
+
+        // Fallback to connection state if direct QR fetch fails
         const connectionState = await evolutionApi.getConnectionState(instance.instanceName);
         
         if (connectionState.qrcode?.base64) {
@@ -270,37 +292,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           res.json({
             qrCode: connectionState.qrcode.base64,
-            status: "qr_pending"
+            status: "qr_pending",
+            pairingCode: connectionState.qrcode.pairingCode || null
           });
         } else {
-          // Try to generate QR code by connecting first
-          try {
-            await evolutionApi.connectInstance(instance.instanceName);
-            const newConnectionState = await evolutionApi.getConnectionState(instance.instanceName);
-            
-            if (newConnectionState.qrcode?.base64) {
-              await storage.updateWhatsappInstance(req.params.id, {
-                status: "qr_pending"
-              });
-
-              res.json({
-                qrCode: newConnectionState.qrcode.base64,
-                status: "qr_pending"
-              });
-            } else {
-              res.json({
-                qrCode: null,
-                status: newConnectionState.instance.state || "disconnected",
-                message: "QR code generation in progress"
-              });
-            }
-          } catch (connectError) {
-            res.json({
-              qrCode: null,
-              status: connectionState.instance.state || "disconnected",
-              message: "Unable to generate QR code at this time"
-            });
-          }
+          res.json({
+            qrCode: null,
+            status: connectionState.instance.state || "disconnected",
+            message: "QR code not available. Try connecting the instance first."
+          });
         }
       } catch (apiError: any) {
         console.error("Evolution API QR error:", apiError);

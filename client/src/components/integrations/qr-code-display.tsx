@@ -61,12 +61,17 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
   const checkStatus = async () => {
     try {
       setIsRefreshing(true);
-      const response: any = await apiRequest("GET", `/api/whatsapp/instances/${instanceId}/status`);
       
-      setStatus(response.instance.status);
+      // Check QR code first
+      const qrResponse: any = await apiRequest("GET", `/api/whatsapp/instances/${instanceId}/qr`);
       
-      if (response.instance.status === "connected") {
+      if (qrResponse.qrCode) {
+        const cleanQrCode = qrResponse.qrCode.replace(/^data:image\/png;base64,/, "");
+        setQrCode(cleanQrCode);
+        setStatus("qr_pending");
+      } else if (qrResponse.status === "connected") {
         setQrCode(null);
+        setStatus("connected");
         stopRefreshing();
         onConnected();
         
@@ -74,9 +79,8 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
           title: "Connected!",
           description: "WhatsApp instance connected successfully.",
         });
-      } else if (response.instance.status === "qr_pending" && response.qrCode) {
-        const cleanQrCode = response.qrCode.replace(/^data:image\/png;base64,/, "");
-        setQrCode(cleanQrCode);
+      } else {
+        setStatus(qrResponse.status || "connecting");
       }
     } catch (error) {
       console.error("Status check failed:", error);
