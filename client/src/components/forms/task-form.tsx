@@ -19,7 +19,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 const taskFormSchema = insertTaskSchema.extend({
   title: z.string().min(1, "Title is required"),
   priority: z.enum(["low", "medium", "high", "urgent"]),
-  taskStatus: z.enum(["to_do", "in_progress", "done"])
+  taskStatus: z.enum(["to_do", "in_progress", "done"]),
+  dueDate: z.date().optional()
 });
 
 interface TaskFormProps {
@@ -150,7 +151,7 @@ export default function TaskForm({ isOpen, onClose, userId }: TaskFormProps) {
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {form.watch("dueDate") ? (
-                    format(form.watch("dueDate"), "PPP")
+                    format(form.watch("dueDate")!, "PPP")
                   ) : (
                     <span>Pick a due date</span>
                   )}
@@ -159,8 +160,8 @@ export default function TaskForm({ isOpen, onClose, userId }: TaskFormProps) {
               <PopoverContent className="w-auto p-0">
                 <Calendar
                   mode="single"
-                  selected={form.watch("dueDate") ? new Date(form.watch("dueDate")) : undefined}
-                  onSelect={(date) => form.setValue("dueDate", date)}
+                  selected={form.watch("dueDate") || undefined}
+                  onSelect={(date) => form.setValue("dueDate", date as any)}
                   initialFocus
                 />
               </PopoverContent>
