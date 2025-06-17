@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { QrCode, Smartphone, WifiOff, Wifi, Plus, Trash2, AlertTriangle, Edit2, Check, X } from "lucide-react";
 import { QRCodeDisplay } from "./qr-code-display";
+import { PhoneNumberDisplay } from "@/components/ui/phone-number-display";
 
 interface WhatsAppInstance {
   id: string;
@@ -320,7 +321,9 @@ export function WhatsAppInstanceManager() {
                 {instance.phoneNumber && (
                   <div className="text-sm">
                     <span className="text-gray-600 dark:text-gray-400">Phone:</span>
-                    <span className="ml-2 font-medium">{instance.phoneNumber}</span>
+                    <div className="ml-2">
+                      <PhoneNumberDisplay phoneNumber={instance.phoneNumber} />
+                    </div>
                   </div>
                 )}
                 {instance.profileName && (
@@ -410,7 +413,7 @@ export function WhatsAppInstanceManager() {
             <QRCodeDisplay
               instanceId={selectedInstance.id}
               instanceName={selectedInstance.instanceName}
-              onConnected={() => {
+              onConnectionSuccess={() => {
                 setSelectedInstanceForQR(null);
                 queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/instances/${userId}`] });
               }}

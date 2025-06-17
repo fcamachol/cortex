@@ -4,81 +4,81 @@ interface PhoneNumberDisplayProps {
 }
 
 export function PhoneNumberDisplay({ phoneNumber, className = "" }: PhoneNumberDisplayProps) {
-  // Parse E.164 format phone number
+  // Parse phone number and format as (country code) (first 3) (second 3) (last 4)
   const parsePhoneNumber = (phone: string) => {
-    // Remove spaces and plus sign for parsing
-    const cleanNumber = phone.replace(/[\s+]/g, '');
+    // Remove all non-digit characters except the initial +
+    const cleanNumber = phone.replace(/[^\d+]/g, '');
     
-    // Handle US/Canada format: +1 XXX XXX XXXX
-    if (phone.startsWith('+1') && cleanNumber.length === 11) {
+    // Extract country code (+ followed by 1-3 digits)
+    const countryCodeMatch = cleanNumber.match(/^(\+\d{1,3})/);
+    if (!countryCodeMatch) {
+      // If no country code, return as-is
       return {
-        countryCode: '+1',
-        areaCode: cleanNumber.slice(1, 4),
-        firstGroup: cleanNumber.slice(4, 7),
-        lastGroup: cleanNumber.slice(7)
+        countryCode: phone,
+        firstGroup: '',
+        secondGroup: '',
+        lastGroup: ''
       };
     }
     
-    // Handle Mexico format: +52 XX XXXX XXXX
-    if (phone.startsWith('+52') && cleanNumber.length === 12) {
+    const countryCode = countryCodeMatch[1];
+    const remainingDigits = cleanNumber.slice(countryCode.length);
+    
+    // Format remaining digits as XXX XXX XXXX (3-3-4 pattern)
+    if (remainingDigits.length >= 10) {
       return {
-        countryCode: '+52',
-        areaCode: cleanNumber.slice(2, 4),
-        firstGroup: cleanNumber.slice(4, 8),
-        lastGroup: cleanNumber.slice(8)
+        countryCode,
+        firstGroup: remainingDigits.slice(0, 3),
+        secondGroup: remainingDigits.slice(3, 6),
+        lastGroup: remainingDigits.slice(6, 10)
+      };
+    } else if (remainingDigits.length >= 7) {
+      // For shorter numbers, try to fit 3-3-X pattern
+      return {
+        countryCode,
+        firstGroup: remainingDigits.slice(0, 3),
+        secondGroup: remainingDigits.slice(3, 6),
+        lastGroup: remainingDigits.slice(6)
+      };
+    } else if (remainingDigits.length >= 4) {
+      // For even shorter numbers, try 3-X pattern
+      return {
+        countryCode,
+        firstGroup: remainingDigits.slice(0, 3),
+        secondGroup: '',
+        lastGroup: remainingDigits.slice(3)
+      };
+    } else {
+      // Very short number, just show with country code
+      return {
+        countryCode,
+        firstGroup: remainingDigits,
+        secondGroup: '',
+        lastGroup: ''
       };
     }
-    
-    // Handle Spain format: +34 XXX XXX XXX
-    if (phone.startsWith('+34') && cleanNumber.length === 11) {
-      return {
-        countryCode: '+34',
-        areaCode: cleanNumber.slice(2, 5),
-        firstGroup: cleanNumber.slice(5, 8),
-        lastGroup: cleanNumber.slice(8)
-      };
-    }
-    
-    // Default fallback - try to parse as +XX XXX XXX XXXX
-    const parts = phone.split(' ');
-    if (parts.length >= 4) {
-      return {
-        countryCode: parts[0],
-        areaCode: parts[1],
-        firstGroup: parts[2],
-        lastGroup: parts[3]
-      };
-    }
-    
-    // If parsing fails, return as-is
-    return {
-      countryCode: phone,
-      areaCode: '',
-      firstGroup: '',
-      lastGroup: ''
-    };
   };
 
-  const { countryCode, areaCode, firstGroup, lastGroup } = parsePhoneNumber(phoneNumber);
+  const { countryCode, firstGroup, secondGroup, lastGroup } = parsePhoneNumber(phoneNumber);
 
   return (
     <span className={`font-mono tracking-wide ${className}`}>
       <span className="text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900/20 px-1 py-0.5 rounded">
         {countryCode}
       </span>
-      {areaCode && (
-        <>
-          <span className="mx-1 text-gray-400">·</span>
-          <span className="text-purple-600 dark:text-purple-400 font-medium bg-purple-50 dark:bg-purple-900/20 px-1 py-0.5 rounded">
-            {areaCode}
-          </span>
-        </>
-      )}
       {firstGroup && (
         <>
           <span className="mx-1 text-gray-400">·</span>
-          <span className="text-green-600 dark:text-green-400 font-medium bg-green-50 dark:bg-green-900/20 px-1 py-0.5 rounded">
+          <span className="text-purple-600 dark:text-purple-400 font-medium bg-purple-50 dark:bg-purple-900/20 px-1 py-0.5 rounded">
             {firstGroup}
+          </span>
+        </>
+      )}
+      {secondGroup && (
+        <>
+          <span className="mx-1 text-gray-400">·</span>
+          <span className="text-green-600 dark:text-green-400 font-medium bg-green-50 dark:bg-green-900/20 px-1 py-0.5 rounded">
+            {secondGroup}
           </span>
         </>
       )}
