@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { evolutionManager } from "./evolution-manager";
+import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings } from "./evolution-api";
 import { 
   insertAppUserSchema,
   insertWhatsappInstanceSchema,
@@ -150,14 +151,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const bridgeStatus = evolutionManager.getBridgeStatus(instance.userId, req.params.id);
       
-      res.json({
-        instance: {
-          id: instance.id,
-          name: instance.instanceName,
-          status: instance.status
-        },
-        bridge: bridgeStatus
-      });
+      // Try to get real-time status from Evolution API
+      try {
+        const evolutionApi = getEvolutionApi();
+        const apiStatus = await evolutionApi.checkInstanceStatus(instance.instanceName);
+        
+        // Update database with latest status
+        const mappedStatus = apiStatus.status === 'open' ? 'connected' : 
+                           apiStatus.status === 'connecting' ? 'connecting' :
+                           'disconnected';
+        
+        if (mappedStatus !== instance.status) {
+          await storage.updateWhatsappInstance(req.params.id, {
+            status: mappedStatus
+          });
+        }
+        
+        res.json({
+          instance: {
+            id: instance.id,
+            name: instance.instanceName,
+            status: mappedStatus
+          },
+          bridge: bridgeStatus,
+          qrCode: apiStatus.qrcode,
+          evolutionStatus: apiStatus
+        });
+      } catch (apiError) {
+        // Fall back to database status if API is unavailable
+        res.json({
+          instance: {
+            id: instance.id,
+            name: instance.instanceName,
+            status: instance.status
+          },
+          bridge: bridgeStatus,
+          evolutionApiAvailable: false
+        });
+      }
     } catch (error) {
       res.status(500).json({ error: "Failed to get instance status" });
     }
@@ -175,12 +206,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "connecting"
       });
 
-      // For now, simulate Evolution API connection
-      // In production, this would call the actual Evolution API
-      res.json({
-        success: true,
-        message: "Connection initiated"
-      });
+      try {
+        const evolutionApi = getEvolutionApi();
+        await evolutionApi.connectInstance(instance.instanceName);
+        
+        res.json({
+          success: true,
+          message: "Connection initiated successfully"
+        });
+      } catch (apiError) {
+        // If Evolution API is not configured, provide instructions
+        res.json({
+          success: false,
+          message: "Evolution API not configured. Please provide API credentials.",
+          needsConfiguration: true
+        });
+      }
     } catch (error) {
       res.status(500).json({ error: "Failed to initiate connection" });
     }
@@ -193,19 +234,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Instance not found" });
       }
 
-      // Update status to qr_pending
-      await storage.updateWhatsappInstance(req.params.id, {
-        status: "qr_pending"
-      });
+      try {
+        const evolutionApi = getEvolutionApi();
+        const connectionState = await evolutionApi.getConnectionState(instance.instanceName);
+        
+        if (connectionState.qrcode?.base64) {
+          await storage.updateWhatsappInstance(req.params.id, {
+            status: "qr_pending"
+          });
 
-      // Generate a mock QR code for demonstration
-      // In production, this would fetch the real QR code from Evolution API
-      const mockQRCode = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
-      
-      res.json({
-        qrCode: `data:image/png;base64,${mockQRCode}`,
-        status: "qr_pending"
-      });
+          res.json({
+            qrCode: connectionState.qrcode.base64,
+            status: "qr_pending"
+          });
+        } else {
+          res.json({
+            qrCode: null,
+            status: connectionState.instance.state || "disconnected",
+            message: "No QR code available"
+          });
+        }
+      } catch (apiError) {
+        res.status(503).json({ 
+          error: "Evolution API not available",
+          message: "Please configure Evolution API credentials",
+          needsConfiguration: true
+        });
+      }
     } catch (error) {
       res.status(500).json({ error: "Failed to generate QR code" });
     }

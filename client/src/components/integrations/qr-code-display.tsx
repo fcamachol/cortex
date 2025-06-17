@@ -29,7 +29,7 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
       const response = await apiRequest("GET", `/api/whatsapp/instances/${instanceId}/qr`);
       return response;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       if (data.qrCode) {
         // Strip data URL prefix if present
         const cleanQrCode = data.qrCode.replace(/^data:image\/png;base64,/, "");
@@ -40,6 +40,12 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
         toast({
           title: "QR Code Generated",
           description: "Scan the QR code with your WhatsApp mobile app to connect.",
+        });
+      } else if (data.needsConfiguration) {
+        toast({
+          title: "Configuration Required",
+          description: data.message || "Please configure Evolution API settings first.",
+          variant: "destructive",
         });
       }
     },
@@ -55,7 +61,7 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnected }: QRCodeD
   const checkStatus = async () => {
     try {
       setIsRefreshing(true);
-      const response = await apiRequest("GET", `/api/whatsapp/instances/${instanceId}/status`);
+      const response: any = await apiRequest("GET", `/api/whatsapp/instances/${instanceId}/status`);
       
       setStatus(response.instance.status);
       
