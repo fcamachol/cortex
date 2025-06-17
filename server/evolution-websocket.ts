@@ -87,29 +87,40 @@ export class EvolutionAPIWebSocket {
       console.error('Evolution Socket.IO connection error:', error);
     });
 
-    // Evolution API event handlers for authentic WhatsApp data
+    // Evolution API event handlers for authentic WhatsApp data  
     this.socket.on('messages.upsert', async (data) => {
+      console.log('📩 Received messages.upsert event:', JSON.stringify(data, null, 2));
       await this.handleMessagesUpsert(data);
     });
 
     this.socket.on('messages.update', async (data) => {
+      console.log('🔄 Received messages.update event:', JSON.stringify(data, null, 2));
       await this.handleMessagesUpdate(data);
     });
 
     this.socket.on('contacts.upsert', async (data) => {
+      console.log('👤 Received contacts.upsert event:', JSON.stringify(data, null, 2));
       await this.handleContactsUpsert(data);
     });
 
     this.socket.on('chats.upsert', async (data) => {
+      console.log('💬 Received chats.upsert event:', JSON.stringify(data, null, 2));
       await this.handleChatsUpsert(data);
     });
 
     this.socket.on('connection.update', async (data) => {
+      console.log('🔗 Connection update:', JSON.stringify(data, null, 2));
       await this.handleConnectionUpdate(data);
     });
 
     this.socket.on('presence.update', async (data) => {
+      console.log('👁️ Presence update:', JSON.stringify(data, null, 2));
       await this.handlePresenceUpdate(data);
+    });
+
+    // Catch-all event listener to see what events are actually being received
+    this.socket.onAny((eventName, ...args) => {
+      console.log(`🎯 Evolution API Event: ${eventName}`, args);
     });
   }
 
