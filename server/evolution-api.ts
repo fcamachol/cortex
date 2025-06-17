@@ -298,8 +298,8 @@ export interface EvolutionApiSettings {
 }
 
 let currentSettings: EvolutionApiSettings = {
-  baseUrl: process.env.EVOLUTION_API_KEY || '', // Swapped: URL is stored in KEY variable
-  apiKey: process.env.EVOLUTION_API_URL || '', // Swapped: KEY is stored in URL variable
+  baseUrl: process.env.EVOLUTION_API_URL || '',
+  apiKey: process.env.EVOLUTION_API_KEY || '',
   enabled: false
 };
 

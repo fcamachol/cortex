@@ -495,56 +495,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Evolution API configuration endpoints
-  app.get("/api/evolution/settings", async (req, res) => {
-    try {
-      const settings = getEvolutionApiSettings();
-      // Don't expose the API key in responses
-      res.json({
-        baseUrl: settings.baseUrl,
-        enabled: settings.enabled,
-        configured: !!(settings.baseUrl && settings.apiKey)
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get Evolution API settings" });
-    }
-  });
-
-  app.post("/api/evolution/settings", async (req, res) => {
-    try {
-      const { baseUrl, apiKey, enabled } = req.body;
-      
-      if (!baseUrl || !apiKey) {
-        return res.status(400).json({ error: "Base URL and API key are required" });
-      }
-
-      updateEvolutionApiSettings({
-        baseUrl: baseUrl.replace(/\/$/, ''), // Remove trailing slash
-        apiKey,
-        enabled: enabled !== false
-      });
-
-      res.json({
-        success: true,
-        message: "Evolution API settings updated successfully"
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update Evolution API settings" });
-    }
-  });
-
-  app.get("/api/evolution/health", async (req, res) => {
-    try {
-      const evolutionApi = getEvolutionApi();
-      const health = await evolutionApi.healthCheck();
-      res.json(health);
-    } catch (error) {
-      res.status(503).json({
-        status: "unhealthy",
-        message: "Evolution API not configured or unavailable"
-      });
-    }
-  });
-
   return httpServer;
 }

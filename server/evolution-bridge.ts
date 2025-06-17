@@ -60,12 +60,6 @@ export class EvolutionWebSocketBridge {
   private async connectWebSocket() {
     const { evolutionApiUrl, instanceName, apiKey } = this.config;
     
-    // Skip connection if no valid URL is configured
-    if (!evolutionApiUrl || evolutionApiUrl === 'undefined' || evolutionApiUrl.trim() === '') {
-      console.log(`⚠️ Evolution API URL not configured for instance: ${instanceName}. Skipping WebSocket connection.`);
-      return;
-    }
-    
     this.socket = io(`${evolutionApiUrl}/${instanceName}`, {
       transports: ['websocket'],
       autoConnect: true,
