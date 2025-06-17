@@ -1,0 +1,270 @@
+1. Database Schema & Data Models
+1.1 Authentication & User Management
+Primary Tables:
+
+auth.users (Supabase managed)
+app_users (Custom user extensions)
+Schema Structure:
+
+app_users
+├── id (uuid, primary key)
+├── email (varchar, not null)
+├── first_name (varchar)
+├── last_name (varchar)
+├── phone (varchar)
+├── avatar_url (varchar)
+├── password_hash (varchar, not null)
+├── email_verified (boolean, default: false)
+├── email_verified_at (timestamp)
+├── status (user_status enum: pending, active, suspended, deleted)
+├── plan (user_plan enum: free, basic, premium, enterprise)
+├── max_instances (integer, default: 1)
+├── last_login_at (timestamp)
+├── created_at (timestamp)
+└── updated_at (timestamp)
+1.2 WhatsApp Integration Layer
+Core Tables:
+
+whatsapp_instances
+
+├── id (uuid, primary key)
+├── user_id (uuid, references app_users)
+├── instance_name (varchar, not null, unique)
+├── display_name (varchar)
+├── api_key (varchar, not null)
+├── webhook_url (varchar)
+├── phone_number (varchar)
+├── profile_name (varchar)
+├── profile_picture_url (varchar)
+├── status (instance_status enum: connected, disconnected, connecting, error, qr_pending)
+├── qr_code (text)
+├── qr_expires_at (timestamp)
+├── last_connected_at (timestamp)
+├── disconnected_at (timestamp)
+├── last_error (text)
+├── connection_retries (integer, default: 0)
+├── webhook_events (jsonb)
+├── is_active (boolean, default: true)
+├── created_at (timestamp)
+└── updated_at (timestamp)
+whatsapp_contacts
+
+├── id (uuid, primary key)
+├── instance_id (uuid, references whatsapp_instances)
+├── user_id (uuid, references app_users)
+├── whatsapp_id (varchar, not null) // Phone number with @s.whatsapp.net
+├── name (varchar)
+├── display_name (varchar)
+├── profile_picture_url (varchar)
+├── is_business (boolean, default: false)
+├── business_description (text)
+├── is_blocked (boolean, default: false)
+├── is_favorite (boolean, default: false)
+├── last_seen_at (timestamp)
+├── last_message_at (timestamp)
+├── notes (text)
+├── tags (jsonb)
+├── labels (jsonb)
+├── custom_fields (jsonb)
+├── created_at (timestamp)
+└── updated_at (timestamp)
+whatsapp_groups
+
+├── id (uuid, primary key)
+├── instance_id (uuid, references whatsapp_instances)
+├── user_id (uuid, references app_users)
+├── group_id (varchar, not null) // Group ID from WhatsApp
+├── name (varchar, not null)
+├── description (text)
+├── picture_url (varchar)
+├── owner_id (varchar) // WhatsApp ID of group owner
+├── participants_count (integer, default: 0)
+├── my_role (group_role enum: member, admin, super_admin)
+├── is_announcement (boolean, default: false)
+├── is_muted (boolean, default: false)
+├── mute_until (timestamp)
+├── created_at (timestamp)
+└── updated_at (timestamp)
+whatsapp_conversations
+
+├── id (uuid, primary key)
+├── instance_id (uuid, references whatsapp_instances)
+├── user_id (uuid, references app_users)
+├── chat_id (varchar, not null) // WhatsApp chat identifier
+├── type (conversation_type enum: individual, group)
+├── contact_id (uuid, references whatsapp_contacts, nullable)
+├── group_id (uuid, references whatsapp_groups, nullable)
+├── title (varchar) // Custom conversation title
+├── last_message_id (uuid, nullable)
+├── unread_count (integer, default: 0)
+├── is_pinned (boolean, default: false)
+├── is_archived (boolean, default: false)
+├── is_muted (boolean, default: false)
+├── mute_until (timestamp)
+├── custom_wallpaper (varchar)
+├── notification_settings (jsonb)
+├── created_at (timestamp)
+└── updated_at (timestamp)
+whatsapp_messages
+
+├── id (uuid, primary key)
+├── instance_id (uuid, references whatsapp_instances)
+├── user_id (uuid, references app_users)
+├── conversation_id (uuid, references whatsapp_conversations)
+├── message_id (varchar, not null) // WhatsApp message ID
+├── from_number (varchar, not null)
+├── to_number (varchar, not null)
+├── message_type (message_type enum: text, image, video, audio, document, location, contact, sticker, reaction, system, poll, list, button)
+├── whatsapp_message_type (varchar) // Original WhatsApp message type
+├── content (text)
+├── media_url (text)
+├── media_filename (varchar)
+├── media_mimetype (varchar)
+├── media_size (integer)
+├── media_duration (integer)
+├── location_latitude (numeric)
+├── location_longitude (numeric)
+├── location_name (varchar)
+├── location_address (text)
+├── quoted_message_id (varchar)
+├── quoted_message_content (text)
+├── is_from_me (boolean, not null)
+├── is_forwarded (boolean, default: false)
+├── forward_score (integer, default: 0)
+├── is_starred (boolean, default: false)
+├── mentions (jsonb)
+├── reaction_emoji (varchar)
+├── reaction_target_id (varchar)
+├── participant_jid (varchar) // For group messages
+├── remote_jid (varchar)
+├── push_name (varchar)
+├── broadcast_list_owner (varchar)
+├── timestamp (bigint, not null) // WhatsApp timestamp
+├── message_timestamp (bigint) // Alternative timestamp field
+├── edited_at (bigint)
+├── status (message_status enum: pending, sent, delivered, read, failed)
+├── created_at (timestamp)
+└── deleted_at (timestamp)
+1.3 Task Management System
+tasks
+
+├── id (uuid, primary key)
+├── user_id (uuid, references app_users)
+├── parent_task_id (uuid, references tasks, nullable) // For subtasks
+├── title (text, not null)
+├── description (text)
+├── task_status (text, default: 'to_do') // to_do, in_progress, done
+├── sub_status (text) // waiting_reply, blocked, scheduled, review
+├── status (text, default: 'pending') // Legacy field
+├── priority (text, default: 'medium') // low, medium, high, urgent
+├── due_date (timestamp with time zone)
+├── conversation_id (uuid, references conversations, nullable)
+├── contact_id (uuid, references contacts, nullable)
+├── created_at (timestamp with time zone)
+└── updated_at (timestamp with time zone)
+1.4 Contact Management
+contacts
+
+├── id (uuid, primary key)
+├── user_id (uuid, references app_users)
+├── name (text, not null)
+├── phone (text, not null)
+├── email (text)
+├── avatar (text)
+├── address (text)
+├── birthday (date)
+├── notes (text)
+├── interests (text)
+├── company (text)
+├── job_title (text)
+├── website (text)
+├── social_media (jsonb, default: '{}')
+├── created_at (timestamp with time zone)
+└── updated_at (timestamp with time zone)
+conversations
+
+├── id (uuid, primary key)
+├── user_id (uuid, references app_users)
+├── contact_id (uuid, references contacts)
+├── is_pinned (boolean, default: false)
+├── is_unread (boolean, default: false)
+├── last_message (text)
+├── last_message_at (timestamp with time zone)
+├── created_at (timestamp with time zone)
+└── updated_at (timestamp with time zone)
+messages
+
+├── id (uuid, primary key)
+├── user_id (uuid, references app_users)
+├── conversation_id (uuid, references conversations)
+├── content (text, not null)
+├── message_type (text, default: 'text')
+├── is_from_user (boolean, default: false)
+├── reply_to_message_id (uuid, references messages, nullable)
+├── timestamp (timestamp with time zone)
+└── created_at (timestamp with time zone)
+1.5 Automation & Campaigns
+automations
+
+├── id (uuid, primary key)
+├── user_id (uuid, references app_users)
+├── instance_id (uuid, references whatsapp_instances)
+├── name (varchar, not null)
+├── description (text)
+├── type (automation_type enum: keyword_reply, scheduled_message, auto_assign, follow_up)
+├── trigger_conditions (jsonb, not null)
+├── actions (jsonb, not null)
+├── priority (integer, default: 0)
+├── is_active (boolean, default: true)
+├── usage_count (integer, default: 0)
+├── created_at (timestamp)
+└── updated_at (timestamp)
+message_campaigns
+
+├── id (uuid, primary key)
+├── user_id (uuid, references app_users)
+├── instance_id (uuid, references whatsapp_instances)
+├── template_id (uuid, references message_templates, nullable)
+├── name (varchar, not null)
+├── description (text)
+├── message_content (text)
+├── media_url (varchar)
+├── target_type (target_type enum: all_contacts, selected_contacts, groups, labels)
+├── target_criteria (jsonb)
+├── status (campaign_status enum: draft, scheduled, running, completed, cancelled, failed)
+├── scheduled_at (timestamp)
+├── started_at (timestamp)
+├── completed_at (timestamp)
+├── total_recipients (integer, default: 0)
+├── sent_count (integer, default: 0)
+├── delivered_count (integer, default: 0)
+├── read_count (integer, default: 0)
+├── failed_count (integer, default: 0)
+├── created_at (timestamp)
+└── updated_at (timestamp)
+1.6 System & Monitoring Tables
+webhook_events
+
+├── id (uuid, primary key)
+├── user_id (uuid, references app_users)
+├── instance_id (uuid, references whatsapp_instances)
+├── event_type (varchar, not null)
+├── event_data (jsonb, not null)
+├── processed (boolean, default: false)
+├── processed_at (timestamp)
+├── error_message (text)
+├── retry_count (integer, default: 0)
+└── created_at (timestamp)
+user_logs
+
+├── id (uuid, primary key)
+├── user_id (uuid, references app_users)
+├── instance_id (uuid, references whatsapp_instances, nullable)
+├── level (log_level enum: debug, info, warning, error, critical)
+├── category (varchar, not null)
+├── action (varchar)
+├── message (text, not null)
+├── context (jsonb)
+├── ip_address (varchar)
+├── user_agent (text)
+└── created_at (timestamp)
