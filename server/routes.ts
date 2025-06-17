@@ -77,6 +77,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case 'messages.upsert':
           await handleWebhookMessagesUpsert(instanceName, data);
           break;
+        case 'send.message':
+          await handleWebhookMessagesUpsert(instanceName, data);
+          break;
+        case 'messages.update':
+          console.log(`🔄 Messages update for ${instanceName}:`, data);
+          break;
         case 'contacts.upsert':
           await handleWebhookContactsUpsert(instanceName, data);
           break;
@@ -136,11 +142,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pushName: message.pushName || null
       };
 
-      await storage.saveWhatsappMessage(messageData);
+      const savedMessage = await storage.saveWhatsappMessage(messageData);
       console.log(`✅ Saved authentic WhatsApp message from ${message.pushName || 'Unknown'}: "${messageData.textContent}"`);
       
     } catch (error) {
       console.error('Error saving webhook message:', error);
+      console.error('Message data:', data);
     }
   }
 
