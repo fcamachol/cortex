@@ -231,6 +231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.updateWhatsappInstance(req.params.id, {
               apiKey: createResponse.hash.apikey
             });
+            console.log(`✅ Stored API key for instance: ${instance.instanceName}`);
           }
         } catch (createError: any) {
           // Instance might already exist, continue with connection
