@@ -10,6 +10,7 @@ interface QRCodeDisplayProps {
   instanceId: string;
   instanceName: string;
   onConnectionSuccess?: () => void;
+  onConnected?: () => void;
 }
 
 interface QRCodeData {

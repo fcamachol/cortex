@@ -1,0 +1,664 @@
+ EVOLUTION API - COMPLETE DATABASE SCHEMA
+-- ================================================
+
+-- 1. INSTANCES TABLE (WhatsApp Connection Management)
+CREATE TABLE instances (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    instance_name VARCHAR(100) NOT NULL UNIQUE,
+    instance_id VARCHAR(100) UNIQUE,
+    api_key VARCHAR(255),
+    webhook_url VARCHAR(500),
+    webhook_by_events BOOLEAN DEFAULT true,
+    webhook_base64 BOOLEAN DEFAULT false,
+    webhook_events JSON, -- Store enabled events as JSON array
+    qr_code TEXT,
+    qr_code_expires_at TIMESTAMP NULL,
+    connection_status ENUM('open', 'close', 'connecting') DEFAULT 'close',
+    phone_number VARCHAR(20),
+    profile_name VARCHAR(255),
+    profile_picture_url VARCHAR(500),
+    battery_level INT,
+    is_plugged BOOLEAN DEFAULT false,
+    server_url VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    last_connected_at TIMESTAMP NULL,
+    
+    INDEX idx_instance_name (instance_name),
+    INDEX idx_connection_status (connection_status),
+    INDEX idx_phone_number (phone_number)
+);
+
+-- 2. MESSAGES TABLE (Core - All WhatsApp Messages)
+CREATE TABLE messages (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    instance_id INT NOT NULL,
+    message_id VARCHAR(100) NOT NULL, -- Evolution API message ID
+    remote_jid VARCHAR(100) NOT NULL, -- Chat/Contact JID
+    from_me BOOLEAN NOT NULL DEFAULT false,
+    participant VARCHAR(100), -- For group messages
+    message_type ENUM('conversation', 'extendedTextMessage', 'imageMessage', 'videoMessage', 
+                     'audioMessage', 'documentMessage', 'stickerMessage', 'locationMessage',
+                     'contactMessage', 'listResponseMessage', 'buttonsResponseMessage',
+                     'templateButtonReplyMessage', 'pollCreationMessage', 'pollUpdateMessage') NOT NULL,
+    
+    -- Message Content (JSON for flexibility)
+    message_content JSON NOT NULL,
+    
+    -- Text Messages
+    text_content TEXT,
+    
+    -- Media Messages
+    media_url VARCHAR(500),
+    media_mimetype VARCHAR(100),
+    media_size BIGINT,
+    media_filename VARCHAR(255),
+    media_caption TEXT,
+    media_thumb_url VARCHAR(500),
+    
+    -- Document Messages
+    document_title VARCHAR(255),
+    document_page_count INT,
+    
+    -- Location Messages
+    location_latitude DECIMAL(10, 8),
+    location_longitude DECIMAL(11, 8),
+    location_name VARCHAR(255),
+    location_address TEXT,
+    
+    -- Contact Messages
+    contact_display_name VARCHAR(255),
+    contact_vcard TEXT,
+    
+    -- Interactive Messages
+    interactive_type VARCHAR(50), -- button, list, etc.
+    interactive_body TEXT,
+    interactive_footer TEXT,
+    interactive_data JSON,
+    
+    -- Message Status
+    status ENUM('pending', 'sent', 'delivered', 'read', 'failed') DEFAULT 'pending',
+    timestamp BIGINT NOT NULL, -- Unix timestamp from WhatsApp
+    
+    -- Quoted/Reply Messages
+    quoted_message_id VARCHAR(100),
+    quoted_remote_jid VARCHAR(100),
+    quoted_participant VARCHAR(100),
+    quoted_content TEXT,
+    
+    -- Reactions
+    reaction_emoji VARCHAR(10),
+    reaction_from_me BOOLEAN DEFAULT false,
+    
+    -- Forwarding
+    is_forwarded BOOLEAN DEFAULT false,
+    forward_score INT DEFAULT 0,
+    
+    -- Business Features
+    context_info JSON, -- Additional context data
+    
+    -- Metadata
+    push_name VARCHAR(255), -- Sender's display name
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_message (instance_id, message_id),
+    INDEX idx_remote_jid (remote_jid),
+    INDEX idx_timestamp (timestamp),
+    INDEX idx_from_me (from_me),
+    INDEX idx_status (status),
+    INDEX idx_message_type (message_type),
+    INDEX idx_participant (participant),
+    INDEX idx_quoted_message (quoted_message_id),
+    INDEX idx_created_at (created_at)
+);
+
+-- 3. CONTACTS TABLE (WhatsApp Contacts)
+CREATE TABLE contacts (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    instance_id INT NOT NULL,
+    remote_jid VARCHAR(100) NOT NULL, -- Contact JID
+    push_name VARCHAR(255), -- Display name from WhatsApp
+    profile_name VARCHAR(255), -- Profile name
+    profile_picture_url VARCHAR(500),
+    profile_picture_thumb VARCHAR(500),
+    phone_number VARCHAR(20),
+    is_business BOOLEAN DEFAULT false,
+    is_enterprise BOOLEAN DEFAULT false,
+    is_my_contact BOOLEAN DEFAULT false,
+    is_psa BOOLEAN DEFAULT false, -- Public Service Announcement
+    is_user BOOLEAN DEFAULT true,
+    is_wa_contact BOOLEAN DEFAULT true,
+    status_message TEXT,
+    
+    -- Business Info
+    business_name VARCHAR(255),
+    business_category VARCHAR(100),
+    business_description TEXT,
+    business_website VARCHAR(255),
+    business_email VARCHAR(255),
+    business_address TEXT,
+    
+    -- Metadata
+    last_seen TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_contact (instance_id, remote_jid),
+    INDEX idx_phone_number (phone_number),
+    INDEX idx_push_name (push_name),
+    INDEX idx_is_business (is_business),
+    INDEX idx_last_seen (last_seen)
+);
+
+-- 4. CHATS TABLE (Conversation Management)
+CREATE TABLE chats (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    instance_id INT NOT NULL,
+    remote_jid VARCHAR(100) NOT NULL, -- Chat JID
+    chat_name VARCHAR(255),
+    chat_type ENUM('individual', 'group', 'broadcast') NOT NULL,
+    
+    -- Chat Status
+    is_archived BOOLEAN DEFAULT false,
+    is_pinned BOOLEAN DEFAULT false,
+    is_read_only BOOLEAN DEFAULT false,
+    is_muted BOOLEAN DEFAULT false,
+    mute_until TIMESTAMP NULL,
+    
+    -- Message Counts
+    unread_count INT DEFAULT 0,
+    total_message_count INT DEFAULT 0,
+    
+    -- Last Message Info
+    last_message_id VARCHAR(100),
+    last_message_content TEXT,
+    last_message_timestamp BIGINT,
+    last_message_from_me BOOLEAN DEFAULT false,
+    
+    -- Presence Info
+    presence_status ENUM('available', 'unavailable', 'composing', 'recording', 'paused') DEFAULT 'unavailable',
+    presence_last_seen TIMESTAMP NULL,
+    
+    -- Group Specific
+    group_owner VARCHAR(100), -- Group owner JID
+    group_description TEXT,
+    group_creation_timestamp BIGINT,
+    group_participants_count INT DEFAULT 0,
+    
+    -- Labels (Business Feature)
+    labels JSON, -- Array of label IDs
+    
+    -- Metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_chat (instance_id, remote_jid),
+    INDEX idx_chat_type (chat_type),
+    INDEX idx_is_archived (is_archived),
+    INDEX idx_is_pinned (is_pinned),
+    INDEX idx_unread_count (unread_count),
+    INDEX idx_last_message_timestamp (last_message_timestamp),
+    INDEX idx_presence_status (presence_status)
+);
+
+-- 5. GROUPS TABLE (Group Chat Management)
+CREATE TABLE groups (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    instance_id INT NOT NULL,
+    group_jid VARCHAR(100) NOT NULL, -- Group JID
+    group_name VARCHAR(255) NOT NULL,
+    group_description TEXT,
+    group_picture_url VARCHAR(500),
+    
+    -- Group Settings
+    owner_jid VARCHAR(100) NOT NULL, -- Group owner
+    creation_timestamp BIGINT,
+    is_announce BOOLEAN DEFAULT false, -- Only admins can send messages
+    is_restricted BOOLEAN DEFAULT false, -- Only admins can change info
+    is_ephemeral BOOLEAN DEFAULT false, -- Disappearing messages
+    ephemeral_duration INT, -- In seconds
+    
+    -- Group Invite
+    invite_code VARCHAR(100),
+    invite_code_expiration TIMESTAMP NULL,
+    
+    -- Participant Counts
+    participants_count INT DEFAULT 0,
+    admins_count INT DEFAULT 0,
+    
+    -- Status
+    is_active BOOLEAN DEFAULT true,
+    left_at TIMESTAMP NULL,
+    
+    -- Metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_group (instance_id, group_jid),
+    INDEX idx_owner_jid (owner_jid),
+    INDEX idx_group_name (group_name),
+    INDEX idx_is_active (is_active),
+    INDEX idx_creation_timestamp (creation_timestamp)
+);
+
+-- 6. GROUP_PARTICIPANTS TABLE (Group Members)
+CREATE TABLE group_participants (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    instance_id INT NOT NULL,
+    group_jid VARCHAR(100) NOT NULL,
+    participant_jid VARCHAR(100) NOT NULL, -- Member JID
+    
+    -- Participant Role
+    role ENUM('member', 'admin', 'super_admin') DEFAULT 'member',
+    
+    -- Join/Leave Tracking
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    left_at TIMESTAMP NULL,
+    added_by VARCHAR(100), -- Who added this participant
+    removed_by VARCHAR(100), -- Who removed this participant
+    
+    -- Status
+    is_active BOOLEAN DEFAULT true,
+    
+    -- Metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_participant (instance_id, group_jid, participant_jid),
+    INDEX idx_group_jid (group_jid),
+    INDEX idx_participant_jid (participant_jid),
+    INDEX idx_role (role),
+    INDEX idx_is_active (is_active),
+    INDEX idx_joined_at (joined_at)
+);
+
+-- 7. PRESENCE TABLE (Online/Typing Status)
+CREATE TABLE presence (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    instance_id INT NOT NULL,
+    remote_jid VARCHAR(100) NOT NULL, -- Contact JID
+    
+    -- Presence Status
+    status ENUM('available', 'unavailable', 'composing', 'recording', 'paused') NOT NULL,
+    last_seen TIMESTAMP NULL,
+    
+    -- Typing Indicators
+    is_typing BOOLEAN DEFAULT false,
+    typing_in_chat VARCHAR(100), -- Chat JID where typing
+    
+    -- Metadata
+    timestamp BIGINT NOT NULL, -- When this presence was detected
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+    INDEX idx_remote_jid (remote_jid),
+    INDEX idx_status (status),
+    INDEX idx_timestamp (timestamp),
+    INDEX idx_last_seen (last_seen)
+);
+
+-- 8. MEDIA_FILES TABLE (File Management)
+CREATE TABLE media_files (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    instance_id INT NOT NULL,
+    message_id BIGINT, -- Link to messages table
+    
+    -- File Info
+    file_name VARCHAR(255) NOT NULL,
+    original_name VARCHAR(255),
+    file_path VARCHAR(500), -- Local storage path
+    file_url VARCHAR(500), -- Download URL from WhatsApp
+    file_size BIGINT,
+    mime_type VARCHAR(100),
+    file_type ENUM('image', 'video', 'audio', 'document', 'sticker') NOT NULL,
+    
+    -- Media Metadata
+    width INT, -- For images/videos
+    height INT, -- For images/videos
+    duration INT, -- For audio/video (in seconds)
+    thumbnail_path VARCHAR(500),
+    thumbnail_url VARCHAR(500),
+    
+    -- Download Status
+    download_status ENUM('pending', 'downloading', 'completed', 'failed') DEFAULT 'pending',
+    download_attempts INT DEFAULT 0,
+    downloaded_at TIMESTAMP NULL,
+    
+    -- File Hash (for deduplication)
+    file_hash VARCHAR(64), -- SHA256
+    
+    -- Metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+    FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
+    INDEX idx_file_type (file_type),
+    INDEX idx_download_status (download_status),
+    INDEX idx_file_hash (file_hash),
+    INDEX idx_message_id (message_id)
+);
+
+-- 9. MESSAGE_REACTIONS TABLE (Emoji Reactions)
+CREATE TABLE message_reactions (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    instance_id INT NOT NULL,
+    message_id BIGINT NOT NULL, -- Original message
+    reactor_jid VARCHAR(100) NOT NULL, -- Who reacted
+    
+    -- Reaction Info
+    emoji VARCHAR(10) NOT NULL,
+    reaction_timestamp BIGINT NOT NULL,
+    
+    -- Status
+    is_removed BOOLEAN DEFAULT false,
+    removed_at TIMESTAMP NULL,
+    
+    -- Metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+    FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_reaction (instance_id, message_id, reactor_jid),
+    INDEX idx_message_id (message_id),
+    INDEX idx_reactor_jid (reactor_jid),
+    INDEX idx_emoji (emoji)
+);
+
+-- 10. LABELS TABLE (WhatsApp Business Labels)
+CREATE TABLE labels (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    instance_id INT NOT NULL,
+    label_id VARCHAR(50) NOT NULL, -- WhatsApp label ID
+    label_name VARCHAR(100) NOT NULL,
+    color_hex VARCHAR(7) DEFAULT '#000000',
+    
+    -- Usage Stats
+    chat_count INT DEFAULT 0,
+    
+    -- Status
+    is_active BOOLEAN DEFAULT true,
+    
+    -- Metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_label (instance_id, label_id),
+    INDEX idx_label_name (label_name),
+    INDEX idx_is_active (is_active)
+);
+
+-- 11. CHAT_LABELS TABLE (Many-to-Many: Chats and Labels)
+CREATE TABLE chat_labels (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    instance_id INT NOT NULL,
+    chat_id BIGINT NOT NULL,
+    label_id INT NOT NULL,
+    
+    -- Metadata
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    assigned_by VARCHAR(100), -- Who assigned the label
+    
+    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+    FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE,
+    FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_chat_label (chat_id, label_id),
+    INDEX idx_chat_id (chat_id),
+    INDEX idx_label_id (label_id)
+);
+
+-- 12. BROADCAST_LISTS TABLE (Broadcast Messaging)
+CREATE TABLE broadcast_lists (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    instance_id INT NOT NULL,
+    list_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    
+    -- Recipients
+    recipients JSON, -- Array of JIDs
+    recipients_count INT DEFAULT 0,
+    
+    -- Status
+    is_active BOOLEAN DEFAULT true,
+    
+    -- Metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+    INDEX idx_list_name (list_name),
+    INDEX idx_is_active (is_active)
+);
+
+-- 13. WEBHOOKS_LOG TABLE (Event Tracking)
+CREATE TABLE webhooks_log (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    instance_id INT,
+    
+    -- Webhook Info
+    event_type VARCHAR(100) NOT NULL,
+    event_data JSON NOT NULL,
+    
+    -- Processing Status
+    processing_status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
+    processing_attempts INT DEFAULT 0,
+    error_message TEXT,
+    processed_at TIMESTAMP NULL,
+    
+    -- Request Info
+    remote_ip VARCHAR(45),
+    user_agent VARCHAR(500),
+    
+    -- Metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE SET NULL,
+    INDEX idx_event_type (event_type),
+    INDEX idx_processing_status (processing_status),
+    INDEX idx_created_at (created_at),
+    INDEX idx_instance_id (instance_id)
+);
+
+-- 14. CONNECTION_LOGS TABLE (Connection History)
+CREATE TABLE connection_logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    instance_id INT NOT NULL,
+    
+    -- Connection Info
+    event_type ENUM('connect', 'disconnect', 'qr_generated', 'qr_scanned', 'auth_failure') NOT NULL,
+    connection_status ENUM('open', 'close', 'connecting') NOT NULL,
+    
+    -- Additional Data
+    qr_code TEXT,
+    error_message TEXT,
+    battery_level INT,
+    phone_number VARCHAR(20),
+    
+    -- Metadata
+    timestamp BIGINT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+    INDEX idx_event_type (event_type),
+    INDEX idx_connection_status (connection_status),
+    INDEX idx_timestamp (timestamp),
+    INDEX idx_created_at (created_at)
+);
+
+-- 15. API_USAGE_STATS TABLE (Performance Monitoring)
+CREATE TABLE api_usage_stats (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    instance_id INT,
+    
+    -- Usage Stats
+    date DATE NOT NULL,
+    messages_sent INT DEFAULT 0,
+    messages_received INT DEFAULT 0,
+    media_files_processed INT DEFAULT 0,
+    webhook_calls INT DEFAULT 0,
+    api_requests INT DEFAULT 0,
+    
+    -- Performance Stats
+    avg_response_time DECIMAL(8,3), -- In milliseconds
+    error_count INT DEFAULT 0,
+    
+    -- Resource Usage
+    storage_used BIGINT DEFAULT 0, -- In bytes
+    bandwidth_used BIGINT DEFAULT 0, -- In bytes
+    
+    -- Metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE SET NULL,
+    UNIQUE KEY unique_daily_stats (instance_id, date),
+    INDEX idx_date (date),
+    INDEX idx_instance_id (instance_id)
+);
+
+-- ================================================
+-- USEFUL VIEWS
+-- ================================================
+
+-- View: Recent Messages with Contact Info
+CREATE VIEW v_recent_messages AS
+SELECT 
+    m.id,
+    m.instance_id,
+    m.message_id,
+    m.remote_jid,
+    m.from_me,
+    m.message_type,
+    m.text_content,
+    m.media_caption,
+    m.status,
+    m.timestamp,
+    m.created_at,
+    c.push_name,
+    c.profile_name,
+    c.phone_number,
+    ch.chat_name,
+    ch.chat_type
+FROM messages m
+LEFT JOIN contacts c ON m.instance_id = c.instance_id AND m.remote_jid = c.remote_jid
+LEFT JOIN chats ch ON m.instance_id = ch.instance_id AND m.remote_jid = ch.remote_jid
+ORDER BY m.timestamp DESC;
+
+-- View: Unread Messages Summary
+CREATE VIEW v_unread_summary AS
+SELECT 
+    ch.instance_id,
+    ch.remote_jid,
+    ch.chat_name,
+    ch.chat_type,
+    ch.unread_count,
+    ch.last_message_content,
+    ch.last_message_timestamp,
+    c.push_name,
+    c.profile_picture_url
+FROM chats ch
+LEFT JOIN contacts c ON ch.instance_id = c.instance_id AND ch.remote_jid = c.remote_jid
+WHERE ch.unread_count > 0
+ORDER BY ch.last_message_timestamp DESC;
+
+-- View: Group Information with Participants
+CREATE VIEW v_group_details AS
+SELECT 
+    g.instance_id,
+    g.group_jid,
+    g.group_name,
+    g.group_description,
+    g.participants_count,
+    g.admins_count,
+    g.owner_jid,
+    g.is_active,
+    g.created_at,
+    COUNT(gp.id) as current_participants
+FROM groups g
+LEFT JOIN group_participants gp ON g.instance_id = gp.instance_id 
+    AND g.group_jid = gp.group_jid 
+    AND gp.is_active = true
+GROUP BY g.id;
+
+-- ================================================
+-- TRIGGERS FOR AUTOMATIC UPDATES
+-- ================================================
+
+-- Trigger: Update chat info when new message arrives
+DELIMITER $$
+CREATE TRIGGER tr_update_chat_last_message
+AFTER INSERT ON messages
+FOR EACH ROW
+BEGIN
+    INSERT INTO chats (
+        instance_id, remote_jid, chat_type, 
+        last_message_id, last_message_content, 
+        last_message_timestamp, last_message_from_me,
+        total_message_count, unread_count
+    ) VALUES (
+        NEW.instance_id, NEW.remote_jid, 
+        IF(NEW.remote_jid LIKE '%@g.us', 'group', 'individual'),
+        NEW.message_id, 
+        COALESCE(NEW.text_content, NEW.media_caption, '[Media]'),
+        NEW.timestamp, NEW.from_me, 1,
+        IF(NEW.from_me = false, 1, 0)
+    )
+    ON DUPLICATE KEY UPDATE
+        last_message_id = NEW.message_id,
+        last_message_content = COALESCE(NEW.text_content, NEW.media_caption, '[Media]'),
+        last_message_timestamp = NEW.timestamp,
+        last_message_from_me = NEW.from_me,
+        total_message_count = total_message_count + 1,
+        unread_count = IF(NEW.from_me = false, unread_count + 1, unread_count),
+        updated_at = CURRENT_TIMESTAMP;
+END$$
+DELIMITER ;
+
+-- Trigger: Update group participant count
+DELIMITER $$
+CREATE TRIGGER tr_update_group_participant_count
+AFTER INSERT ON group_participants
+FOR EACH ROW
+BEGIN
+    UPDATE groups 
+    SET participants_count = (
+        SELECT COUNT(*) 
+        FROM group_participants 
+        WHERE group_jid = NEW.group_jid 
+        AND instance_id = NEW.instance_id 
+        AND is_active = true
+    )
+    WHERE group_jid = NEW.group_jid AND instance_id = NEW.instance_id;
+END$$
+DELIMITER ;
+
+-- ================================================
+-- INDEXES FOR PERFORMANCE OPTIMIZATION
+-- ================================================
+
+-- Additional composite indexes for common queries
+CREATE INDEX idx_messages_chat_timestamp ON messages(remote_jid, timestamp);
+CREATE INDEX idx_messages_instance_type ON messages(instance_id, message_type);
+CREATE INDEX idx_chats_instance_unread ON chats(instance_id, unread_count);
+CREATE INDEX idx_contacts_instance_business ON contacts(instance_id, is_business);
+CREATE INDEX idx_presence_jid_timestamp ON presence(remote_jid, timestamp);
+
+-- ================================================
+-- SAMPLE INITIAL DATA
+-- ================================================
+
+-- Insert default labels for WhatsApp Business
+INSERT INTO labels (instance_id, label_id, label_name, color_hex) VALUES
+(1, 'new_customer', 'New Customer', '#25D366'),
+(1, 'new_order', 'New Order', '#FF6B35'),
+(1, 'pending_payment', 'Pending Payment', '#FFD23F'),
+(1, 'customer_support', 'Customer Support', '#4A90E2'),
+(1, 'resolved', 'Resolved', '#7ED321');
