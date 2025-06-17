@@ -5,11 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Settings } from "lucide-react";
 import { SiWhatsapp, SiGoogle, SiSlack, SiTrello, SiNotion } from "react-icons/si";
 import { WhatsAppInstanceManager } from "./whatsapp-manager";
-import { EvolutionConfig } from "./evolution-config";
 
 export default function IntegrationModule() {
   const [showWhatsAppManager, setShowWhatsAppManager] = useState(false);
-  const [showEvolutionConfig, setShowEvolutionConfig] = useState(false);
   
   // Mock data for integrations
   const connectedIntegrations = [
@@ -88,54 +86,25 @@ export default function IntegrationModule() {
 
   const handleConfigure = (integrationId: string) => {
     if (integrationId === "whatsapp") {
-      setShowEvolutionConfig(true);
+      setShowWhatsAppManager(true);
     } else {
       console.log(`Configuring ${integrationId}`);
       // This would open configuration modal or redirect to settings
     }
   };
 
-  if (showEvolutionConfig) {
-    return (
-      <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center space-x-4 mb-6">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowEvolutionConfig(false)}
-            >
-              ← Back to Integrations
-            </Button>
-          </div>
-          <EvolutionConfig onConfigured={() => {
-            setShowEvolutionConfig(false);
-            setShowWhatsAppManager(true);
-          }} />
-        </div>
-      </div>
-    );
-  }
+
 
   if (showWhatsAppManager) {
     return (
       <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center mb-6">
             <Button 
               variant="outline" 
               onClick={() => setShowWhatsAppManager(false)}
             >
               ← Back to Integrations
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setShowWhatsAppManager(false);
-                setShowEvolutionConfig(true);
-              }}
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              API Settings
             </Button>
           </div>
           <WhatsAppInstanceManager />
