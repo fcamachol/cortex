@@ -22,7 +22,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   // WebSocket connection for real-time messages
   useWebSocket(userId);
 
-  const { data: conversation } = useQuery({
+  const { data: conversation = {} } = useQuery<any>({
     queryKey: [`/api/whatsapp/conversations/${conversationId}`],
     enabled: !!conversationId,
   });

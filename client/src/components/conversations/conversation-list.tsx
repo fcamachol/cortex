@@ -12,7 +12,7 @@ interface ConversationListProps {
 
 export default function ConversationList({ selectedConversation, onSelectConversation }: ConversationListProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [conversationsWithMessages, setConversationsWithMessages] = useState([]);
+  const [conversationsWithMessages, setConversationsWithMessages] = useState<any[]>([]);
 
   // Mock user ID - in real app this would come from auth context
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
