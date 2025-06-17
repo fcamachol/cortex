@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
 import QRTestPage from "@/pages/qr-test";
+import DebugPage from "@/pages/debug";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -12,6 +13,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/qr-test" component={QRTestPage} />
+      <Route path="/debug" component={DebugPage} />
       <Route component={NotFound} />
     </Switch>
   );
