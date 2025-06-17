@@ -431,7 +431,7 @@ export const insertWhatsappConversationSchema = createInsertSchema(whatsappConve
 export const insertWhatsappMessageSchema = createInsertSchema(whatsappMessages).omit({
   id: true,
   createdAt: true,
-  deletedAt: true
+  updatedAt: true
 });
 
 export const insertTaskSchema = createInsertSchema(tasks).omit({
