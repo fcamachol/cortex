@@ -1,7 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PhoneNumberDisplay } from "@/components/ui/phone-number-display";
 import { MessageCircle, CheckSquare, Users, Calendar, Plug, Settings, User } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -142,11 +141,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
                         {instance.displayName || instance.instanceName}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {instance.phoneNumber ? (
-                          <PhoneNumberDisplay phoneNumber={instance.phoneNumber} className="text-xs" />
-                        ) : (
-                          'Not connected'
-                        )}
+                        {instance.phoneNumber || 'Not connected'}
                       </p>
                     </div>
                   </div>
