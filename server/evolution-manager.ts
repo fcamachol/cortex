@@ -12,6 +12,13 @@ export class EvolutionBridgeManager {
     console.log('🚀 Initializing Evolution API Bridge Manager...');
     
     try {
+      // Skip initialization if Evolution API is not configured
+      if (!process.env.EVOLUTION_API_URL || !process.env.EVOLUTION_API_KEY) {
+        console.log('⚠️ Evolution API not configured, skipping bridge initialization');
+        this.isInitialized = true;
+        return;
+      }
+
       // Get all active WhatsApp instances from database
       const users = await this.getAllUsersWithInstances();
       
@@ -25,6 +32,8 @@ export class EvolutionBridgeManager {
       console.log(`✅ Bridge Manager initialized with ${this.bridges.size} instances`);
     } catch (error) {
       console.error('❌ Failed to initialize Bridge Manager:', error);
+      // Mark as initialized even if it fails to prevent retry loops
+      this.isInitialized = true;
     }
   }
 
@@ -79,7 +88,7 @@ export class EvolutionBridgeManager {
       const config = {
         evolutionApiUrl: process.env.EVOLUTION_API_URL || 'ws://localhost:8080',
         instanceName: instance.instanceName,
-        apiKey: instance.apiKey,
+        apiKey: instance.instanceApiKey || process.env.EVOLUTION_API_KEY || '',
         maxReconnectAttempts: Infinity,
         reconnectDelay: 1000,
         queueOfflineMessages: true,
