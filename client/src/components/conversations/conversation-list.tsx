@@ -70,6 +70,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
             <Input
               placeholder="Search conversations..."
               className="pl-10"
+              value=""
               disabled
             />
           </div>
