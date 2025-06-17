@@ -4,8 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
 import { SiWhatsapp, SiGoogle, SiSlack, SiTrello, SiNotion } from "react-icons/si";
+import { WhatsAppInstanceManager } from "./whatsapp-manager";
 
 export default function IntegrationModule() {
+  const [showWhatsAppManager, setShowWhatsAppManager] = useState(false);
+  
   // Mock data for integrations
   const connectedIntegrations = [
     {
@@ -73,14 +76,40 @@ export default function IntegrationModule() {
   ];
 
   const handleConnect = (integrationId: string) => {
-    console.log(`Connecting to ${integrationId}`);
-    // This would handle the OAuth flow or connection process
+    if (integrationId === "whatsapp") {
+      setShowWhatsAppManager(true);
+    } else {
+      console.log(`Connecting to ${integrationId}`);
+      // This would handle the OAuth flow or connection process
+    }
   };
 
   const handleConfigure = (integrationId: string) => {
-    console.log(`Configuring ${integrationId}`);
-    // This would open configuration modal or redirect to settings
+    if (integrationId === "whatsapp") {
+      setShowWhatsAppManager(true);
+    } else {
+      console.log(`Configuring ${integrationId}`);
+      // This would open configuration modal or redirect to settings
+    }
   };
+
+  if (showWhatsAppManager) {
+    return (
+      <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center space-x-4 mb-6">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowWhatsAppManager(false)}
+            >
+              ← Back to Integrations
+            </Button>
+          </div>
+          <WhatsAppInstanceManager />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">

@@ -163,6 +163,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/whatsapp/instances/:id/connect", async (req, res) => {
+    try {
+      const instance = await storage.getWhatsappInstance(req.params.id);
+      if (!instance) {
+        return res.status(404).json({ error: "Instance not found" });
+      }
+
+      // Update instance status to connecting
+      await storage.updateWhatsappInstance(req.params.id, {
+        status: "connecting"
+      });
+
+      // For now, simulate Evolution API connection
+      // In production, this would call the actual Evolution API
+      res.json({
+        success: true,
+        message: "Connection initiated"
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to initiate connection" });
+    }
+  });
+
+  app.get("/api/whatsapp/instances/:id/qr", async (req, res) => {
+    try {
+      const instance = await storage.getWhatsappInstance(req.params.id);
+      if (!instance) {
+        return res.status(404).json({ error: "Instance not found" });
+      }
+
+      // Update status to qr_pending
+      await storage.updateWhatsappInstance(req.params.id, {
+        status: "qr_pending"
+      });
+
+      // Generate a mock QR code for demonstration
+      // In production, this would fetch the real QR code from Evolution API
+      const mockQRCode = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+      
+      res.json({
+        qrCode: `data:image/png;base64,${mockQRCode}`,
+        status: "qr_pending"
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate QR code" });
+    }
+  });
+
   // WhatsApp conversation routes
   app.get("/api/whatsapp/conversations/:userId", async (req, res) => {
     try {
