@@ -62,10 +62,11 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }:
         setQrCodeData(qrCode);
         setError(null);
         console.log('QR Code set:', qrCode);
-      } else if (data.instance.status === 'connected') {
+      } else if (data.instance.status === 'connected' || data.evolutionStatus?.status === 'open') {
         // Instance is connected, no QR needed
         setQrCodeData(null);
         setError(null);
+        setStatus('connected');
         if (onConnectionSuccess) {
           onConnectionSuccess();
         }
@@ -182,6 +183,11 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }:
       startPolling();
     } else if (status === 'connected' && pollingInterval) {
       stopPolling();
+      // Show success toast when connection is detected
+      toast({
+        title: "WhatsApp Connected",
+        description: `Instance ${instanceName} is now connected and ready!`,
+      });
     }
   }, [status]);
 
@@ -198,7 +204,7 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }:
       case 'connecting':
         return <Badge variant="secondary"><Loader2 className="w-3 h-3 mr-1 animate-spin" />Connecting</Badge>;
       case 'disconnected':
-        return <Badge variant="destructive"><AlertCircle className="w-3 h-3 mr-1" />Disconnected</Badge>;
+        return <Badge variant="destructive"><AlertCircle className="w-3 h-3 mr-1" />Not connected</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -212,7 +218,17 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }:
             <Smartphone className="w-5 h-5 mr-2" />
             {instanceName}
           </span>
-          {getStatusBadge()}
+          <div className="flex items-center gap-2">
+            {getStatusBadge()}
+            <Button
+              onClick={handleRefresh}
+              variant="ghost"
+              size="sm"
+              disabled={isLoading}
+            >
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -247,7 +263,7 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }:
                 </div>
               )}
             </div>
-            <div className="flex justify-center">
+            <div className="flex justify-center gap-2">
               <Button
                 onClick={handleRefresh}
                 variant="outline"
