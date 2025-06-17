@@ -140,7 +140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Store instance with the captured API key
         const instance = await storage.createWhatsappInstance({
           ...instanceData,
-          apiKey: instanceApiKey || undefined,
+          instanceApiKey: instanceApiKey || undefined,
           status: "created"
         });
 
@@ -284,7 +284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Store the instance API key if we got one
           if (createResponse.hash?.apikey) {
             await storage.updateWhatsappInstance(req.params.id, {
-              apiKey: createResponse.hash.apikey
+              instanceApiKey: createResponse.hash.apikey
             });
             console.log(`✅ Stored API key for instance: ${instance.instanceName}`);
           }
@@ -324,8 +324,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         // Use instance-specific API key if available, otherwise fall back to global
-        const evolutionApi = instance.apiKey 
-          ? getInstanceEvolutionApi(instance.apiKey)
+        const evolutionApi = instance.instanceApiKey 
+          ? getInstanceEvolutionApi(instance.instanceApiKey)
           : getEvolutionApi();
         
         // Direct QR code fetch from Evolution API
