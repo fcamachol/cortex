@@ -131,6 +131,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/whatsapp/conversation/:id", async (req, res) => {
+    try {
+      const conversation = await storage.getWhatsappConversation(req.params.id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      res.json(conversation);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get conversation" });
+    }
+  });
+
   app.post("/api/whatsapp/conversations", async (req, res) => {
     try {
       const conversationData = insertWhatsappConversationSchema.parse(req.body);
