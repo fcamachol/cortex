@@ -76,6 +76,8 @@ export function WhatsAppInstanceManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/instances/${userId}`] });
+      setIsDeleteDialogOpen(false);
+      setInstanceToDelete(null);
       toast({
         title: "Instance Deleted",
         description: "WhatsApp instance has been deleted successfully.",
@@ -89,6 +91,17 @@ export function WhatsAppInstanceManager() {
       });
     },
   });
+
+  const handleConfirmDelete = () => {
+    if (instanceToDelete) {
+      deleteInstance.mutate(instanceToDelete.id);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setIsDeleteDialogOpen(false);
+    setInstanceToDelete(null);
+  };
 
   const handleCreateInstance = async () => {
     if (!instanceName.trim()) {
@@ -198,7 +211,10 @@ export function WhatsAppInstanceManager() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => deleteInstance.mutate(instance.id)}
+                    onClick={() => {
+                      setInstanceToDelete(instance);
+                      setIsDeleteDialogOpen(true);
+                    }}
                     className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -308,6 +324,40 @@ export function WhatsAppInstanceManager() {
               }}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5" />
+              Delete WhatsApp Instance
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{instanceToDelete?.displayName}"? This action will:
+              <ul className="mt-2 ml-4 list-disc space-y-1 text-sm">
+                <li>Remove the instance from your dashboard</li>
+                <li>Delete it from the Evolution API</li>
+                <li>Disconnect any active WhatsApp session</li>
+                <li>Remove all associated data</li>
+              </ul>
+              <p className="mt-2 font-medium text-red-600">This action cannot be undone.</p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelDelete}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteInstance.isPending}
+            >
+              {deleteInstance.isPending ? "Deleting..." : "Delete Instance"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
