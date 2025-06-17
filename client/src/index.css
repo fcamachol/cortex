@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(20, 14.3%, 4.1%);
+  --muted: hsl(60, 4.8%, 95.9%);
+  --muted-foreground: hsl(25, 5.3%, 44.7%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(20, 14.3%, 4.1%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(20, 14.3%, 4.1%);
+  --border: hsl(20, 5.9%, 90%);
+  --input: hsl(20, 5.9%, 90%);
+  --primary: hsl(147, 57%, 45%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(60, 4.8%, 95.9%);
+  --secondary-foreground: hsl(24, 9.8%, 10%);
+  --accent: hsl(60, 4.8%, 95.9%);
+  --accent-foreground: hsl(24, 9.8%, 10%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(60, 9.1%, 97.8%);
+  --ring: hsl(20, 14.3%, 4.1%);
+  --radius: 0.5rem;
+  
+  /* WhatsApp specific colors */
+  --whatsapp-primary: hsl(147, 57%, 45%);
+  --whatsapp-primary-dark: hsl(147, 57%, 35%);
+  --whatsapp-secondary: hsl(188, 44%, 35%);
+  --chat-bg: hsl(210, 17%, 95%);
+  --chat-sent: hsl(123, 52%, 87%);
+  --chat-received: hsl(0, 0%, 100%);
+  --chat-text: hsl(213, 33%, 12%);
+  --chat-secondary: hsl(210, 10%, 47%);
+  --chat-border: hsl(210, 14%, 91%);
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(147, 57%, 45%);
+  --primary-foreground: hsl(0, 0%, 98%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+  --radius: 0.5rem;
+  
+  /* Dark mode WhatsApp colors */
+  --whatsapp-primary: hsl(147, 57%, 45%);
+  --whatsapp-primary-dark: hsl(147, 57%, 35%);
+  --whatsapp-secondary: hsl(188, 44%, 35%);
+  --chat-bg: hsl(240, 10%, 3.9%);
+  --chat-sent: hsl(123, 20%, 25%);
+  --chat-received: hsl(240, 3.7%, 15.9%);
+  --chat-text: hsl(0, 0%, 98%);
+  --chat-secondary: hsl(240, 5%, 64.9%);
+  --chat-border: hsl(240, 3.7%, 15.9%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  }
+}
+
+@layer components {
+  .whatsapp-sidebar {
+    @apply bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800;
+  }
+  
+  .whatsapp-conversation-item {
+    @apply p-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer border-b border-gray-100 dark:border-gray-800;
+  }
+  
+  .whatsapp-conversation-item.active {
+    @apply bg-green-50 dark:bg-green-900/20;
+  }
+  
+  .whatsapp-message-sent {
+    background-color: var(--chat-sent);
+    @apply text-gray-900 dark:text-gray-100;
+  }
+  
+  .whatsapp-message-received {
+    background-color: var(--chat-received);
+    @apply text-gray-900 dark:text-gray-100;
+  }
+  
+  .chat-area {
+    background-color: var(--chat-bg);
+  }
+  
+  .nav-item {
+    @apply flex items-center px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors;
+  }
+  
+  .nav-item.active {
+    @apply bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-l-4 border-green-500;
+  }
+  
+  .task-card {
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow;
+  }
+  
+  .contact-card {
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow;
+  }
+  
+  .calendar-day {
+    @apply min-h-32 p-2 border-r border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800;
+  }
+  
+  .calendar-day.today {
+    @apply bg-blue-50 dark:bg-blue-900/20;
+  }
+  
+  .integration-card {
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6;
+  }
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
