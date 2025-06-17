@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { updateEvolutionApiSettings, getEvolutionApi } from "./evolution-api";
 
 const app = express();
 app.use(express.json());
@@ -37,6 +38,26 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize Evolution API with environment credentials
+  if (process.env.EVOLUTION_API_URL && process.env.EVOLUTION_API_KEY) {
+    console.log("🔗 Configuring Evolution API...");
+    updateEvolutionApiSettings({
+      baseUrl: process.env.EVOLUTION_API_URL.replace(/\/$/, ''),
+      apiKey: process.env.EVOLUTION_API_KEY,
+      enabled: true
+    });
+    
+    try {
+      const evolutionApi = getEvolutionApi();
+      const health = await evolutionApi.healthCheck();
+      console.log("✅ Evolution API connected:", health.status);
+    } catch (error) {
+      console.log("⚠️ Evolution API health check failed - will retry when needed");
+    }
+  } else {
+    console.log("⚠️ Evolution API credentials not found in environment");
+  }
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
