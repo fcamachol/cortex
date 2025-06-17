@@ -246,22 +246,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Instance not found" });
       }
       
-      const bridgeStatus = evolutionManager.getBridgeStatus(instance.userId, req.params.id);
+      // HTTP polling mode - disable bridge status since WebSocket is disabled
+      const bridgeStatus = {
+        connected: false,
+        bridgeExists: false
+      };
       
-      // Try to get real-time status from Evolution API
+      // Get real-time status and QR code using HTTP polling
       try {
-        const evolutionApi = getEvolutionApi();
-        const apiStatus = await evolutionApi.checkInstanceStatus(instance.instanceName);
+        let qrCodeData = null;
+        let connectionState = null;
         
-        // Update database with latest status
-        const mappedStatus = apiStatus.status === 'open' ? 'connected' : 
-                           apiStatus.status === 'connecting' ? 'connecting' :
+        if (instance.instanceApiKey) {
+          // Use instance-specific API key for authenticated requests
+          const instanceApi = getInstanceEvolutionApi(instance.instanceApiKey);
+          
+          // Get connection state
+          connectionState = await instanceApi.getConnectionState(instance.instanceName);
+          console.log(`📊 Connection state for ${instance.instanceName}:`, connectionState.instance.state);
+          
+          // Try to get QR code if connecting
+          if (connectionState.instance.state === 'connecting') {
+            try {
+              qrCodeData = await instanceApi.getQRCode(instance.instanceName);
+              console.log(`📱 QR Code retrieved for ${instance.instanceName}:`, qrCodeData ? 'Available' : 'Not available');
+            } catch (qrError: any) {
+              console.log(`⚠️ QR Code not ready for ${instance.instanceName}:`, qrError.message);
+            }
+          }
+        } else {
+          // Fall back to global API
+          const evolutionApi = getEvolutionApi();
+          connectionState = await evolutionApi.getConnectionState(instance.instanceName);
+          
+          if (connectionState.instance.state === 'connecting') {
+            try {
+              qrCodeData = await evolutionApi.getQRCode(instance.instanceName);
+            } catch (qrError: any) {
+              console.log(`⚠️ QR Code not ready for ${instance.instanceName}:`, qrError.message);
+            }
+          }
+        }
+        
+        // Map Evolution API status to our status
+        const mappedStatus = connectionState.instance.state === 'open' ? 'connected' : 
+                           connectionState.instance.state === 'connecting' ? 'connecting' :
                            'disconnected';
         
+        // Update database if status changed
         if (mappedStatus !== instance.status) {
           await storage.updateWhatsappInstance(req.params.id, {
             status: mappedStatus
           });
+          console.log(`📱 Updated ${instance.instanceName} status: ${instance.status} -> ${mappedStatus}`);
         }
         
         res.json({
@@ -271,10 +308,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: mappedStatus
           },
           bridge: bridgeStatus,
-          qrCode: apiStatus.qrcode,
-          evolutionStatus: apiStatus
+          qrCode: qrCodeData || connectionState.qrcode,
+          evolutionStatus: {
+            status: connectionState.instance.state,
+            qrcode: qrCodeData || connectionState.qrcode
+          }
         });
-      } catch (apiError) {
+      } catch (apiError: any) {
+        console.error(`❌ Evolution API error for ${instance.instanceName}:`, apiError.message);
         // Fall back to database status if API is unavailable
         res.json({
           instance: {
@@ -283,7 +324,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: instance.status
           },
           bridge: bridgeStatus,
-          evolutionApiAvailable: false
+          qrCode: null,
+          evolutionStatus: {
+            status: 'error',
+            error: apiError.message
+          }
         });
       }
     } catch (error) {
@@ -349,7 +394,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Now connect the instance and ensure it's ready
         try {
           await evolutionApi.connectInstance(instance.instanceName);
-          console.log(`✅ Instance connected: ${instance.instanceName}`);
+          console.log(`✅ Instance connection initiated: ${instance.instanceName}`);
+          
+          // Wait a moment for instance to initialize, then try to get QR code
+          setTimeout(async () => {
+            try {
+              const qrCode = await evolutionApi.getQRCode(instance.instanceName);
+              console.log(`📱 Initial QR Code generated for ${instance.instanceName}`);
+            } catch (qrError: any) {
+              console.log(`⚠️ QR Code not immediately available for ${instance.instanceName}: ${qrError.message}`);
+            }
+          }, 2000);
+          
         } catch (connectError: any) {
           console.log(`Connection attempt for ${instance.instanceName}:`, connectError.message);
         }
@@ -782,6 +838,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to update Evolution API settings" });
+    }
+  });
+
+  // Force QR code generation for stuck instances
+  app.post("/api/whatsapp/instances/:id/generate-qr", async (req, res) => {
+    try {
+      const instance = await storage.getWhatsappInstance(req.params.id);
+      if (!instance) {
+        return res.status(404).json({ error: "Instance not found" });
+      }
+
+      const evolutionApi = instance.instanceApiKey 
+        ? getInstanceEvolutionApi(instance.instanceApiKey)
+        : getEvolutionApi();
+
+      // First restart the instance to clear any stuck state
+      try {
+        await evolutionApi.restartInstance(instance.instanceName);
+        console.log(`🔄 Restarted instance: ${instance.instanceName}`);
+        
+        // Wait for restart to complete
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      } catch (restartError: any) {
+        console.log(`⚠️ Restart failed for ${instance.instanceName}: ${restartError.message}`);
+      }
+
+      // Connect the instance
+      try {
+        await evolutionApi.connectInstance(instance.instanceName);
+        console.log(`🔗 Connected instance: ${instance.instanceName}`);
+        
+        // Wait for connection to establish
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (connectError: any) {
+        console.log(`⚠️ Connect failed for ${instance.instanceName}: ${connectError.message}`);
+      }
+
+      // Try to get QR code
+      try {
+        const qrCode = await evolutionApi.getQRCode(instance.instanceName);
+        console.log(`📱 QR Code generated for ${instance.instanceName}`);
+        
+        res.json({
+          success: true,
+          qrCode: qrCode,
+          message: "QR code generated successfully"
+        });
+      } catch (qrError: any) {
+        console.error(`❌ QR Code generation failed for ${instance.instanceName}:`, qrError.message);
+        res.status(400).json({
+          success: false,
+          error: `QR code generation failed: ${qrError.message}`,
+          suggestion: "Instance may need more time to initialize. Try again in a few seconds."
+        });
+      }
+
+    } catch (error: any) {
+      console.error("Error generating QR code:", error);
+      res.status(500).json({ 
+        error: "Failed to generate QR code",
+        details: error.message 
+      });
     }
   });
 

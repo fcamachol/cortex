@@ -84,26 +84,47 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess }:
     setError(null);
     
     try {
-      const response = await fetch(`/api/whatsapp/instances/${instanceId}/connect`, {
+      // First try regular connection
+      const connectResponse = await fetch(`/api/whatsapp/instances/${instanceId}/connect`, {
         method: 'POST',
       });
       
-      if (!response.ok) {
-        throw new Error(`Connection failed: ${response.statusText}`);
+      if (connectResponse.ok) {
+        const result = await connectResponse.json();
+        if (result.success) {
+          toast({
+            title: "Connection Initiated",
+            description: "WhatsApp connection process started. Generating QR code...",
+          });
+          
+          // Start polling for QR code and status updates
+          startPolling();
+          return;
+        }
       }
       
-      const result = await response.json();
+      // If regular connection fails, try force QR generation
+      const qrResponse = await fetch(`/api/whatsapp/instances/${instanceId}/generate-qr`, {
+        method: 'POST',
+      });
       
-      if (result.success) {
+      if (!qrResponse.ok) {
+        throw new Error(`QR generation failed: ${qrResponse.statusText}`);
+      }
+      
+      const qrResult = await qrResponse.json();
+      
+      if (qrResult.success && qrResult.qrCode) {
+        setQrCodeData(qrResult.qrCode);
         toast({
-          title: "Connection Initiated",
-          description: "WhatsApp connection process started. Generating QR code...",
+          title: "QR Code Generated",
+          description: "QR code is ready for scanning",
         });
         
-        // Start polling for QR code and status updates
+        // Start polling for status updates
         startPolling();
       } else {
-        throw new Error(result.message || 'Connection initiation failed');
+        throw new Error(qrResult.error || 'QR code generation failed');
       }
       
     } catch (err) {
