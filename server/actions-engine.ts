@@ -57,13 +57,13 @@ export class ActionsEngine {
     
     switch (rule.triggerType) {
       case 'reaction':
-        return context.reaction && this.matchesReactionConditions(conditions, context);
+        return Boolean(context.reaction) && this.matchesReactionConditions(conditions, context);
       
       case 'hashtag':
-        return context.hashtags?.length > 0 && this.matchesHashtagConditions(conditions, context);
+        return Boolean(context.hashtags?.length) && this.matchesHashtagConditions(conditions, context);
       
       case 'keyword':
-        return context.content && this.matchesKeywordConditions(conditions, context);
+        return Boolean(context.content) && this.matchesKeywordConditions(conditions, context);
       
       default:
         return false;
@@ -108,13 +108,15 @@ export class ActionsEngine {
 
   private async shouldExecuteRule(rule: ActionRule): Promise<boolean> {
     // Check cooldown
-    if (rule.cooldownMinutes > 0 && rule.lastExecutedAt) {
-      const cooldownEnd = new Date(rule.lastExecutedAt.getTime() + rule.cooldownMinutes * 60000);
+    const cooldownMinutes = rule.cooldownMinutes ?? 0;
+    if (cooldownMinutes > 0 && rule.lastExecutedAt) {
+      const cooldownEnd = new Date(rule.lastExecutedAt.getTime() + cooldownMinutes * 60000);
       if (new Date() < cooldownEnd) return false;
     }
 
     // Check daily execution limit
-    if (rule.maxExecutionsPerDay > 0) {
+    const maxExecutionsPerDay = rule.maxExecutionsPerDay ?? 0;
+    if (maxExecutionsPerDay > 0) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -128,7 +130,7 @@ export class ActionsEngine {
           )
         );
 
-      if (todayExecutions[0]?.count >= rule.maxExecutionsPerDay) return false;
+      if (todayExecutions[0]?.count >= maxExecutionsPerDay) return false;
     }
 
     return true;
@@ -261,7 +263,7 @@ export class ActionsEngine {
       title: this.interpolateTemplate(config.title, context),
       message: this.interpolateTemplate(config.message, context),
       type: config.type || 'info',
-      userId: rule.userId, // Need to get from rule context
+      instanceId: context.instanceId,
     };
 
     console.log('Sending notification:', notification);

@@ -8,15 +8,22 @@ import { storage } from "./storage";
 import { evolutionManager } from "./evolution-manager";
 import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings, getInstanceEvolutionApi } from "./evolution-api";
 import { db } from "./db";
+import { actionsEngine, ActionsEngine } from "./actions-engine";
 import { 
   insertUserSchema,
   insertWhatsappInstanceSchema,
   insertWhatsappContactSchema,
   insertWhatsappChatSchema,
   insertWhatsappMessageSchema,
-  whatsappInstances
+  whatsappInstances,
+  actionRules,
+  actionExecutions,
+  actionTemplates,
+  insertActionRuleSchema,
+  ActionRule,
+  InsertActionRule
 } from "../shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 // Format phone number to E.164 International Format
 function formatToE164(phoneNumber: string): string {
@@ -399,6 +406,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           const savedMessage = await storage.createWhatsappMessage(whatsappMessageData);
           console.log(`✅ Saved WhatsApp message from ${message.pushName || 'Unknown'}: "${whatsappMessageData.content?.substring(0, 50) || 'No content'}"`);
+
+          // Process actions triggers for this message
+          const messageContent = whatsappMessageData.content || '';
+          const { hashtags, keywords } = ActionsEngine.extractHashtagsAndKeywords(messageContent);
+          
+          if (hashtags.length > 0 || keywords.length > 0) {
+            const triggerContext = {
+              messageId: whatsappMessageData.messageId,
+              instanceId: instance.instanceId,
+              chatId: whatsappMessageData.chatId,
+              senderJid: whatsappMessageData.senderJid,
+              content: messageContent,
+              hashtags,
+              keywords,
+              timestamp: whatsappMessageData.timestamp,
+              fromMe: whatsappMessageData.fromMe,
+            };
+            
+            // Trigger actions engine for hashtags and keywords
+            await actionsEngine.processMessageTriggers(triggerContext);
+          }
 
           // Save media information if this is a media message
           if (message.message && isMediaMessage(message.message)) {
