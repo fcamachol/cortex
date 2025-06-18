@@ -158,7 +158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fromMe: message.key.fromMe || false,
         participant: message.participant || null,
         pushName: message.pushName || null,
-        messageContent: message.message || null,
+        messageContent: message.message || message.editedMessage || { type: 'edited' },
         messageType: messageType,
         textContent: extractMessageContent(message),
         mediaUrl: mediaUrl,
