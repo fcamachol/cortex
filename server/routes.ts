@@ -1674,6 +1674,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Manual sync endpoint for group participants
+  app.post('/api/whatsapp/instances/:instanceId/sync-participants', async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const { instanceId } = req.params;
+      const userId = req.user?.id || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+
+      const instance = await storage.getWhatsappInstance(userId, instanceId);
+      if (!instance || !instance.apiKey) {
+        return res.status(404).json({ error: 'Instance not found or missing API key' });
+      }
+
+      const evolutionApi = getInstanceEvolutionApi(instance.apiKey);
+      
+      // Get all groups for this instance
+      const groups = await storage.getWhatsappChats(userId, instanceId);
+      const groupChats = groups.filter(chat => chat.type === 'group');
+      
+      let totalParticipants = 0;
+      let syncedGroups = 0;
+      
+      for (const group of groupChats) {
+        try {
+          // Fetch participants from Evolution API
+          const response = await evolutionApi.makeRequest(`/group/participants/${instanceId}?groupJid=${encodeURIComponent(group.chatId)}`);
+          
+          if (response.participants && Array.isArray(response.participants)) {
+            for (const participant of response.participants) {
+              const participantData = {
+                groupJid: group.chatId,
+                instanceId: instanceId,
+                participantJid: participant.id,
+                isAdmin: participant.admin === 'admin',
+                isSuperAdmin: participant.admin === 'superadmin'
+              };
+
+              await storage.createWhatsappGroupParticipant(participantData);
+              totalParticipants++;
+            }
+            syncedGroups++;
+            console.log(`✅ Synced ${response.participants.length} participants for group ${group.chatId}`);
+          }
+        } catch (error) {
+          console.error(`Failed to sync participants for group ${group.chatId}:`, error);
+        }
+      }
+
+      res.json({ 
+        success: true,
+        message: `Synchronized ${totalParticipants} participants across ${syncedGroups} groups`,
+        totalParticipants,
+        syncedGroups,
+        totalGroups: groupChats.length
+      });
+    } catch (error) {
+      console.error('Error syncing participants:', error);
+      res.status(500).json({ error: 'Failed to sync participants' });
+    }
+  });
+
   // Legacy routes removed to focus on WhatsApp functionality
 
   // Evolution API webhook endpoint
