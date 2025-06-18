@@ -502,6 +502,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all WhatsApp instances for a user
+  app.get("/api/whatsapp/instances/:userId", async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const instances = await storage.getWhatsappInstances(userId);
+      
+      // Transform instances to match frontend interface
+      const transformedInstances = instances.map(instance => ({
+        instanceId: instance.instanceId,
+        displayName: instance.displayName,
+        ownerJid: instance.ownerJid,
+        clientId: instance.clientId,
+        apiKey: instance.apiKey,
+        webhookUrl: instance.webhookUrl,
+        isConnected: instance.isConnected,
+        lastConnectionAt: instance.lastConnectionAt?.toISOString(),
+        status: instance.isConnected ? "connected" : "disconnected",
+        phoneNumber: instance.ownerJid ? instance.ownerJid.replace('@s.whatsapp.net', '') : undefined,
+        profileName: undefined, // Will be populated by profile endpoint
+        createdAt: instance.createdAt.toISOString(),
+        updatedAt: instance.updatedAt.toISOString()
+      }));
+      
+      res.json(transformedInstances);
+    } catch (error) {
+      console.error("Failed to fetch WhatsApp instances:", error);
+      res.status(500).json({ error: "Failed to fetch instances" });
+    }
+  });
+
   app.put("/api/whatsapp/instances/:id", async (req, res) => {
     try {
       const updateData = req.body;
