@@ -123,58 +123,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      // Handle single message from Evolution API webhook format
-      const message = data; // Evolution API sends single message object, not array
+      // Handle messages array from Evolution API webhook format
+      const messages = data.messages || [data]; // Support both array and single message
       
-      if (!message || !message.key) {
-        console.log('Invalid message format received');
+      if (!Array.isArray(messages)) {
+        console.log('Invalid messages format received');
         return;
       }
 
-      // Determine message type from the message content
-      let messageType = 'conversation';
-      if (message.message) {
-        const messageContent = message.message;
-        if (messageContent.conversation) messageType = 'conversation';
-        else if (messageContent.extendedTextMessage) messageType = 'extendedTextMessage';
-        else if (messageContent.imageMessage) messageType = 'imageMessage';
-        else if (messageContent.videoMessage) messageType = 'videoMessage';
-        else if (messageContent.audioMessage) messageType = 'audioMessage';
-        else if (messageContent.documentMessage) messageType = 'documentMessage';
-        else if (messageContent.stickerMessage) messageType = 'stickerMessage';
-        else if (messageContent.locationMessage) messageType = 'locationMessage';
-        else if (messageContent.contactMessage) messageType = 'contactMessage';
+      for (const message of messages) {
+        if (!message || !message.key) {
+          console.log('Invalid message format in array, skipping');
+          continue;
+        }
+
+        // Determine message type from the message content
+        let messageType: 'text' | 'image' | 'video' | 'audio' | 'document' | 'sticker' | 'location' | 'contact_card' = 'text';
+        if (message.message) {
+          const messageContent = message.message;
+          if (messageContent.conversation || messageContent.extendedTextMessage) messageType = 'text';
+          else if (messageContent.imageMessage) messageType = 'image';
+          else if (messageContent.videoMessage) messageType = 'video';
+          else if (messageContent.audioMessage) messageType = 'audio';
+          else if (messageContent.documentMessage) messageType = 'document';
+          else if (messageContent.stickerMessage) messageType = 'sticker';
+          else if (messageContent.locationMessage) messageType = 'location';
+          else if (messageContent.contactMessage) messageType = 'contact_card';
+        }
+
+        // Save to WhatsApp messages table with new schema
+        const whatsappMessageData = {
+          instanceId: instance.instanceId,
+          messageId: message.key.id || '',
+          chatId: message.key.remoteJid || '',
+          senderJid: message.participant || message.key.remoteJid || '',
+          fromMe: message.key.fromMe || false,
+          messageType: messageType,
+          content: extractMessageContent(message),
+          timestamp: new Date((message.messageTimestamp || Math.floor(Date.now() / 1000)) * 1000),
+          quotedMessageId: message.message?.extendedTextMessage?.contextInfo?.quotedMessage?.key?.id || null,
+          rawApiPayload: message
+        };
+
+        const savedMessage = await storage.createWhatsappMessage(whatsappMessageData);
+        console.log(`✅ Saved WhatsApp message from ${message.pushName || 'Unknown'}: "${whatsappMessageData.content?.substring(0, 50) || 'No content'}"`);
       }
-
-      // Extract media information
-      const mediaUrl = message.message ? getMediaUrl(message.message) : null;
-      const mediaMimetype = message.message ? getMediaMimetype(message.message) : null;
-      const mediaSize = message.message ? getMediaSize(message.message) : null;
-      const mediaFilename = message.message ? getMediaFilename(message.message) : null;
-      const mediaCaption = message.message ? getMediaCaption(message.message) : null;
-
-      // Save to WhatsApp messages table with new schema
-      const evolutionMessageData = {
-        instanceId: instance.instanceId,
-        chatId: message.key.remoteJid || '',
-        messageId: message.key.id || '',
-        senderJid: message.participant || message.key.remoteJid || '',
-        fromMe: message.key.fromMe || false,
-        messageType: messageType as "text" | "image" | "video" | "audio" | "document" | "sticker" | "location" | "contact_card" | "contact_card_multi" | "order" | "revoked" | "unsupported" | "reaction" | "call_log" | "edited_message",
-        textContent: extractMessageContent(message),
-        mediaUrl: mediaUrl,
-        mediaMimetype: mediaMimetype,
-        mediaSize: mediaSize,
-        mediaFilename: mediaFilename,
-        mediaCaption: mediaCaption,
-        messageStatus: message.status || 'received',
-        timestamp: new Date((message.messageTimestamp || Math.floor(Date.now() / 1000)) * 1000),
-        contextInfo: message.contextInfo || null,
-        rawApiPayload: data
-      };
-
-      const savedMessage = await storage.createEvolutionMessage(evolutionMessageData);
-      console.log(`✅ Saved Evolution message from ${message.pushName || 'Unknown'}: "${evolutionMessageData.textContent}"`);
       
     } catch (error) {
       console.error('Error saving webhook message:', error);

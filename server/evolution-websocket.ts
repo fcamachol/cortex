@@ -3,7 +3,7 @@ import { storage } from './storage';
 import { 
   type InsertWhatsappMessage,
   type InsertWhatsappContact,
-  type InsertWhatsappConversation
+  type InsertWhatsappChat
 } from '../shared/schema';
 
 interface EvolutionConfig {
@@ -351,22 +351,18 @@ export class EvolutionAPIWebSocket {
   }
 
   private async saveChat(chat: any) {
-    const conversationData: InsertWhatsappConversation = {
-      userId: this.userId,
+    const chatData: InsertWhatsappChat = {
       instanceId: this.instanceId,
-      remoteJid: chat.id,
-      chatName: chat.name || this.getChatName(chat.id),
-      chatType: this.getChatType(chat.id),
+      chatId: chat.id,
+      type: this.getChatType(chat.id),
       unreadCount: chat.unreadCount || 0,
-      lastMessageContent: chat.lastMessage?.message || '',
-      lastMessageTimestamp: chat.lastMessageTimestamp || Date.now(),
-      lastMessageFromMe: chat.lastMessage?.fromMe || false,
       isArchived: chat.archived || false,
       isPinned: chat.pinned || false,
-      isMuted: chat.mute || false
+      isMuted: chat.mute || false,
+      lastMessageTimestamp: chat.lastMessageTimestamp ? new Date(chat.lastMessageTimestamp) : null
     };
     
-    await storage.createWhatsappConversation(conversationData);
+    await storage.createWhatsappChat(chatData);
     console.log(`Chat saved: ${chat.id}`);
   }
 
