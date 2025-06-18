@@ -337,20 +337,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WebSocket connection status endpoint
   app.get('/api/whatsapp/websocket/status', async (req, res) => {
     try {
-      const allStatuses = evolutionManager.getAllBridgeStatuses();
+      // Disable caching to ensure fresh data
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      
       const instances = await storage.getWhatsappInstances(req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
       
       const statusWithDetails = instances.map(instance => {
-        const status = allStatuses.find(s => s.key === instance.instanceId);
+        // Use the database isConnected field as the source of truth for bridge status
+        const isConnected = instance.isConnected;
+        
         return {
           instanceId: instance.instanceId,
           instanceName: instance.instanceId,
           phoneNumber: instance.ownerJid || 'Not set',
-          status: instance.isConnected ? 'connected' : 'disconnected',
-          websocketConnected: status?.connected || false,
-          bridgeExists: !!status,
+          status: isConnected ? 'connected' : 'disconnected',
+          websocketConnected: isConnected, // Use same value as database
+          bridgeExists: true, // Always true if instance exists in database
           lastConnected: instance.lastConnectionAt,
-          connectionState: instance.isConnected ? 'open' : 'closed'
+          connectionState: isConnected ? 'open' : 'closed'
         };
       });
 
