@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { actionRules, actionExecutions, ActionRule, InsertActionExecution } from "@shared/schema";
+import { actionRules, actionExecutions, tasks, whatsappInstances, ActionRule, InsertActionExecution } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { EvolutionApi } from "./evolution-api";
 
@@ -202,24 +202,39 @@ export class ActionsEngine {
   }
 
   private async createTask(config: any, context: TriggerContext): Promise<any> {
+    // Get the user ID from the WhatsApp instance
+    const [instance] = await db.select()
+      .from(whatsappInstances)
+      .where(eq(whatsappInstances.instanceId, context.instanceId))
+      .limit(1);
+    
+    if (!instance) {
+      throw new Error(`WhatsApp instance not found: ${context.instanceId}`);
+    }
+
     // Create task in CRM system
     const taskData = {
+      userId: instance.clientId, // Use the client_id from the WhatsApp instance
       title: this.interpolateTemplate(config.title, context),
       description: this.interpolateTemplate(config.description, context),
       priority: config.priority || 'medium',
+      taskStatus: 'to_do',
       dueDate: config.dueDate ? new Date(config.dueDate) : undefined,
-      projectId: config.projectId,
-      assignedTo: config.assignedTo,
-      tags: config.tags || [],
-      status: 'open',
-      sourceInstanceId: context.instanceId,
-      sourceChatId: context.chatId,
-      sourceMessageId: context.messageId,
+      conversationJid: context.chatId,
+      contactJid: context.senderJid,
     };
 
-    // This would integrate with your CRM task system
     console.log('Creating task:', taskData);
-    return { taskId: 'generated-task-id', ...taskData };
+
+    // Save task to database
+    try {
+      const [savedTask] = await db.insert(tasks).values(taskData).returning();
+      console.log('✅ Task saved to database with ID:', savedTask.taskId);
+      return savedTask;
+    } catch (error) {
+      console.error('❌ Error saving task to database:', error);
+      throw error;
+    }
   }
 
   private async createCalendarEvent(config: any, context: TriggerContext): Promise<any> {
