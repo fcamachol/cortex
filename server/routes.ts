@@ -1443,6 +1443,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all messages for an instance with pagination
+  app.get('/api/whatsapp/messages/all/:instanceId', async (req: Request & { user?: { id: string } }, res: Response) => {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+      const { instanceId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 50;
+
+      const messages = await storage.getAllWhatsappMessagesForInstance(req.user.id, instanceId, limit);
+      res.json(messages);
+    } catch (error) {
+      console.error('Error fetching all messages:', error);
+      res.status(500).json({ error: 'Failed to fetch messages' });
+    }
+  });
+
+  // Get message update analytics for an instance
+  app.get('/api/whatsapp/message-updates/analytics/:instanceId', async (req: Request & { user?: { id: string } }, res: Response) => {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+      const { instanceId } = req.params;
+      
+      // Get all message updates for this instance
+      const messages = await storage.getAllWhatsappMessagesForInstance(req.user.id, instanceId, 1000);
+      const allUpdates = [];
+      
+      for (const message of messages) {
+        const updates = await storage.getWhatsappMessageUpdates(req.user.id, instanceId, message.messageId);
+        allUpdates.push(...updates);
+      }
+      
+      res.json(allUpdates);
+    } catch (error) {
+      console.error('Error fetching update analytics:', error);
+      res.status(500).json({ error: 'Failed to fetch analytics' });
+    }
+  });
+
   // WhatsApp profile endpoint
   app.get("/api/whatsapp/instances/:id/profile", async (req, res) => {
     try {
