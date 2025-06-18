@@ -394,7 +394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/users", async (req, res) => {
     try {
-      const userData = insertAppUserSchema.parse(req.body);
+      const userData = insertUserSchema.parse(req.body);
       const user = await storage.createUser(userData);
       res.status(201).json(user);
     } catch (error) {
@@ -420,7 +420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const evolutionApi = getEvolutionApi();
         const createResponse = await evolutionApi.createInstance({
-          instanceName: instanceData.instanceName,
+          instanceName: instanceData.instanceId,
           integration: "WHATSAPP-BAILEYS",
           webhook_url: instanceData.webhookUrl ? instanceData.webhookUrl : undefined,
           events: [
@@ -450,11 +450,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Store instance with the captured API key
         const instance = await storage.createWhatsappInstance({
           ...instanceData,
-          instanceApiKey: typeof instanceApiKey === 'string' ? instanceApiKey : undefined,
-          status: "created"
+          apiKey: typeof instanceApiKey === 'string' ? instanceApiKey : undefined,
+          isConnected: false
         });
 
-        console.log(`✅ Created instance: ${instanceData.instanceName} with API key: ${typeof instanceApiKey === 'string' ? instanceApiKey.substring(0, 8) + '...' : 'none'}`);
+        console.log(`✅ Created instance: ${instanceData.instanceId} with API key: ${typeof instanceApiKey === 'string' ? instanceApiKey.substring(0, 8) + '...' : 'none'}`);
         
         res.status(201).json(instance);
       } catch (evolutionError: any) {
@@ -463,7 +463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Fall back to creating instance without Evolution API
         const instance = await storage.createWhatsappInstance({
           ...instanceData,
-          status: "creation_failed"
+          isConnected: false
         });
         
         res.status(201).json({
@@ -480,12 +480,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/whatsapp/instances/:id", async (req, res) => {
     try {
       const updateData = req.body;
-      const instance = await storage.updateWhatsappInstance(req.params.id, updateData);
+      const instance = await storage.updateWhatsappInstance(req.session.userId!, req.params.id, updateData);
       
       // Refresh the Evolution API bridge for this instance
-      const oldInstance = await storage.getWhatsappInstance(req.params.id);
+      const oldInstance = await storage.getWhatsappInstance(req.session.userId!, req.params.id);
       if (oldInstance) {
-        await evolutionManager.refreshInstance(oldInstance.userId, req.params.id);
+        await evolutionManager.refreshInstance(oldInstance.clientId, req.params.id);
       }
       
       res.json(instance);
@@ -498,7 +498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/whatsapp/instances/:id", async (req, res) => {
     try {
       const updateData = req.body;
-      const instance = await storage.updateWhatsappInstance(req.params.id, updateData);
+      const instance = await storage.updateWhatsappInstance(req.session.userId!, req.params.id, updateData);
       res.json(instance);
     } catch (error) {
       res.status(400).json({ error: "Failed to update instance" });
