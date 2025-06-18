@@ -151,10 +151,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
           else if (messageContent.contactMessage) messageType = 'contact_card';
         }
 
-        // Ensure the chat exists before saving the message
+        // Ensure the contact and chat exist before saving the message
         const chatId = message.key.remoteJid || '';
+        const senderJid = message.participant || message.key.remoteJid || '';
+        
         try {
-          // Try to get the existing chat
+          // For individual chats, the contact JID should match the chat ID
+          // For group chats, we create contacts for both the chat and the sender
+          const contactJid = chatId.includes('@g.us') ? senderJid : chatId;
+          
+          // First, ensure the main contact exists (for the chat)
+          let chatContact = await storage.getWhatsappContact('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instance.instanceId, contactJid);
+          
+          if (!chatContact) {
+            // Create the contact if it doesn't exist
+            const newContactData = {
+              instanceId: instance.instanceId,
+              jid: contactJid,
+              name: message.pushName || contactJid.split('@')[0],
+              isMyContact: false,
+              isBlocked: false
+            };
+            
+            chatContact = await storage.createWhatsappContact(newContactData);
+            console.log(`✅ Created new contact: ${contactJid}`);
+          }
+          
+          // For group chats, also ensure the sender contact exists if different
+          if (chatId.includes('@g.us') && senderJid !== contactJid) {
+            let senderContact = await storage.getWhatsappContact('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instance.instanceId, senderJid);
+            
+            if (!senderContact) {
+              const senderContactData = {
+                instanceId: instance.instanceId,
+                jid: senderJid,
+                name: message.pushName || senderJid.split('@')[0],
+                isMyContact: false,
+                isBlocked: false
+              };
+              
+              senderContact = await storage.createWhatsappContact(senderContactData);
+              console.log(`✅ Created new sender contact: ${senderJid}`);
+            }
+          }
+          
+          // Then, ensure the chat exists
           let chat = await storage.getWhatsappChat('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instance.instanceId, chatId);
           
           if (!chat) {
@@ -174,8 +215,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             chat = await storage.createWhatsappChat(newChatData);
             console.log(`✅ Created new chat: ${chatId}`);
           }
-        } catch (chatError) {
-          console.error('Error ensuring chat exists:', chatError);
+        } catch (setupError) {
+          console.error('Error ensuring contact/chat exists:', setupError);
         }
 
         // Save to WhatsApp messages table with new schema
