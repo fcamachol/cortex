@@ -208,6 +208,14 @@ export class EvolutionAPIWebSocket {
   }
 
   private extractMessageContent(messageContent: any) {
+    // Handle edited messages
+    if (messageContent.editedMessage?.message?.protocolMessage?.editedMessage?.conversation) {
+      return {
+        type: 'editedMessage',
+        text: messageContent.editedMessage.message.protocolMessage.editedMessage.conversation
+      };
+    }
+    
     if (messageContent.conversation) {
       return {
         type: 'conversation',
