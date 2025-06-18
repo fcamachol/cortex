@@ -1,0 +1,114 @@
+-- =============================================================================
+-- SCHEMA: APP (Final and Complete)
+-- PURPOSE: Manages application users, authentication, multi-tenant workspaces,
+--          and the hierarchical organization of spaces. This schema is the
+--          security and structural foundation for the entire application.
+-- =============================================================================
+
+CREATE SCHEMA IF NOT EXISTS app;
+
+-- =============================================================================
+-- ENUMERATED TYPES
+-- =============================================================================
+CREATE TYPE app.workspace_role AS ENUM ('admin', 'member', 'viewer');
+COMMENT ON TYPE app.workspace_role IS 'Defines the permission level of a user within a specific workspace.';
+
+
+-- =============================================================================
+-- CORE TABLE STRUCTURES
+-- =============================================================================
+
+---
+--- TABLE: app.users
+--- PURPOSE: Stores the global list of all individual user accounts. A user's
+---          email is unique across the entire application.
+---
+CREATE TABLE app.users (
+    user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255),
+    avatar_url VARCHAR(512),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE app.users IS 'Stores global user accounts for authentication.';
+
+---
+--- TABLE: app.workspaces
+--- PURPOSE: This is the top-level tenant object, representing a single
+---          company or team using the CRM. It's the anchor for all
+---          multi-tenancy and billing.
+---
+CREATE TABLE app.workspaces (
+    workspace_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_name VARCHAR(255) NOT NULL,
+    owner_id UUID NOT NULL REFERENCES app.users(user_id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE app.workspaces IS 'Represents a single tenant, team, or company account within the application.';
+
+
+---
+--- TABLE: app.spaces
+--- PURPOSE: Organizational units within a workspace, similar to folders.
+---          All CRM content (projects, tasks, etc.) belongs to a space.
+---
+CREATE TABLE app.spaces (
+    space_id SERIAL PRIMARY KEY,
+    workspace_id UUID NOT NULL,
+    space_name VARCHAR(100) NOT NULL,
+    icon VARCHAR(50), -- e.g., an emoji or icon name like 'briefcase'
+    color VARCHAR(7),  -- e.g., a hex code like '#4A90E2'
+    display_order INTEGER DEFAULT 0 NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_workspace FOREIGN KEY(workspace_id) REFERENCES app.workspaces(workspace_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE app.spaces IS 'Organizational units within a workspace, like folders (e.g., "Work", "Personal").';
+
+
+---
+--- TABLE: app.workspace_members
+--- PURPOSE: The junction table that links users to workspaces and
+---          defines their role within that workspace. This allows a single
+---          user to belong to multiple teams with different roles.
+---
+CREATE TABLE app.workspace_members (
+    workspace_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    role app.workspace_role NOT NULL DEFAULT 'member',
+
+    PRIMARY KEY (workspace_id, user_id),
+    CONSTRAINT fk_workspace FOREIGN KEY(workspace_id) REFERENCES app.workspaces(workspace_id) ON DELETE CASCADE,
+    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES app.users(user_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE app.workspace_members IS 'Junction table linking users to workspaces and defining their roles within them.';
+
+
+---
+--- TABLE: app.user_preferences
+--- PURPOSE: Stores individual user preferences for UI/UX customization.
+---
+CREATE TABLE app.user_preferences (
+    user_id UUID PRIMARY KEY,
+    theme VARCHAR(20) DEFAULT 'system' NOT NULL, -- 'light', 'dark', 'system'
+    language VARCHAR(10) DEFAULT 'en' NOT NULL,
+    timezone VARCHAR(50) DEFAULT 'UTC' NOT NULL,
+    notifications JSONB, -- For storing settings like { "email_on_mention": true }
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES app.users(user_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE app.user_preferences IS 'Stores individual user preferences for the app UI/UX, such as theme and notification settings.';
+
+
+-- =============================================================================
+-- INDEXES FOR PERFORMANCE
+-- =============================================================================
+CREATE INDEX idx_users_email ON app.users(email);
+CREATE INDEX idx_workspace_members_user_id ON app.workspace_members(user_id);
+CREATE INDEX idx_workspace_members_workspace_id ON app.workspace_members(workspace_id);
+CREATE INDEX idx_spaces_workspace_id ON app.spaces(workspace_id);
