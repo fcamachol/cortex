@@ -349,24 +349,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const action = data.action; // 'add', 'remove', 'promote', 'demote'
       const participants = data.participants || [];
 
-      for (const participantJid of participants) {
-        switch (action) {
-          case 'add':
-            const participantData = {
-              groupJid: groupJid,
-              instanceId: instance.instanceId,
-              participantJid: participantJid,
-              isAdmin: false,
-              isSuperAdmin: false
-            };
-            await storage.createWhatsappGroupParticipant(participantData);
-            console.log(`✅ Added participant: ${participantJid} to group ${groupJid}`);
-            break;
+      // Ensure group exists before processing participants
+      let group = await storage.getWhatsappGroup(userId, instance.instanceId, groupJid);
+      if (!group) {
+        console.log(`📝 Creating group record for ${groupJid}`);
+        const groupData = {
+          groupJid: groupJid,
+          instanceId: instance.instanceId,
+          subject: `Group ${groupJid.split('@')[0]}`,
+          description: null,
+          ownerJid: null,
+          creationTimestamp: new Date(),
+          isLocked: false,
+          updatedAt: new Date()
+        };
+        group = await storage.createWhatsappGroup(groupData);
+        console.log(`✅ Created group record: ${groupJid}`);
+      }
 
-          case 'remove':
-            await storage.removeWhatsappGroupParticipant(instance.instanceId, groupJid, participantJid);
-            console.log(`✅ Removed participant: ${participantJid} from group ${groupJid}`);
-            break;
+      // Also ensure group chat exists
+      const existingChat = await storage.getWhatsappChat(userId, instance.instanceId, groupJid);
+      if (!existingChat) {
+        const chatData = {
+          chatId: groupJid,
+          instanceId: instance.instanceId,
+          type: 'group' as const,
+          unreadCount: 0,
+          isPinned: false,
+          isArchived: false
+        };
+        await storage.createWhatsappChat(chatData);
+        console.log(`✅ Created group chat: ${groupJid}`);
+      }
+
+      for (const participantJid of participants) {
+        try {
+          switch (action) {
+            case 'add':
+              const participantData = {
+                groupJid: groupJid,
+                instanceId: instance.instanceId,
+                participantJid: participantJid,
+                isAdmin: false,
+                isSuperAdmin: false
+              };
+              await storage.createWhatsappGroupParticipant(participantData);
+              console.log(`✅ Added participant: ${participantJid} to group ${groupJid}`);
+              break;
+
+            case 'remove':
+              await storage.removeWhatsappGroupParticipant(instance.instanceId, groupJid, participantJid);
+              console.log(`✅ Removed participant: ${participantJid} from group ${groupJid}`);
+              break;
 
           case 'promote':
             await storage.updateWhatsappGroupParticipant(instance.instanceId, groupJid, participantJid, {
@@ -384,10 +418,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`✅ Demoted participant: ${participantJid} in group ${groupJid}`);
             break;
 
-          default:
-            console.log(`⚠️ Unknown participant action: ${action}`);
+            default:
+              console.log(`⚠️ Unknown participant action: ${action} for ${participantJid}`);
+          }
+        } catch (participantError) {
+          console.error(`❌ Error processing participant ${participantJid}:`, participantError);
         }
       }
+
+      console.log(`✅ Completed processing ${participants.length} participants for group ${groupJid}`);
+
     } catch (error) {
       console.error('Error processing group-participants.update:', error);
     }
