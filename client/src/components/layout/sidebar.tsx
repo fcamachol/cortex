@@ -134,7 +134,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
                 </div>
               ) : (
                 whatsappInstances.map((instance: any) => (
-                  <div key={instance.id} className="flex items-center px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <div key={instance.instanceId} className="flex items-center px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
                     <div className={`w-3 h-3 rounded-full mr-3 ${
                       instance.status === 'connected' ? 'bg-green-500' : 'bg-gray-400'
                     }`}></div>

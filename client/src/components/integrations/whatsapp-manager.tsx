@@ -296,7 +296,7 @@ export function WhatsAppInstanceManager() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {instances.map((instance) => (
-            <Card key={instance.id} className="relative">
+            <Card key={instance.instanceId} className="relative">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-2 flex-1">
