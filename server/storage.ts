@@ -102,6 +102,13 @@ export interface IStorage {
   createWhatsappGroupParticipant(participant: InsertWhatsappGroupParticipant): Promise<WhatsappGroupParticipant>;
   getWhatsappGroupParticipants(userId: string, instanceId: string, groupJid: string): Promise<WhatsappGroupParticipant[]>;
   deleteWhatsappGroupParticipant(userId: string, instanceId: string, groupJid: string, participantJid: string): Promise<void>;
+
+  // Legacy compatibility methods
+  getWhatsappConversations(userId: string, instanceId?: string): Promise<WhatsappChat[]>;
+  createWhatsappConversation(chat: InsertWhatsappChat): Promise<WhatsappChat>;
+  saveWhatsappConversation(chat: InsertWhatsappChat): Promise<WhatsappChat>;
+  getWhatsappInstanceByName(userId: string, instanceName: string): Promise<WhatsappInstance | undefined>;
+  createEvolutionMessage(message: InsertWhatsappMessage): Promise<WhatsappMessage>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -587,6 +594,27 @@ export class DatabaseStorage implements IStorage {
         eq(whatsappGroupParticipants.groupJid, groupJid),
         eq(whatsappGroupParticipants.participantJid, participantJid)
       ));
+  }
+
+  // Legacy compatibility methods
+  async getWhatsappConversations(userId: string, instanceId?: string): Promise<WhatsappChat[]> {
+    return this.getWhatsappChats(userId, instanceId);
+  }
+
+  async createWhatsappConversation(chat: InsertWhatsappChat): Promise<WhatsappChat> {
+    return this.createWhatsappChat(chat);
+  }
+
+  async saveWhatsappConversation(chat: InsertWhatsappChat): Promise<WhatsappChat> {
+    return this.createWhatsappChat(chat);
+  }
+
+  async getWhatsappInstanceByName(userId: string, instanceName: string): Promise<WhatsappInstance | undefined> {
+    return this.getWhatsappInstance(userId, instanceName);
+  }
+
+  async createEvolutionMessage(message: InsertWhatsappMessage): Promise<WhatsappMessage> {
+    return this.createWhatsappMessage(message);
   }
 }
 

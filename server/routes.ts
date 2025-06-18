@@ -144,28 +144,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const mediaFilename = message.message ? getMediaFilename(message.message) : null;
       const mediaCaption = message.message ? getMediaCaption(message.message) : null;
 
-      // Save to evolution_messages table (no foreign key constraints)
+      // Save to WhatsApp messages table with new schema
       const evolutionMessageData = {
-        userId: instance.userId, // Include user_id for RLS
-        instanceName: instanceName,
-        messageId: message.key.id || '', // Map "id" field to message_id column
-        evolutionMessageId: message.key.id || '',
-        remoteJid: message.key.remoteJid || '',
+        instanceId: instanceName,
+        chatId: message.key.remoteJid || '',
+        messageId: message.key.id || '',
+        senderJid: message.participant || message.key.remoteJid || '',
         fromMe: message.key.fromMe || false,
-        participant: message.participant || null,
-        pushName: message.pushName || null,
-        messageContent: message.message || message.editedMessage || { type: 'edited' },
-        messageType: messageType,
+        messageType: messageType as "text" | "image" | "video" | "audio" | "document" | "sticker" | "location" | "contact_card" | "contact_card_multi" | "order" | "revoked" | "unsupported" | "reaction" | "call_log" | "edited_message",
         textContent: extractMessageContent(message),
         mediaUrl: mediaUrl,
         mediaMimetype: mediaMimetype,
         mediaSize: mediaSize,
         mediaFilename: mediaFilename,
         mediaCaption: mediaCaption,
-        status: message.status || 'received',
-        timestamp: message.messageTimestamp || Math.floor(Date.now() / 1000),
+        messageStatus: message.status || 'received',
+        timestamp: new Date((message.messageTimestamp || Math.floor(Date.now() / 1000)) * 1000),
         contextInfo: message.contextInfo || null,
-        rawWebhookData: data
+        rawApiPayload: data
       };
 
       const savedMessage = await storage.createEvolutionMessage(evolutionMessageData);
@@ -263,25 +259,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   async function getOrCreateConversationId(instanceId: string, remoteJid: string): Promise<string> {
     // Check if conversation exists
-    const conversations = await storage.getWhatsappConversations(instanceId);
-    const existing = conversations.find(c => c.remoteJid === remoteJid);
+    const conversations = await storage.getWhatsappConversations('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instanceId);
+    const existing = conversations.find(c => c.chatId === remoteJid);
     
     if (existing) {
-      return existing.id;
+      return existing.chatId;
     }
 
     // Create new conversation
     const newConversation = await storage.saveWhatsappConversation({
-      userId: instanceId, // Will be corrected with proper user lookup
       instanceId,
-      remoteJid,
-      chatName: remoteJid.includes('@g.us') ? 'Group Chat' : remoteJid.split('@')[0],
-      chatType: remoteJid.includes('@g.us') ? 'group' : 'individual',
-      lastMessageTimestamp: Math.floor(Date.now() / 1000),
+      chatId: remoteJid,
+      type: remoteJid.includes('@g.us') ? 'group' : 'individual',
+      lastMessageTimestamp: new Date(),
       unreadCount: 0
     });
 
-    return newConversation.id;
+    return newConversation.chatId;
   }
 
   // WebSocket server for real-time messaging
@@ -338,16 +332,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const instances = await storage.getWhatsappInstances(req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
       
       const statusWithDetails = instances.map(instance => {
-        const status = allStatuses.find(s => s.key === instance.instanceName);
+        const status = allStatuses.find(s => s.key === instance.instanceId);
         return {
-          instanceId: instance.id,
-          instanceName: instance.instanceName,
-          phoneNumber: instance.phoneNumber,
-          status: instance.status,
+          instanceId: instance.instanceId,
+          instanceName: instance.instanceId,
+          phoneNumber: instance.ownerJid || 'Not set',
+          status: instance.isConnected ? 'connected' : 'disconnected',
           websocketConnected: status?.connected || false,
           bridgeExists: !!status,
-          lastConnected: instance.lastConnectedAt,
-          connectionState: instance.connectionState || 'unknown'
+          lastConnected: instance.lastConnectionAt,
+          connectionState: instance.isConnected ? 'open' : 'closed'
         };
       });
 
@@ -369,13 +363,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({
-        instanceId: instance.id,
-        instanceName: instance.instanceName,
-        phoneNumber: instance.phoneNumber,
-        status: instance.status,
+        instanceId: instance.instanceId,
+        instanceName: instance.instanceId,
+        phoneNumber: instance.ownerJid || 'Not set',
+        status: instance.isConnected ? 'connected' : 'disconnected',
         websocketConnected: status.connected,
         bridgeExists: status.bridgeExists,
-        lastConnected: instance.lastConnectedAt,
+        lastConnected: instance.lastConnectionAt,
         connectionState: 'open',
         serverUrl: 'https://evolution-api-evolution-api.vuswn0.easypanel.host'
       });
