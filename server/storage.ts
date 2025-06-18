@@ -401,6 +401,21 @@ export class DatabaseStorage implements IStorage {
     return results.map(result => result.messages);
   }
 
+  async getAllWhatsappMessagesForInstance(userId: string, instanceId: string, limit: number = 50): Promise<WhatsappMessage[]> {
+    const results = await db
+      .select()
+      .from(whatsappMessages)
+      .innerJoin(whatsappInstances, eq(whatsappMessages.instanceId, whatsappInstances.instanceId))
+      .where(and(
+        eq(whatsappInstances.clientId, userId),
+        eq(whatsappMessages.instanceId, instanceId)
+      ))
+      .orderBy(desc(whatsappMessages.timestamp))
+      .limit(limit);
+
+    return results.map(result => result.messages);
+  }
+
   async getWhatsappMessage(userId: string, instanceId: string, messageId: string): Promise<WhatsappMessage | undefined> {
     const [result] = await db
       .select()

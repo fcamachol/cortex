@@ -151,11 +151,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
           else if (messageContent.contactMessage) messageType = 'contact_card';
         }
 
+        // Ensure the chat exists before saving the message
+        const chatId = message.key.remoteJid || '';
+        try {
+          // Try to get the existing chat
+          let chat = await storage.getWhatsappChat('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instance.instanceId, chatId);
+          
+          if (!chat) {
+            // Create the chat if it doesn't exist
+            const chatType: 'individual' | 'group' = chatId.includes('@g.us') ? 'group' : 'individual';
+            const newChatData = {
+              instanceId: instance.instanceId,
+              chatId: chatId,
+              type: chatType,
+              unreadCount: 0,
+              isArchived: false,
+              isPinned: false,
+              isMuted: false,
+              lastMessageTimestamp: new Date((message.messageTimestamp || Math.floor(Date.now() / 1000)) * 1000)
+            };
+            
+            chat = await storage.createWhatsappChat(newChatData);
+            console.log(`✅ Created new chat: ${chatId}`);
+          }
+        } catch (chatError) {
+          console.error('Error ensuring chat exists:', chatError);
+        }
+
         // Save to WhatsApp messages table with new schema
         const whatsappMessageData = {
           instanceId: instance.instanceId,
           messageId: message.key.id || '',
-          chatId: message.key.remoteJid || '',
+          chatId: chatId,
           senderJid: message.participant || message.key.remoteJid || '',
           fromMe: message.key.fromMe || false,
           messageType: messageType,
@@ -1184,12 +1211,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get WhatsApp messages for a specific chat
-  app.get("/api/whatsapp/messages/:conversationId", async (req, res) => {
+  // Get WhatsApp messages for a specific instance (all messages) or specific chat
+  app.get("/api/whatsapp/messages/:instanceId", async (req, res) => {
     try {
       const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const messages = await storage.getWhatsappMessages(userId, "", req.params.conversationId);
-      res.json(messages);
+      const { instanceId } = req.params;
+      const { chatId, limit = '50' } = req.query;
+      const limitNum = parseInt(limit as string, 10);
+      
+      if (chatId) {
+        // Get messages for a specific chat
+        const messages = await storage.getWhatsappMessages(userId, instanceId, chatId as string, limitNum);
+        res.json(messages);
+      } else {
+        // Get all messages for the instance - need to create a new method for this
+        const messages = await storage.getAllWhatsappMessagesForInstance(userId, instanceId, limitNum);
+        res.json(messages);
+      }
     } catch (error) {
       console.error('Error fetching messages:', error);
       res.status(500).json({ error: "Failed to get messages" });
