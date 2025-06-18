@@ -2045,6 +2045,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get group information and participants
+  app.get("/api/whatsapp/groups/:instanceId/:groupJid", async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { instanceId, groupJid } = req.params;
+      const decodedGroupJid = decodeURIComponent(groupJid);
+
+      // Get group information
+      const group = await storage.getWhatsappGroup(req.user.id, instanceId, decodedGroupJid);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      // Get group participants
+      const participants = await storage.getWhatsappGroupParticipants(req.user.id, instanceId, decodedGroupJid);
+
+      const groupInfo = {
+        groupJid: group.groupJid,
+        subject: group.subject,
+        description: group.description,
+        ownerJid: group.ownerJid,
+        participants: participants,
+        participantCount: participants.length
+      };
+
+      res.json(groupInfo);
+    } catch (error) {
+      console.error('Error fetching group info:', error);
+      res.status(500).json({ error: "Failed to fetch group information" });
+    }
+  });
+
   // Force QR code generation for stuck instances
   app.post("/api/whatsapp/instances/:id/generate-qr", async (req, res) => {
     try {
