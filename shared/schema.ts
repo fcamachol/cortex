@@ -1,486 +1,490 @@
-import { pgTable, text, serial, integer, boolean, timestamp, uuid, varchar, jsonb, bigint, numeric, date, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, pgSchema, text, boolean, timestamp, uuid, integer, jsonb, bigint, varchar, serial, numeric } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import { relations } from "drizzle-orm";
 
-// User management - user_id is the primary identifier
-export const appUsers = pgTable("app_users", {
-  userId: uuid("user_id").primaryKey().defaultRandom(),
-  email: varchar("email").notNull().unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  phone: varchar("phone"),
-  avatarUrl: varchar("avatar_url"),
-  passwordHash: varchar("password_hash").notNull(),
-  emailVerified: boolean("email_verified").default(false),
-  emailVerifiedAt: timestamp("email_verified_at"),
-  status: varchar("status", { enum: ["pending", "active", "suspended", "deleted"] }).default("pending"),
-  plan: varchar("plan", { enum: ["free", "basic", "premium", "enterprise"] }).default("free"),
-  maxInstances: integer("max_instances").default(1),
-  lastLoginAt: timestamp("last_login_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
+// Create whatsapp schema
+export const whatsappSchema = pgSchema("whatsapp");
+
+// Enums for WhatsApp schema
+export const chatTypeEnum = whatsappSchema.enum("chat_type", ["individual", "group"]);
+export const messageTypeEnum = whatsappSchema.enum("message_type", [
+  "text", "image", "video", "audio", "document", "sticker", "location",
+  "contact_card", "contact_card_multi", "order", "revoked", "unsupported",
+  "reaction", "call_log", "edited_message"
+]);
+export const messageStatusEnum = whatsappSchema.enum("message_status", [
+  "error", "pending", "sent", "delivered", "read", "played"
+]);
+export const callOutcomeEnum = whatsappSchema.enum("call_outcome", [
+  "answered", "missed", "declined"
+]);
+
+// WhatsApp Schema Tables
+export const whatsappInstances = whatsappSchema.table("instances", {
+  instanceId: varchar("instance_id", { length: 100 }).primaryKey(),
+  ownerJid: varchar("owner_jid", { length: 100 }).unique(),
+  clientId: uuid("client_id").notNull(), // FK to users table
+  apiKey: varchar("api_key", { length: 255 }),
+  webhookUrl: varchar("webhook_url", { length: 255 }),
+  isConnected: boolean("is_connected").default(false).notNull(),
+  lastConnectionAt: timestamp("last_connection_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-// WhatsApp integration - composite key with user_id and instance_name
-export const whatsappInstances = pgTable("whatsapp_instances", {
-  userId: uuid("user_id").references(() => appUsers.userId).notNull(),
-  instanceName: varchar("instance_name").notNull(),
-  displayName: varchar("display_name"),
-  instanceApiKey: varchar("instance_api_key"),
-  webhookUrl: varchar("webhook_url"),
-  phoneNumber: varchar("phone_number"),
-  profileName: varchar("profile_name"),
-  profilePictureUrl: varchar("profile_picture_url"),
-  status: varchar("status", { enum: ["connected", "disconnected", "connecting", "error", "qr_pending", "created", "creation_failed"] }).default("disconnected"),
-  qrCode: text("qr_code"),
-  qrExpiresAt: timestamp("qr_expires_at"),
-  lastConnectedAt: timestamp("last_connected_at"),
-  disconnectedAt: timestamp("disconnected_at"),
-  lastError: text("last_error"),
-  connectionRetries: integer("connection_retries").default(0),
-  webhookEvents: jsonb("webhook_events"),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
-}, (table) => {
-  return {
-    pk: primaryKey({ columns: [table.userId, table.instanceName] })
-  };
+export const whatsappContacts = whatsappSchema.table("contacts", {
+  jid: varchar("jid", { length: 100 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  pushName: varchar("push_name", { length: 255 }),
+  verifiedName: varchar("verified_name", { length: 255 }),
+  profilePictureUrl: varchar("profile_picture_url", { length: 512 }),
+  isBusiness: boolean("is_business").default(false).notNull(),
+  isMe: boolean("is_me").default(false).notNull(),
+  isBlocked: boolean("is_blocked").default(false).notNull(),
+  firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).defaultNow().notNull(),
+  lastUpdatedAt: timestamp("last_updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  pk: {
+    name: "contacts_pkey",
+    columns: [table.jid, table.instanceId]
+  }
+}));
+
+export const whatsappChats = whatsappSchema.table("chats", {
+  chatId: varchar("chat_id", { length: 100 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  type: chatTypeEnum("type").notNull(),
+  unreadCount: integer("unread_count").default(0).notNull(),
+  isArchived: boolean("is_archived").default(false).notNull(),
+  isPinned: boolean("is_pinned").default(false).notNull(),
+  isMuted: boolean("is_muted").default(false).notNull(),
+  muteEndTimestamp: timestamp("mute_end_timestamp", { withTimezone: true }),
+  lastMessageTimestamp: timestamp("last_message_timestamp", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  pk: {
+    name: "chats_pkey",
+    columns: [table.chatId, table.instanceId]
+  }
+}));
+
+export const whatsappMessages = whatsappSchema.table("messages", {
+  messageId: varchar("message_id", { length: 255 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  chatId: varchar("chat_id", { length: 100 }).notNull(),
+  senderJid: varchar("sender_jid", { length: 100 }).notNull(),
+  fromMe: boolean("from_me").notNull(),
+  messageType: messageTypeEnum("message_type").notNull(),
+  content: text("content"),
+  timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
+  quotedMessageId: varchar("quoted_message_id", { length: 255 }),
+  isForwarded: boolean("is_forwarded").default(false).notNull(),
+  forwardingScore: integer("forwarding_score").default(0),
+  isStarred: boolean("is_starred").default(false).notNull(),
+  isEdited: boolean("is_edited").default(false).notNull(),
+  lastEditedAt: timestamp("last_edited_at", { withTimezone: true }),
+  sourcePlatform: varchar("source_platform", { length: 20 }),
+  rawApiPayload: jsonb("raw_api_payload"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  pk: {
+    name: "messages_pkey",
+    columns: [table.messageId, table.instanceId]
+  }
+}));
+
+export const whatsappMessageEditHistory = whatsappSchema.table("message_edit_history", {
+  editId: serial("edit_id").primaryKey(),
+  messageId: varchar("message_id", { length: 255 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  oldContent: text("old_content"),
+  editTimestamp: timestamp("edit_timestamp", { withTimezone: true }).notNull(),
 });
 
-// WhatsApp contacts - composite key with user_id and remote_jid
-export const whatsappContacts = pgTable("whatsapp_contacts", {
-  userId: uuid("user_id").references(() => appUsers.userId).notNull(),
-  instanceName: varchar("instance_name").notNull(),
-  remoteJid: varchar("remote_jid").notNull(), // Contact JID from Evolution
-  
-  // Evolution API fields
-  pushName: varchar("push_name"), // Display name from WhatsApp
-  profileName: varchar("profile_name"), // Profile name
-  profilePictureUrl: varchar("profile_picture_url"),
-  profilePictureThumb: varchar("profile_picture_thumb"),
-  phoneNumber: varchar("phone_number"),
-  
-  // Business info
-  isBusiness: boolean("is_business").default(false),
-  isEnterprise: boolean("is_enterprise").default(false),
-  isMyContact: boolean("is_my_contact").default(false),
-  isPsa: boolean("is_psa").default(false), // Public Service Announcement
-  isUser: boolean("is_user").default(true),
-  isWaContact: boolean("is_wa_contact").default(true),
-  statusMessage: text("status_message"),
-  
-  businessName: varchar("business_name"),
-  businessCategory: varchar("business_category"),
-  businessDescription: text("business_description"),
-  businessWebsite: varchar("business_website"),
-  businessEmail: varchar("business_email"),
-  businessAddress: text("business_address"),
-  
-  // Additional custom fields for CRM
-  isBlocked: boolean("is_blocked").default(false),
-  isFavorite: boolean("is_favorite").default(false),
-  notes: text("notes"),
-  tags: jsonb("tags"),
-  labels: jsonb("labels"),
-  customFields: jsonb("custom_fields"),
-  
-  // Timestamps
-  lastSeen: timestamp("last_seen"),
-  lastMessageAt: timestamp("last_message_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
-}, (table) => {
-  return {
-    pk: primaryKey({ columns: [table.userId, table.remoteJid] })
-  };
+export const whatsappMessageMedia = whatsappSchema.table("message_media", {
+  mediaId: serial("media_id").primaryKey(),
+  messageId: varchar("message_id", { length: 255 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  mimetype: varchar("mimetype", { length: 100 }).notNull(),
+  fileSizeBytes: bigint("file_size_bytes", { mode: "number" }),
+  fileUrl: varchar("file_url", { length: 512 }),
+  fileLocalPath: varchar("file_local_path", { length: 512 }),
+  mediaKey: text("media_key"),
+  caption: text("caption"),
+  thumbnailUrl: varchar("thumbnail_url", { length: 512 }),
+  height: integer("height"),
+  width: integer("width"),
+  durationSeconds: integer("duration_seconds"),
+  isViewOnce: boolean("is_view_once").default(false).notNull(),
 });
 
-// WhatsApp conversations - composite key with user_id and remote_jid
-export const whatsappConversations = pgTable("whatsapp_conversations", {
-  userId: uuid("user_id").references(() => appUsers.userId).notNull(),
-  instanceName: varchar("instance_name").notNull(),
-  remoteJid: varchar("remote_jid").notNull(), // Chat JID from Evolution
-  
-  // Evolution API fields
-  chatName: varchar("chat_name"),
-  chatType: varchar("chat_type", { enum: ["individual", "group", "broadcast"] }).default("individual"),
-  isGroup: boolean("is_group").default(false),
-  groupOwner: varchar("group_owner"),
-  groupDescription: text("group_description"),
-  groupSubject: varchar("group_subject"),
-  groupPictureUrl: varchar("group_picture_url"),
-  
-  // Participants for group chats
-  participantCount: integer("participant_count").default(0),
-  participants: jsonb("participants"),
-  admins: jsonb("admins"),
-  
-  // Chat settings
-  isMuted: boolean("is_muted").default(false),
-  mutedUntil: timestamp("muted_until"),
-  isPinned: boolean("is_pinned").default(false),
-  isArchived: boolean("is_archived").default(false),
-  isBlocked: boolean("is_blocked").default(false),
-  
-  // Message counts and status
-  unreadCount: integer("unread_count").default(0),
-  lastMessageTimestamp: bigint("last_message_timestamp", { mode: "number" }),
-  lastMessagePreview: text("last_message_preview"),
-  lastMessageFromMe: boolean("last_message_from_me").default(false),
-  
-  // Metadata
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
-}, (table) => {
-  return {
-    pk: primaryKey({ columns: [table.userId, table.remoteJid] })
-  };
+export const whatsappMessageReactions = whatsappSchema.table("message_reactions", {
+  reactionId: serial("reaction_id").primaryKey(),
+  messageId: varchar("message_id", { length: 255 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  reactorJid: varchar("reactor_jid", { length: 100 }).notNull(),
+  reactionEmoji: varchar("reaction_emoji", { length: 10 }),
+  timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
 });
 
-// WhatsApp messages - use UUID for message ID but include user_id for RLS
-export const whatsappMessages = pgTable("whatsapp_messages", {
-  messageId: uuid("message_id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => appUsers.userId).notNull(),
-  instanceName: varchar("instance_name").notNull(),
-  conversationJid: varchar("conversation_jid").notNull(),
-  
-  // Evolution API fields
-  evolutionMessageId: varchar("evolution_message_id").notNull(), // Evolution API message ID
-  remoteJid: varchar("remote_jid").notNull(), // Chat/Contact JID from Evolution
-  fromMe: boolean("from_me").notNull().default(false),
-  participant: varchar("participant"), // For group messages
-  
-  // Message content (JSON for flexibility as per Evolution schema)
-  messageContent: jsonb("message_content"),
-  
-  // Message types from Evolution API
-  messageType: varchar("message_type", { 
-    enum: ["conversation", "extendedTextMessage", "imageMessage", "videoMessage", 
-           "audioMessage", "documentMessage", "stickerMessage", "locationMessage",
-           "contactMessage", "listResponseMessage", "buttonsResponseMessage",
-           "templateButtonReplyMessage", "pollCreationMessage", "pollUpdateMessage"] 
-  }).notNull(),
-  
-  // Text content
-  textContent: text("text_content"),
-  
-  // Media fields
-  mediaUrl: text("media_url"),
-  mediaMimetype: varchar("media_mimetype"),
-  mediaSize: bigint("media_size", { mode: "number" }),
-  mediaFilename: varchar("media_filename"),
-  mediaCaption: text("media_caption"),
-  mediaThumbUrl: text("media_thumb_url"),
-  
-  // Document specific
-  documentTitle: varchar("document_title"),
-  documentPageCount: integer("document_page_count"),
-  
-  // Location fields
-  locationLatitude: numeric("location_latitude", { precision: 10, scale: 8 }),
-  locationLongitude: numeric("location_longitude", { precision: 11, scale: 8 }),
-  locationName: varchar("location_name"),
-  locationAddress: text("location_address"),
-  
-  // Contact message
-  contactDisplayName: varchar("contact_display_name"),
-  contactVcard: text("contact_vcard"),
-  
-  // Interactive messages
-  interactiveType: varchar("interactive_type"),
-  interactiveBody: text("interactive_body"),
-  interactiveFooter: text("interactive_footer"),
-  interactiveData: jsonb("interactive_data"),
-  
-  // Message status and metadata
-  status: varchar("status", { enum: ["pending", "sent", "delivered", "read", "failed"] }).default("pending"),
-  timestamp: bigint("timestamp", { mode: "number" }).notNull(),
-  
-  // Quoted message
-  quotedMessageId: varchar("quoted_message_id"),
-  quotedRemoteJid: varchar("quoted_remote_jid"),
-  quotedParticipant: varchar("quoted_participant"),
-  quotedContent: text("quoted_content"),
-  
-  // Reactions
-  reactionEmoji: varchar("reaction_emoji"),
-  reactionFromMe: boolean("reaction_from_me").default(false),
-  
-  // Forward info
-  isForwarded: boolean("is_forwarded").default(false),
-  forwardScore: integer("forward_score").default(0),
-  
-  // Context info
-  contextInfo: jsonb("context_info"),
-  pushName: varchar("push_name"),
-  
-  // Metadata
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
+export const whatsappMessageUpdates = whatsappSchema.table("message_updates", {
+  updateId: serial("update_id").primaryKey(),
+  messageId: varchar("message_id", { length: 255 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  status: messageStatusEnum("status").notNull(),
+  timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
 });
 
-// Evolution API raw messages table (no foreign key constraints) - use user_id for RLS
-export const evolutionMessages = pgTable("evolution_messages", {
-  messageId: varchar("message_id").primaryKey(), // Use provided message ID from Evolution API
-  userId: uuid("user_id").notNull(), // For RLS
-  instanceName: varchar("instance_name").notNull(),
-  
-  // Evolution API fields
-  evolutionMessageId: varchar("evolution_message_id").notNull(),
-  remoteJid: varchar("remote_jid").notNull(),
-  fromMe: boolean("from_me").notNull().default(false),
-  participant: varchar("participant"),
-  pushName: varchar("push_name"),
-  
-  // Message content
-  messageContent: jsonb("message_content"),
-  messageType: varchar("message_type").notNull(),
-  textContent: text("text_content"),
-  
-  // Media fields
-  mediaUrl: text("media_url"),
-  mediaMimetype: varchar("media_mimetype"),
-  mediaSize: bigint("media_size", { mode: "number" }),
-  mediaFilename: varchar("media_filename"),
-  mediaCaption: text("media_caption"),
-  
-  // Status and metadata
-  status: varchar("status").default("received"),
-  timestamp: bigint("timestamp", { mode: "number" }).notNull(),
-  contextInfo: jsonb("context_info"),
-  
-  // Raw webhook data for debugging
-  rawWebhookData: jsonb("raw_webhook_data"),
-  
-  // Timestamps
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
-});
-
-// Task management - use user_id as primary key component
-export const tasks = pgTable("tasks", {
-  taskId: uuid("task_id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => appUsers.userId).notNull(),
-  parentTaskId: uuid("parent_task_id"),
-  title: text("title").notNull(),
+export const whatsappGroups = whatsappSchema.table("groups", {
+  groupJid: varchar("group_jid", { length: 100 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  subject: varchar("subject", { length: 255 }).notNull(),
   description: text("description"),
-  taskStatus: text("task_status").default("to_do"),
-  subStatus: text("sub_status"),
-  priority: text("priority").default("medium"),
-  dueDate: timestamp("due_date"),
-  conversationJid: varchar("conversation_jid"),
-  contactJid: varchar("contact_jid"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
-});
+  ownerJid: varchar("owner_jid", { length: 100 }),
+  creationTimestamp: timestamp("creation_timestamp", { withTimezone: true }),
+  isLocked: boolean("is_locked").default(false).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  pk: {
+    name: "groups_pkey",
+    columns: [table.groupJid, table.instanceId]
+  }
+}));
 
-// Contact management - use user_id as primary key component
-export const contacts = pgTable("contacts", {
-  contactId: uuid("contact_id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => appUsers.userId).notNull(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  email: varchar("email"),
-  phone: varchar("phone"),
-  company: varchar("company"),
-  position: varchar("position"),
-  notes: text("notes"),
-  tags: jsonb("tags"),
-  customFields: jsonb("custom_fields"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
-});
+export const whatsappGroupParticipants = whatsappSchema.table("group_participants", {
+  groupJid: varchar("group_jid", { length: 100 }).notNull(),
+  participantJid: varchar("participant_jid", { length: 100 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  isAdmin: boolean("is_admin").default(false).notNull(),
+  isSuperAdmin: boolean("is_super_admin").default(false).notNull(),
+}, (table) => ({
+  pk: {
+    name: "group_participants_pkey",
+    columns: [table.groupJid, table.participantJid, table.instanceId]
+  }
+}));
 
-// Conversations management - use user_id as primary key component
-export const conversations = pgTable("conversations", {
-  conversationId: uuid("conversation_id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => appUsers.userId).notNull(),
-  title: varchar("title"),
-  description: text("description"),
-  status: varchar("status").default("active"),
-  lastMessageAt: timestamp("last_message_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
-});
+export const whatsappLabels = whatsappSchema.table("labels", {
+  labelId: varchar("label_id", { length: 100 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  colorIndex: integer("color_index"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  pk: {
+    name: "labels_pkey",
+    columns: [table.labelId, table.instanceId]
+  }
+}));
 
-// Messages management - use user_id for RLS
-export const messages = pgTable("messages", {
-  messageId: uuid("message_id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => appUsers.userId).notNull(),
-  conversationId: uuid("conversation_id").references(() => conversations.conversationId).notNull(),
-  content: text("content").notNull(),
-  messageType: varchar("message_type").default("text"),
-  fromUser: boolean("from_user").default(true),
-  replyToMessageId: uuid("reply_to_message_id"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
-});
+export const whatsappChatLabels = whatsappSchema.table("chat_labels", {
+  chatId: varchar("chat_id", { length: 100 }).notNull(),
+  labelId: varchar("label_id", { length: 100 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+}, (table) => ({
+  pk: {
+    name: "chat_labels_pkey",
+    columns: [table.chatId, table.labelId, table.instanceId]
+  }
+}));
+
+export const whatsappCallLogs = whatsappSchema.table("call_logs", {
+  callLogId: varchar("call_log_id", { length: 255 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  chatId: varchar("chat_id", { length: 100 }).notNull(),
+  fromJid: varchar("from_jid", { length: 100 }).notNull(),
+  fromMe: boolean("from_me").notNull(),
+  startTimestamp: timestamp("start_timestamp", { withTimezone: true }).notNull(),
+  isVideoCall: boolean("is_video_call").notNull(),
+  durationSeconds: integer("duration_seconds"),
+  outcome: callOutcomeEnum("outcome"),
+}, (table) => ({
+  pk: {
+    name: "call_logs_pkey",
+    columns: [table.callLogId, table.instanceId]
+  }
+}));
 
 // Relations
-export const appUsersRelations = relations(appUsers, ({ many }) => ({
-  whatsappInstances: many(whatsappInstances),
-  whatsappContacts: many(whatsappContacts),
-  whatsappConversations: many(whatsappConversations),
-  whatsappMessages: many(whatsappMessages),
-  tasks: many(tasks),
-  contacts: many(contacts),
-  conversations: many(conversations),
-  messages: many(messages)
+export const whatsappInstancesRelations = relations(whatsappInstances, ({ many }) => ({
+  contacts: many(whatsappContacts),
+  chats: many(whatsappChats),
+  messages: many(whatsappMessages),
+  labels: many(whatsappLabels),
 }));
 
-export const whatsappInstancesRelations = relations(whatsappInstances, ({ one, many }) => ({
-  user: one(appUsers, {
-    fields: [whatsappInstances.userId],
-    references: [appUsers.userId]
-  })
-}));
-
-export const whatsappContactsRelations = relations(whatsappContacts, ({ one }) => ({
-  user: one(appUsers, {
-    fields: [whatsappContacts.userId],
-    references: [appUsers.userId]
-  })
-}));
-
-export const whatsappConversationsRelations = relations(whatsappConversations, ({ one, many }) => ({
-  user: one(appUsers, {
-    fields: [whatsappConversations.userId],
-    references: [appUsers.userId]
+export const whatsappContactsRelations = relations(whatsappContacts, ({ one, many }) => ({
+  instance: one(whatsappInstances, {
+    fields: [whatsappContacts.instanceId],
+    references: [whatsappInstances.instanceId],
   }),
-  messages: many(whatsappMessages)
+  chats: many(whatsappChats),
+  sentMessages: many(whatsappMessages),
+  reactions: many(whatsappMessageReactions),
 }));
 
-export const whatsappMessagesRelations = relations(whatsappMessages, ({ one }) => ({
-  user: one(appUsers, {
-    fields: [whatsappMessages.userId],
-    references: [appUsers.userId]
-  })
-}));
-
-export const tasksRelations = relations(tasks, ({ one }) => ({
-  user: one(appUsers, {
-    fields: [tasks.userId],
-    references: [appUsers.userId]
-  })
-}));
-
-export const contactsRelations = relations(contacts, ({ one }) => ({
-  user: one(appUsers, {
-    fields: [contacts.userId],
-    references: [appUsers.userId]
-  })
-}));
-
-export const conversationsRelations = relations(conversations, ({ one, many }) => ({
-  user: one(appUsers, {
-    fields: [conversations.userId],
-    references: [appUsers.userId]
+export const whatsappChatsRelations = relations(whatsappChats, ({ one, many }) => ({
+  instance: one(whatsappInstances, {
+    fields: [whatsappChats.instanceId],
+    references: [whatsappInstances.instanceId],
   }),
-  messages: many(messages)
+  contact: one(whatsappContacts, {
+    fields: [whatsappChats.chatId, whatsappChats.instanceId],
+    references: [whatsappContacts.jid, whatsappContacts.instanceId],
+  }),
+  messages: many(whatsappMessages),
+  labels: many(whatsappChatLabels),
+  callLogs: many(whatsappCallLogs),
 }));
 
-export const messagesRelations = relations(messages, ({ one }) => ({
-  user: one(appUsers, {
-    fields: [messages.userId],
-    references: [appUsers.userId]
+export const whatsappMessagesRelations = relations(whatsappMessages, ({ one, many }) => ({
+  instance: one(whatsappInstances, {
+    fields: [whatsappMessages.instanceId],
+    references: [whatsappInstances.instanceId],
   }),
-  conversation: one(conversations, {
-    fields: [messages.conversationId],
-    references: [conversations.conversationId]
+  chat: one(whatsappChats, {
+    fields: [whatsappMessages.chatId, whatsappMessages.instanceId],
+    references: [whatsappChats.chatId, whatsappChats.instanceId],
   }),
-  replyToMessage: one(messages, {
-    fields: [messages.replyToMessageId],
-    references: [messages.messageId]
-  })
+  sender: one(whatsappContacts, {
+    fields: [whatsappMessages.senderJid, whatsappMessages.instanceId],
+    references: [whatsappContacts.jid, whatsappContacts.instanceId],
+  }),
+  editHistory: many(whatsappMessageEditHistory),
+  media: many(whatsappMessageMedia),
+  reactions: many(whatsappMessageReactions),
+  updates: many(whatsappMessageUpdates),
 }));
 
-// Insert schemas
-export const insertAppUserSchema = createInsertSchema(appUsers).omit({
-  userId: true,
-  createdAt: true,
-  updatedAt: true
-});
-
+// Insert and Select schemas
 export const insertWhatsappInstanceSchema = createInsertSchema(whatsappInstances).omit({
   createdAt: true,
-  updatedAt: true
+  updatedAt: true,
 });
 
 export const insertWhatsappContactSchema = createInsertSchema(whatsappContacts).omit({
-  createdAt: true,
-  updatedAt: true
+  firstSeenAt: true,
+  lastUpdatedAt: true,
 });
 
-export const insertWhatsappConversationSchema = createInsertSchema(whatsappConversations).omit({
+export const insertWhatsappChatSchema = createInsertSchema(whatsappChats).omit({
   createdAt: true,
-  updatedAt: true
+  updatedAt: true,
 });
 
 export const insertWhatsappMessageSchema = createInsertSchema(whatsappMessages).omit({
-  messageId: true,
   createdAt: true,
-  updatedAt: true
 });
 
-export const insertEvolutionMessageSchema = createInsertSchema(evolutionMessages).omit({
-  messageId: true,
-  createdAt: true,
-  updatedAt: true
+export const insertWhatsappMessageEditHistorySchema = createInsertSchema(whatsappMessageEditHistory).omit({
+  editId: true,
 });
 
-export const insertTaskSchema = createInsertSchema(tasks).omit({
-  taskId: true,
-  createdAt: true,
-  updatedAt: true
+export const insertWhatsappMessageMediaSchema = createInsertSchema(whatsappMessageMedia).omit({
+  mediaId: true,
 });
 
-export const insertContactSchema = createInsertSchema(contacts).omit({
-  contactId: true,
-  createdAt: true,
-  updatedAt: true
+export const insertWhatsappMessageReactionSchema = createInsertSchema(whatsappMessageReactions).omit({
+  reactionId: true,
 });
 
-export const insertConversationSchema = createInsertSchema(conversations).omit({
-  conversationId: true,
-  createdAt: true,
-  updatedAt: true
+export const insertWhatsappMessageUpdateSchema = createInsertSchema(whatsappMessageUpdates).omit({
+  updateId: true,
 });
 
-export const insertMessageSchema = createInsertSchema(messages).omit({
-  messageId: true,
-  createdAt: true,
-  updatedAt: true
+export const insertWhatsappGroupSchema = createInsertSchema(whatsappGroups).omit({
+  updatedAt: true,
 });
+
+export const insertWhatsappGroupParticipantSchema = createInsertSchema(whatsappGroupParticipants);
+
+export const insertWhatsappLabelSchema = createInsertSchema(whatsappLabels).omit({
+  createdAt: true,
+});
+
+export const insertWhatsappChatLabelSchema = createInsertSchema(whatsappChatLabels);
+
+export const insertWhatsappCallLogSchema = createInsertSchema(whatsappCallLogs);
 
 // Types
-export type AppUser = typeof appUsers.$inferSelect;
-export type InsertAppUser = z.infer<typeof insertAppUserSchema>;
-
 export type WhatsappInstance = typeof whatsappInstances.$inferSelect;
 export type InsertWhatsappInstance = z.infer<typeof insertWhatsappInstanceSchema>;
 
 export type WhatsappContact = typeof whatsappContacts.$inferSelect;
 export type InsertWhatsappContact = z.infer<typeof insertWhatsappContactSchema>;
 
-export type WhatsappConversation = typeof whatsappConversations.$inferSelect;
-export type InsertWhatsappConversation = z.infer<typeof insertWhatsappConversationSchema>;
+export type WhatsappChat = typeof whatsappChats.$inferSelect;
+export type InsertWhatsappChat = z.infer<typeof insertWhatsappChatSchema>;
 
 export type WhatsappMessage = typeof whatsappMessages.$inferSelect;
 export type InsertWhatsappMessage = z.infer<typeof insertWhatsappMessageSchema>;
 
-export type Task = typeof tasks.$inferSelect;
-export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type WhatsappMessageEditHistory = typeof whatsappMessageEditHistory.$inferSelect;
+export type InsertWhatsappMessageEditHistory = z.infer<typeof insertWhatsappMessageEditHistorySchema>;
 
-export type Contact = typeof contacts.$inferSelect;
-export type InsertContact = z.infer<typeof insertContactSchema>;
+export type WhatsappMessageMedia = typeof whatsappMessageMedia.$inferSelect;
+export type InsertWhatsappMessageMedia = z.infer<typeof insertWhatsappMessageMediaSchema>;
 
-export type Conversation = typeof conversations.$inferSelect;
-export type InsertConversation = z.infer<typeof insertConversationSchema>;
+export type WhatsappMessageReaction = typeof whatsappMessageReactions.$inferSelect;
+export type InsertWhatsappMessageReaction = z.infer<typeof insertWhatsappMessageReactionSchema>;
 
-export type Message = typeof messages.$inferSelect;
-export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type WhatsappMessageUpdate = typeof whatsappMessageUpdates.$inferSelect;
+export type InsertWhatsappMessageUpdate = z.infer<typeof insertWhatsappMessageUpdateSchema>;
 
-export type EvolutionMessage = typeof evolutionMessages.$inferSelect;
-export type InsertEvolutionMessage = z.infer<typeof insertEvolutionMessageSchema>;
+export type WhatsappGroup = typeof whatsappGroups.$inferSelect;
+export type InsertWhatsappGroup = z.infer<typeof insertWhatsappGroupSchema>;
+
+export type WhatsappGroupParticipant = typeof whatsappGroupParticipants.$inferSelect;
+export type InsertWhatsappGroupParticipant = z.infer<typeof insertWhatsappGroupParticipantSchema>;
+
+export type WhatsappLabel = typeof whatsappLabels.$inferSelect;
+export type InsertWhatsappLabel = z.infer<typeof insertWhatsappLabelSchema>;
+
+export type WhatsappChatLabel = typeof whatsappChatLabels.$inferSelect;
+export type InsertWhatsappChatLabel = z.infer<typeof insertWhatsappChatLabelSchema>;
+
+export type WhatsappCallLog = typeof whatsappCallLogs.$inferSelect;
+export type InsertWhatsappCallLog = z.infer<typeof insertWhatsappCallLogSchema>;
+
+// Legacy types for backward compatibility (to be removed after migration)
+export interface WhatsappInstanceLegacy {
+  id: string;
+  user_id: string;
+  instance_name: string;
+  display_name: string;
+  instance_api_key: string;
+  webhook_url?: string;
+  webhook_events?: string[];
+  qr_code?: string;
+  status: string;
+  profile_name?: string;
+  profile_picture_url?: string;
+  phone_number?: string;
+  last_connected_at?: Date;
+  disconnected_at?: Date;
+  last_error?: string;
+  settings?: any;
+  created_at: Date;
+  updated_at: Date;
+  qr_expires_at?: Date;
+  qr_code_url?: string;
+  connection_state?: string;
+  retry_count?: number;
+  max_retries?: number;
+  connection_retries?: number;
+  qr_code_expires_at?: Date;
+  battery_level?: number;
+  is_plugged?: boolean;
+  server_url?: string;
+  is_active?: boolean;
+}
+
+export interface WhatsappConversationLegacy {
+  id: string;
+  user_id: string;
+  instance_id: string;
+  instance_name: string;
+  contact_id?: string;
+  remote_jid: string;
+  chat_name?: string;
+  chat_type: string;
+  title?: string;
+  unread_count: number;
+  last_message_id?: string;
+  last_message_content?: string;
+  last_message_timestamp?: number;
+  last_message_from_me?: boolean;
+  is_archived: boolean;
+  is_pinned: boolean;
+  is_muted: boolean;
+  is_read_only?: boolean;
+  mute_until?: Date;
+  presence_status?: string;
+  presence_last_seen?: Date;
+  total_message_count?: number;
+  group_description?: string;
+  group_owner?: string;
+  group_creation_timestamp?: number;
+  group_participants_count?: number;
+  labels?: any;
+  notification_settings?: any;
+  custom_wallpaper?: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface WhatsappMessageLegacy {
+  id: string;
+  user_id: string;
+  instance_id: string;
+  conversation_id: string;
+  evolution_message_id: string;
+  remote_jid: string;
+  participant?: string;
+  from_me: boolean;
+  message_type: string;
+  text_content?: string;
+  message_content?: any;
+  timestamp: number;
+  push_name?: string;
+  quoted_message_id?: string;
+  quoted_content?: string;
+  context_info?: any;
+  media_url?: string;
+  media_mimetype?: string;
+  media_size?: number;
+  media_filename?: string;
+  media_caption?: string;
+  media_thumb_url?: string;
+  location_latitude?: number;
+  location_longitude?: number;
+  location_name?: string;
+  location_address?: string;
+  contact_display_name?: string;
+  contact_vcard?: string;
+  document_title?: string;
+  document_page_count?: number;
+  interactive_type?: string;
+  interactive_body?: string;
+  interactive_footer?: string;
+  interactive_data?: any;
+  is_forwarded?: boolean;
+  forward_score?: number;
+  mentions?: any;
+  reactions?: any;
+  edit_history?: any;
+  status?: string;
+  view_once?: boolean;
+  is_ephemeral?: boolean;
+  ephemeral_duration?: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+// User management (keeping existing structure)
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  username: text("username").unique().notNull(),
+  password: text("password").notNull(),
+  email: text("email").unique(),
+  name: text("name"),
+  avatar: text("avatar"),
+  bio: text("bio"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export const usersRelations = relations(users, ({ many }) => ({
+  whatsappInstances: many(whatsappInstances),
+}));
