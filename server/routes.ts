@@ -591,31 +591,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (connectionState.instance.state === 'connecting') {
             try {
-              qrCodeData = await evolutionApi.getQRCode(instance.instanceName);
+              qrCodeData = await evolutionApi.getQRCode(instance.instanceId);
             } catch (qrError: any) {
-              console.log(`⚠️ QR Code not ready for ${instance.instanceName}:`, qrError.message);
+              console.log(`⚠️ QR Code not ready for ${instance.instanceId}:`, qrError.message);
             }
           }
         }
         
         // Map Evolution API status to our status
-        const mappedStatus = connectionState.instance.state === 'open' ? 'connected' : 
-                           connectionState.instance.state === 'connecting' ? 'connecting' :
-                           'disconnected';
+        const isConnected = connectionState.instance.state === 'open';
         
         // Update database if status changed
-        if (mappedStatus !== instance.status) {
-          await storage.updateWhatsappInstance(req.params.id, {
-            status: mappedStatus
+        if (isConnected !== instance.isConnected) {
+          await storage.updateWhatsappInstance('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', req.params.id, {
+            isConnected: isConnected
           });
-          console.log(`📱 Updated ${instance.instanceName} status: ${instance.status} -> ${mappedStatus}`);
+          console.log(`📱 Updated ${instance.instanceId} status: ${instance.isConnected} -> ${isConnected}`);
         }
         
         res.json({
           instance: {
-            id: instance.id,
-            name: instance.instanceName,
-            status: mappedStatus
+            instanceId: instance.instanceId,
+            name: instance.instanceId,
+            status: connectionState.instance.state
           },
           bridge: bridgeStatus,
           qrCode: qrCodeData || connectionState.qrcode,
@@ -625,13 +623,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
       } catch (apiError: any) {
-        console.error(`❌ Evolution API error for ${instance.instanceName}:`, apiError.message);
+        console.error(`❌ Evolution API error for ${instance.instanceId}:`, apiError.message);
         // Fall back to database status if API is unavailable
         res.json({
           instance: {
-            id: instance.id,
-            name: instance.instanceName,
-            status: instance.status
+            instanceId: instance.instanceId,
+            name: instance.instanceId,
+            status: instance.isConnected ? 'open' : 'close'
           },
           bridge: bridgeStatus,
           qrCode: null,
@@ -648,27 +646,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/whatsapp/instances/:id/connect", async (req, res) => {
     try {
-      const instance = await storage.getWhatsappInstance(req.params.id);
+      const instance = await storage.getWhatsappInstance('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', req.params.id);
       if (!instance) {
         return res.status(404).json({ error: "Instance not found" });
       }
 
       // Update instance status to connecting
-      await storage.updateWhatsappInstance(req.params.id, {
-        status: "connecting"
+      await storage.updateWhatsappInstance('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', req.params.id, {
+        isConnected: false
       });
 
       try {
         const evolutionApi = getEvolutionApi();
         
         // Create/ensure instance exists in Evolution API
-        let instanceApiKey = instance.instanceApiKey;
+        let instanceApiKey = instance.apiKey;
         
         if (!instanceApiKey) {
           try {
-            console.log(`Creating new instance in Evolution API: ${instance.instanceName}`);
+            console.log(`Creating new instance in Evolution API: ${instance.instanceId}`);
             const createResponse = await evolutionApi.createInstance({
-              instanceName: instance.instanceName,
+              instanceName: instance.instanceId,
               integration: "WHATSAPP-BAILEYS",
               webhook_url: instance.webhookUrl || undefined,
               events: [
@@ -684,15 +682,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             if (createResponse.hash?.apikey) {
               instanceApiKey = createResponse.hash.apikey;
-              await storage.updateWhatsappInstance(req.params.id, {
-                instanceApiKey: instanceApiKey
+              await storage.updateWhatsappInstance('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', req.params.id, {
+                apiKey: instanceApiKey
               });
-              console.log(`✅ Created and stored API key for instance: ${instance.instanceName}`);
+              console.log(`✅ Created and stored API key for instance: ${instance.instanceId}`);
             } else {
               throw new Error("No API key returned from instance creation");
             }
           } catch (createError: any) {
-            console.error(`Failed to create instance ${instance.instanceName}:`, createError.message);
+            console.error(`Failed to create instance ${instance.instanceId}:`, createError.message);
             return res.status(500).json({
               success: false,
               message: `Failed to create instance: ${createError.message}`,
@@ -703,21 +701,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Now connect the instance and ensure it's ready
         try {
-          await evolutionApi.connectInstance(instance.instanceName);
-          console.log(`✅ Instance connection initiated: ${instance.instanceName}`);
+          await evolutionApi.connectInstance(instance.instanceId);
+          console.log(`✅ Instance connection initiated: ${instance.instanceId}`);
           
           // Wait a moment for instance to initialize, then try to get QR code
           setTimeout(async () => {
             try {
-              const qrCode = await evolutionApi.getQRCode(instance.instanceName);
-              console.log(`📱 Initial QR Code generated for ${instance.instanceName}`);
+              const qrCode = await evolutionApi.getQRCode(instance.instanceId);
+              console.log(`📱 Initial QR Code generated for ${instance.instanceId}`);
             } catch (qrError: any) {
-              console.log(`⚠️ QR Code not immediately available for ${instance.instanceName}: ${qrError.message}`);
+              console.log(`⚠️ QR Code not immediately available for ${instance.instanceId}: ${qrError.message}`);
             }
           }, 2000);
           
         } catch (connectError: any) {
-          console.log(`Connection attempt for ${instance.instanceName}:`, connectError.message);
+          console.log(`Connection attempt for ${instance.instanceId}:`, connectError.message);
         }
         
         res.json({
@@ -739,35 +737,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/whatsapp/instances/:id/qr", async (req, res) => {
     try {
-      const instance = await storage.getWhatsappInstance(req.params.id);
+      const instance = await storage.getWhatsappInstance('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', req.params.id);
       if (!instance) {
         return res.status(404).json({ error: "Instance not found" });
       }
 
       try {
         // Ensure instance has API key, create if needed
-        let instanceApiKey = instance.instanceApiKey;
+        let instanceApiKey = instance.apiKey;
         
         if (!instanceApiKey) {
-          console.log(`No API key found for instance ${instance.instanceName}, retrieving from Evolution API`);
+          console.log(`No API key found for instance ${instance.instanceId}, retrieving from Evolution API`);
           try {
             const evolutionApi = getEvolutionApi();
             
             // Try to get existing instance info first
             try {
-              const instanceInfo = await evolutionApi.getInstanceInfo(instance.instanceName);
+              const instanceInfo = await evolutionApi.getInstanceInfo(instance.instanceId);
               if (instanceInfo.hash?.apikey) {
                 instanceApiKey = instanceInfo.hash.apikey;
-                await storage.updateWhatsappInstance(req.params.id, {
-                  instanceApiKey: instanceApiKey
+                await storage.updateWhatsappInstance('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', req.params.id, {
+                  apiKey: instanceApiKey
                 });
-                console.log(`✅ Retrieved and stored API key for existing instance: ${instance.instanceName}`);
+                console.log(`✅ Retrieved and stored API key for existing instance: ${instance.instanceId}`);
               }
             } catch (getError: any) {
               // Instance doesn't exist, try to create it
-              console.log(`Instance ${instance.instanceName} not found, creating new instance`);
+              console.log(`Instance ${instance.instanceId} not found, creating new instance`);
               const createResponse = await evolutionApi.createInstance({
-                instanceName: instance.instanceName,
+                instanceName: instance.instanceId,
                 integration: "WHATSAPP-BAILEYS",
                 webhook_url: instance.webhookUrl || undefined,
                 events: [
