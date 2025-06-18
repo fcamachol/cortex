@@ -1062,7 +1062,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/whatsapp/conversation/:id", async (req, res) => {
     try {
-      const conversation = await storage.getWhatsappChat(userId, instanceId, req.params.id);
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
+      const conversation = await storage.getWhatsappChat(userId, req.params.id);
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
       }
@@ -1099,31 +1104,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const messageData = insertWhatsappMessageSchema.parse(req.body);
       
       // If this is an outgoing message, send it via Evolution API
-      if (messageData.fromMe && messageData.instanceId && messageData.remoteJid) {
+      if (messageData.fromMe && messageData.instanceId && messageData.chatId) {
         try {
           const result = await evolutionManager.sendMessage(
-            messageData.userId,
             messageData.instanceId,
-            messageData.remoteJid || "",
-            messageData.textContent || ""
+            messageData.chatId,
+            messageData.content || ""
           );
           
           // Update message with Evolution API response
-          messageData.evolutionMessageId = result.key?.id || messageData.evolutionMessageId;
-          messageData.status = 'sent';
+          messageData.messageId = result.key?.id || messageData.messageId;
+          messageData.deliveryStatus = 'sent';
         } catch (evolError) {
           console.error('Failed to send via Evolution API:', evolError);
-          messageData.status = 'failed';
+          messageData.deliveryStatus = 'error';
         }
       }
       
       const message = await storage.createWhatsappMessage(messageData);
       
-      // Broadcast to connected clients
-      broadcast(messageData.userId, {
-        type: 'new_message',
-        data: message
-      });
+      // Broadcast to connected clients via WebSocket
+      // TODO: Implement WebSocket broadcasting for real-time message updates
       
       res.status(201).json(message);
     } catch (error) {
