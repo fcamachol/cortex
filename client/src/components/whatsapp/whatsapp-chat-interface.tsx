@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { WhatsAppMessageBubble, WhatsAppStatusIndicator } from './whatsapp-status-indicator';
 import { MessageStatusTracker } from './message-status-tracker';
-import { Send, Phone, Video, MoreVertical, ArrowLeft } from 'lucide-react';
+import { AudioPlayer } from './audio-player';
+import { Send, Phone, Video, MoreVertical, ArrowLeft, Image, FileText, Mic } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Message {
@@ -18,6 +19,17 @@ interface Message {
   fromMe: boolean;
   messageType: string;
   senderJid: string;
+  media?: {
+    mimetype: string;
+    fileUrl: string;
+    fileLocalPath?: string;
+    fileSizeBytes: number;
+    caption?: string;
+    width?: number;
+    height?: number;
+    durationSeconds?: number;
+    waveform?: string;
+  };
 }
 
 interface Chat {
@@ -222,14 +234,83 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
                       className={`flex ${message.fromMe ? 'justify-end' : 'justify-start'}`}
                     >
                       <div className="max-w-[80%] space-y-1">
-                        <WhatsAppMessageBubble
-                          content={message.content}
-                          timestamp={message.timestamp}
-                          fromMe={message.fromMe}
-                          messageType={message.messageType}
-                          senderName={message.senderJid}
-                          isGroupMessage={selectedChatData?.chatType === 'group'}
-                        />
+                        {/* Media Message */}
+                        {message.media && (
+                          <div className={`${message.fromMe ? 'bg-green-500 text-white' : 'bg-white dark:bg-gray-800'} rounded-lg p-3 shadow-sm`}>
+                            {message.media.mimetype.startsWith('audio/') ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <Mic className="h-4 w-4" />
+                                  <span className="text-sm font-medium">Voice Message</span>
+                                  <span className="text-xs opacity-70">
+                                    {message.media.durationSeconds ? `${message.media.durationSeconds}s` : ''}
+                                  </span>
+                                </div>
+                                <AudioPlayer
+                                  audioUrl={`/api/whatsapp/media/${message.instanceId}/${message.messageId}`}
+                                  waveform={message.media.waveform}
+                                  duration={message.media.durationSeconds}
+                                  className="bg-transparent"
+                                />
+                                {message.media.caption && (
+                                  <p className="text-sm mt-2">{message.media.caption}</p>
+                                )}
+                              </div>
+                            ) : message.media.mimetype.startsWith('image/') ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <Image className="h-4 w-4" />
+                                  <span className="text-sm font-medium">Image</span>
+                                </div>
+                                <img
+                                  src={`/api/whatsapp/media/${message.instanceId}/${message.messageId}`}
+                                  alt="Shared image"
+                                  className="max-w-full rounded"
+                                  style={{ maxHeight: '300px' }}
+                                />
+                                {message.media.caption && (
+                                  <p className="text-sm mt-2">{message.media.caption}</p>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="h-4 w-4" />
+                                  <span className="text-sm font-medium">Document</span>
+                                  <span className="text-xs opacity-70">
+                                    {(message.media.fileSizeBytes / 1024).toFixed(1)} KB
+                                  </span>
+                                </div>
+                                <a
+                                  href={`/api/whatsapp/media/${message.instanceId}/${message.messageId}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-500 hover:underline text-sm"
+                                >
+                                  Download File
+                                </a>
+                                {message.media.caption && (
+                                  <p className="text-sm mt-2">{message.media.caption}</p>
+                                )}
+                              </div>
+                            )}
+                            <div className="text-xs opacity-70 mt-2">
+                              {format(new Date(message.timestamp), 'HH:mm')}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Regular Text Message */}
+                        {(!message.media || message.content !== '[Media message]') && (
+                          <WhatsAppMessageBubble
+                            content={message.content}
+                            timestamp={message.timestamp}
+                            fromMe={message.fromMe}
+                            messageType={message.messageType}
+                            senderName={message.senderJid}
+                            isGroupMessage={selectedChatData?.chatType === 'group'}
+                          />
+                        )}
                         
                         {/* Real-time status tracking for sent messages */}
                         {message.fromMe && (

@@ -681,7 +681,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      // Handle the webhook data structure from Evolution API
+      // Handle message edits first - check if this is an edit event
+      if (data.message && data.message.editedMessage) {
+        const messageId = data.key?.id || data.messageId || data.keyId;
+        if (!messageId) {
+          console.log('Missing messageId for edit, skipping');
+          return;
+        }
+
+        try {
+          // Get the existing message to store as old content
+          const existingMessage = await storage.getWhatsappMessage(userId, instance.instanceId, messageId);
+          if (existingMessage) {
+            const oldContent = existingMessage.content;
+            
+            // Extract new content from edited message
+            const editedMessage = data.message.editedMessage;
+            let newContent = '[Edited message]';
+            
+            if (editedMessage.message?.protocolMessage?.editedMessage?.conversation) {
+              newContent = editedMessage.message.protocolMessage.editedMessage.conversation;
+            } else if (editedMessage.message?.conversation) {
+              newContent = editedMessage.message.conversation;
+            } else if (editedMessage.message?.extendedTextMessage?.text) {
+              newContent = editedMessage.message.extendedTextMessage.text;
+            }
+
+            // Store edit history
+            const editHistoryData = {
+              messageId: messageId,
+              instanceId: instance.instanceId,
+              oldContent: oldContent,
+              editTimestamp: new Date()
+            };
+            
+            await storage.createWhatsappMessageEditHistory(editHistoryData);
+            console.log(`📝 Stored edit history for message ${messageId}`);
+
+            // Update the main message with new content
+            await storage.updateWhatsappMessage(userId, instance.instanceId, messageId, {
+              content: newContent,
+              lastEditedAt: new Date()
+            });
+            console.log(`✅ Updated message ${messageId} with edited content: "${newContent.substring(0, 50)}..."`);
+            
+            return; // Exit early as we handled the edit
+          }
+        } catch (editError) {
+          console.error(`Error processing message edit for ${messageId}:`, editError);
+        }
+      }
+
+      // Handle status updates if not an edit
       const messageId = data.messageId || data.keyId;
       const status = data.status;
       
@@ -2371,6 +2422,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(404).json({ error: 'Media file not available' });
     } catch (error) {
       console.error('Error serving media:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Get message edit history
+  app.get('/api/whatsapp/messages/:messageId/edit-history', async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      if (!req.user?.id) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      const { messageId } = req.params;
+      const { instanceId } = req.query;
+
+      if (!instanceId) {
+        return res.status(400).json({ error: 'Instance ID is required' });
+      }
+
+      const editHistory = await storage.getWhatsappMessageEditHistory(req.user.id, instanceId as string, messageId);
+      res.json(editHistory);
+    } catch (error) {
+      console.error('Error fetching message edit history:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
