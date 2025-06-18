@@ -885,25 +885,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WhatsApp profile endpoint
   app.get("/api/whatsapp/instances/:id/profile", async (req, res) => {
     try {
-      const instance = await storage.getWhatsappInstance(req.params.id);
+      const instance = await storage.getWhatsappInstance('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', req.params.id);
       if (!instance) {
         return res.status(404).json({ error: "Instance not found" });
       }
 
-      if (!instance.instanceApiKey) {
+      if (!instance.apiKey) {
         return res.status(400).json({ error: "Instance not configured" });
       }
 
       try {
-        const evolutionApi = getInstanceEvolutionApi(instance.instanceApiKey);
+        const evolutionApi = getInstanceEvolutionApi(instance.apiKey);
         
         // Try multiple approaches to get phone number
         let profileData = null;
         
         try {
           // First try: Get instance info which might contain owner details
-          const instanceInfo = await evolutionApi.getInstanceInfo(instance.instanceName);
-          console.log(`📱 Instance info for ${instance.instanceName}:`, instanceInfo);
+          const instanceInfo = await evolutionApi.getInstanceInfo(instance.instanceId);
+          console.log(`📱 Instance info for ${instance.instanceId}:`, instanceInfo);
           
           if (instanceInfo) {
             // Handle both array and object responses from Evolution API
@@ -934,8 +934,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           try {
             // Second try: Fetch contacts to find owner number
-            const contacts = await evolutionApi.fetchContacts(instance.instanceName);
-            console.log(`📱 Contacts for ${instance.instanceName}:`, contacts);
+            const contacts = await evolutionApi.fetchContacts(instance.instanceId);
+            console.log(`📱 Contacts for ${instance.instanceId}:`, contacts);
             
             if (contacts && contacts.length > 0) {
               // Look for the owner's contact (usually the first one or marked as owner)
@@ -953,21 +953,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Fallback: Use any available data from database
             profileData = {
-              phoneNumber: instance.phoneNumber,
-              profileName: instance.profileName,
-              instanceName: instance.instanceName,
+              phoneNumber: instance.ownerJid?.split('@')[0] || null,
+              profileName: null,
+              instanceName: instance.instanceId,
               status: 'connected'
             };
           }
         }
         
-        console.log(`📱 Final profile data for ${instance.instanceName}:`, profileData);
+        console.log(`📱 Final profile data for ${instance.instanceId}:`, profileData);
         
         // Update database with any phone number we found
         if (profileData?.phoneNumber) {
-          await storage.updateWhatsappInstance(req.params.id, {
-            phoneNumber: profileData.phoneNumber,
-            profileName: profileData.profileName || null
+          await storage.updateWhatsappInstance('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', req.params.id, {
+            ownerJid: `${profileData.phoneNumber}@s.whatsapp.net`
           });
         }
         
@@ -977,7 +976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         res.json(profileData);
       } catch (profileError: any) {
-        console.error(`Failed to get profile for ${instance.instanceName}:`, profileError);
+        console.error(`Failed to get profile for ${instance.instanceId}:`, profileError);
         res.status(503).json({ 
           error: "Failed to get profile", 
           message: profileError.message 
@@ -1000,64 +999,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allConversations = [];
       
       for (const instance of instances) {
-        if (instance.status === 'connected' && instance.instanceApiKey) {
+        if (instance.isConnected && instance.apiKey) {
           try {
             // Fetch chats from Evolution API
-            const evolutionApi = getInstanceEvolutionApi(instance.instanceApiKey);
-            const chats = await evolutionApi.fetchChats(instance.instanceName);
+            const evolutionApi = getInstanceEvolutionApi(instance.apiKey);
+            const chats = await evolutionApi.fetchChats(instance.instanceId);
             
             if (chats && Array.isArray(chats)) {
               for (const chat of chats) {
                 // Create or update conversation in database
                 const conversationData = {
-                  instanceId: instance.id,
-                  userId: userId,
-                  remoteJid: chat.id,
-                  chatName: chat.name || chat.id.split('@')[0],
-                  chatType: chat.id.includes('@g.us') ? 'group' as const : 'individual' as const,
+                  instanceId: instance.instanceId,
+                  chatId: chat.id,
+                  type: chat.id.includes('@g.us') ? 'group' as const : 'individual' as const,
                   unreadCount: chat.unreadCount || 0,
-                  lastMessageContent: chat.lastMessage?.message || '',
-                  lastMessageTimestamp: chat.lastMessage?.messageTimestamp || 0,
-                  lastMessageFromMe: chat.lastMessage?.key?.fromMe || false,
-                  title: chat.name || chat.id.split('@')[0]
+                  lastMessageTimestamp: chat.lastMessage?.messageTimestamp ? new Date(chat.lastMessage.messageTimestamp * 1000) : null
                 };
                 
                 // Check if conversation exists
-                const existingConversations = await storage.getWhatsappConversations(userId, instance.id);
-                const existing = existingConversations.find(c => c.remoteJid === chat.id);
+                const existingConversations = await storage.getWhatsappChats(userId, instance.instanceId);
+                const existing = existingConversations.find(c => c.chatId === chat.id);
                 
                 let conversation;
                 if (existing) {
-                  conversation = await storage.updateWhatsappConversation(existing.id, conversationData);
+                  conversation = await storage.updateWhatsappChat(userId, instance.instanceId, chat.id, conversationData);
                 } else {
-                  conversation = await storage.createWhatsappConversation(conversationData);
+                  conversation = await storage.createWhatsappChat(conversationData);
                 }
                 
                 allConversations.push(conversation);
               }
             }
           } catch (apiError) {
-            console.error(`Failed to fetch chats for instance ${instance.instanceName}:`, apiError);
+            console.error(`Failed to fetch chats for instance ${instance.instanceId}:`, apiError);
           }
         }
       }
       
       // Also get any existing conversations from database
-      const dbConversations = await storage.getWhatsappConversations(userId, instanceId as string);
+      const dbConversations = await storage.getWhatsappChats(userId, instanceId as string);
       
-      // Merge and deduplicate by remoteJid
+      // Merge and deduplicate by chatId
       const conversationMap = new Map();
       [...allConversations, ...dbConversations].forEach(conv => {
-        const key = conv.remoteJid || conv.id;
-        const currentTimestamp = conv.lastMessageTimestamp || 0;
-        const existingTimestamp = conversationMap.get(key)?.lastMessageTimestamp || 0;
+        const key = conv.chatId;
+        const currentTimestamp = conv.lastMessageTimestamp?.getTime() || 0;
+        const existingTimestamp = conversationMap.get(key)?.lastMessageTimestamp?.getTime() || 0;
         if (!conversationMap.has(key) || currentTimestamp > existingTimestamp) {
           conversationMap.set(key, conv);
         }
       });
       
       const finalConversations = Array.from(conversationMap.values())
-        .sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
+        .sort((a, b) => (b.lastMessageTimestamp?.getTime() || 0) - (a.lastMessageTimestamp?.getTime() || 0));
       
       res.json(finalConversations);
     } catch (error) {
@@ -1068,7 +1062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/whatsapp/conversation/:id", async (req, res) => {
     try {
-      const conversation = await storage.getWhatsappConversation(req.params.id);
+      const conversation = await storage.getWhatsappChat(userId, instanceId, req.params.id);
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
       }
@@ -1080,8 +1074,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/whatsapp/conversations", async (req, res) => {
     try {
-      const conversationData = insertWhatsappConversationSchema.parse(req.body);
-      const conversation = await storage.createWhatsappConversation(conversationData);
+      const conversationData = insertWhatsappChatSchema.parse(req.body);
+      const conversation = await storage.createWhatsappChat(conversationData);
       res.status(201).json(conversation);
     } catch (error) {
       res.status(400).json({ error: "Invalid conversation data" });
