@@ -708,6 +708,15 @@ export class DatabaseStorage implements IStorage {
       ));
   }
 
+  async clearWhatsappGroupParticipants(userId: string, instanceId: string, groupJid: string): Promise<void> {
+    await db
+      .delete(whatsappGroupParticipants)
+      .where(and(
+        eq(whatsappGroupParticipants.instanceId, instanceId),
+        eq(whatsappGroupParticipants.groupJid, groupJid)
+      ));
+  }
+
   // Legacy compatibility methods
   async getWhatsappConversations(userId: string, instanceId?: string): Promise<WhatsappChat[]> {
     return this.getWhatsappChats(userId, instanceId);

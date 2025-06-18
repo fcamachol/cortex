@@ -988,6 +988,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 
                 await storage.createWhatsappGroup(groupData);
                 console.log(`✅ Created missing group record: ${chat.name}`);
+                
+                // Sync participants for newly discovered groups
+                await syncGroupParticipants(instance.instanceId, chatId, instanceName);
               }
             } catch (groupError) {
               console.error('Error checking/creating group record:', groupError);
@@ -2301,6 +2304,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Manual sync endpoint for group participants
+  // Manual participant sync endpoint
+  app.post('/api/whatsapp/groups/:instanceId/:groupJid/sync-participants', async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const { instanceId, groupJid } = req.params;
+      
+      // Find the instance name for Evolution API calls
+      const userId = req.user?.id || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const instances = await storage.getWhatsappInstances(userId);
+      const instance = instances.find(inst => inst.instanceId === instanceId);
+      
+      if (!instance) {
+        return res.status(404).json({ error: 'Instance not found' });
+      }
+
+      // Trigger participant sync
+      await syncGroupParticipants(instanceId, groupJid, instanceId);
+      
+      res.json({ message: 'Participant sync initiated', groupJid, instanceId });
+    } catch (error) {
+      console.error('Error syncing participants:', error);
+      res.status(500).json({ error: 'Failed to sync participants' });
+    }
+  });
+
   app.post('/api/whatsapp/instances/:instanceId/sync-participants', async (req: Request & { user?: { id: string } }, res: Response) => {
     try {
       const { instanceId } = req.params;
