@@ -664,6 +664,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`✅ Completed processing ${participants.length} participants for group ${groupJid}`);
 
+      // Send WebSocket notification to connected clients
+      const wsMessage = {
+        type: 'group-participants-update',
+        groupJid: groupJid,
+        instanceId: instance.instanceId,
+        action: action,
+        participants: participants,
+        timestamp: new Date().toISOString()
+      };
+
+      // Broadcast to all connected WebSocket clients
+      clients.forEach((client, clientId) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify(wsMessage));
+        }
+      });
+
     } catch (error) {
       console.error('Error processing group-participants.update:', error);
     }
@@ -2450,6 +2467,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await handleWebhookContactsUpsert(instanceId, eventData.data);
       } else if (eventData.event === 'chats.upsert') {
         await handleWebhookChatsUpsert(instanceId, eventData.data);
+      } else if (eventData.event === 'group-participants.update') {
+        await handleWebhookGroupParticipantsUpdate(instanceId, eventData.data);
+      } else if (eventData.event === 'groups.upsert') {
+        await handleWebhookGroupsUpsert(instanceId, eventData.data);
       }
 
       res.status(200).json({ success: true });
