@@ -152,6 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const evolutionMessageData = {
         userId: instance.userId, // Include user_id for RLS
         instanceName: instanceName,
+        messageId: message.key.id || '', // Map "id" field to message_id column
         evolutionMessageId: message.key.id || '',
         remoteJid: message.key.remoteJid || '',
         fromMe: message.key.fromMe || false,
