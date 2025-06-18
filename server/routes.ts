@@ -781,10 +781,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
               if (createResponse.hash?.apikey) {
                 instanceApiKey = createResponse.hash.apikey;
-                await storage.updateWhatsappInstance(req.params.id, {
-                  instanceApiKey: instanceApiKey
+                await storage.updateWhatsappInstance('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', req.params.id, {
+                  apiKey: instanceApiKey
                 });
-                console.log(`✅ Created instance and stored API key: ${instance.instanceName}`);
+                console.log(`✅ Created instance and stored API key: ${instance.instanceId}`);
               }
             }
 
@@ -792,7 +792,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               throw new Error("Could not obtain API key for instance");
             }
           } catch (apiError: any) {
-            console.error(`Failed to get/create instance ${instance.instanceName}:`, apiError.message);
+            console.error(`Failed to get/create instance ${instance.instanceId}:`, apiError.message);
             return res.status(500).json({
               qrCode: null,
               status: "error",
@@ -804,16 +804,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Use instance-specific API key
         const evolutionApi = getInstanceEvolutionApi(instanceApiKey);
         
-        console.log(`Fetching QR code for instance: ${instance.instanceName} with API key: ${instanceApiKey}`);
+        console.log(`Fetching QR code for instance: ${instance.instanceId} with API key: ${instanceApiKey}`);
         
         // Try to get QR code by connecting to the instance
         try {
-          const qrResponse = await evolutionApi.getQRCode(instance.instanceName);
+          const qrResponse = await evolutionApi.getQRCode(instance.instanceId);
           console.log('QR response received:', Object.keys(qrResponse));
           
           if (qrResponse.base64) {
-            await storage.updateWhatsappInstance(req.params.id, {
-              status: "qr_pending"
+            await storage.updateWhatsappInstance('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', req.params.id, {
+              isConnected: false
             });
 
             return res.json({
@@ -830,12 +830,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Check connection state as fallback
         try {
-          const connectionState = await evolutionApi.getConnectionState(instance.instanceName);
+          const connectionState = await evolutionApi.getConnectionState(instance.instanceId);
           console.log('Connection state:', connectionState);
           
           if (connectionState.instance.state === 'open') {
-            await storage.updateWhatsappInstance(req.params.id, {
-              status: "connected"
+            await storage.updateWhatsappInstance('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', req.params.id, {
+              isConnected: true
             });
             return res.json({
               qrCode: null,
@@ -845,8 +845,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           if (connectionState.qrcode?.base64) {
-            await storage.updateWhatsappInstance(req.params.id, {
-              status: "qr_pending"
+            await storage.updateWhatsappInstance('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', req.params.id, {
+              isConnected: false
             });
 
             return res.json({
