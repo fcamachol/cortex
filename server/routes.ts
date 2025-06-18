@@ -10,8 +10,10 @@ import {
   insertWhatsappInstanceSchema,
   insertWhatsappContactSchema,
   insertWhatsappChatSchema,
-  insertWhatsappMessageSchema
+  insertWhatsappMessageSchema,
+  whatsappInstances
 } from "../shared/schema";
+import { eq } from "drizzle-orm";
 
 // Format phone number to E.164 International Format
 function formatToE164(phoneNumber: string): string {
@@ -252,9 +254,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`💬 Processing chats.upsert for ${instanceName}:`, data);
     
     try {
-      // Find the instance by name using the correct method
-      const instances = await storage.getWhatsappInstances('7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
-      const instance = instances.find(inst => inst.displayName === instanceName);
+      // Use hardcoded user ID for now and find the instance directly
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const instances = await storage.getWhatsappInstances(userId);
+      const instance = instances.find(inst => inst.instanceId === instanceName);
       if (!instance) {
         console.error(`❌ Instance ${instanceName} not found`);
         return;
