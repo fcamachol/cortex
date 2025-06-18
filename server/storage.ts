@@ -610,6 +610,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWhatsappInstanceByName(userId: string, instanceName: string): Promise<WhatsappInstance | undefined> {
+    // Since the new schema uses instanceId instead of instanceName, 
+    // we'll treat instanceName as instanceId for compatibility
     return this.getWhatsappInstance(userId, instanceName);
   }
 

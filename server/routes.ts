@@ -107,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`📩 Processing messages.upsert for ${instanceName}:`, JSON.stringify(data, null, 2));
     
     try {
-      // Find the instance in our database
+      // Find the instance in our database using instanceName as instanceId
       const instance = await storage.getWhatsappInstanceByName('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instanceName);
       if (!instance) {
         console.error(`Instance ${instanceName} not found in database`);
@@ -146,7 +146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Save to WhatsApp messages table with new schema
       const evolutionMessageData = {
-        instanceId: instanceName,
+        instanceId: instance.instanceId,
         chatId: message.key.remoteJid || '',
         messageId: message.key.id || '',
         senderJid: message.participant || message.key.remoteJid || '',
@@ -356,7 +356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { instanceName } = req.params;
       const status = evolutionManager.getBridgeStatus(instanceName);
-      const instance = await storage.getWhatsappInstanceByName(instanceName);
+      const instance = await storage.getWhatsappInstanceByName('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instanceName);
       
       if (!instance) {
         return res.status(404).json({ error: 'Instance not found' });
