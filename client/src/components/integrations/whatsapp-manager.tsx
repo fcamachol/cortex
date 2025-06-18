@@ -173,6 +173,39 @@ export function WhatsAppInstanceManager() {
     setEditingDisplayName("");
   };
 
+  const syncStatus = useMutation({
+    mutationFn: async (instanceId: string) => {
+      const response = await fetch(`/api/whatsapp/instances/${instanceId}/sync-status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to sync status: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: (data, instanceId) => {
+      toast({
+        title: "Status synced",
+        description: `Instance status updated to: ${data.status}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/instances"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Sync failed",
+        description: error.message || "Failed to sync status",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSyncStatus = (instanceId: string) => {
+    syncStatus.mutate(instanceId);
+  };
+
   const getWebSocketStatus = (instanceId: string) => {
     return websocketStatuses.find(status => status.instanceId === instanceId);
   };
@@ -388,7 +421,7 @@ export function WhatsAppInstanceManager() {
                   <span className="text-gray-600 dark:text-gray-400">Created:</span>
                   <span className="ml-2">{new Date(instance.createdAt).toLocaleDateString()}</span>
                 </div>
-                <div className="pt-2">
+                <div className="pt-2 space-y-2">
                   {instance.status === "connected" ? (
                     <Button disabled className="w-full">
                       <Wifi className="w-4 h-4 mr-2" />
@@ -404,6 +437,16 @@ export function WhatsAppInstanceManager() {
                       {instance.status === "connecting" || instance.status === "qr_pending" ? "Show QR" : "Connect"}
                     </Button>
                   )}
+                  <Button 
+                    onClick={() => handleSyncStatus(instance.instanceId)}
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={syncStatus.isPending}
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${syncStatus.isPending ? 'animate-spin' : ''}`} />
+                    {syncStatus.isPending ? 'Syncing...' : 'Sync Status'}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
