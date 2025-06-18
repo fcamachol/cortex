@@ -182,25 +182,16 @@ export class EvolutionAPIWebSocket {
     const contentData = this.extractMessageContent(messageContent);
     
     const messageData: InsertWhatsappMessage = {
-      userId: this.userId,
       instanceId: this.instanceId,
-      conversationId: await this.getOrCreateConversationId(key.remoteJid),
-      messageId: key.id, // Map "id" field to message_id column
-      evolutionMessageId: key.id,
-      remoteJid: key.remoteJid,
+      messageId: key.id,
+      chatId: key.remoteJid,
+      senderJid: key.fromMe ? 'me' : (participant || key.remoteJid),
       fromMe: key.fromMe,
-      participant: participant || null,
-      messageContent: messageContent,
       messageType: contentData.type as any,
-      textContent: contentData.text || null,
-      mediaUrl: contentData.mediaUrl || null,
-      mediaMimetype: contentData.mimetype || null,
-      mediaSize: contentData.fileLength || null,
-      mediaFilename: contentData.fileName || null,
-      mediaCaption: contentData.caption || null,
-      timestamp: messageTimestamp,
-      pushName: pushName || null,
-      status: status || 'pending'
+      content: contentData.text || null,
+      timestamp: new Date(messageTimestamp * 1000),
+      quotedMessageId: contentData.quotedMessageId || null,
+      rawApiPayload: messageContent
     };
     
     await storage.createWhatsappMessage(messageData);
@@ -287,27 +278,8 @@ export class EvolutionAPIWebSocket {
   }
 
   private async getOrCreateConversationId(remoteJid: string): Promise<string> {
-    const conversations = await storage.getWhatsappConversations(this.userId);
-    const existing = conversations.find(conv => conv.remoteJid === remoteJid);
-    
-    if (existing) {
-      return existing.id;
-    }
-    
-    const conversationData: InsertWhatsappConversation = {
-      userId: this.userId,
-      instanceId: this.instanceId,
-      remoteJid: remoteJid,
-      chatName: this.getChatName(remoteJid),
-      chatType: this.getChatType(remoteJid),
-      unreadCount: 0,
-      lastMessageContent: '',
-      lastMessageTimestamp: Date.now(),
-      lastMessageFromMe: false
-    };
-    
-    const newConversation = await storage.createWhatsappConversation(conversationData);
-    return newConversation.id;
+    // In the new schema, we use remoteJid directly as the chatId
+    return remoteJid;
   }
 
   private getChatName(remoteJid: string): string {
@@ -350,16 +322,14 @@ export class EvolutionAPIWebSocket {
 
   private async saveContact(contact: any) {
     const contactData: InsertWhatsappContact = {
-      userId: this.userId,
       instanceId: this.instanceId,
-      remoteJid: contact.id,
+      jid: contact.id,
       pushName: contact.notify || null,
-      phoneNumber: contact.id.split('@')[0],
-      profileName: contact.name || null,
+      verifiedName: contact.name || null,
       profilePictureUrl: contact.imgUrl || null,
-      isMyContact: contact.isMyContact || false,
-      isWaContact: contact.isWAContact || false,
-      isBusiness: contact.isBusiness || false
+      isBusiness: contact.isBusiness || false,
+      isMe: contact.isMe || false,
+      isBlocked: contact.isBlocked || false
     };
     
     await storage.createWhatsappContact(contactData);
