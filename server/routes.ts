@@ -971,6 +971,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateWhatsappChat(userId, instance.instanceId, chatId, updateData);
           console.log(`🔄 Updated ${chatType} chat: ${chat.name || chatId}`);
           
+          // For group chats, periodically sync participants to keep them current
+          if (chatType === 'group') {
+            await syncGroupParticipants(instance.instanceId, chatId, instanceName);
+          }
+          
           // For existing group chats, ensure the group record exists
           if (chatType === 'group' && chat.name) {
             try {
