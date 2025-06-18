@@ -414,15 +414,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/whatsapp/instances", async (req, res) => {
     try {
-      const instanceData = insertWhatsappInstanceSchema.parse(req.body);
+      // Generate required fields if not provided
+      const userId = req.body.userId || req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const instanceId = req.body.instanceId || `instance-${Date.now()}`;
+      
+      const instanceData = {
+        instanceId: instanceId,
+        clientId: userId as string,
+        ownerJid: req.body.ownerJid || null,
+        apiKey: req.body.apiKey || null,
+        webhookUrl: req.body.webhookUrl || null,
+        isConnected: req.body.isConnected || false,
+        lastConnectionAt: req.body.lastConnectionAt || null,
+      };
+      
+      // Validate the complete data
+      const validatedData = insertWhatsappInstanceSchema.parse(instanceData);
       
       // Create instance in Evolution API using global API key
       try {
         const evolutionApi = getEvolutionApi();
         const createResponse = await evolutionApi.createInstance({
-          instanceName: instanceData.instanceId,
+          instanceName: validatedData.instanceId!,
           integration: "WHATSAPP-BAILEYS",
-          webhook_url: instanceData.webhookUrl ? instanceData.webhookUrl : undefined,
+          webhook_url: validatedData.webhookUrl || undefined,
           events: [
             'APPLICATION_STARTUP',
             'QRCODE_UPDATED',

@@ -262,6 +262,14 @@ export const whatsappMessagesRelations = relations(whatsappMessages, ({ one, man
 export const insertWhatsappInstanceSchema = createInsertSchema(whatsappInstances).omit({
   createdAt: true,
   updatedAt: true,
+}).extend({
+  instanceId: z.string().optional(),
+  clientId: z.string().optional(),
+  ownerJid: z.string().nullable().optional(),
+  apiKey: z.string().nullable().optional(),
+  webhookUrl: z.string().nullable().optional(),
+  isConnected: z.boolean().optional(),
+  lastConnectionAt: z.date().nullable().optional(),
 });
 
 export const insertWhatsappContactSchema = createInsertSchema(whatsappContacts).omit({

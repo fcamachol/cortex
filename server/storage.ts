@@ -157,9 +157,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createWhatsappInstance(instance: InsertWhatsappInstance): Promise<WhatsappInstance> {
+    // Ensure required fields are provided
+    const instanceData = {
+      instanceId: instance.instanceId || `instance-${Date.now()}`,
+      clientId: instance.clientId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42',
+      ownerJid: instance.ownerJid || null,
+      apiKey: instance.apiKey || null,
+      webhookUrl: instance.webhookUrl || null,
+      isConnected: instance.isConnected ?? false,
+      lastConnectionAt: instance.lastConnectionAt || null,
+    };
+
     const [newInstance] = await db
       .insert(whatsappInstances)
-      .values(instance)
+      .values(instanceData)
       .returning();
     return newInstance;
   }
