@@ -120,11 +120,18 @@ export class ActionsEngine {
   }
 
   private async shouldExecuteRule(rule: ActionRule): Promise<boolean> {
+    console.log(`🔍 Checking execution conditions for rule: ${rule.ruleName}`);
+    console.log(`📊 Rule settings: cooldown=${rule.cooldownMinutes}, maxPerDay=${rule.maxExecutionsPerDay}, lastExecuted=${rule.lastExecutedAt}`);
+    
     // Check cooldown
     const cooldownMinutes = rule.cooldownMinutes ?? 0;
     if (cooldownMinutes > 0 && rule.lastExecutedAt) {
       const cooldownEnd = new Date(rule.lastExecutedAt.getTime() + cooldownMinutes * 60000);
-      if (new Date() < cooldownEnd) return false;
+      console.log(`⏰ Cooldown check: now=${new Date()}, cooldownEnd=${cooldownEnd}`);
+      if (new Date() < cooldownEnd) {
+        console.log(`❌ Rule blocked: still in cooldown period`);
+        return false;
+      }
     }
 
     // Check daily execution limit
@@ -143,9 +150,14 @@ export class ActionsEngine {
           )
         );
 
-      if (todayExecutions[0]?.count >= maxExecutionsPerDay) return false;
+      console.log(`📈 Daily limit check: executed=${todayExecutions[0]?.count}, maxAllowed=${maxExecutionsPerDay}`);
+      if (todayExecutions[0]?.count >= maxExecutionsPerDay) {
+        console.log(`❌ Rule blocked: daily execution limit reached`);
+        return false;
+      }
     }
 
+    console.log(`✅ Rule execution conditions met`);
     return true;
   }
 
@@ -239,8 +251,8 @@ export class ActionsEngine {
     // Save task to database using CRM schema
     try {
       const result = await db.execute(sql`
-        INSERT INTO crm.tasks (instance_id, title, description, priority, status, due_date, related_chat_jid, created_by_user_id)
-        VALUES ('live-test-1750199771', ${taskData.title}, ${taskData.description}, ${taskData.priority}, ${taskData.taskStatus}, ${taskData.dueDate}, ${taskData.conversationJid}, ${taskData.userId})
+        INSERT INTO crm.tasks (instance_id, title, description, priority, status, related_chat_jid, created_by_user_id)
+        VALUES ('live-test-1750199771', ${taskData.title}, ${taskData.description}, ${taskData.priority}, ${taskData.taskStatus}, ${taskData.conversationJid}, ${taskData.userId})
         RETURNING task_id, title, description, status
       `);
       
