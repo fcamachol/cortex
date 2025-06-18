@@ -509,21 +509,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const instances = await storage.getWhatsappInstances(userId);
       
       // Transform instances to match frontend interface
-      const transformedInstances = instances.map(instance => ({
-        instanceId: instance.instanceId,
-        displayName: instance.displayName,
-        ownerJid: instance.ownerJid,
-        clientId: instance.clientId,
-        apiKey: instance.apiKey,
-        webhookUrl: instance.webhookUrl,
-        isConnected: instance.isConnected,
-        lastConnectionAt: instance.lastConnectionAt?.toISOString(),
-        status: instance.isConnected ? "connected" : "connecting",
-        phoneNumber: instance.ownerJid ? instance.ownerJid.replace('@s.whatsapp.net', '') : undefined,
-        profileName: undefined, // Will be populated by profile endpoint
-        createdAt: instance.createdAt.toISOString(),
-        updatedAt: instance.updatedAt.toISOString()
-      }));
+      const transformedInstances = instances.map(instance => {
+        const status = instance.isConnected ? "connected" : "connecting";
+        return {
+          instanceId: instance.instanceId,
+          displayName: instance.displayName,
+          ownerJid: instance.ownerJid,
+          clientId: instance.clientId,
+          apiKey: instance.apiKey,
+          webhookUrl: instance.webhookUrl,
+          isConnected: instance.isConnected,
+          lastConnectionAt: instance.lastConnectionAt?.toISOString(),
+          status: status,
+          phoneNumber: instance.ownerJid ? instance.ownerJid.replace('@s.whatsapp.net', '') : undefined,
+          profileName: undefined, // Will be populated by profile endpoint
+          createdAt: instance.createdAt.toISOString(),
+          updatedAt: instance.updatedAt.toISOString()
+        };
+      });
       
       res.json(transformedInstances);
     } catch (error) {
