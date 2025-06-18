@@ -2741,5 +2741,341 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // =============================================================================
+  // ACTIONS API ROUTES - Event Triggering and Automation
+  // =============================================================================
+
+  // Get all action rules for a user
+  app.get('/api/actions/rules', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const { workspaceId, spaceId } = req.query;
+
+      let query = db.select().from(actionRules).where(eq(actionRules.userId, userId));
+
+      if (workspaceId) {
+        query = query.where(eq(actionRules.workspaceId, workspaceId as string));
+      }
+      if (spaceId) {
+        query = query.where(eq(actionRules.spaceId, parseInt(spaceId as string)));
+      }
+
+      const rules = await query.orderBy(desc(actionRules.createdAt));
+      res.json(rules);
+    } catch (error) {
+      console.error('Error fetching action rules:', error);
+      res.status(500).json({ error: 'Failed to fetch action rules' });
+    }
+  });
+
+  // Create a new action rule
+  app.post('/api/actions/rules', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const ruleData = insertActionRuleSchema.parse({
+        ...req.body,
+        userId
+      });
+
+      const [newRule] = await db.insert(actionRules).values(ruleData).returning();
+      res.status(201).json(newRule);
+    } catch (error) {
+      console.error('Error creating action rule:', error);
+      res.status(400).json({ error: 'Invalid action rule data' });
+    }
+  });
+
+  // Update an action rule
+  app.put('/api/actions/rules/:ruleId', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const { ruleId } = req.params;
+      const updateData = { ...req.body, updatedAt: new Date() };
+
+      const [updatedRule] = await db
+        .update(actionRules)
+        .set(updateData)
+        .where(and(eq(actionRules.ruleId, ruleId), eq(actionRules.userId, userId)))
+        .returning();
+
+      if (!updatedRule) {
+        return res.status(404).json({ error: 'Action rule not found' });
+      }
+
+      res.json(updatedRule);
+    } catch (error) {
+      console.error('Error updating action rule:', error);
+      res.status(500).json({ error: 'Failed to update action rule' });
+    }
+  });
+
+  // Delete an action rule
+  app.delete('/api/actions/rules/:ruleId', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const { ruleId } = req.params;
+
+      const [deletedRule] = await db
+        .delete(actionRules)
+        .where(and(eq(actionRules.ruleId, ruleId), eq(actionRules.userId, userId)))
+        .returning();
+
+      if (!deletedRule) {
+        return res.status(404).json({ error: 'Action rule not found' });
+      }
+
+      res.json({ message: 'Action rule deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting action rule:', error);
+      res.status(500).json({ error: 'Failed to delete action rule' });
+    }
+  });
+
+  // Toggle action rule active status
+  app.patch('/api/actions/rules/:ruleId/toggle', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const { ruleId } = req.params;
+
+      const [currentRule] = await db
+        .select()
+        .from(actionRules)
+        .where(and(eq(actionRules.ruleId, ruleId), eq(actionRules.userId, userId)));
+
+      if (!currentRule) {
+        return res.status(404).json({ error: 'Action rule not found' });
+      }
+
+      const [updatedRule] = await db
+        .update(actionRules)
+        .set({ 
+          isActive: !currentRule.isActive,
+          updatedAt: new Date()
+        })
+        .where(eq(actionRules.ruleId, ruleId))
+        .returning();
+
+      res.json(updatedRule);
+    } catch (error) {
+      console.error('Error toggling action rule:', error);
+      res.status(500).json({ error: 'Failed to toggle action rule' });
+    }
+  });
+
+  // Get action executions for a rule
+  app.get('/api/actions/rules/:ruleId/executions', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const { ruleId } = req.params;
+      const { limit = '50', offset = '0' } = req.query;
+
+      // Verify rule ownership
+      const rule = await db
+        .select()
+        .from(actionRules)
+        .where(and(eq(actionRules.ruleId, ruleId), eq(actionRules.userId, userId)))
+        .limit(1);
+
+      if (!rule.length) {
+        return res.status(404).json({ error: 'Action rule not found' });
+      }
+
+      const executions = await db
+        .select()
+        .from(actionExecutions)
+        .where(eq(actionExecutions.ruleId, ruleId))
+        .orderBy(desc(actionExecutions.executedAt))
+        .limit(parseInt(limit as string))
+        .offset(parseInt(offset as string));
+
+      res.json(executions);
+    } catch (error) {
+      console.error('Error fetching action executions:', error);
+      res.status(500).json({ error: 'Failed to fetch executions' });
+    }
+  });
+
+  // Get action templates
+  app.get('/api/actions/templates', async (req: Request, res: Response) => {
+    try {
+      const { category } = req.query;
+
+      let query = db.select().from(actionTemplates).where(eq(actionTemplates.isPublic, true));
+
+      if (category) {
+        query = query.where(eq(actionTemplates.category, category as string));
+      }
+
+      const templates = await query.orderBy(desc(actionTemplates.usageCount));
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching action templates:', error);
+      res.status(500).json({ error: 'Failed to fetch templates' });
+    }
+  });
+
+  // Create action rule from template
+  app.post('/api/actions/rules/from-template/:templateId', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const { templateId } = req.params;
+      const { ruleName, customConfig } = req.body;
+
+      const [template] = await db
+        .select()
+        .from(actionTemplates)
+        .where(eq(actionTemplates.templateId, templateId));
+
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+
+      const defaultConfig = template.defaultConfig as any;
+      const mergedConfig = { ...defaultConfig, ...customConfig };
+
+      const ruleData = {
+        userId,
+        ruleName: ruleName || `${template.templateName} Rule`,
+        description: `Created from template: ${template.templateName}`,
+        triggerType: template.triggerType,
+        actionType: template.actionType,
+        triggerConditions: mergedConfig.triggerConditions || {},
+        actionConfig: mergedConfig.actionConfig || {},
+        instanceFilters: mergedConfig.instanceFilters || null,
+        contactFilters: mergedConfig.contactFilters || null,
+        timeFilters: mergedConfig.timeFilters || null,
+        cooldownMinutes: mergedConfig.cooldownMinutes || 0,
+        maxExecutionsPerDay: mergedConfig.maxExecutionsPerDay || 100,
+        workspaceId: req.body.workspaceId || null,
+        spaceId: req.body.spaceId || null,
+      };
+
+      const [newRule] = await db.insert(actionRules).values(ruleData).returning();
+
+      // Increment template usage count
+      await db
+        .update(actionTemplates)
+        .set({ usageCount: sql`${actionTemplates.usageCount} + 1` })
+        .where(eq(actionTemplates.templateId, templateId));
+
+      res.status(201).json(newRule);
+    } catch (error) {
+      console.error('Error creating rule from template:', error);
+      res.status(500).json({ error: 'Failed to create rule from template' });
+    }
+  });
+
+  // Get action statistics
+  app.get('/api/actions/stats', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+
+      const [totalRules] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(actionRules)
+        .where(eq(actionRules.userId, userId));
+
+      const [activeRules] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(actionRules)
+        .where(and(eq(actionRules.userId, userId), eq(actionRules.isActive, true)));
+
+      const [totalExecutions] = await db
+        .select({ total: sql<number>`sum(${actionRules.totalExecutions})` })
+        .from(actionRules)
+        .where(eq(actionRules.userId, userId));
+
+      const [recentExecutions] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(actionExecutions)
+        .innerJoin(actionRules, eq(actionExecutions.ruleId, actionRules.ruleId))
+        .where(
+          and(
+            eq(actionRules.userId, userId),
+            sql`${actionExecutions.executedAt} >= NOW() - INTERVAL '24 hours'`
+          )
+        );
+
+      const stats = {
+        totalRules: totalRules?.count || 0,
+        activeRules: activeRules?.count || 0,
+        totalExecutions: totalExecutions?.total || 0,
+        recentExecutions: recentExecutions?.count || 0,
+      };
+
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching action stats:', error);
+      res.status(500).json({ error: 'Failed to fetch statistics' });
+    }
+  });
+
+  // Test action rule (dry run)
+  app.post('/api/actions/rules/:ruleId/test', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const { ruleId } = req.params;
+      const { testContext } = req.body;
+
+      const [rule] = await db
+        .select()
+        .from(actionRules)
+        .where(and(eq(actionRules.ruleId, ruleId), eq(actionRules.userId, userId)));
+
+      if (!rule) {
+        return res.status(404).json({ error: 'Action rule not found' });
+      }
+
+      const mockContext = {
+        messageId: 'test-message-id',
+        instanceId: testContext.instanceId || 'test-instance',
+        chatId: testContext.chatId || 'test-chat',
+        senderJid: testContext.senderJid || 'test-sender',
+        content: testContext.content || 'Test message #todo',
+        hashtags: testContext.hashtags || ['todo'],
+        keywords: testContext.keywords || ['test'],
+        timestamp: new Date(),
+        fromMe: false,
+      };
+
+      // Test if rule would trigger
+      const engine = ActionsEngine.getInstance();
+      const conditions = rule.triggerConditions as any;
+      let wouldTrigger = false;
+
+      switch (rule.triggerType) {
+        case 'hashtag':
+          wouldTrigger = mockContext.hashtags?.some(tag => 
+            conditions.hashtags?.includes(tag)
+          ) || false;
+          break;
+        case 'keyword':
+          wouldTrigger = conditions.keywords?.some((keyword: string) =>
+            mockContext.content.toLowerCase().includes(keyword.toLowerCase())
+          ) || false;
+          break;
+        case 'reaction':
+          wouldTrigger = mockContext.reaction === conditions.reaction;
+          break;
+      }
+
+      const result = {
+        ruleId: rule.ruleId,
+        ruleName: rule.ruleName,
+        wouldTrigger,
+        triggerType: rule.triggerType,
+        actionType: rule.actionType,
+        testContext: mockContext,
+        conditions: conditions,
+        actionConfig: rule.actionConfig,
+      };
+
+      res.json(result);
+    } catch (error) {
+      console.error('Error testing action rule:', error);
+      res.status(500).json({ error: 'Failed to test action rule' });
+    }
+  });
+
   return httpServer;
 }
