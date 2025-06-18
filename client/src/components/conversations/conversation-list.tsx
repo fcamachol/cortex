@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Search, Check, CheckCheck, Users } from "lucide-react";
+import { formatPhoneNumber } from "@/lib/phoneUtils";
 
 interface ConversationListProps {
   selectedConversation: string | null;
@@ -128,7 +129,9 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                      {conversation.title || 'Unknown Contact'}
+                      {conversation.title ? 
+                        (conversation.title.includes('@') ? formatPhoneNumber(conversation.title) : conversation.title) : 
+                        'Unknown Contact'}
                     </h3>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
                       {conversation.latestMessage?.createdAt ? new Date(conversation.latestMessage.createdAt).toLocaleTimeString([], { 
