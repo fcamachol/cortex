@@ -112,6 +112,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case 'group-participants.update':
           await handleWebhookGroupParticipantsUpdate(instanceName, data);
           break;
+        case 'messages.reaction':
+          await handleWebhookMessageReaction(instanceName, data);
+          break;
         case 'presence.update':
           console.log(`👁️ Presence update for ${instanceName}:`, data);
           break;
@@ -711,6 +714,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('Error processing group-participants.update:', error);
+    }
+  }
+
+  async function handleWebhookMessageReaction(instanceName: string, data: any) {
+    console.log(`⭐ Processing message reaction for ${instanceName}:`, JSON.stringify(data, null, 2));
+    
+    try {
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const instances = await storage.getWhatsappInstances(userId);
+      const instance = instances.find(inst => inst.instanceId === instanceName);
+      if (!instance) {
+        console.error(`❌ Instance ${instanceName} not found`);
+        return;
+      }
+
+      // Extract reaction data from webhook
+      const messageId = data.key?.id || data.messageId;
+      const reactionEmoji = data.message?.reactionMessage?.text || data.reaction;
+      const senderJid = data.key?.participant || data.key?.remoteJid || data.senderJid;
+      const chatId = data.key?.remoteJid || data.chatId;
+
+      if (!messageId || !reactionEmoji || !senderJid || !chatId) {
+        console.log('⚠️ Missing reaction data, skipping');
+        return;
+      }
+
+      console.log(`⭐ Reaction detected: ${reactionEmoji} on message ${messageId} by ${senderJid}`);
+
+      // Get the original message to extract content
+      const originalMessage = await storage.getWhatsappMessage(userId, instance.instanceId, messageId);
+      if (!originalMessage) {
+        console.log(`⚠️ Original message not found: ${messageId}`);
+        return;
+      }
+
+      // Process actions triggers for this reaction
+      const triggerContext = {
+        reactionId: `${messageId}_${reactionEmoji}`,
+        messageId: messageId,
+        instanceId: instance.instanceId,
+        chatId: chatId,
+        senderJid: senderJid,
+        content: originalMessage.content || '',
+        reaction: reactionEmoji,
+        timestamp: new Date(),
+        fromMe: originalMessage.fromMe,
+      };
+
+      // Trigger actions engine for reaction
+      await actionsEngine.processMessageTriggers(triggerContext);
+      console.log(`✅ Processed reaction trigger for ${reactionEmoji} on message: ${originalMessage.content?.substring(0, 50) || 'No content'}`);
+
+    } catch (error) {
+      console.error('❌ Error processing message reaction:', error);
     }
   }
 
