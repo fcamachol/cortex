@@ -950,6 +950,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               await storage.createWhatsappGroup(groupData);
               console.log(`✅ Created group record: ${chat.name}`);
+              
+              // Fetch and sync group participants
+              await syncGroupParticipants(instance.instanceId, chatId, instanceName);
             } catch (groupError) {
               console.error('Error creating group record:', groupError);
             }
@@ -1101,6 +1104,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       durationSeconds: mediaInfo.seconds || null,
       isViewOnce: mediaInfo.viewOnce || false
     };
+  }
+
+  async function syncGroupParticipants(instanceId: string, groupJid: string, instanceName: string) {
+    try {
+      console.log(`👥 Syncing participants for group: ${groupJid}`);
+      
+      // Get Evolution API instance
+      const evolutionApi = getEvolutionApi();
+      if (!evolutionApi) {
+        console.error('Evolution API not available for participant sync');
+        return;
+      }
+
+      // Fetch group participants from Evolution API
+      const participantsResponse = await evolutionApi.getGroupParticipants(instanceName, groupJid);
+      
+      if (!participantsResponse || !participantsResponse.participants) {
+        console.log(`⚠️ No participants data received for group: ${groupJid}`);
+        return;
+      }
+
+      const participants = participantsResponse.participants;
+      console.log(`📋 Found ${participants.length} participants for group: ${groupJid}`);
+
+      // Clear existing participants for this group
+      await storage.clearWhatsappGroupParticipants('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instanceId, groupJid);
+
+      // Add each participant
+      for (const participant of participants) {
+        const participantJid = participant.id || participant.jid;
+        if (!participantJid) continue;
+
+        const participantData = {
+          groupJid: groupJid,
+          instanceId: instanceId,
+          participantJid: participantJid,
+          isAdmin: participant.admin === 'admin' || participant.isAdmin || false,
+          isSuperAdmin: participant.admin === 'superadmin' || participant.isSuperAdmin || false
+        };
+
+        try {
+          await storage.createWhatsappGroupParticipant(participantData);
+          console.log(`✅ Added participant: ${participantJid} (admin: ${participantData.isAdmin})`);
+        } catch (participantError) {
+          console.error(`Error adding participant ${participantJid}:`, participantError);
+        }
+      }
+
+      console.log(`✅ Completed participant sync for group: ${groupJid}`);
+      
+    } catch (error) {
+      console.error(`Error syncing participants for group ${groupJid}:`, error);
+    }
   }
 
   function extractMessageContent(message: any): string {

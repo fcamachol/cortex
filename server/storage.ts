@@ -109,6 +109,7 @@ export interface IStorage {
   removeWhatsappGroupParticipant(instanceId: string, groupJid: string, participantJid: string): Promise<void>;
   getWhatsappGroupParticipants(userId: string, instanceId: string, groupJid: string): Promise<WhatsappGroupParticipant[]>;
   deleteWhatsappGroupParticipant(userId: string, instanceId: string, groupJid: string, participantJid: string): Promise<void>;
+  clearWhatsappGroupParticipants(userId: string, instanceId: string, groupJid: string): Promise<void>;
 
   // Legacy compatibility methods
   getWhatsappConversations(userId: string, instanceId?: string): Promise<WhatsappChat[]>;
