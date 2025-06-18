@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { MessageStatusTracker } from './message-status-tracker';
+import { WhatsAppMessageBubble } from './whatsapp-status-indicator';
 
 interface Message {
   messageId: string;

@@ -4,17 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { 
-  Clock, 
-  Send, 
-  CheckCircle, 
-  CheckCircle2, 
-  Eye, 
-  Play, 
-  AlertCircle,
-  RefreshCw 
-} from 'lucide-react';
+import { WhatsAppStatusIndicator } from './whatsapp-status-indicator';
+import { RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface MessageUpdate {
@@ -31,38 +22,7 @@ interface MessageStatusTrackerProps {
   initialStatus?: string;
 }
 
-const statusConfig = {
-  pending: {
-    icon: Clock,
-    color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-    label: 'Pending'
-  },
-  sent: {
-    icon: Send,
-    color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-    label: 'Sent'
-  },
-  delivered: {
-    icon: CheckCircle,
-    color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-    label: 'Delivered'
-  },
-  read: {
-    icon: CheckCircle2,
-    color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-    label: 'Read'
-  },
-  played: {
-    icon: Play,
-    color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300',
-    label: 'Played'
-  },
-  error: {
-    icon: AlertCircle,
-    color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-    label: 'Error'
-  }
-};
+// Use WhatsApp-style status indicators
 
 export function MessageStatusTracker({ messageId, instanceId, initialStatus }: MessageStatusTrackerProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -80,10 +40,7 @@ export function MessageStatusTracker({ messageId, instanceId, initialStatus }: M
     refetchInterval: 30000, // Refetch every 30 seconds for real-time updates
   });
 
-  const latestStatus = updates?.[0]?.status || initialStatus || 'pending';
-  const StatusIcon = statusConfig[latestStatus as keyof typeof statusConfig]?.icon || Clock;
-  const statusColor = statusConfig[latestStatus as keyof typeof statusConfig]?.color || statusConfig.pending.color;
-  const statusLabel = statusConfig[latestStatus as keyof typeof statusConfig]?.label || 'Unknown';
+  const latestStatus = updates?.[0]?.status || (initialStatus as any) || 'pending';
 
   if (isLoading) {
     return (
@@ -97,12 +54,12 @@ export function MessageStatusTracker({ messageId, instanceId, initialStatus }: M
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Badge variant="outline" className={`flex items-center gap-1 ${statusColor}`}>
-          <StatusIcon className="h-3 w-3" />
-          {statusLabel}
-        </Badge>
+        <WhatsAppStatusIndicator 
+          status={latestStatus} 
+          timestamp={updates?.[0]?.timestamp}
+        />
         
-        {updates && updates.length > 0 && (
+        {updates && updates.length > 1 && (
           <Button
             variant="ghost"
             size="sm"
@@ -131,33 +88,30 @@ export function MessageStatusTracker({ messageId, instanceId, initialStatus }: M
           <CardContent className="pt-0">
             <ScrollArea className="h-48">
               <div className="space-y-3">
-                {updates.map((update, index) => {
-                  const UpdateIcon = statusConfig[update.status]?.icon || Clock;
-                  const updateColor = statusConfig[update.status]?.color || statusConfig.pending.color;
-                  
-                  return (
-                    <div key={update.updateId} className="flex items-start gap-3">
-                      <div className={`rounded-full p-1 ${updateColor}`}>
-                        <UpdateIcon className="h-3 w-3" />
+                {updates.map((update, index) => (
+                  <div key={update.updateId} className="flex items-start gap-3">
+                    <WhatsAppStatusIndicator 
+                      status={update.status}
+                      timestamp={update.timestamp}
+                      showTime={false}
+                    />
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium capitalize">
+                          {update.status}
+                        </span>
+                        {index === 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            Current
+                          </Badge>
+                        )}
                       </div>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {statusConfig[update.status]?.label || update.status}
-                          </span>
-                          {index === 0 && (
-                            <Badge variant="secondary" className="text-xs">
-                              Current
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(update.timestamp), 'MMM dd, yyyy HH:mm:ss')}
-                        </p>
-                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(update.timestamp), 'MMM dd, yyyy HH:mm:ss')}
+                      </p>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             </ScrollArea>
           </CardContent>
