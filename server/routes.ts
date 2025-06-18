@@ -1145,6 +1145,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sync instance status from Evolution API
+  app.post("/api/whatsapp/instances/:instanceId/sync-status", async (req, res) => {
+    try {
+      const { instanceId } = req.params;
+      
+      // Get current status from Evolution API
+      const instanceInfo = await getEvolutionApi().getAllInstances();
+      const matchingInstance = instanceInfo.find((instance: any) => 
+        instance.instance.instanceName === instanceId
+      );
+
+      if (!matchingInstance) {
+        return res.status(404).json({ error: "Instance not found in Evolution API" });
+      }
+
+      const evolutionStatus = matchingInstance.instance.status;
+      const connectionData = {
+        ownerJid: matchingInstance.instance.owner,
+        state: evolutionStatus
+      };
+
+      // Update database status
+      const status = evolutionStatus === 'open' ? 'connected' : evolutionStatus;
+      await storage.updateWhatsappInstanceStatus(instanceId, status, connectionData);
+
+      res.json({ 
+        success: true, 
+        status, 
+        evolutionStatus,
+        ownerJid: connectionData.ownerJid 
+      });
+    } catch (error) {
+      console.error('Error syncing instance status:', error);
+      res.status(500).json({ error: "Failed to sync instance status" });
+    }
+  });
+
   // Legacy routes removed to focus on WhatsApp functionality
 
   // Evolution API webhook endpoint

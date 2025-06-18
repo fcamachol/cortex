@@ -190,6 +190,23 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess, o
     fetchInstanceStatus();
   };
 
+  const syncInstanceStatus = async () => {
+    try {
+      const response = await fetch(`/api/whatsapp/instances/${instanceId}/sync-status`, {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Status synced with backend:', result);
+        // Refresh instance status after sync
+        setTimeout(() => fetchInstanceStatus(), 1000);
+      }
+    } catch (error) {
+      console.error('Error syncing instance status:', error);
+    }
+  };
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -208,8 +225,6 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess, o
         title: "WhatsApp Connected Successfully!",
         description: `Instance ${instanceName} is now connected and ready to send and receive messages.`,
       });
-      // Sync status with backend to ensure consistency
-      syncInstanceStatus();
       // Call both callback functions
       onConnectionSuccess?.();
       onConnected?.();
