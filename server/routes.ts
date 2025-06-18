@@ -504,13 +504,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get all WhatsApp instances for a user
   app.get("/api/whatsapp/instances/:userId", async (req, res) => {
+    console.log(`🔍 GET /api/whatsapp/instances/${req.params.userId} - Handler executing`);
     try {
       const userId = req.params.userId;
       const instances = await storage.getWhatsappInstances(userId);
+      console.log(`📋 Raw instances from DB:`, instances.length);
       
       // Transform instances to match frontend interface
       const transformedInstances = instances.map(instance => {
         const status = instance.isConnected ? "connected" : "connecting";
+        console.log(`🔄 Transforming instance ${instance.instanceId}: isConnected=${instance.isConnected}, status=${status}`);
         return {
           instanceId: instance.instanceId,
           displayName: instance.displayName,
@@ -527,6 +530,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updatedAt: instance.updatedAt.toISOString()
         };
       });
+      
+      console.log(`📊 API Response for userId ${userId}:`, JSON.stringify(transformedInstances, null, 2));
       
       res.json(transformedInstances);
     } catch (error) {
