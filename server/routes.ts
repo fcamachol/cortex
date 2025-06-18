@@ -420,6 +420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const instanceData = {
         instanceId: instanceId,
+        displayName: req.body.displayName || 'WhatsApp Instance',
         clientId: userId as string,
         ownerJid: req.body.ownerJid || null,
         apiKey: req.body.apiKey || null,

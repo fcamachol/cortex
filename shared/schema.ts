@@ -23,6 +23,7 @@ export const callOutcomeEnum = whatsappSchema.enum("call_outcome", [
 // WhatsApp Schema Tables
 export const whatsappInstances = whatsappSchema.table("instances", {
   instanceId: varchar("instance_id", { length: 100 }).primaryKey(),
+  displayName: varchar("display_name", { length: 255 }).notNull(),
   ownerJid: varchar("owner_jid", { length: 100 }).unique(),
   clientId: uuid("client_id").notNull(), // FK to users table
   apiKey: varchar("api_key", { length: 255 }),
@@ -264,6 +265,7 @@ export const insertWhatsappInstanceSchema = createInsertSchema(whatsappInstances
   updatedAt: true,
 }).extend({
   instanceId: z.string().optional(),
+  displayName: z.string().optional(),
   clientId: z.string().optional(),
   ownerJid: z.string().nullable().optional(),
   apiKey: z.string().nullable().optional(),

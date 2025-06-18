@@ -160,6 +160,7 @@ export class DatabaseStorage implements IStorage {
     // Ensure required fields are provided
     const instanceData = {
       instanceId: instance.instanceId || `instance-${Date.now()}`,
+      displayName: instance.displayName || 'WhatsApp Instance',
       clientId: instance.clientId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42',
       ownerJid: instance.ownerJid || null,
       apiKey: instance.apiKey || null,
