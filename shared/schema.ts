@@ -3,8 +3,11 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Create whatsapp schema
+// Create schemas
 export const whatsappSchema = pgSchema("whatsapp");
+export const crmSchema = pgSchema("crm");
+export const appSchema = pgSchema("app");
+export const actionsSchema = pgSchema("actions");
 
 // Enums for WhatsApp schema
 export const chatTypeEnum = whatsappSchema.enum("chat_type", ["individual", "group"]);
@@ -597,6 +600,140 @@ export type InsertConversation = z.infer<typeof insertConversationSchema>;
 
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+// Actions Schema - Event Triggering System
+export const actionTriggerTypeEnum = actionsSchema.enum("trigger_type", [
+  "reaction", "hashtag", "keyword", "time_based", "location", "contact_group"
+]);
+
+export const actionTypeEnum = actionsSchema.enum("action_type", [
+  "create_task", "create_calendar_event", "send_message", "add_label", 
+  "update_contact", "move_to_folder", "send_notification", "webhook"
+]);
+
+export const actionStatusEnum = actionsSchema.enum("action_status", [
+  "active", "paused", "disabled"
+]);
+
+// Action Rules - Define trigger conditions and resulting actions
+export const actionRules = actionsSchema.table("action_rules", {
+  ruleId: uuid("rule_id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull(), // FK to app.users
+  workspaceId: uuid("workspace_id"), // FK to app.workspaces (nullable for personal rules)
+  spaceId: integer("space_id"), // FK to app.spaces (nullable for workspace-wide rules)
+  
+  ruleName: varchar("rule_name", { length: 255 }).notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true).notNull(),
+  
+  // Trigger Configuration
+  triggerType: actionTriggerTypeEnum("trigger_type").notNull(),
+  triggerConditions: jsonb("trigger_conditions").notNull(), // Flexible trigger config
+  
+  // Action Configuration  
+  actionType: actionTypeEnum("action_type").notNull(),
+  actionConfig: jsonb("action_config").notNull(), // Action-specific settings
+  
+  // Filtering and Scoping
+  instanceFilters: jsonb("instance_filters"), // Which WhatsApp instances
+  contactFilters: jsonb("contact_filters"), // Which contacts/groups
+  timeFilters: jsonb("time_filters"), // Time-based restrictions
+  
+  // Execution Settings
+  cooldownMinutes: integer("cooldown_minutes").default(0), // Prevent spam
+  maxExecutionsPerDay: integer("max_executions_per_day").default(100),
+  
+  // Statistics
+  totalExecutions: integer("total_executions").default(0),
+  lastExecutedAt: timestamp("last_executed_at", { withTimezone: true }),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Action Executions - Log of triggered actions
+export const actionExecutions = actionsSchema.table("action_executions", {
+  executionId: uuid("execution_id").primaryKey().defaultRandom(),
+  ruleId: uuid("rule_id").notNull(), // FK to action_rules
+  
+  // Trigger Context
+  triggeredBy: varchar("triggered_by", { length: 100 }).notNull(), // message_id, reaction_id, etc.
+  triggerData: jsonb("trigger_data").notNull(), // Full context data
+  
+  // Execution Results
+  status: varchar("status", { length: 20 }).notNull(), // success, failed, skipped
+  result: jsonb("result"), // Action result data
+  errorMessage: text("error_message"),
+  
+  // Timing
+  executedAt: timestamp("executed_at", { withTimezone: true }).defaultNow().notNull(),
+  processingTimeMs: integer("processing_time_ms"),
+});
+
+// Action Templates - Predefined rule templates
+export const actionTemplates = actionsSchema.table("action_templates", {
+  templateId: uuid("template_id").primaryKey().defaultRandom(),
+  templateName: varchar("template_name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }).notNull(), // productivity, crm, automation, etc.
+  
+  // Template Configuration
+  triggerType: actionTriggerTypeEnum("trigger_type").notNull(),
+  actionType: actionTypeEnum("action_type").notNull(),
+  defaultConfig: jsonb("default_config").notNull(),
+  
+  // Metadata
+  isPublic: boolean("is_public").default(false),
+  usageCount: integer("usage_count").default(0),
+  rating: numeric("rating", { precision: 3, scale: 2 }),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Relations for Actions Schema
+export const actionRulesRelations = relations(actionRules, ({ one, many }) => ({
+  executions: many(actionExecutions),
+}));
+
+export const actionExecutionsRelations = relations(actionExecutions, ({ one }) => ({
+  rule: one(actionRules, {
+    fields: [actionExecutions.ruleId],
+    references: [actionRules.ruleId],
+  }),
+}));
+
+// Insert schemas for Actions
+export const insertActionRuleSchema = createInsertSchema(actionRules).omit({
+  ruleId: true,
+  totalExecutions: true,
+  lastExecutedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertActionExecutionSchema = createInsertSchema(actionExecutions).omit({
+  executionId: true,
+  executedAt: true,
+});
+
+export const insertActionTemplateSchema = createInsertSchema(actionTemplates).omit({
+  templateId: true,
+  usageCount: true,
+  rating: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Types for Actions
+export type ActionRule = typeof actionRules.$inferSelect;
+export type InsertActionRule = z.infer<typeof insertActionRuleSchema>;
+
+export type ActionExecution = typeof actionExecutions.$inferSelect;
+export type InsertActionExecution = z.infer<typeof insertActionExecutionSchema>;
+
+export type ActionTemplate = typeof actionTemplates.$inferSelect;
+export type InsertActionTemplate = z.infer<typeof insertActionTemplateSchema>;
 
 // Legacy aliases for backward compatibility
 export type InsertWhatsappConversation = InsertWhatsappChat;
