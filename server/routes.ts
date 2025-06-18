@@ -151,7 +151,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Save to evolution_messages table (no foreign key constraints)
       const evolutionMessageData = {
         userId: instance.userId, // Include user_id for RLS
-        instanceId: instance.id,
         instanceName: instanceName,
         evolutionMessageId: message.key.id || '',
         remoteJid: message.key.remoteJid || '',
