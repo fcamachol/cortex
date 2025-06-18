@@ -137,11 +137,14 @@ export class ActionsEngine {
   }
 
   private async executeRule(rule: ActionRule, context: TriggerContext): Promise<void> {
+    console.log('🎬 Executing rule:', rule.ruleName, 'Action type:', rule.actionType);
     const startTime = Date.now();
     let execution: InsertActionExecution;
 
     try {
+      console.log('🔧 Calling performAction with config:', rule.actionConfig);
       const result = await this.performAction(rule, context);
+      console.log('✅ performAction completed with result:', result);
       
       execution = {
         ruleId: rule.ruleId,
@@ -202,7 +205,9 @@ export class ActionsEngine {
   }
 
   private async createTask(config: any, context: TriggerContext): Promise<any> {
-    console.log('Creating task from reaction trigger');
+    console.log('🚀 Creating task from reaction trigger - START');
+    console.log('📋 Config received:', config);
+    console.log('📍 Context received:', context);
 
     // Simple task creation without complex database queries for now
     const taskData = {
@@ -216,21 +221,21 @@ export class ActionsEngine {
       contactJid: context.senderJid,
     };
 
-    console.log('Task data prepared:', taskData);
+    console.log('📝 Task data prepared:', taskData);
 
-    // Save task to database using raw SQL to avoid schema import issues
+    // Save task to database using CRM schema
     try {
       const result = await db.execute(sql`
-        INSERT INTO tasks (user_id, title, description, priority, status, due_date, related_chat_jid)
-        VALUES (${taskData.userId}, ${taskData.title}, ${taskData.description}, ${taskData.priority}, ${taskData.taskStatus}, ${taskData.dueDate}, ${taskData.conversationJid})
-        RETURNING id, title, description
+        INSERT INTO crm.tasks (instance_id, title, description, priority, status, due_date, related_chat_jid, created_by_user_id)
+        VALUES ('live-test-1750199771', ${taskData.title}, ${taskData.description}, ${taskData.priority}, ${taskData.taskStatus}, ${taskData.dueDate}, ${taskData.conversationJid}, ${taskData.userId})
+        RETURNING task_id, title, description, status
       `);
       
       console.log('✅ Task saved to database:', result);
       return { success: true, data: result };
     } catch (error) {
       console.error('❌ Error saving task to database:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: String(error) };
     }
   }
 
