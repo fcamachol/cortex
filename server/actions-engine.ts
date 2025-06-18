@@ -28,6 +28,7 @@ export class ActionsEngine {
   }
 
   async processMessageTriggers(context: TriggerContext): Promise<void> {
+    console.log('🎯 Starting processMessageTriggers with context:', context);
     try {
       // Get all active rules for this user's instances
       const rules = await db
@@ -40,15 +41,27 @@ export class ActionsEngine {
           )
         );
 
-      const matchingRules = rules.filter(rule => this.evaluateRule(rule, context));
+      console.log('📋 Found active rules:', rules.length, rules.map(r => r.ruleName));
+
+      const matchingRules = rules.filter(rule => {
+        const matches = this.evaluateRule(rule, context);
+        console.log(`🔍 Rule "${rule.ruleName}" matches:`, matches);
+        return matches;
+      });
+
+      console.log('✅ Matching rules:', matchingRules.length, matchingRules.map(r => r.ruleName));
 
       for (const rule of matchingRules) {
+        console.log(`⚡ Checking if rule "${rule.ruleName}" should execute...`);
         if (await this.shouldExecuteRule(rule)) {
+          console.log(`🚀 Executing rule "${rule.ruleName}"`);
           await this.executeRule(rule, context);
+        } else {
+          console.log(`⏸️ Rule "${rule.ruleName}" should not execute (rate limited or conditions not met)`);
         }
       }
     } catch (error) {
-      console.error('Error processing message triggers:', error);
+      console.error('❌ Error processing message triggers:', error);
     }
   }
 
