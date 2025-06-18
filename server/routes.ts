@@ -288,6 +288,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const existingChat = await storage.getWhatsappChat(userId, instance.instanceId, chatId);
         
         if (!existingChat) {
+          // First, ensure the contact exists for the chat (required for foreign key constraint)
+          let chatContact = await storage.getWhatsappContact(userId, instance.instanceId, chatId);
+          
+          if (!chatContact) {
+            try {
+              const contactData = {
+                instanceId: instance.instanceId,
+                jid: chatId,
+                pushName: chat.name || (chatType === 'group' ? chat.name : chatId.split('@')[0]),
+                verifiedName: chat.name || null,
+                isMe: false,
+                isMyContact: false,
+                isBlocked: false,
+                profilePictureUrl: null
+              };
+              
+              console.log(`🔄 Creating contact for ${chatType}: ${chatId} with data:`, contactData);
+              chatContact = await storage.createWhatsappContact(contactData);
+              console.log(`✅ Created contact for ${chatType}: ${chatId}`);
+              
+              // Verify the contact was created
+              const verifyContact = await storage.getWhatsappContact(userId, instance.instanceId, chatId);
+              if (!verifyContact) {
+                throw new Error(`Contact creation failed - contact not found after creation: ${chatId}`);
+              }
+              console.log(`✅ Verified contact exists: ${chatId}`);
+              
+            } catch (contactError) {
+              console.error('Error creating contact:', contactError);
+              throw contactError; // Re-throw to prevent chat creation
+            }
+          }
+          
           // Create new chat/conversation
           const chatData = {
             instanceId: instance.instanceId,
