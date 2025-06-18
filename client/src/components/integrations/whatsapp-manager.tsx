@@ -252,7 +252,7 @@ export function WhatsAppInstanceManager() {
     }
   };
 
-  const selectedInstance = instances.find(instance => instance.id === selectedInstanceForQR);
+  const selectedInstance = instances.find(instance => instance.instanceId === selectedInstanceForQR);
 
   if (isLoading) {
     return (
@@ -314,7 +314,7 @@ export function WhatsAppInstanceManager() {
                           className="text-lg font-semibold h-8"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
-                              handleSaveEdit(instance.id);
+                              handleSaveEdit(instance.instanceId);
                             } else if (e.key === 'Escape') {
                               handleCancelEdit();
                             }
@@ -324,7 +324,7 @@ export function WhatsAppInstanceManager() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleSaveEdit(instance.id)}
+                          onClick={() => handleSaveEdit(instance.instanceId)}
                           disabled={updateDisplayName.isPending}
                         >
                           <Check className="w-4 h-4 text-green-600" />
@@ -340,7 +340,7 @@ export function WhatsAppInstanceManager() {
                       </div>
                     ) : (
                       <div className="flex items-center space-x-2 flex-1 group">
-                        <CardTitle className="text-lg">{instance.displayName || instance.instanceName}</CardTitle>
+                        <CardTitle className="text-lg">{instance.displayName}</CardTitle>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -463,8 +463,8 @@ export function WhatsAppInstanceManager() {
           </DialogHeader>
           {selectedInstance && (
             <QRCodeDisplay
-              instanceId={selectedInstance.id}
-              instanceName={selectedInstance.instanceName}
+              instanceId={selectedInstance.instanceId}
+              instanceName={selectedInstance.displayName}
               onConnected={() => {
                 setSelectedInstanceForQR(null);
                 queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/instances/${userId}`] });
