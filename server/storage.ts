@@ -187,10 +187,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(whatsappInstances.clientId, userId));
 
     if (instanceId) {
-      query.where(and(
-        eq(whatsappInstances.clientId, userId),
-        eq(whatsappContacts.instanceId, instanceId)
-      ));
+      return await db
+        .select()
+        .from(whatsappContacts)
+        .innerJoin(whatsappInstances, eq(whatsappContacts.instanceId, whatsappInstances.instanceId))
+        .where(and(
+          eq(whatsappInstances.clientId, userId),
+          eq(whatsappContacts.instanceId, instanceId)
+        ))
+        .then(results => results.map(result => result.contacts));
     }
 
     const results = await query;
@@ -261,10 +266,16 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(whatsappChats.lastMessageTimestamp));
 
     if (instanceId) {
-      query.where(and(
-        eq(whatsappInstances.clientId, userId),
-        eq(whatsappChats.instanceId, instanceId)
-      ));
+      return await db
+        .select()
+        .from(whatsappChats)
+        .innerJoin(whatsappInstances, eq(whatsappChats.instanceId, whatsappInstances.instanceId))
+        .where(and(
+          eq(whatsappInstances.clientId, userId),
+          eq(whatsappChats.instanceId, instanceId)
+        ))
+        .orderBy(desc(whatsappChats.lastMessageTimestamp))
+        .then(results => results.map(result => result.chats));
     }
 
     const results = await query;

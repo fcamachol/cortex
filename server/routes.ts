@@ -6,15 +6,11 @@ import { evolutionManager } from "./evolution-manager";
 import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings, getInstanceEvolutionApi } from "./evolution-api";
 import { db } from "./db";
 import { 
-  insertAppUserSchema,
+  insertUserSchema,
   insertWhatsappInstanceSchema,
   insertWhatsappContactSchema,
-  insertWhatsappConversationSchema,
-  insertWhatsappMessageSchema,
-  insertTaskSchema,
-  insertContactSchema,
-  insertConversationSchema,
-  insertMessageSchema
+  insertWhatsappChatSchema,
+  insertWhatsappMessageSchema
 } from "@shared/schema";
 
 // Format phone number to E.164 International Format

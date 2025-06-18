@@ -488,3 +488,106 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export const usersRelations = relations(users, ({ many }) => ({
   whatsappInstances: many(whatsappInstances),
 }));
+
+// Legacy tables for backward compatibility during migration
+export const tasks = pgTable("tasks", {
+  taskId: uuid("task_id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  parentTaskId: uuid("parent_task_id"),
+  title: text("title").notNull(),
+  description: text("description"),
+  taskStatus: text("task_status").default("to_do"),
+  subStatus: text("sub_status"),
+  priority: text("priority").default("medium"),
+  dueDate: timestamp("due_date"),
+  conversationJid: varchar("conversation_jid"),
+  contactJid: varchar("contact_jid"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const contacts = pgTable("contacts", {
+  contactId: uuid("contact_id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  email: varchar("email"),
+  phone: varchar("phone"),
+  company: varchar("company"),
+  position: varchar("position"),
+  notes: text("notes"),
+  tags: jsonb("tags"),
+  customFields: jsonb("custom_fields"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const conversations = pgTable("conversations", {
+  conversationId: uuid("conversation_id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  title: text("title"),
+  description: text("description"),
+  participants: jsonb("participants"),
+  tags: jsonb("tags"),
+  isArchived: boolean("is_archived").default(false),
+  lastMessageAt: timestamp("last_message_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const messages = pgTable("messages", {
+  messageId: uuid("message_id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  conversationId: uuid("conversation_id").references(() => conversations.conversationId),
+  content: text("content"),
+  messageType: text("message_type").default("text"),
+  sender: text("sender"),
+  recipient: text("recipient"),
+  replyToMessageId: uuid("reply_to_message_id"),
+  metadata: jsonb("metadata"),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Legacy insert schemas
+export const insertTaskSchema = createInsertSchema(tasks).omit({
+  taskId: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertContactSchema = createInsertSchema(contacts).omit({
+  contactId: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertConversationSchema = createInsertSchema(conversations).omit({
+  conversationId: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertMessageSchema = createInsertSchema(messages).omit({
+  messageId: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+// Legacy types
+export type Task = typeof tasks.$inferSelect;
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+
+export type Contact = typeof contacts.$inferSelect;
+export type InsertContact = z.infer<typeof insertContactSchema>;
+
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+// Legacy aliases for backward compatibility
+export type InsertWhatsappConversation = InsertWhatsappChat;
+export type WhatsappConversation = WhatsappChat;
