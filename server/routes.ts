@@ -513,19 +513,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Get all WhatsApp instances for a user
+  // Get all WhatsApp instances for a user - FIXED VERSION
   app.get("/api/whatsapp/instances/:userId", async (req, res) => {
-    console.log(`🔍 GET /api/whatsapp/instances/${req.params.userId} - Handler executing`);
+    console.log(`🔍 FIXED HANDLER EXECUTING - GET /api/whatsapp/instances/${req.params.userId}`);
+    
+    // Disable all caching
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache'); 
+    res.set('Expires', '0');
+    res.set('ETag', ''); // Remove ETag
+    
     try {
       const userId = req.params.userId;
-      const instances = await storage.getWhatsappInstances(userId);
-      console.log(`📋 Raw instances from DB:`, instances.length);
+      console.log(`📋 Fetching instances for userId: ${userId}`);
       
-      // Transform instances to match frontend interface
-      const transformedInstances = instances.map(instance => {
+      const instances = await storage.getWhatsappInstances(userId);
+      console.log(`📋 Found ${instances.length} instances in database`);
+      
+      if (instances.length === 0) {
+        console.log(`❌ No instances found for userId: ${userId}`);
+        return res.json([]);
+      }
+      
+      // Force transformation to include status field
+      const transformedInstances = instances.map((instance, index) => {
         const status = instance.isConnected ? "connected" : "connecting";
-        console.log(`🔄 Transforming instance ${instance.instanceId}: isConnected=${instance.isConnected}, status=${status}`);
-        const transformed = {
+        console.log(`🔄 [${index + 1}/${instances.length}] Processing ${instance.instanceId}: isConnected=${instance.isConnected} -> status="${status}"`);
+        
+        const result = {
           instanceId: instance.instanceId,
           displayName: instance.displayName,
           ownerJid: instance.ownerJid,
@@ -534,22 +549,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           webhookUrl: instance.webhookUrl,
           isConnected: instance.isConnected,
           lastConnectionAt: instance.lastConnectionAt?.toISOString(),
-          status: status,
+          status: status, // EXPLICITLY ADD STATUS FIELD
           phoneNumber: instance.ownerJid ? instance.ownerJid.replace('@s.whatsapp.net', '') : undefined,
-          profileName: undefined, // Will be populated by profile endpoint
+          profileName: undefined,
           createdAt: instance.createdAt.toISOString(),
           updatedAt: instance.updatedAt.toISOString()
         };
-        console.log(`✅ Transformed instance:`, JSON.stringify(transformed, null, 2));
-        return transformed;
+        
+        console.log(`✅ Transformed instance ${instance.instanceId}:`, JSON.stringify(result, null, 2));
+        return result;
       });
       
-      console.log(`📊 Final API Response for userId ${userId}:`, JSON.stringify(transformedInstances, null, 2));
+      console.log(`📊 FINAL RESPONSE with ${transformedInstances.length} instances:`, JSON.stringify(transformedInstances, null, 2));
       
-      res.json(transformedInstances);
+      return res.json(transformedInstances);
     } catch (error) {
-      console.error("Failed to fetch WhatsApp instances:", error);
-      res.status(500).json({ error: "Failed to fetch instances" });
+      console.error("❌ Failed to fetch WhatsApp instances:", error);
+      return res.status(500).json({ error: "Failed to fetch instances" });
     }
   });
 
