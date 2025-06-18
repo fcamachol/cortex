@@ -1,0 +1,336 @@
+-- =============================================================================
+-- SCHEMA: WHATSAPP
+-- PURPOSE: Contains all raw data mirrored from the WhatsApp platform via the
+--          Evolution API. This schema is designed for multi-tenancy using
+--          an `instance_id` on every table to facilitate Row-Level Security.
+-- =============================================================================
+
+-- Drop schema if it exists to ensure a clean slate (optional, for development)
+DROP SCHEMA IF EXISTS whatsapp CASCADE;
+
+-- Create the dedicated schema
+CREATE SCHEMA whatsapp;
+COMMENT ON SCHEMA whatsapp IS 'Contains all raw data mirrored from the WhatsApp platform via the Evolution API.';
+
+
+-- =============================================================================
+-- ENUMERATED TYPES (ENUMs)
+-- Defines consistent, readable, and efficient custom data types for the schema.
+-- =============================================================================
+
+CREATE TYPE whatsapp.chat_type AS ENUM ('individual', 'group');
+COMMENT ON TYPE whatsapp.chat_type IS 'Defines whether a chat is a one-on-one conversation or a group.';
+
+CREATE TYPE whatsapp.message_type AS ENUM (
+    'text', 'image', 'video', 'audio', 'document', 'sticker', 'location',
+    'contact_card', 'contact_card_multi', 'order', 'revoked', 'unsupported',
+    'reaction', 'call_log', 'edited_message'
+);
+COMMENT ON TYPE whatsapp.message_type IS 'Represents all known types of messages that can be received.';
+
+CREATE TYPE whatsapp.message_status AS ENUM (
+    'error', 'pending', 'sent', 'delivered', 'read', 'played'
+);
+COMMENT ON TYPE whatsapp.message_status IS 'Tracks the delivery and interaction status of an outgoing message.';
+
+CREATE TYPE whatsapp.call_outcome AS ENUM (
+    'answered', 'missed', 'declined'
+);
+COMMENT ON TYPE whatsapp.call_outcome IS 'Represents the final outcome of a voice or video call.';
+
+
+-- =============================================================================
+-- CORE TABLE STRUCTURES
+-- =============================================================================
+
+---
+--- TABLE: whatsapp.instances
+--- PURPOSE: Manages connection instances. This is the root table for RLS.
+---
+CREATE TABLE whatsapp.instances (
+    instance_id VARCHAR(100) PRIMARY KEY,
+    owner_jid VARCHAR(100) UNIQUE,
+    client_id UUID NOT NULL, -- Foreign key to your `app.users` table
+    api_key VARCHAR(255),
+    webhook_url VARCHAR(255),
+    is_connected BOOLEAN DEFAULT FALSE NOT NULL,
+    last_connection_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE whatsapp.instances IS 'Manages connection instances to the Evolution API. The `client_id` is the anchor for Row-Level Security.';
+COMMENT ON COLUMN whatsapp.instances.client_id IS 'The ID of the application user who owns this instance. Used for RLS policies.';
+
+---
+--- TABLE: whatsapp.contacts
+--- PURPOSE: Stores all known contacts (users and groups) per instance.
+---
+CREATE TABLE whatsapp.contacts (
+    jid VARCHAR(100) NOT NULL,
+    instance_id VARCHAR(100) NOT NULL,
+    push_name VARCHAR(255),
+    verified_name VARCHAR(255),
+    profile_picture_url VARCHAR(512),
+    is_business BOOLEAN DEFAULT FALSE NOT NULL,
+    is_me BOOLEAN DEFAULT FALSE NOT NULL,
+    is_blocked BOOLEAN DEFAULT FALSE NOT NULL,
+    first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (jid, instance_id),
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE whatsapp.contacts IS 'Stores unique WhatsApp users and groups (JIDs) on a per-instance basis.';
+
+---
+--- TABLE: whatsapp.chats
+--- PURPOSE: Represents a conversation thread with a contact or group.
+---
+CREATE TABLE whatsapp.chats (
+    chat_id VARCHAR(100) NOT NULL, -- This is the JID of the contact or group
+    instance_id VARCHAR(100) NOT NULL,
+    type whatsapp.chat_type NOT NULL,
+    unread_count INTEGER DEFAULT 0 NOT NULL CHECK (unread_count >= 0),
+    is_archived BOOLEAN DEFAULT FALSE NOT NULL,
+    is_pinned BOOLEAN DEFAULT FALSE NOT NULL,
+    is_muted BOOLEAN DEFAULT FALSE NOT NULL,
+    mute_end_timestamp TIMESTAMPTZ,
+    last_message_timestamp TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (chat_id, instance_id),
+    CONSTRAINT fk_chat_contact FOREIGN KEY(chat_id, instance_id) REFERENCES whatsapp.contacts(jid, instance_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE whatsapp.chats IS 'Abstracts a conversation thread, linking to a contact or group JID for a specific instance.';
+
+
+---
+--- TABLE: whatsapp.messages
+--- PURPOSE: The core table storing every message with full context and metadata.
+---
+CREATE TABLE whatsapp.messages (
+    message_id VARCHAR(255) NOT NULL,
+    instance_id VARCHAR(100) NOT NULL,
+    chat_id VARCHAR(100) NOT NULL,
+    sender_jid VARCHAR(100) NOT NULL,
+    from_me BOOLEAN NOT NULL,
+    message_type whatsapp.message_type NOT NULL,
+    content TEXT, -- For text messages, captions, etc.
+    "timestamp" TIMESTAMPTZ NOT NULL,
+    quoted_message_id VARCHAR(255),
+    is_forwarded BOOLEAN DEFAULT FALSE NOT NULL,
+    forwarding_score INTEGER DEFAULT 0,
+    is_starred BOOLEAN DEFAULT FALSE NOT NULL,
+    is_edited BOOLEAN DEFAULT FALSE NOT NULL,
+    last_edited_at TIMESTAMPTZ,
+    source_platform VARCHAR(20),
+    raw_api_payload JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (message_id, instance_id),
+    CONSTRAINT fk_chat FOREIGN KEY(chat_id, instance_id) REFERENCES whatsapp.chats(chat_id, instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_sender FOREIGN KEY(sender_jid, instance_id) REFERENCES whatsapp.contacts(jid, instance_id) ON DELETE RESTRICT
+    -- A self-referencing foreign key for quoted messages
+    -- CONSTRAINT fk_quoted_message FOREIGN KEY(quoted_message_id, instance_id) REFERENCES whatsapp.messages(message_id, instance_id) ON DELETE SET NULL
+);
+COMMENT ON TABLE whatsapp.messages IS 'The core table storing every message and its context, scoped to an instance.';
+COMMENT ON COLUMN whatsapp.messages.raw_api_payload IS 'Stores the complete, raw JSON payload from the API for future analysis or debugging.';
+COMMENT ON COLUMN whatsapp.messages.is_edited IS 'Flag indicating if this message has been edited at least once.';
+COMMENT ON COLUMN whatsapp.messages.last_edited_at IS 'Timestamp of the most recent edit.';
+COMMENT ON COLUMN whatsapp.messages.source_platform IS 'The platform the message originated from (e.g., ios, android, web).';
+
+
+---
+--- TABLE: whatsapp.message_edit_history
+--- PURPOSE: Provides a full audit trail for every message edit.
+---
+CREATE TABLE whatsapp.message_edit_history (
+    edit_id SERIAL PRIMARY KEY,
+    message_id VARCHAR(255) NOT NULL,
+    instance_id VARCHAR(100) NOT NULL,
+    old_content TEXT,
+    edit_timestamp TIMESTAMPTZ NOT NULL,
+    CONSTRAINT fk_message FOREIGN KEY(message_id, instance_id) REFERENCES whatsapp.messages(message_id, instance_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE whatsapp.message_edit_history IS 'Stores the previous content of a message each time it is edited.';
+
+---
+--- TABLE: whatsapp.message_media
+--- PURPOSE: Handles all media attachments for messages.
+---
+CREATE TABLE whatsapp.message_media (
+    media_id SERIAL PRIMARY KEY,
+    message_id VARCHAR(255) NOT NULL,
+    instance_id VARCHAR(100) NOT NULL,
+    mimetype VARCHAR(100) NOT NULL,
+    file_size_bytes BIGINT CHECK (file_size_bytes >= 0),
+    file_url VARCHAR(512),
+    file_local_path VARCHAR(512),
+    media_key BYTEA,
+    caption TEXT,
+    is_view_once BOOLEAN DEFAULT FALSE NOT NULL,
+    CONSTRAINT fk_message FOREIGN KEY(message_id, instance_id) REFERENCES whatsapp.messages(message_id, instance_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE whatsapp.message_media IS 'Stores details for all media attachments linked to messages.';
+
+
+---
+--- TABLE: whatsapp.message_reactions
+--- PURPOSE: Tracks every single reaction to a message.
+---
+CREATE TABLE whatsapp.message_reactions (
+    reaction_id SERIAL PRIMARY KEY,
+    message_id VARCHAR(255) NOT NULL,
+    instance_id VARCHAR(100) NOT NULL,
+    reactor_jid VARCHAR(100) NOT NULL,
+    reaction_emoji VARCHAR(10),
+    "timestamp" TIMESTAMPTZ NOT NULL,
+    CONSTRAINT uq_reaction UNIQUE(message_id, instance_id, reactor_jid),
+    CONSTRAINT fk_message FOREIGN KEY(message_id, instance_id) REFERENCES whatsapp.messages(message_id, instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_reactor FOREIGN KEY(reactor_jid, instance_id) REFERENCES whatsapp.contacts(jid, instance_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE whatsapp.message_reactions IS 'Tracks user reactions to messages. A NULL emoji signifies removal.';
+
+
+---
+--- TABLE: whatsapp.message_updates
+--- PURPOSE: A historical log of status changes for outgoing messages.
+---
+CREATE TABLE whatsapp.message_updates (
+    update_id SERIAL PRIMARY KEY,
+    message_id VARCHAR(255) NOT NULL,
+    instance_id VARCHAR(100) NOT NULL,
+    status whatsapp.message_status NOT NULL,
+    "timestamp" TIMESTAMPTZ NOT NULL,
+    CONSTRAINT fk_message FOREIGN KEY(message_id, instance_id) REFERENCES whatsapp.messages(message_id, instance_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE whatsapp.message_updates IS 'Logs the status changes (sent, delivered, read, played) for messages.';
+
+
+---
+--- TABLE: whatsapp.groups
+--- PURPOSE: Stores detailed metadata specific to group chats.
+---
+CREATE TABLE whatsapp.groups (
+    group_jid VARCHAR(100) NOT NULL,
+    instance_id VARCHAR(100) NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    description TEXT,
+    owner_jid VARCHAR(100),
+    creation_timestamp TIMESTAMPTZ,
+    is_locked BOOLEAN DEFAULT FALSE NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (group_jid, instance_id),
+    CONSTRAINT fk_group_contact FOREIGN KEY(group_jid, instance_id) REFERENCES whatsapp.contacts(jid, instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_owner FOREIGN KEY(owner_jid, instance_id) REFERENCES whatsapp.contacts(jid, instance_id) ON DELETE SET NULL
+);
+COMMENT ON TABLE whatsapp.groups IS 'Stores metadata specific to group chats.';
+COMMENT ON COLUMN whatsapp.groups.is_locked IS 'True if only admins can send messages.';
+
+
+---
+--- TABLE: whatsapp.group_participants
+--- PURPOSE: Maps contacts to the groups they are members of.
+---
+CREATE TABLE whatsapp.group_participants (
+    group_jid VARCHAR(100) NOT NULL,
+    participant_jid VARCHAR(100) NOT NULL,
+    instance_id VARCHAR(100) NOT NULL,
+    is_admin BOOLEAN DEFAULT FALSE NOT NULL,
+    is_super_admin BOOLEAN DEFAULT FALSE NOT NULL,
+    PRIMARY KEY (group_jid, participant_jid, instance_id),
+    CONSTRAINT fk_group FOREIGN KEY(group_jid, instance_id) REFERENCES whatsapp.groups(group_jid, instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_participant FOREIGN KEY(participant_jid, instance_id) REFERENCES whatsapp.contacts(jid, instance_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE whatsapp.group_participants IS 'Maps contacts to the groups they are members of, including admin status.';
+
+
+---
+--- TABLE: whatsapp.labels
+--- PURPOSE: Stores the chat labels defined in the WhatsApp account.
+---
+CREATE TABLE whatsapp.labels (
+    label_id VARCHAR(100) NOT NULL,
+    instance_id VARCHAR(100) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    color_index INTEGER,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (label_id, instance_id),
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE whatsapp.labels IS 'Stores the custom chat labels defined in the WhatsApp account, per instance.';
+
+
+---
+--- TABLE: whatsapp.chat_labels
+--- PURPOSE: The pivot table linking labels to chats.
+---
+CREATE TABLE whatsapp.chat_labels (
+    chat_id VARCHAR(100) NOT NULL,
+    label_id VARCHAR(100) NOT NULL,
+    instance_id VARCHAR(100) NOT NULL,
+    PRIMARY KEY (chat_id, label_id, instance_id),
+    CONSTRAINT fk_chat FOREIGN KEY(chat_id, instance_id) REFERENCES whatsapp.chats(chat_id, instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_label FOREIGN KEY(label_id, instance_id) REFERENCES whatsapp.labels(label_id, instance_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE whatsapp.chat_labels IS 'Links chats to their assigned labels.';
+
+
+---
+--- TABLE: whatsapp.call_logs
+--- PURPOSE: A detailed log of all voice and video calls.
+---
+CREATE TABLE whatsapp.call_logs (
+    call_log_id VARCHAR(255) NOT NULL, -- Often the same as the message_id for the call log
+    instance_id VARCHAR(100) NOT NULL,
+    chat_id VARCHAR(100) NOT NULL,
+    from_jid VARCHAR(100) NOT NULL,
+    from_me BOOLEAN NOT NULL,
+    start_timestamp TIMESTAMPTZ NOT NULL,
+    is_video_call BOOLEAN NOT NULL,
+    duration_seconds INTEGER,
+    outcome whatsapp.call_outcome,
+    PRIMARY KEY (call_log_id, instance_id),
+    CONSTRAINT fk_call_message FOREIGN KEY(call_log_id, instance_id) REFERENCES whatsapp.messages(message_id, instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_chat FOREIGN KEY(chat_id, instance_id) REFERENCES whatsapp.chats(chat_id, instance_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE whatsapp.call_logs IS 'Stores a record of every voice and video call, scoped to an instance.';
+
+-- =============================================================================
+-- INDEXES FOR PERFORMANCE
+-- Indexes are crucial for query performance, especially with RLS policies
+-- that will frequently filter by `instance_id`.
+-- =============================================================================
+
+CREATE INDEX idx_messages_chat_instance_timestamp ON whatsapp.messages (chat_id, instance_id, "timestamp" DESC);
+CREATE INDEX idx_messages_sender_instance ON whatsapp.messages (sender_jid, instance_id);
+CREATE INDEX idx_chats_instance_type ON whatsapp.chats (instance_id, type);
+CREATE INDEX idx_chats_instance_unread ON whatsapp.chats (instance_id, unread_count) WHERE unread_count > 0;
+CREATE INDEX idx_message_reactions_message_instance ON whatsapp.message_reactions (message_id, instance_id);
+CREATE INDEX idx_message_updates_message_instance ON whatsapp.message_updates (message_id, instance_id);
+CREATE INDEX idx_group_participants_group_instance ON whatsapp.group_participants (group_jid, instance_id);
+
+
+-- =============================================================================
+-- HELPER VIEW (Optional but Recommended)
+-- Solves the "is_group" error identified in the logs by creating a
+-- compatibility layer for your application.
+-- =============================================================================
+
+CREATE VIEW whatsapp.v_chats_with_is_group AS
+SELECT
+    c.chat_id,
+    c.instance_id,
+    c.type,
+    (c.type = 'group') AS is_group,
+    c.unread_count,
+    c.is_archived,
+    c.is_pinned,
+    c.is_muted,
+    c.mute_end_timestamp,
+    c.last_message_timestamp,
+    c.created_at,
+    c.updated_at
+FROM
+    whatsapp.chats AS c;
+
+COMMENT ON VIEW whatsapp.v_chats_with_is_group IS 'A compatibility view over the chats table that includes a boolean "is_group" flag for application use.';
+
