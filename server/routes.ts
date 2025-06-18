@@ -250,7 +250,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   async function handleWebhookChatsUpsert(instanceName: string, data: any) {
     console.log(`💬 Processing chats.upsert for ${instanceName}:`, data);
-    // Implementation for chat/conversation updates
+    
+    try {
+      // Find the instance
+      const instance = await storage.getWhatsappInstance(instanceName);
+      if (!instance) {
+        console.error(`❌ Instance ${instanceName} not found`);
+        return;
+      }
+
+      // Process each chat in the data array
+      for (const chat of data) {
+        const chatId = chat.remoteJid || chat.id;
+        if (!chatId) {
+          console.log('⚠️ Skipping chat without remoteJid');
+          continue;
+        }
+
+        // Determine chat type based on JID format
+        let chatType: 'individual' | 'group' | 'broadcast' = 'individual';
+        if (chatId.endsWith('@g.us')) {
+          chatType = 'group';
+        } else if (chatId.endsWith('@broadcast')) {
+          chatType = 'broadcast';
+        }
+
+        // Check if chat already exists
+        const existingChat = await storage.getWhatsappChatById(instance.instanceId, chatId);
+        
+        if (!existingChat) {
+          // Create new chat/conversation
+          const chatData = {
+            instanceId: instance.instanceId,
+            chatId: chatId,
+            type: chatType,
+            name: chat.name || (chatType === 'group' ? 'Unnamed Group' : null),
+            unreadCount: chat.unreadMessages || 0,
+            archived: chat.archived || false,
+            pinned: chat.pinned || false,
+            muteExpiry: chat.muteExpiry ? new Date(chat.muteExpiry * 1000) : null,
+            lastMessageTimestamp: chat.lastMessageTimestamp ? new Date(chat.lastMessageTimestamp * 1000) : new Date(),
+            rawApiPayload: chat
+          };
+
+          await storage.createWhatsappChat(chatData);
+          console.log(`✅ Created ${chatType} chat: ${chat.name || chatId}`);
+        } else {
+          // Update existing chat
+          const updateData = {
+            name: chat.name || existingChat.name,
+            unreadCount: chat.unreadMessages ?? existingChat.unreadCount,
+            archived: chat.archived ?? existingChat.archived,
+            pinned: chat.pinned ?? existingChat.pinned,
+            muteExpiry: chat.muteExpiry ? new Date(chat.muteExpiry * 1000) : existingChat.muteExpiry,
+            lastMessageTimestamp: chat.lastMessageTimestamp ? new Date(chat.lastMessageTimestamp * 1000) : existingChat.lastMessageTimestamp,
+            rawApiPayload: chat
+          };
+
+          await storage.updateWhatsappChat(instance.instanceId, chatId, updateData);
+          console.log(`🔄 Updated ${chatType} chat: ${chat.name || chatId}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error processing chats.upsert:', error);
+      console.error('Chat data:', data);
+    }
   }
 
   // Helper functions for media extraction
