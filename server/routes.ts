@@ -1067,7 +1067,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "User not authenticated" });
       }
       
-      const conversation = await storage.getWhatsappChat(userId, req.params.id);
+      const conversation = await storage.getWhatsappChat(userId, "", req.params.id);
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
       }
@@ -1091,7 +1091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/whatsapp/messages/:conversationId", async (req, res) => {
     try {
       const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const messages = await storage.getWhatsappMessages(userId, req.params.conversationId);
+      const messages = await storage.getWhatsappMessages(userId, "", req.params.conversationId);
       res.json(messages);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -1132,82 +1132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Task routes
-  app.get("/api/tasks/:userId", async (req, res) => {
-    try {
-      const tasks = await storage.getTasks(req.params.userId);
-      res.json(tasks);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get tasks" });
-    }
-  });
-
-  app.post("/api/tasks", async (req, res) => {
-    try {
-      const taskData = insertTaskSchema.parse(req.body);
-      const task = await storage.createTask(taskData);
-      res.status(201).json(task);
-    } catch (error) {
-      res.status(400).json({ error: "Invalid task data" });
-    }
-  });
-
-  app.put("/api/tasks/:id", async (req, res) => {
-    try {
-      const task = await storage.updateTask(req.params.id, req.body);
-      res.json(task);
-    } catch (error) {
-      res.status(400).json({ error: "Failed to update task" });
-    }
-  });
-
-  app.delete("/api/tasks/:id", async (req, res) => {
-    try {
-      await storage.deleteTask(req.params.id);
-      res.status(204).send();
-    } catch (error) {
-      res.status(400).json({ error: "Failed to delete task" });
-    }
-  });
-
-  // Contact routes
-  app.get("/api/contacts/:userId", async (req, res) => {
-    try {
-      const { search } = req.query;
-      const contacts = await storage.getContacts(req.params.userId, search as string);
-      res.json(contacts);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get contacts" });
-    }
-  });
-
-  app.post("/api/contacts", async (req, res) => {
-    try {
-      const contactData = insertContactSchema.parse(req.body);
-      const contact = await storage.createContact(contactData);
-      res.status(201).json(contact);
-    } catch (error) {
-      res.status(400).json({ error: "Invalid contact data" });
-    }
-  });
-
-  app.put("/api/contacts/:id", async (req, res) => {
-    try {
-      const contact = await storage.updateContact(req.params.id, req.body);
-      res.json(contact);
-    } catch (error) {
-      res.status(400).json({ error: "Failed to update contact" });
-    }
-  });
-
-  app.delete("/api/contacts/:id", async (req, res) => {
-    try {
-      await storage.deleteContact(req.params.id);
-      res.status(204).send();
-    } catch (error) {
-      res.status(400).json({ error: "Failed to delete contact" });
-    }
-  });
+  // Legacy routes removed to focus on WhatsApp functionality
 
   // Evolution API webhook endpoint
   app.post("/api/whatsapp/webhook/:instanceId", async (req, res) => {
@@ -1315,41 +1240,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Force QR code generation for stuck instances
   app.post("/api/whatsapp/instances/:id/generate-qr", async (req, res) => {
     try {
-      const instance = await storage.getWhatsappInstance(req.params.id);
+      const instance = await storage.getWhatsappInstance("", req.params.id);
       if (!instance) {
         return res.status(404).json({ error: "Instance not found" });
       }
 
-      const evolutionApi = instance.instanceApiKey 
-        ? getInstanceEvolutionApi(instance.instanceApiKey)
+      const evolutionApi = instance.apiKey 
+        ? getInstanceEvolutionApi(instance.apiKey)
         : getEvolutionApi();
 
       // First restart the instance to clear any stuck state
       try {
-        await evolutionApi.restartInstance(instance.instanceName);
-        console.log(`🔄 Restarted instance: ${instance.instanceName}`);
+        await evolutionApi.restartInstance(instance.instanceId);
+        console.log(`Restarted instance: ${instance.instanceId}`);
         
         // Wait for restart to complete
         await new Promise(resolve => setTimeout(resolve, 3000));
       } catch (restartError: any) {
-        console.log(`⚠️ Restart failed for ${instance.instanceName}: ${restartError.message}`);
+        console.log(`Restart failed for ${instance.instanceId}: ${restartError.message}`);
       }
 
       // Connect the instance
       try {
-        await evolutionApi.connectInstance(instance.instanceName);
-        console.log(`🔗 Connected instance: ${instance.instanceName}`);
+        await evolutionApi.connectInstance(instance.instanceId);
+        console.log(`Connected instance: ${instance.instanceId}`);
         
         // Wait for connection to establish
         await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (connectError: any) {
-        console.log(`⚠️ Connect failed for ${instance.instanceName}: ${connectError.message}`);
+        console.log(`Connect failed for ${instance.instanceId}: ${connectError.message}`);
       }
 
       // Try to get QR code
       try {
-        const qrCode = await evolutionApi.getQRCode(instance.instanceName);
-        console.log(`📱 QR Code generated for ${instance.instanceName}`);
+        const qrCode = await evolutionApi.getQRCode(instance.instanceId);
+        console.log(`QR Code generated for ${instance.instanceId}`);
         
         res.json({
           success: true,
@@ -1357,7 +1282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "QR code generated successfully"
         });
       } catch (qrError: any) {
-        console.error(`❌ QR Code generation failed for ${instance.instanceName}:`, qrError.message);
+        console.error(`QR Code generation failed for ${instance.instanceId}:`, qrError.message);
         res.status(400).json({
           success: false,
           error: `QR code generation failed: ${qrError.message}`,
