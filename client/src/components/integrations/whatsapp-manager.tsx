@@ -12,9 +12,14 @@ import { QrCode, Smartphone, WifiOff, Wifi, Plus, Trash2, AlertTriangle, Edit2, 
 import { QRCodeDisplay } from "./qr-code-display";
 
 interface WhatsAppInstance {
-  id: string;
-  instanceName: string;
+  instanceId: string;
   displayName: string;
+  ownerJid?: string;
+  clientId: string;
+  apiKey?: string;
+  webhookUrl?: string;
+  isConnected: boolean;
+  lastConnectionAt?: string;
   status: string;
   phoneNumber?: string;
   profileName?: string;
@@ -137,7 +142,7 @@ export function WhatsAppInstanceManager() {
 
   const handleConfirmDelete = () => {
     if (instanceToDelete) {
-      deleteInstance.mutate(instanceToDelete.id);
+      deleteInstance.mutate(instanceToDelete.instanceId);
     }
   };
 
@@ -147,8 +152,8 @@ export function WhatsAppInstanceManager() {
   };
 
   const handleStartEdit = (instance: WhatsAppInstance) => {
-    setEditingInstanceId(instance.id);
-    setEditingDisplayName(instance.displayName || instance.instanceName);
+    setEditingInstanceId(instance.instanceId);
+    setEditingDisplayName(instance.displayName);
   };
 
   const handleSaveEdit = (instanceId: string) => {
@@ -301,7 +306,7 @@ export function WhatsAppInstanceManager() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-2 flex-1">
                     <Smartphone className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                    {editingInstanceId === instance.id ? (
+                    {editingInstanceId === instance.instanceId ? (
                       <div className="flex items-center space-x-2 flex-1">
                         <Input
                           value={editingDisplayName}
@@ -363,7 +368,7 @@ export function WhatsAppInstanceManager() {
                   {getStatusBadge(instance.status)}
                 </div>
                 <div className="mt-2">
-                  {getWebSocketBadge(instance.id)}
+                  {getWebSocketBadge(instance.instanceId)}
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -391,7 +396,7 @@ export function WhatsAppInstanceManager() {
                     </Button>
                   ) : (
                     <Button 
-                      onClick={() => setSelectedInstanceForQR(instance.id)}
+                      onClick={() => setSelectedInstanceForQR(instance.instanceId)}
                       className="w-full"
                       variant={instance.status === "connecting" || instance.status === "qr_pending" ? "secondary" : "default"}
                     >
