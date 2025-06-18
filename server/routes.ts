@@ -150,7 +150,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       };
 
-      const extractMediaData = (messageContent: any, messageId: string, instanceId: string) => {
+      const downloadMediaFile = async (mediaUrl: string, messageId: string, instanceId: string, mimetype: string): Promise<string | null> => {
+        try {
+          console.log(`🔄 Starting download for ${messageId}: ${mediaUrl}`);
+          
+          const fs = require('fs');
+          const path = require('path');
+          const fetch = require('node-fetch');
+          
+          // Create media storage directory if it doesn't exist
+          const mediaDir = path.join(process.cwd(), 'media', instanceId);
+          console.log(`📁 Creating directory: ${mediaDir}`);
+          
+          if (!fs.existsSync(mediaDir)) {
+            fs.mkdirSync(mediaDir, { recursive: true });
+            console.log(`✅ Created directory: ${mediaDir}`);
+          }
+
+          // Determine file extension from mimetype
+          const getFileExtension = (mimetype: string): string => {
+            const mimeMap: { [key: string]: string } = {
+              'image/jpeg': '.jpg',
+              'image/png': '.png',
+              'image/gif': '.gif',
+              'image/webp': '.webp',
+              'video/mp4': '.mp4',
+              'video/quicktime': '.mov',
+              'audio/mpeg': '.mp3',
+              'audio/ogg': '.ogg',
+              'audio/wav': '.wav',
+              'application/pdf': '.pdf',
+              'application/msword': '.doc',
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+              'text/plain': '.txt'
+            };
+            return mimeMap[mimetype] || '.bin';
+          };
+
+          const fileExtension = getFileExtension(mimetype);
+          const fileName = `${messageId}${fileExtension}`;
+          const localPath = path.join(mediaDir, fileName);
+          console.log(`📄 Target file path: ${localPath}`);
+
+          // Download the file
+          console.log(`⬇️ Fetching URL: ${mediaUrl}`);
+          const response = await fetch(mediaUrl);
+          
+          if (!response.ok) {
+            console.error(`❌ Failed to download media: ${response.status} ${response.statusText}`);
+            return null;
+          }
+
+          console.log(`✅ Fetch successful, getting buffer...`);
+          const buffer = await response.buffer();
+          fs.writeFileSync(localPath, buffer);
+          
+          console.log(`📥 Downloaded media file: ${fileName} (${buffer.length} bytes)`);
+          return localPath;
+        } catch (error) {
+          console.error('❌ Error downloading media file:', error);
+          return null;
+        }
+      };
+
+      const extractMediaData = async (messageContent: any, messageId: string, instanceId: string) => {
         let mediaInfo = null;
         let mediaType = '';
 
@@ -173,13 +236,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (!mediaInfo) return null;
 
+        // Download the media file if URL is available
+        let localPath = null;
+        if (mediaInfo.url) {
+          localPath = await downloadMediaFile(
+            mediaInfo.url,
+            messageId,
+            instanceId,
+            mediaInfo.mimetype || 'application/octet-stream'
+          );
+        }
+
         return {
           messageId: messageId,
           instanceId: instanceId,
           mimetype: mediaInfo.mimetype || 'application/octet-stream',
           fileSizeBytes: parseInt(mediaInfo.fileLength || '0'),
           fileUrl: mediaInfo.url || null,
-          fileLocalPath: null,
+          fileLocalPath: localPath,
           mediaKey: mediaInfo.mediaKey || null,
           caption: mediaInfo.caption || null,
           thumbnailUrl: null,
@@ -328,10 +402,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Save media information if this is a media message
           if (message.message && isMediaMessage(message.message)) {
-            const mediaData = extractMediaData(message.message, message.key.id || '', instance.instanceId);
-            if (mediaData) {
-              await storage.createWhatsappMessageMedia(mediaData);
-              console.log(`💾 Saved media data for message ${message.key.id}: ${mediaData.mimetype} (${mediaData.fileSizeBytes} bytes)`);
+            try {
+              const mediaData = await extractMediaData(message.message, message.key.id || '', instance.instanceId);
+              if (mediaData) {
+                await storage.createWhatsappMessageMedia(mediaData);
+                console.log(`💾 Saved media data for message ${message.key.id}: ${mediaData.mimetype} (${mediaData.fileSizeBytes} bytes)`);
+                if (mediaData.fileLocalPath) {
+                  console.log(`📁 File stored locally: ${mediaData.fileLocalPath}`);
+                }
+              }
+            } catch (error) {
+              console.error('Error processing media data:', error);
             }
           }
         }
