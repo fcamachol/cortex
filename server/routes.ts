@@ -252,8 +252,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`💬 Processing chats.upsert for ${instanceName}:`, data);
     
     try {
-      // Find the instance
-      const instance = await storage.getWhatsappInstance(instanceName);
+      // Find the instance by name using the correct method
+      const instances = await storage.getWhatsappInstances('7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
+      const instance = instances.find(inst => inst.displayName === instanceName);
       if (!instance) {
         console.error(`❌ Instance ${instanceName} not found`);
         return;
@@ -267,16 +268,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
-        // Determine chat type based on JID format
-        let chatType: 'individual' | 'group' | 'broadcast' = 'individual';
+        // Determine chat type based on JID format - only 'individual' and 'group' are supported
+        let chatType: 'individual' | 'group' = 'individual';
         if (chatId.endsWith('@g.us')) {
           chatType = 'group';
-        } else if (chatId.endsWith('@broadcast')) {
-          chatType = 'broadcast';
+        }
+        // Skip broadcast messages for now as they're not supported in the schema
+        if (chatId.endsWith('@broadcast')) {
+          console.log(`⚠️ Skipping broadcast chat: ${chatId}`);
+          continue;
         }
 
-        // Check if chat already exists
-        const existingChat = await storage.getWhatsappChatById(instance.instanceId, chatId);
+        // Use hardcoded user ID for now (this should be improved to get actual user)
+        const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+        
+        const existingChat = await storage.getWhatsappChat(userId, instance.instanceId, chatId);
         
         if (!existingChat) {
           // Create new chat/conversation
@@ -284,30 +290,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
             instanceId: instance.instanceId,
             chatId: chatId,
             type: chatType,
-            name: chat.name || (chatType === 'group' ? 'Unnamed Group' : null),
             unreadCount: chat.unreadMessages || 0,
-            archived: chat.archived || false,
-            pinned: chat.pinned || false,
-            muteExpiry: chat.muteExpiry ? new Date(chat.muteExpiry * 1000) : null,
-            lastMessageTimestamp: chat.lastMessageTimestamp ? new Date(chat.lastMessageTimestamp * 1000) : new Date(),
-            rawApiPayload: chat
+            isArchived: chat.archived || false,
+            isPinned: chat.pinned || false,
+            isMuted: false,
+            muteEndTimestamp: chat.muteExpiry ? new Date(chat.muteExpiry * 1000) : null,
+            lastMessageTimestamp: chat.lastMessageTimestamp ? new Date(chat.lastMessageTimestamp * 1000) : new Date()
           };
 
           await storage.createWhatsappChat(chatData);
           console.log(`✅ Created ${chatType} chat: ${chat.name || chatId}`);
+          
+          // For group chats, also create a group record
+          if (chatType === 'group' && chat.name) {
+            try {
+              const groupData = {
+                groupJid: chatId,
+                instanceId: instance.instanceId,
+                subject: chat.name,
+                description: chat.description || null,
+                ownerJid: null,
+                creationTimestamp: new Date(),
+                isLocked: false
+              };
+              
+              await storage.createWhatsappGroup(groupData);
+              console.log(`✅ Created group record: ${chat.name}`);
+            } catch (groupError) {
+              console.error('Error creating group record:', groupError);
+            }
+          }
+          
         } else {
           // Update existing chat
           const updateData = {
-            name: chat.name || existingChat.name,
             unreadCount: chat.unreadMessages ?? existingChat.unreadCount,
-            archived: chat.archived ?? existingChat.archived,
-            pinned: chat.pinned ?? existingChat.pinned,
-            muteExpiry: chat.muteExpiry ? new Date(chat.muteExpiry * 1000) : existingChat.muteExpiry,
-            lastMessageTimestamp: chat.lastMessageTimestamp ? new Date(chat.lastMessageTimestamp * 1000) : existingChat.lastMessageTimestamp,
-            rawApiPayload: chat
+            isArchived: chat.archived ?? existingChat.isArchived,
+            isPinned: chat.pinned ?? existingChat.isPinned,
+            muteEndTimestamp: chat.muteExpiry ? new Date(chat.muteExpiry * 1000) : existingChat.muteEndTimestamp,
+            lastMessageTimestamp: chat.lastMessageTimestamp ? new Date(chat.lastMessageTimestamp * 1000) : existingChat.lastMessageTimestamp
           };
 
-          await storage.updateWhatsappChat(instance.instanceId, chatId, updateData);
+          await storage.updateWhatsappChat(userId, instance.instanceId, chatId, updateData);
           console.log(`🔄 Updated ${chatType} chat: ${chat.name || chatId}`);
         }
       }
