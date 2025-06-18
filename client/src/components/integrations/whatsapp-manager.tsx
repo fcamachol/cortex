@@ -20,7 +20,6 @@ interface WhatsAppInstance {
   webhookUrl?: string;
   isConnected: boolean;
   lastConnectionAt?: string;
-  status: string;
   phoneNumber?: string;
   profileName?: string;
   createdAt: string;
@@ -261,36 +260,21 @@ export function WhatsAppInstanceManager() {
     });
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "connected":
-        return (
-          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-            <Wifi className="w-3 h-3 mr-1" />
-            Connected
-          </Badge>
-        );
-      case "connecting":
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">
-            <QrCode className="w-3 h-3 mr-1" />
-            Connecting
-          </Badge>
-        );
-      case "qr_pending":
-        return (
-          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
-            <QrCode className="w-3 h-3 mr-1" />
-            QR Pending
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">
-            <WifiOff className="w-3 h-3 mr-1" />
-            Disconnected
-          </Badge>
-        );
+  const getStatusBadge = (isConnected: boolean) => {
+    if (isConnected) {
+      return (
+        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+          <Wifi className="w-3 h-3 mr-1" />
+          Connected
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">
+          <WifiOff className="w-3 h-3 mr-1" />
+          Disconnected
+        </Badge>
+      );
     }
   };
 
@@ -407,7 +391,7 @@ export function WhatsAppInstanceManager() {
                   </Button>
                 </div>
                 <div className="flex items-center justify-between">
-                  {getStatusBadge(instance.status)}
+                  {getStatusBadge(instance.isConnected)}
                 </div>
                 <div className="mt-2">
                   {getWebSocketBadge(instance.instanceId)}
@@ -431,7 +415,7 @@ export function WhatsAppInstanceManager() {
                   <span className="ml-2">{new Date(instance.createdAt).toLocaleDateString()}</span>
                 </div>
                 <div className="pt-2 space-y-2">
-                  {instance.status === "connected" ? (
+                  {instance.isConnected ? (
                     <Button disabled className="w-full">
                       <Wifi className="w-4 h-4 mr-2" />
                       Connected
@@ -440,10 +424,9 @@ export function WhatsAppInstanceManager() {
                     <Button 
                       onClick={() => setSelectedInstanceForQR(instance.instanceId)}
                       className="w-full"
-                      variant={instance.status === "connecting" || instance.status === "qr_pending" ? "secondary" : "default"}
                     >
                       <QrCode className="w-4 h-4 mr-2" />
-                      {instance.status === "connecting" || instance.status === "qr_pending" ? "Show QR" : "Connect"}
+                      Connect
                     </Button>
                   )}
                   <Button 
