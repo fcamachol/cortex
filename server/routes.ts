@@ -88,7 +88,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await handleWebhookMessagesUpsert(instanceName, data);
           break;
         case 'messages.update':
-          console.log(`🔄 Messages update for ${instanceName}:`, data);
+          await handleWebhookMessagesUpdate(instanceName, data);
           break;
         case 'contacts.upsert':
           await handleWebhookContactsUpsert(instanceName, data);
@@ -390,6 +390,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error('Error processing group-participants.update:', error);
+    }
+  }
+
+  async function handleWebhookMessagesUpdate(instanceName: string, data: any) {
+    console.log(`🔄 Processing messages.update for ${instanceName}:`, JSON.stringify(data, null, 2));
+    
+    try {
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const instances = await storage.getWhatsappInstances(userId);
+      const instance = instances.find(inst => inst.instanceId === instanceName);
+      if (!instance) {
+        console.error(`❌ Instance ${instanceName} not found`);
+        return;
+      }
+
+      // Handle the webhook data structure from Evolution API
+      const messageId = data.messageId || data.keyId;
+      const status = data.status;
+      
+      if (!messageId || !status) {
+        console.log('Missing messageId or status in update, skipping');
+        return;
+      }
+
+      console.log(`📱 Status update for message ${messageId}: ${status}`);
+      
+      try {
+        // Map Evolution API status to our schema enum
+        let mappedStatus = 'pending';
+        switch (status) {
+          case 'DELIVERY_ACK':
+            mappedStatus = 'delivered';
+            break;
+          case 'READ':
+            mappedStatus = 'read';
+            break;
+          case 'PLAYED':
+            mappedStatus = 'played';
+            break;
+          case 'SENT':
+            mappedStatus = 'sent';
+            break;
+          case 'ERROR':
+            mappedStatus = 'error';
+            break;
+          default:
+            mappedStatus = 'pending';
+        }
+
+        // Create message status update record
+        const messageUpdateData = {
+          messageId: messageId,
+          instanceId: instance.instanceId,
+          status: mappedStatus,
+          timestamp: new Date()
+        };
+        
+        await storage.createWhatsappMessageUpdate(messageUpdateData);
+        console.log(`✅ Saved message status update: ${messageId} -> ${status} (mapped to ${mappedStatus})`);
+        
+        // Try to update the main message record if it exists
+        try {
+          const existingMessage = await storage.getWhatsappMessage(userId, instance.instanceId, messageId);
+          if (existingMessage) {
+            // Update last edited timestamp for status changes
+            await storage.updateWhatsappMessage(userId, instance.instanceId, messageId, {
+              lastEditedAt: new Date()
+            });
+            console.log(`✅ Updated message ${messageId} last edited timestamp`);
+          }
+        } catch (updateError) {
+          console.log(`⚠️ Could not update main message record for ${messageId}:`, updateError);
+        }
+        
+      } catch (error) {
+        console.error(`Error saving message status update for ${messageId}:`, error);
+      }
+      
+    } catch (error) {
+      console.error('Error processing messages.update:', error);
+      console.error('Message update data:', data);
     }
   }
 

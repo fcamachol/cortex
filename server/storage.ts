@@ -94,6 +94,10 @@ export interface IStorage {
   getWhatsappMessageReactions(userId: string, instanceId: string, messageId: string): Promise<WhatsappMessageReaction[]>;
   deleteWhatsappMessageReaction(userId: string, instanceId: string, messageId: string, reactorJid: string): Promise<void>;
 
+  // WhatsApp message updates
+  createWhatsappMessageUpdate(update: InsertWhatsappMessageUpdate): Promise<WhatsappMessageUpdate>;
+  getWhatsappMessageUpdates(userId: string, instanceId: string, messageId: string): Promise<WhatsappMessageUpdate[]>;
+
   // WhatsApp groups
   createWhatsappGroup(group: InsertWhatsappGroup): Promise<WhatsappGroup>;
   getWhatsappGroup(userId: string, instanceId: string, groupJid: string): Promise<WhatsappGroup | undefined>;
@@ -567,6 +571,33 @@ export class DatabaseStorage implements IStorage {
         eq(whatsappMessageReactions.messageId, messageId),
         eq(whatsappMessageReactions.reactorJid, reactorJid)
       ));
+  }
+
+  // WhatsApp message updates
+  async createWhatsappMessageUpdate(update: InsertWhatsappMessageUpdate): Promise<WhatsappMessageUpdate> {
+    const [newUpdate] = await db
+      .insert(whatsappMessageUpdates)
+      .values(update)
+      .returning();
+    return newUpdate;
+  }
+
+  async getWhatsappMessageUpdates(userId: string, instanceId: string, messageId: string): Promise<WhatsappMessageUpdate[]> {
+    const results = await db
+      .select()
+      .from(whatsappMessageUpdates)
+      .innerJoin(whatsappMessages, and(
+        eq(whatsappMessageUpdates.messageId, whatsappMessages.messageId),
+        eq(whatsappMessageUpdates.instanceId, whatsappMessages.instanceId)
+      ))
+      .innerJoin(whatsappInstances, eq(whatsappMessages.instanceId, whatsappInstances.instanceId))
+      .where(and(
+        eq(whatsappInstances.clientId, userId),
+        eq(whatsappMessageUpdates.instanceId, instanceId),
+        eq(whatsappMessageUpdates.messageId, messageId)
+      ));
+
+    return results.map(result => result.message_updates);
   }
 
   // WhatsApp groups
