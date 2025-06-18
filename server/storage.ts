@@ -101,6 +101,8 @@ export interface IStorage {
 
   // WhatsApp group participants
   createWhatsappGroupParticipant(participant: InsertWhatsappGroupParticipant): Promise<WhatsappGroupParticipant>;
+  updateWhatsappGroupParticipant(instanceId: string, groupJid: string, participantJid: string, updates: Partial<InsertWhatsappGroupParticipant>): Promise<WhatsappGroupParticipant>;
+  removeWhatsappGroupParticipant(instanceId: string, groupJid: string, participantJid: string): Promise<void>;
   getWhatsappGroupParticipants(userId: string, instanceId: string, groupJid: string): Promise<WhatsappGroupParticipant[]>;
   deleteWhatsappGroupParticipant(userId: string, instanceId: string, groupJid: string, participantJid: string): Promise<void>;
 
@@ -625,6 +627,29 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return newParticipant;
+  }
+
+  async updateWhatsappGroupParticipant(instanceId: string, groupJid: string, participantJid: string, updates: Partial<InsertWhatsappGroupParticipant>): Promise<WhatsappGroupParticipant> {
+    const [updatedParticipant] = await db
+      .update(whatsappGroupParticipants)
+      .set(updates)
+      .where(and(
+        eq(whatsappGroupParticipants.instanceId, instanceId),
+        eq(whatsappGroupParticipants.groupJid, groupJid),
+        eq(whatsappGroupParticipants.participantJid, participantJid)
+      ))
+      .returning();
+    return updatedParticipant;
+  }
+
+  async removeWhatsappGroupParticipant(instanceId: string, groupJid: string, participantJid: string): Promise<void> {
+    await db
+      .delete(whatsappGroupParticipants)
+      .where(and(
+        eq(whatsappGroupParticipants.instanceId, instanceId),
+        eq(whatsappGroupParticipants.groupJid, groupJid),
+        eq(whatsappGroupParticipants.participantJid, participantJid)
+      ));
   }
 
   async getWhatsappGroupParticipants(userId: string, instanceId: string, groupJid: string): Promise<WhatsappGroupParticipant[]> {

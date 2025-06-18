@@ -96,6 +96,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case 'chats.upsert':
           await handleWebhookChatsUpsert(instanceName, data);
           break;
+        case 'groups.upsert':
+          await handleWebhookGroupsUpsert(instanceName, data);
+          break;
+        case 'group-participants.update':
+          await handleWebhookGroupParticipantsUpdate(instanceName, data);
+          break;
         case 'presence.update':
           console.log(`👁️ Presence update for ${instanceName}:`, data);
           break;
@@ -248,6 +254,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
   async function handleWebhookContactsUpsert(instanceName: string, data: any) {
     console.log(`👤 Processing contacts.upsert for ${instanceName}:`, data);
     // Implementation for contact updates
+  }
+
+  async function handleWebhookGroupsUpsert(instanceName: string, data: any) {
+    console.log(`👥 Processing groups.upsert for ${instanceName}:`, JSON.stringify(data, null, 2));
+    
+    try {
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const instances = await storage.getWhatsappInstances(userId);
+      const instance = instances.find(inst => inst.instanceId === instanceName);
+      if (!instance) {
+        console.error(`❌ Instance ${instanceName} not found`);
+        return;
+      }
+
+      // Process groups array
+      const groups = Array.isArray(data) ? data : [data];
+      
+      for (const group of groups) {
+        const groupJid = group.id || group.remoteJid;
+        if (!groupJid || !groupJid.endsWith('@g.us')) {
+          console.log('⚠️ Skipping invalid group JID:', groupJid);
+          continue;
+        }
+
+        // Create or update group record
+        const groupData = {
+          groupJid: groupJid,
+          instanceId: instance.instanceId,
+          subject: group.subject || group.name || 'Unknown Group',
+          description: group.desc || group.description || null,
+          ownerJid: group.owner || group.ownerJid || null,
+          creationTimestamp: group.creation ? new Date(group.creation * 1000) : new Date(),
+          isLocked: group.restrict || false
+        };
+
+        // Create contact record for the group
+        const contactData = {
+          instanceId: instance.instanceId,
+          jid: groupJid,
+          pushName: groupData.subject,
+          verifiedName: groupData.subject,
+          isGroup: true,
+          profilePictureUrl: null
+        };
+
+        await storage.createWhatsappContact(contactData);
+        await storage.createWhatsappGroup(groupData);
+        console.log(`✅ Created/updated group: ${groupData.subject}`);
+
+        // Process group participants if available
+        if (group.participants && Array.isArray(group.participants)) {
+          for (const participant of group.participants) {
+            const participantJid = participant.id || participant.jid;
+            if (!participantJid) continue;
+
+            const participantData = {
+              groupJid: groupJid,
+              instanceId: instance.instanceId,
+              participantJid: participantJid,
+              isAdmin: participant.admin === 'admin' || participant.isAdmin || false,
+              isSuperAdmin: participant.admin === 'superadmin' || participant.isSuperAdmin || false
+            };
+
+            await storage.createWhatsappGroupParticipant(participantData);
+            console.log(`✅ Added participant: ${participantJid} (admin: ${participantData.isAdmin})`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error processing groups.upsert:', error);
+    }
+  }
+
+  async function handleWebhookGroupParticipantsUpdate(instanceName: string, data: any) {
+    console.log(`👥 Processing group-participants.update for ${instanceName}:`, JSON.stringify(data, null, 2));
+    
+    try {
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const instances = await storage.getWhatsappInstances(userId);
+      const instance = instances.find(inst => inst.instanceId === instanceName);
+      if (!instance) {
+        console.error(`❌ Instance ${instanceName} not found`);
+        return;
+      }
+
+      const groupJid = data.id || data.remoteJid;
+      if (!groupJid || !groupJid.endsWith('@g.us')) {
+        console.log('⚠️ Invalid group JID for participants update:', groupJid);
+        return;
+      }
+
+      // Handle different participant update actions
+      const action = data.action; // 'add', 'remove', 'promote', 'demote'
+      const participants = data.participants || [];
+
+      for (const participantJid of participants) {
+        switch (action) {
+          case 'add':
+            const participantData = {
+              groupJid: groupJid,
+              instanceId: instance.instanceId,
+              participantJid: participantJid,
+              isAdmin: false,
+              isSuperAdmin: false
+            };
+            await storage.createWhatsappGroupParticipant(participantData);
+            console.log(`✅ Added participant: ${participantJid} to group ${groupJid}`);
+            break;
+
+          case 'remove':
+            await storage.removeWhatsappGroupParticipant(instance.instanceId, groupJid, participantJid);
+            console.log(`✅ Removed participant: ${participantJid} from group ${groupJid}`);
+            break;
+
+          case 'promote':
+            await storage.updateWhatsappGroupParticipant(instance.instanceId, groupJid, participantJid, {
+              isAdmin: true,
+              isSuperAdmin: false
+            });
+            console.log(`✅ Promoted participant: ${participantJid} to admin in group ${groupJid}`);
+            break;
+
+          case 'demote':
+            await storage.updateWhatsappGroupParticipant(instance.instanceId, groupJid, participantJid, {
+              isAdmin: false,
+              isSuperAdmin: false
+            });
+            console.log(`✅ Demoted participant: ${participantJid} in group ${groupJid}`);
+            break;
+
+          default:
+            console.log(`⚠️ Unknown participant action: ${action}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error processing group-participants.update:', error);
+    }
   }
 
   async function handleWebhookChatsUpsert(instanceName: string, data: any) {
