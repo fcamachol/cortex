@@ -1,6 +1,6 @@
 import { EvolutionAPIWebSocket } from './evolution-websocket';
 import { storage } from './storage';
-import type { WhatsappInstance } from '@shared/schema';
+import type { WhatsappInstance } from '../shared/schema';
 
 export class EvolutionBridgeManager {
   private bridges = new Map<string, EvolutionAPIWebSocket>();
@@ -131,7 +131,7 @@ export class EvolutionBridgeManager {
   async refreshInstance(userId: string, instanceId: string): Promise<void> {
     const instance = await storage.getWhatsappInstance(userId, instanceId);
     if (instance) {
-      await this.removeBridge(userId, instance.id);
+      await this.removeBridge(instance.instanceId);
       await this.createBridge(userId, instance);
     }
   }

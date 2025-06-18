@@ -4,7 +4,7 @@ import {
   type InsertWhatsappMessage,
   type InsertWhatsappContact,
   type InsertWhatsappConversation
-} from '@shared/schema';
+} from '../shared/schema';
 
 interface EvolutionConfig {
   apiUrl: string;

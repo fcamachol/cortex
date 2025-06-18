@@ -41,7 +41,7 @@ import {
   type InsertWhatsappChatLabel,
   type WhatsappCallLog,
   type InsertWhatsappCallLog
-} from "@shared/schema";
+} from "../shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, ilike, sql } from "drizzle-orm";
 
