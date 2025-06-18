@@ -391,6 +391,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             await storage.createWhatsappMessageReaction(reactionMessageData);
             console.log(`👍 Saved reaction ${reactionEmoji} from ${reactorJid} on message ${targetMessageId}`);
+
+            // Process actions triggers for this reaction
+            try {
+              console.log(`🔍 Looking for original message: ${targetMessageId} in instance: ${instance.instanceId}`);
+              const originalMessage = await storage.getWhatsappMessage('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instance.instanceId, targetMessageId);
+              
+              if (originalMessage) {
+                console.log(`📨 Found original message: "${originalMessage.content?.substring(0, 50) || 'No content'}"`);
+                const triggerContext = {
+                  reactionId: `${targetMessageId}_${reactionEmoji}`,
+                  messageId: targetMessageId,
+                  instanceId: instance.instanceId,
+                  chatId: chatId,
+                  senderJid: reactorJid,
+                  content: originalMessage.content || '',
+                  reaction: reactionEmoji,
+                  timestamp: new Date(),
+                  fromMe: originalMessage.fromMe,
+                };
+
+                console.log(`🎯 Triggering actions engine for reaction: ${reactionEmoji}`);
+                // Trigger actions engine for reaction
+                await actionsEngine.processMessageTriggers(triggerContext);
+                console.log(`✅ Processed reaction trigger for ${reactionEmoji} on message: ${originalMessage.content?.substring(0, 50) || 'No content'}`);
+              } else {
+                console.log(`⚠️ Original message not found for reaction: ${targetMessageId}`);
+              }
+            } catch (reactionError) {
+              console.error(`❌ Error processing reaction trigger:`, reactionError);
+            }
           }
         } else {
           // Save regular messages to WhatsApp messages table (excluding reactions)
