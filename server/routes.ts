@@ -108,7 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       // Find the instance in our database
-      const instance = await storage.getWhatsappInstanceByName(instanceName);
+      const instance = await storage.getWhatsappInstanceByName('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instanceName);
       if (!instance) {
         console.error(`Instance ${instanceName} not found in database`);
         return;
@@ -1090,33 +1090,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Direct SQL query to retrieve authentic WhatsApp messages
+  // Get WhatsApp messages for a specific chat
   app.get("/api/whatsapp/messages/:conversationId", async (req, res) => {
     try {
-      // Simple direct query for authentic messages from +1 510 316 5094
-      const messages = await storage.getWhatsappMessages(req.params.conversationId);
+      const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const messages = await storage.getWhatsappMessages(userId, req.params.conversationId);
       res.json(messages);
     } catch (error) {
-      console.error('Schema error, using direct SQL query');
-      try {
-        // Fallback: direct SQL query bypassing ORM schema issues
-        const pool = (db as any).pool || db;
-        const result = await pool.query(`
-          SELECT 
-            id, evolution_message_id as "evolutionMessageId", 
-            text_content as "textContent", from_me as "fromMe", 
-            push_name as "pushName", timestamp, status, 
-            message_type as "messageType", created_at as "createdAt"
-          FROM whatsapp_messages 
-          WHERE conversation_id = $1
-          ORDER BY timestamp ASC
-        `, [req.params.conversationId]);
-        
-        res.json(result.rows || []);
-      } catch (sqlError) {
-        console.error('SQL Error:', sqlError);
-        res.status(500).json({ error: "Failed to get messages" });
-      }
+      console.error('Error fetching messages:', error);
+      res.status(500).json({ error: "Failed to get messages" });
     }
   });
 
