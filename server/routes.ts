@@ -146,10 +146,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Determine message type from the message content
-        let messageType: 'text' | 'image' | 'video' | 'audio' | 'document' | 'sticker' | 'location' | 'contact_card' = 'text';
+        let messageType: 'text' | 'image' | 'video' | 'audio' | 'document' | 'sticker' | 'location' | 'contact_card' | 'reactionMessage' = 'text';
         if (message.message) {
           const messageContent = message.message;
-          if (messageContent.conversation || messageContent.extendedTextMessage) messageType = 'text';
+          if (messageContent.reactionMessage) messageType = 'reactionMessage';
+          else if (messageContent.conversation || messageContent.extendedTextMessage) messageType = 'text';
           else if (messageContent.imageMessage) messageType = 'image';
           else if (messageContent.videoMessage) messageType = 'video';
           else if (messageContent.audioMessage) messageType = 'audio';
@@ -157,6 +158,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           else if (messageContent.stickerMessage) messageType = 'sticker';
           else if (messageContent.locationMessage) messageType = 'location';
           else if (messageContent.contactMessage) messageType = 'contact_card';
+        }
+        
+        // Also check the messageType field from Evolution API
+        if (message.messageType === 'reactionMessage') {
+          messageType = 'reactionMessage';
         }
 
         // Ensure the contact and chat exist before saving the message
@@ -227,22 +233,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Error ensuring contact/chat exists:', setupError);
         }
 
-        // Save to WhatsApp messages table with new schema
-        const whatsappMessageData = {
-          instanceId: instance.instanceId,
-          messageId: message.key.id || '',
-          chatId: chatId,
-          senderJid: message.participant || message.key.remoteJid || '',
-          fromMe: message.key.fromMe || false,
-          messageType: messageType,
-          content: extractMessageContent(message),
-          timestamp: new Date((message.messageTimestamp || Math.floor(Date.now() / 1000)) * 1000),
-          quotedMessageId: message.message?.extendedTextMessage?.contextInfo?.quotedMessage?.key?.id || null,
-          rawApiPayload: message
-        };
+        // Handle reaction messages specially
+        if (messageType === 'reactionMessage' && message.message?.reactionMessage) {
+          const reactionData = message.message.reactionMessage;
+          const targetMessageId = reactionData.key.id;
+          const reactionEmoji = reactionData.text;
+          const reactorJid = message.key.participant || message.key.remoteJid || '';
 
-        const savedMessage = await storage.createWhatsappMessage(whatsappMessageData);
-        console.log(`✅ Saved WhatsApp message from ${message.pushName || 'Unknown'}: "${whatsappMessageData.content?.substring(0, 50) || 'No content'}"`);
+          // If emoji is empty, this is a reaction removal
+          if (!reactionEmoji) {
+            await storage.deleteWhatsappMessageReaction('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instance.instanceId, targetMessageId, reactorJid);
+            console.log(`🗑️ Removed reaction from ${reactorJid} on message ${targetMessageId}`);
+          } else {
+            // Add or update reaction
+            const reactionMessageData = {
+              messageId: targetMessageId,
+              instanceId: instance.instanceId,
+              reactorJid: reactorJid,
+              reactionEmoji: reactionEmoji,
+              timestamp: new Date((message.messageTimestamp || Math.floor(Date.now() / 1000)) * 1000)
+            };
+
+            await storage.createWhatsappMessageReaction(reactionMessageData);
+            console.log(`👍 Saved reaction ${reactionEmoji} from ${reactorJid} on message ${targetMessageId}`);
+          }
+        } else {
+          // Save regular messages to WhatsApp messages table (excluding reactions)
+          const validMessageType = messageType === 'reactionMessage' ? 'text' : messageType;
+          const whatsappMessageData = {
+            instanceId: instance.instanceId,
+            messageId: message.key.id || '',
+            chatId: chatId,
+            senderJid: message.participant || message.key.remoteJid || '',
+            fromMe: message.key.fromMe || false,
+            messageType: validMessageType,
+            content: extractMessageContent(message),
+            timestamp: new Date((message.messageTimestamp || Math.floor(Date.now() / 1000)) * 1000),
+            quotedMessageId: message.message?.extendedTextMessage?.contextInfo?.quotedMessage?.key?.id || null,
+            rawApiPayload: message
+          };
+
+          const savedMessage = await storage.createWhatsappMessage(whatsappMessageData);
+          console.log(`✅ Saved WhatsApp message from ${message.pushName || 'Unknown'}: "${whatsappMessageData.content?.substring(0, 50) || 'No content'}"`);
+        }
       }
       
     } catch (error) {
