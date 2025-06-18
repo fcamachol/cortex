@@ -518,7 +518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         webhookUrl: instance.webhookUrl,
         isConnected: instance.isConnected,
         lastConnectionAt: instance.lastConnectionAt?.toISOString(),
-        status: instance.isConnected ? "connected" : "disconnected",
+        status: instance.isConnected ? "connected" : "connecting",
         phoneNumber: instance.ownerJid ? instance.ownerJid.replace('@s.whatsapp.net', '') : undefined,
         profileName: undefined, // Will be populated by profile endpoint
         createdAt: instance.createdAt.toISOString(),
