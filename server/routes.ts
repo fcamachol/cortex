@@ -402,13 +402,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Save media information if this is a media message
           if (message.message && isMediaMessage(message.message)) {
+            const mediaUrl = getMediaUrl(message.message);
+            const mimetype = getMediaMimetype(message.message) || 'application/octet-stream';
+            const messageId = String(message.key.id || '');
+            
+            // Download file locally
+            let localPath = null;
+            if (mediaUrl) {
+              try {
+                console.log(`🔄 Starting download for ${messageId}: ${mediaUrl}`);
+                
+                // Create media directory
+                const mediaDir = path.join(process.cwd(), 'media', instance.instanceId);
+                if (!fs.existsSync(mediaDir)) {
+                  fs.mkdirSync(mediaDir, { recursive: true });
+                  console.log(`✅ Created directory: ${mediaDir}`);
+                }
+
+                // Determine file extension
+                const extensionMap: { [key: string]: string } = {
+                  'image/jpeg': '.jpg', 'image/png': '.png', 'image/gif': '.gif', 'image/webp': '.webp',
+                  'video/mp4': '.mp4', 'video/quicktime': '.mov',
+                  'audio/mpeg': '.mp3', 'audio/ogg': '.ogg', 'audio/wav': '.wav',
+                  'application/pdf': '.pdf', 'text/plain': '.txt'
+                };
+                const fileExtension = extensionMap[mimetype] || '.bin';
+                const fileName = `${messageId}${fileExtension}`;
+                localPath = path.join(mediaDir, fileName);
+
+                // Download file with proper headers for WhatsApp media
+                const response = await fetch(mediaUrl, {
+                  headers: {
+                    'User-Agent': 'WhatsApp/2.2043.7 Mozilla/5.0 (compatible; WhatsApp)',
+                    'Accept': '*/*',
+                    'Accept-Encoding': 'gzip, deflate, br'
+                  },
+                  timeout: 30000
+                });
+                
+                if (response.ok) {
+                  const arrayBuffer = await response.arrayBuffer();
+                  const buffer = Buffer.from(arrayBuffer);
+                  fs.writeFileSync(localPath, buffer);
+                  console.log(`📥 Downloaded media file: ${fileName} (${buffer.length} bytes)`);
+                } else {
+                  console.error(`❌ Failed to download media: ${response.status} ${response.statusText}`);
+                  localPath = null;
+                }
+              } catch (error) {
+                console.error('❌ Error downloading media:', error);
+                localPath = null;
+              }
+            }
+
             const mediaData = {
-              messageId: message.key.id || '',
+              messageId: messageId,
               instanceId: instance.instanceId,
-              mimetype: getMediaMimetype(message.message) || 'application/octet-stream',
-              fileSizeBytes: parseInt(getMediaSize(message.message) || '0'),
-              fileUrl: getMediaUrl(message.message),
-              fileLocalPath: null, // Temporarily disabled until module issues are resolved
+              mimetype: mimetype,
+              fileSizeBytes: parseInt(String(getMediaSize(message.message) || '0')),
+              fileUrl: mediaUrl,
+              fileLocalPath: localPath,
               mediaKey: message.message.imageMessage?.mediaKey || message.message.videoMessage?.mediaKey || message.message.audioMessage?.mediaKey || message.message.documentMessage?.mediaKey || null,
               caption: getMediaCaption(message.message),
               thumbnailUrl: null,
@@ -420,7 +473,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             if (mediaData.fileUrl) {
               await storage.createWhatsappMessageMedia(mediaData);
-              console.log(`💾 Saved media data for message ${message.key.id}: ${mediaData.mimetype} (${mediaData.fileSizeBytes} bytes)`);
+              console.log(`💾 Saved media data for message ${messageId}: ${mediaData.mimetype} (${mediaData.fileSizeBytes} bytes)`);
+              if (mediaData.fileLocalPath) {
+                console.log(`📁 File stored locally: ${mediaData.fileLocalPath}`);
+              }
             }
           }
         }
