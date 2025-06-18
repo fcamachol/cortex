@@ -1153,41 +1153,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { instanceId } = req.params;
       const eventData = req.body;
 
-      // Process webhook events from Evolution API
-      console.log('Received webhook event:', eventData);
+      console.log('🔔 Webhook received for instance:', instanceId, 'Event:', eventData.event);
 
       // Handle different event types
-      if (eventData.event === 'messages.upsert') {
-        // New message received
-        const message = eventData.data;
+      if (eventData.event === 'connection.update') {
+        // Connection status changed
+        const connectionData = eventData.data;
+        console.log('📱 Connection update for instance:', instanceId, connectionData);
         
-        // Save message to database
-        const messageData = {
-          instanceId,
-          userId: 'user-id', // This should be determined from the instance
-          conversationId: 'conversation-id', // This should be determined from the chat
-          messageId: message.key.id,
-          fromNumber: message.pushName || message.key.remoteJid,
-          toNumber: message.key.remoteJid,
-          messageType: message.messageType || 'text',
-          content: message.message?.conversation || message.message?.extendedTextMessage?.text || '',
-          isFromMe: message.key.fromMe,
-          timestamp: message.messageTimestamp
-        };
-
-        // This would need proper mapping based on Evolution API response structure
-        // await storage.createWhatsappMessage(messageData);
-
-        // Broadcast to connected clients
-        // broadcast(userId, {
-        //   type: 'new_message',
-        //   data: messageData
-        // });
+        // Update instance status in database
+        if (connectionData.state === 'open') {
+          await storage.updateWhatsappInstanceStatus(instanceId, 'connected', connectionData);
+          console.log('✅ Instance status updated to connected');
+        } else if (connectionData.state === 'close' || connectionData.state === 'connecting') {
+          await storage.updateWhatsappInstanceStatus(instanceId, connectionData.state, connectionData);
+          console.log('🔄 Instance status updated to:', connectionData.state);
+        }
+      } else if (eventData.event === 'messages.upsert') {
+        await handleWebhookMessagesUpsert(instanceId, eventData.data);
+      } else if (eventData.event === 'contacts.upsert') {
+        await handleWebhookContactsUpsert(instanceId, eventData.data);
+      } else if (eventData.event === 'chats.upsert') {
+        await handleWebhookChatsUpsert(instanceId, eventData.data);
       }
 
       res.status(200).json({ success: true });
     } catch (error) {
-      console.error('Webhook error:', error);
+      console.error('❌ Webhook error:', error);
       res.status(500).json({ error: "Webhook processing failed" });
     }
   });

@@ -57,6 +57,7 @@ export interface IStorage {
   getWhatsappInstance(userId: string, instanceId: string): Promise<WhatsappInstance | undefined>;
   createWhatsappInstance(instance: InsertWhatsappInstance): Promise<WhatsappInstance>;
   updateWhatsappInstance(userId: string, instanceId: string, instance: Partial<InsertWhatsappInstance>): Promise<WhatsappInstance>;
+  updateWhatsappInstanceStatus(instanceId: string, status: string, connectionData?: any): Promise<WhatsappInstance | null>;
   deleteWhatsappInstance(userId: string, instanceId: string): Promise<void>;
 
   // WhatsApp contacts
@@ -195,6 +196,33 @@ export class DatabaseStorage implements IStorage {
         eq(whatsappInstances.clientId, userId),
         eq(whatsappInstances.instanceId, instanceId)
       ));
+  }
+
+  async updateWhatsappInstanceStatus(instanceId: string, status: string, connectionData?: any): Promise<WhatsappInstance | null> {
+    try {
+      const updateData: any = {
+        isConnected: status === 'connected',
+        updatedAt: new Date()
+      };
+
+      if (status === 'connected') {
+        updateData.lastConnectionAt = new Date();
+        if (connectionData?.ownerJid) {
+          updateData.ownerJid = connectionData.ownerJid;
+        }
+      }
+
+      const [updatedInstance] = await db
+        .update(whatsappInstances)
+        .set(updateData)
+        .where(eq(whatsappInstances.instanceId, instanceId))
+        .returning();
+      
+      return updatedInstance || null;
+    } catch (error) {
+      console.error('Error updating instance status:', error);
+      return null;
+    }
   }
 
   // WhatsApp contacts

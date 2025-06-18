@@ -205,9 +205,11 @@ export function QRCodeDisplay({ instanceId, instanceName, onConnectionSuccess, o
       stopPolling();
       // Show success toast when connection is detected
       toast({
-        title: "WhatsApp Connected",
-        description: `Instance ${instanceName} is now connected and ready!`,
+        title: "WhatsApp Connected Successfully!",
+        description: `Instance ${instanceName} is now connected and ready to send and receive messages.`,
       });
+      // Sync status with backend to ensure consistency
+      syncInstanceStatus();
       // Call both callback functions
       onConnectionSuccess?.();
       onConnected?.();
