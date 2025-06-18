@@ -502,6 +502,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test endpoint to verify transformation
+  app.get("/api/whatsapp/instances-test/:userId", async (req, res) => {
+    console.log(`🧪 TEST ENDPOINT - Handler executing for userId: ${req.params.userId}`);
+    res.json({ 
+      test: "working", 
+      userId: req.params.userId,
+      timestamp: new Date().toISOString(),
+      status: "connected"
+    });
+  });
+
   // Get all WhatsApp instances for a user
   app.get("/api/whatsapp/instances/:userId", async (req, res) => {
     console.log(`🔍 GET /api/whatsapp/instances/${req.params.userId} - Handler executing`);
@@ -514,7 +525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const transformedInstances = instances.map(instance => {
         const status = instance.isConnected ? "connected" : "connecting";
         console.log(`🔄 Transforming instance ${instance.instanceId}: isConnected=${instance.isConnected}, status=${status}`);
-        return {
+        const transformed = {
           instanceId: instance.instanceId,
           displayName: instance.displayName,
           ownerJid: instance.ownerJid,
@@ -529,9 +540,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdAt: instance.createdAt.toISOString(),
           updatedAt: instance.updatedAt.toISOString()
         };
+        console.log(`✅ Transformed instance:`, JSON.stringify(transformed, null, 2));
+        return transformed;
       });
       
-      console.log(`📊 API Response for userId ${userId}:`, JSON.stringify(transformedInstances, null, 2));
+      console.log(`📊 Final API Response for userId ${userId}:`, JSON.stringify(transformedInstances, null, 2));
       
       res.json(transformedInstances);
     } catch (error) {
