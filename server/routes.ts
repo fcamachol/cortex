@@ -418,7 +418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       try {
         // Map Evolution API status to our schema enum
-        let mappedStatus = 'pending';
+        let mappedStatus: "error" | "pending" | "sent" | "delivered" | "read" | "played" = 'pending';
         switch (status) {
           case 'DELIVERY_ACK':
             mappedStatus = 'delivered';
@@ -1418,6 +1418,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('❌ Manual status sync error:', error);
       res.status(500).json({ success: false, error: 'Status sync failed' });
+    }
+  });
+
+  // Get message updates for a specific message
+  app.get('/api/whatsapp/messages/:messageId/updates', async (req: Request & { user?: { id: string } }, res: Response) => {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+      const { messageId } = req.params;
+      const { instanceId } = req.query;
+
+      if (!instanceId || typeof instanceId !== 'string') {
+        return res.status(400).json({ error: 'Instance ID is required' });
+      }
+
+      const updates = await storage.getWhatsappMessageUpdates(req.user.id, instanceId, messageId);
+      res.json(updates);
+    } catch (error) {
+      console.error('Error fetching message updates:', error);
+      res.status(500).json({ error: 'Failed to fetch message updates' });
     }
   });
 
