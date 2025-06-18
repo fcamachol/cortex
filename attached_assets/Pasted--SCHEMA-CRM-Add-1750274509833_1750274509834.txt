@@ -1,0 +1,219 @@
+-- =============================================================================
+-- SCHEMA: CRM (Additions for Projects, Tasks, Events, Actions, and Lists)
+-- PURPOSE: Extends the CRM schema with project, task, calendar event, automated
+--          action, and list management capabilities. This data is created and
+--          managed by your application's users.
+-- =============================================================================
+
+-- =============================================================================
+-- ENUMERATED TYPES
+-- =============================================================================
+CREATE TYPE crm.action_type AS ENUM ('create_task', 'create_calendar_event');
+COMMENT ON TYPE crm.action_type IS 'Defines the types of automated actions that can be triggered.';
+
+CREATE TYPE crm.trigger_type AS ENUM ('reaction', 'hashtag');
+COMMENT ON TYPE crm.trigger_type IS 'Defines the method that triggers an automated action (e.g., an emoji reaction or a hashtag in a message).';
+
+
+-- =============================================================================
+-- TABLE: crm.action_mappings
+-- PURPOSE: To configure which triggers (reactions or hashtags) fire specific automated actions.
+-- =============================================================================
+CREATE TABLE crm.action_mappings (
+    mapping_id SERIAL PRIMARY KEY,
+    instance_id VARCHAR(100) NOT NULL,
+    trigger_type crm.trigger_type NOT NULL,
+    trigger_value VARCHAR(50) NOT NULL, -- e.g., '✅' for reactions, or '#task' for hashtags
+    action_type crm.action_type NOT NULL,
+    default_title VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT uq_instance_trigger UNIQUE (instance_id, trigger_type, trigger_value),
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE
+);
+
+COMMENT ON TABLE crm.action_mappings IS 'Stores user-defined mappings from a trigger (emoji or hashtag) to a specific automated action.';
+COMMENT ON COLUMN crm.action_mappings.trigger_value IS 'The value of the trigger, e.g., the emoji character or the hashtag text.';
+
+
+-- =============================================================================
+-- TABLE: crm.projects
+-- PURPOSE: To group tasks into larger initiatives or workstreams.
+-- =============================================================================
+CREATE TABLE crm.projects (
+    project_id SERIAL PRIMARY KEY,
+    instance_id VARCHAR(100) NOT NULL,
+    project_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'active' NOT NULL, -- e.g., 'active', 'completed', 'archived', 'on_hold'
+    start_date DATE,
+    end_date DATE,
+    empresa_id INTEGER,
+    owner_user_id UUID,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_empresa FOREIGN KEY(empresa_id) REFERENCES crm.empresas(empresa_id) ON DELETE SET NULL,
+    CONSTRAINT fk_owner_user FOREIGN KEY(owner_user_id) REFERENCES app.users(user_id) ON DELETE SET NULL
+);
+COMMENT ON TABLE crm.projects IS 'Stores high-level projects that can group tasks and be associated with companies.';
+
+
+-- =============================================================================
+-- TABLE: crm.tasks
+-- PURPOSE: To store individual to-do items. Any task can also function as a
+--          "list" if it has associated checklist items.
+-- =============================================================================
+CREATE TABLE crm.tasks (
+    task_id SERIAL PRIMARY KEY,
+    instance_id VARCHAR(100) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'pending' NOT NULL, -- e.g., 'pending', 'in_progress', 'completed'
+    due_date TIMESTAMPTZ,
+    priority VARCHAR(50) DEFAULT 'medium', -- e.g., 'low', 'medium', 'high'
+    project_id INTEGER,
+    parent_task_id INTEGER,
+    triggering_message_id VARCHAR(255),
+    assigned_to_user_id UUID,
+    related_chat_jid VARCHAR(100),
+    created_by_user_id UUID,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_project FOREIGN KEY(project_id) REFERENCES crm.projects(project_id) ON DELETE CASCADE,
+    CONSTRAINT fk_parent_task FOREIGN KEY(parent_task_id) REFERENCES crm.tasks(task_id) ON DELETE CASCADE,
+    CONSTRAINT fk_triggering_message FOREIGN KEY(triggering_message_id, instance_id) REFERENCES whatsapp.messages(message_id, instance_id) ON DELETE SET NULL,
+    CONSTRAINT fk_assigned_user FOREIGN KEY(assigned_to_user_id) REFERENCES app.users(user_id) ON DELETE SET NULL,
+    CONSTRAINT fk_created_by_user FOREIGN KEY(created_by_user_id) REFERENCES app.users(user_id) ON DELETE SET NULL,
+    CONSTRAINT fk_related_chat FOREIGN KEY(related_chat_jid, instance_id) REFERENCES whatsapp.chats(chat_id, instance_id) ON DELETE SET NULL
+);
+COMMENT ON TABLE crm.tasks IS 'Stores actionable to-do items. Can be a simple task or a "list" with checklist items.';
+
+
+-- =============================================================================
+-- TABLE: crm.task_checklist_items
+-- PURPOSE: To store checklist items for a task, effectively turning any task
+--          into a "list". These are the specific instances of checklist items.
+-- =============================================================================
+CREATE TABLE crm.task_checklist_items (
+    item_id SERIAL PRIMARY KEY,
+    task_id INTEGER NOT NULL,
+    instance_id VARCHAR(100) NOT NULL,
+    content TEXT NOT NULL,
+    is_completed BOOLEAN DEFAULT FALSE NOT NULL,
+    display_order INTEGER DEFAULT 0 NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_task FOREIGN KEY (task_id) REFERENCES crm.tasks(task_id) ON DELETE CASCADE,
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE crm.task_checklist_items IS 'Stores individual checklist items for a parent task.';
+
+
+-- =============================================================================
+-- NEW TABLE: crm.list_templates
+-- PURPOSE: To store reusable checklist templates (e.g., "Client Onboarding").
+-- =============================================================================
+CREATE TABLE crm.list_templates (
+    template_id SERIAL PRIMARY KEY,
+    instance_id VARCHAR(100) NOT NULL,
+    template_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE crm.list_templates IS 'Stores reusable templates for checklists or lists of tasks.';
+
+
+-- =============================================================================
+-- NEW TABLE: crm.list_template_items
+-- PURPOSE: To store the default items for a given list template.
+-- =============================================================================
+CREATE TABLE crm.list_template_items (
+    template_item_id SERIAL PRIMARY KEY,
+    template_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    display_order INTEGER DEFAULT 0 NOT NULL,
+    -- This powerful field allows a template item to auto-assign a task to a user.
+    default_assigned_to_user_id UUID,
+
+    CONSTRAINT fk_template FOREIGN KEY(template_id) REFERENCES crm.list_templates(template_id) ON DELETE CASCADE,
+    CONSTRAINT fk_default_user FOREIGN KEY(default_assigned_to_user_id) REFERENCES app.users(user_id) ON DELETE SET NULL
+);
+COMMENT ON TABLE crm.list_template_items IS 'Stores the individual default items for a list template.';
+COMMENT ON COLUMN crm.list_template_items.default_assigned_to_user_id IS 'If set, tasks created from this item can be auto-assigned to this user.';
+
+
+-- =============================================================================
+-- TABLE: crm.calendar_events
+-- PURPOSE: Stores calendar events.
+-- =============================================================================
+CREATE TABLE crm.calendar_events (
+    event_id SERIAL PRIMARY KEY,
+    instance_id VARCHAR(100) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    start_time TIMESTAMPTZ NOT NULL,
+    end_time TIMESTAMPTZ NOT NULL,
+    location VARCHAR(255),
+    is_all_day BOOLEAN DEFAULT FALSE NOT NULL,
+    created_by_user_id UUID,
+    triggering_message_id VARCHAR(255),
+    project_id INTEGER,
+    task_id INTEGER,
+    related_chat_jid VARCHAR(100),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_created_by_user FOREIGN KEY(created_by_user_id) REFERENCES app.users(user_id) ON DELETE SET NULL,
+    CONSTRAINT fk_triggering_message FOREIGN KEY(triggering_message_id, instance_id) REFERENCES whatsapp.messages(message_id, instance_id) ON DELETE SET NULL,
+    CONSTRAINT fk_project FOREIGN KEY(project_id) REFERENCES crm.projects(project_id) ON DELETE SET NULL,
+    CONSTRAINT fk_task FOREIGN KEY(task_id) REFERENCES crm.tasks(task_id) ON DELETE SET NULL,
+    CONSTRAINT fk_related_chat FOREIGN KEY(related_chat_jid, instance_id) REFERENCES whatsapp.chats(chat_id, instance_id) ON DELETE SET NULL,
+    CONSTRAINT chk_end_time CHECK (end_time >= start_time)
+);
+COMMENT ON TABLE crm.calendar_events IS 'Stores user-created calendar events.';
+
+
+-- =============================================================================
+-- TABLE: crm.event_attendees
+-- PURPOSE: Pivot table linking internal users to calendar events.
+-- =============================================================================
+CREATE TABLE crm.event_attendees (
+    event_id INTEGER NOT NULL,
+    attendee_user_id UUID NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending' NOT NULL, -- e.g., 'accepted', 'declined', 'pending'
+
+    PRIMARY KEY (event_id, attendee_user_id),
+    CONSTRAINT fk_event FOREIGN KEY(event_id) REFERENCES crm.calendar_events(event_id) ON DELETE CASCADE,
+    CONSTRAINT fk_attendee FOREIGN KEY(attendee_user_id) REFERENCES app.users(user_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE crm.event_attendees IS 'Links internal app users to the calendar events they are attending.';
+
+
+-- =============================================================================
+-- INDEXES FOR PERFORMANCE
+-- =============================================================================
+CREATE INDEX idx_action_mappings_instance_trigger ON crm.action_mappings(instance_id, trigger_type, trigger_value);
+CREATE INDEX idx_projects_instance_id ON crm.projects(instance_id);
+CREATE INDEX idx_tasks_instance_id ON crm.tasks(instance_id);
+CREATE INDEX idx_tasks_project_id ON crm.tasks(project_id);
+CREATE INDEX idx_tasks_assigned_to_user_id ON crm.tasks(assigned_to_user_id);
+CREATE INDEX idx_tasks_parent_task_id ON crm.tasks(parent_task_id);
+CREATE INDEX idx_task_checklist_items_task_id ON crm.task_checklist_items(task_id);
+CREATE INDEX idx_list_templates_instance_id ON crm.list_templates(instance_id);
+CREATE INDEX idx_list_template_items_template_id ON crm.list_template_items(template_id);
+CREATE INDEX idx_calendar_events_instance_id_start_time ON crm.calendar_events(instance_id, start_time);
+CREATE INDEX idx_calendar_events_project_id ON crm.calendar_events(project_id);
+CREATE INDEX idx_calendar_events_task_id ON crm.calendar_events(task_id);
+CREATE INDEX idx_event_attendees_event_id ON crm.event_attendees(event_id);
+CREATE INDEX idx_event_attendees_user_id ON crm.event_attendees(attendee_user_id);
