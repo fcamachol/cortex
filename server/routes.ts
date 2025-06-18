@@ -146,10 +146,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Determine message type from the message content
-        let messageType: 'text' | 'image' | 'video' | 'audio' | 'document' | 'sticker' | 'location' | 'contact_card' | 'reactionMessage' = 'text';
+        let messageType: 'text' | 'image' | 'video' | 'audio' | 'document' | 'sticker' | 'location' | 'contact_card' | 'reaction' = 'text';
         if (message.message) {
           const messageContent = message.message;
-          if (messageContent.reactionMessage) messageType = 'reactionMessage';
+          if (messageContent.reactionMessage) messageType = 'reaction';
           else if (messageContent.conversation || messageContent.extendedTextMessage) messageType = 'text';
           else if (messageContent.imageMessage) messageType = 'image';
           else if (messageContent.videoMessage) messageType = 'video';
@@ -162,7 +162,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Also check the messageType field from Evolution API
         if (message.messageType === 'reactionMessage') {
-          messageType = 'reactionMessage';
+          messageType = 'reaction';
         }
 
         // Ensure the contact and chat exist before saving the message
@@ -234,7 +234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Handle reaction messages specially
-        if (messageType === 'reactionMessage' && message.message?.reactionMessage) {
+        if (messageType === 'reaction' || (message.message?.reactionMessage && message.messageType === 'reactionMessage')) {
           const reactionData = message.message.reactionMessage;
           const targetMessageId = reactionData.key.id;
           const reactionEmoji = reactionData.text;
@@ -259,14 +259,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } else {
           // Save regular messages to WhatsApp messages table (excluding reactions)
-          const validMessageType = messageType === 'reactionMessage' ? 'text' : messageType;
           const whatsappMessageData = {
             instanceId: instance.instanceId,
             messageId: message.key.id || '',
             chatId: chatId,
             senderJid: message.participant || message.key.remoteJid || '',
             fromMe: message.key.fromMe || false,
-            messageType: validMessageType,
+            messageType: messageType,
             content: extractMessageContent(message),
             timestamp: new Date((message.messageTimestamp || Math.floor(Date.now() / 1000)) * 1000),
             quotedMessageId: message.message?.extendedTextMessage?.contextInfo?.quotedMessage?.key?.id || null,
