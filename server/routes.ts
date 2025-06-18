@@ -683,52 +683,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Handle message edits first - check if this is an edit event
       if (data.message && data.message.editedMessage) {
-        const messageId = data.key?.id || data.messageId || data.keyId;
-        if (!messageId) {
-          console.log('Missing messageId for edit, skipping');
+        const editedMessage = data.message.editedMessage;
+        
+        // For message edits, the target message ID is in the protocolMessage.key.id
+        let targetMessageId = editedMessage.message?.protocolMessage?.key?.id;
+        
+        // Fallback to the webhook key if protocolMessage key is not available
+        if (!targetMessageId) {
+          targetMessageId = data.key?.id || data.messageId || data.keyId;
+        }
+        
+        if (!targetMessageId) {
+          console.log('Missing targetMessageId for edit, skipping');
           return;
         }
 
+        console.log(`🔄 Processing edit for message ${targetMessageId}`);
+        console.log(`🔍 Protocol message key ID: ${editedMessage.message?.protocolMessage?.key?.id}`);
+        console.log(`🔍 Webhook key ID: ${data.key?.id}`);
+
         try {
           // Get the existing message to store as old content
-          const existingMessage = await storage.getWhatsappMessage(userId, instance.instanceId, messageId);
+          const existingMessage = await storage.getWhatsappMessage(userId, instance.instanceId, targetMessageId);
           if (existingMessage) {
             const oldContent = existingMessage.content;
             
-            // Extract new content from edited message
-            const editedMessage = data.message.editedMessage;
+            // Extract new content from edited message - handle multiple formats
             let newContent = '[Edited message]';
             
-            if (editedMessage.message?.protocolMessage?.editedMessage?.conversation) {
-              newContent = editedMessage.message.protocolMessage.editedMessage.conversation;
-            } else if (editedMessage.message?.conversation) {
+            const protocolMessage = editedMessage.message?.protocolMessage;
+            if (protocolMessage?.editedMessage) {
+              const editContent = protocolMessage.editedMessage;
+              
+              // Text message edit
+              if (editContent.conversation) {
+                newContent = editContent.conversation;
+              }
+              // Extended text message edit
+              else if (editContent.extendedTextMessage?.text) {
+                newContent = editContent.extendedTextMessage.text;
+              }
+              // Media message edit (image, video, etc. with caption)
+              else if (editContent.imageMessage?.caption) {
+                newContent = editContent.imageMessage.caption;
+              }
+              else if (editContent.videoMessage?.caption) {
+                newContent = editContent.videoMessage.caption;
+              }
+              else if (editContent.documentMessage?.caption) {
+                newContent = editContent.documentMessage.caption;
+              }
+              // For media messages without caption
+              else if (editContent.imageMessage) {
+                newContent = '[Image caption edited]';
+              }
+              else if (editContent.videoMessage) {
+                newContent = '[Video caption edited]';
+              }
+              else if (editContent.documentMessage) {
+                newContent = '[Document caption edited]';
+              }
+            }
+            // Fallback for other edit formats
+            else if (editedMessage.message?.conversation) {
               newContent = editedMessage.message.conversation;
-            } else if (editedMessage.message?.extendedTextMessage?.text) {
+            }
+            else if (editedMessage.message?.extendedTextMessage?.text) {
               newContent = editedMessage.message.extendedTextMessage.text;
             }
 
             // Store edit history
             const editHistoryData = {
-              messageId: messageId,
+              messageId: targetMessageId,
               instanceId: instance.instanceId,
               oldContent: oldContent,
               editTimestamp: new Date()
             };
             
             await storage.createWhatsappMessageEditHistory(editHistoryData);
-            console.log(`📝 Stored edit history for message ${messageId}`);
+            console.log(`📝 Stored edit history for message ${targetMessageId}`);
 
             // Update the main message with new content
-            await storage.updateWhatsappMessage(userId, instance.instanceId, messageId, {
+            await storage.updateWhatsappMessage(userId, instance.instanceId, targetMessageId, {
               content: newContent,
               lastEditedAt: new Date()
             });
-            console.log(`✅ Updated message ${messageId} with edited content: "${newContent.substring(0, 50)}..."`);
+            console.log(`✅ Updated message ${targetMessageId} with edited content: "${newContent.substring(0, 50)}..."`);
             
             return; // Exit early as we handled the edit
+          } else {
+            console.log(`⚠️ Original message ${targetMessageId} not found for edit`);
           }
         } catch (editError) {
-          console.error(`Error processing message edit for ${messageId}:`, editError);
+          console.error(`Error processing message edit for ${targetMessageId}:`, editError);
         }
       }
 
