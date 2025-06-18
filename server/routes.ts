@@ -139,6 +139,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
+      // Helper functions for media handling
+      const isMediaMessage = (messageContent: any): boolean => {
+        return !!(
+          messageContent.imageMessage ||
+          messageContent.videoMessage ||
+          messageContent.audioMessage ||
+          messageContent.documentMessage ||
+          messageContent.stickerMessage
+        );
+      };
+
+      const extractMediaData = (messageContent: any, messageId: string, instanceId: string) => {
+        let mediaInfo = null;
+        let mediaType = '';
+
+        if (messageContent.imageMessage) {
+          mediaInfo = messageContent.imageMessage;
+          mediaType = 'image';
+        } else if (messageContent.videoMessage) {
+          mediaInfo = messageContent.videoMessage;
+          mediaType = 'video';
+        } else if (messageContent.audioMessage) {
+          mediaInfo = messageContent.audioMessage;
+          mediaType = 'audio';
+        } else if (messageContent.documentMessage) {
+          mediaInfo = messageContent.documentMessage;
+          mediaType = 'document';
+        } else if (messageContent.stickerMessage) {
+          mediaInfo = messageContent.stickerMessage;
+          mediaType = 'sticker';
+        }
+
+        if (!mediaInfo) return null;
+
+        return {
+          messageId: messageId,
+          instanceId: instanceId,
+          mimetype: mediaInfo.mimetype || 'application/octet-stream',
+          fileSizeBytes: parseInt(mediaInfo.fileLength || '0'),
+          fileUrl: mediaInfo.url || null,
+          fileLocalPath: null,
+          mediaKey: mediaInfo.mediaKey || null,
+          caption: mediaInfo.caption || null,
+          thumbnailUrl: null,
+          width: mediaInfo.width || null,
+          height: mediaInfo.height || null,
+          durationSeconds: mediaInfo.seconds || null,
+          isViewOnce: mediaInfo.viewOnce || false
+        };
+      }
+
       for (const message of messages) {
         if (!message || !message.key) {
           console.log('Invalid message format in array, skipping');
@@ -274,6 +325,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           const savedMessage = await storage.createWhatsappMessage(whatsappMessageData);
           console.log(`✅ Saved WhatsApp message from ${message.pushName || 'Unknown'}: "${whatsappMessageData.content?.substring(0, 50) || 'No content'}"`);
+
+          // Save media information if this is a media message
+          if (message.message && isMediaMessage(message.message)) {
+            const mediaData = extractMediaData(message.message, message.key.id || '', instance.instanceId);
+            if (mediaData) {
+              await storage.createWhatsappMessageMedia(mediaData);
+              console.log(`💾 Saved media data for message ${message.key.id}: ${mediaData.mimetype} (${mediaData.fileSizeBytes} bytes)`);
+            }
+          }
         }
       }
       
@@ -749,6 +809,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (messageContent.documentMessage?.caption) return messageContent.documentMessage.caption;
     
     return null;
+  }
+
+  function isMediaMessage(messageContent: any): boolean {
+    return !!(
+      messageContent.imageMessage ||
+      messageContent.videoMessage ||
+      messageContent.audioMessage ||
+      messageContent.documentMessage ||
+      messageContent.stickerMessage
+    );
+  }
+
+  function extractMediaData(messageContent: any, messageId: string, instanceId: string) {
+    let mediaInfo = null;
+    let mediaType = '';
+
+    if (messageContent.imageMessage) {
+      mediaInfo = messageContent.imageMessage;
+      mediaType = 'image';
+    } else if (messageContent.videoMessage) {
+      mediaInfo = messageContent.videoMessage;
+      mediaType = 'video';
+    } else if (messageContent.audioMessage) {
+      mediaInfo = messageContent.audioMessage;
+      mediaType = 'audio';
+    } else if (messageContent.documentMessage) {
+      mediaInfo = messageContent.documentMessage;
+      mediaType = 'document';
+    } else if (messageContent.stickerMessage) {
+      mediaInfo = messageContent.stickerMessage;
+      mediaType = 'sticker';
+    }
+
+    if (!mediaInfo) return null;
+
+    return {
+      messageId: messageId,
+      instanceId: instanceId,
+      mediaType: mediaType,
+      mimetype: mediaInfo.mimetype || 'application/octet-stream',
+      fileSize: parseInt(mediaInfo.fileLength || '0'),
+      fileName: mediaInfo.fileName || mediaInfo.title || null,
+      caption: mediaInfo.caption || null,
+      url: mediaInfo.url || null,
+      thumbnailUrl: null, // Evolution API doesn't provide separate thumbnail URLs
+      width: mediaInfo.width || null,
+      height: mediaInfo.height || null,
+      durationSeconds: mediaInfo.seconds || null,
+      isViewOnce: mediaInfo.viewOnce || false
+    };
   }
 
   function extractMessageContent(message: any): string {
