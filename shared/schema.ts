@@ -223,7 +223,7 @@ export const whatsappMessages = pgTable("whatsapp_messages", {
 
 // Evolution API raw messages table (no foreign key constraints) - use user_id for RLS
 export const evolutionMessages = pgTable("evolution_messages", {
-  messageId: uuid("message_id").primaryKey().defaultRandom(),
+  messageId: varchar("message_id").primaryKey(), // Use provided message ID from Evolution API
   userId: uuid("user_id").notNull(), // For RLS
   instanceName: varchar("instance_name").notNull(),
   

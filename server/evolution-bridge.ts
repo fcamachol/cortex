@@ -356,6 +356,7 @@ export class EvolutionWebSocketBridge {
         instanceId: this.instanceId,
         userId: this.userId,
         conversationId: '', // Will be resolved when creating/finding conversation
+        messageId: evolutionMessageId, // Map "id" field to message_id column
         evolutionMessageId,
         remoteJid,
         fromMe,

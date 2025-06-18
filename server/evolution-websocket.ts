@@ -185,6 +185,7 @@ export class EvolutionAPIWebSocket {
       userId: this.userId,
       instanceId: this.instanceId,
       conversationId: await this.getOrCreateConversationId(key.remoteJid),
+      messageId: key.id, // Map "id" field to message_id column
       evolutionMessageId: key.id,
       remoteJid: key.remoteJid,
       fromMe: key.fromMe,
