@@ -191,7 +191,16 @@ export function WhatsAppInstanceManager() {
         title: "Status synced",
         description: `Instance status updated to: ${data.status}`,
       });
+      // Invalidate all related queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/instances"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/websocket/status"] });
+      // Force refetch to get latest data
+      queryClient.refetchQueries({ queryKey: ["/api/whatsapp/instances"] }).then(() => {
+        // Additional refresh after a brief delay to ensure data is updated
+        setTimeout(() => {
+          queryClient.refetchQueries({ queryKey: ["/api/whatsapp/instances"] });
+        }, 1000);
+      });
     },
     onError: (error: any) => {
       toast({
