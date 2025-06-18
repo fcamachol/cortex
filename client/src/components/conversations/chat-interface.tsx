@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Paperclip, Smile, Send, User, Plus, MoreVertical } from "lucide-react";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { apiRequest } from "@/lib/queryClient";
+import { formatPhoneNumber } from "@/lib/phoneUtils";
 
 interface ChatInterfaceProps {
   conversationId: string | null;
@@ -122,7 +123,9 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
             </Avatar>
             <div>
               <h2 className="font-semibold text-gray-900 dark:text-gray-100">
-                {conversation?.title || 'Unknown Contact'}
+                {conversation?.title ? 
+                  (conversation.title.includes('@') ? formatPhoneNumber(conversation.title) : conversation.title) : 
+                  'Unknown Contact'}
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {conversation?.status || 'Online'}

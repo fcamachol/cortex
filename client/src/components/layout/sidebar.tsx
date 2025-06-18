@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { MessageCircle, CheckSquare, Users, Calendar, Plug, Settings, User, Activity } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { formatPhoneNumber } from "@/lib/phoneUtils";
 
 interface SidebarProps {
   activeModule: string;
@@ -142,7 +143,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
                         {instance.displayName || instance.instanceName}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {instance.phoneNumber || 'Not connected'}
+                        {instance.phoneNumber ? formatPhoneNumber(instance.phoneNumber) : 'Not connected'}
                       </p>
                     </div>
                   </div>
