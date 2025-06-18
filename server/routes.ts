@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
@@ -54,6 +54,15 @@ function formatToE164(phoneNumber: string): string {
     }
   }
 }
+
+// Simple authentication middleware
+const requireAuth = (req: any, res: any, next: any) => {
+  if (req.user && req.user.id) {
+    next();
+  } else {
+    res.status(401).json({ error: 'Authentication required' });
+  }
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -898,6 +907,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Manual status sync endpoint
+  app.post('/api/whatsapp/instances/:instanceId/sync-status', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { instanceId } = req.params;
+      const userId = req.user!.id.toString();
+
+      console.log(`🔄 Manual status sync requested for ${instanceId}`);
+
+      // Get current status from Evolution API
+      const connectionState = await getEvolutionApi().getConnectionState(instanceId);
+      console.log(`📊 Evolution API connection state for ${instanceId}:`, connectionState.instance.state);
+
+      let dbStatus = 'disconnected';
+      let connectionData: any = { state: connectionState.instance.state };
+
+      if (connectionState.instance.state === 'open') {
+        dbStatus = 'connected';
+        // Get additional instance info for connected state
+        try {
+          const instanceInfo = await getEvolutionApi().getInstanceInfo(instanceId);
+          if (instanceInfo.instance) {
+            connectionData.ownerJid = instanceInfo.instance.owner || null;
+          }
+        } catch (infoError) {
+          console.log('⚠️ Could not get instance info:', infoError);
+        }
+      } else if (connectionState.instance.state === 'connecting') {
+        dbStatus = 'connecting';
+      }
+
+      // Update database status
+      const updatedInstance = await storage.updateWhatsappInstanceStatus(instanceId, dbStatus, connectionData);
+
+      if (updatedInstance) {
+        console.log(`✅ Manual status sync successful for ${instanceId}: ${dbStatus}`);
+        console.log(`✅ Updated instance data:`, JSON.stringify(updatedInstance, null, 2));
+        res.json({ success: true, status: dbStatus, instance: updatedInstance });
+      } else {
+        console.log(`❌ Manual status sync failed for ${instanceId} - instance not found in database`);
+        res.status(404).json({ success: false, error: 'Instance not found' });
+      }
+    } catch (error) {
+      console.error('❌ Manual status sync error:', error);
+      res.status(500).json({ success: false, error: 'Status sync failed' });
+    }
+  });
+
   // WhatsApp profile endpoint
   app.get("/api/whatsapp/instances/:id/profile", async (req, res) => {
     try {
@@ -1191,22 +1247,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const eventData = req.body;
 
       console.log('🔔 Webhook received for instance:', instanceId, 'Event:', eventData.event);
+      console.log('📨 Full webhook payload:', JSON.stringify(eventData, null, 2));
 
       // Handle different event types
       if (eventData.event === 'connection.update') {
         // Connection status changed
         const connectionData = eventData.data;
-        console.log('📱 Connection update for instance:', instanceId, connectionData);
+        console.log('📱 Connection update for instance:', instanceId, 'Connection data:', JSON.stringify(connectionData, null, 2));
         
         // Update instance status in database
         if (connectionData.state === 'open') {
-          await storage.updateWhatsappInstanceStatus(instanceId, 'connected', connectionData);
-          console.log('✅ Instance status updated to connected');
+          const updatedInstance = await storage.updateWhatsappInstanceStatus(instanceId, 'connected', {
+            ownerJid: connectionData.qr || connectionData.credentials?.me?.id || null,
+            state: connectionData.state
+          });
+          console.log('✅ Instance status updated to connected:', updatedInstance ? 'SUCCESS' : 'FAILED');
+          if (updatedInstance) {
+            console.log('✅ Updated instance data:', JSON.stringify(updatedInstance, null, 2));
+          }
         } else if (connectionData.state === 'close' || connectionData.state === 'connecting') {
-          await storage.updateWhatsappInstanceStatus(instanceId, connectionData.state, connectionData);
-          console.log('🔄 Instance status updated to:', connectionData.state);
+          const updatedInstance = await storage.updateWhatsappInstanceStatus(instanceId, connectionData.state, connectionData);
+          console.log('🔄 Instance status updated to:', connectionData.state, updatedInstance ? 'SUCCESS' : 'FAILED');
+          if (updatedInstance) {
+            console.log('🔄 Updated instance data:', JSON.stringify(updatedInstance, null, 2));
+          }
         }
       } else if (eventData.event === 'messages.upsert') {
+        // If receiving messages, instance must be connected - sync status
+        console.log('📨 Received messages.upsert - checking if status needs sync for:', instanceId);
+        try {
+          const instanceStatus = await getEvolutionApi().getAllInstances();
+          const matchingInstance = instanceStatus.find((instance: any) => 
+            instance.instance.instanceName === instanceId
+          );
+          
+          if (matchingInstance && matchingInstance.instance.status === 'open') {
+            console.log('🔄 Auto-syncing status to connected for:', instanceId);
+            await storage.updateWhatsappInstanceStatus(instanceId, 'connected', {
+              ownerJid: matchingInstance.instance.owner,
+              state: 'open'
+            });
+          }
+        } catch (syncError) {
+          console.log('⚠️ Status sync failed:', syncError);
+        }
+        
         await handleWebhookMessagesUpsert(instanceId, eventData.data);
       } else if (eventData.event === 'contacts.upsert') {
         await handleWebhookContactsUpsert(instanceId, eventData.data);
