@@ -1,6 +1,9 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
+import fs from "fs";
+import path from "path";
+import fetch from "node-fetch";
 import { storage } from "./storage";
 import { evolutionManager } from "./evolution-manager";
 import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings, getInstanceEvolutionApi } from "./evolution-api";
@@ -154,10 +157,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           console.log(`🔄 Starting download for ${messageId}: ${mediaUrl}`);
           
-          const fs = require('fs');
-          const path = require('path');
-          const fetch = require('node-fetch');
-          
           // Create media storage directory if it doesn't exist
           const mediaDir = path.join(process.cwd(), 'media', instanceId);
           console.log(`📁 Creating directory: ${mediaDir}`);
@@ -202,7 +201,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           console.log(`✅ Fetch successful, getting buffer...`);
-          const buffer = await response.buffer();
+          const arrayBuffer = await response.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
           fs.writeFileSync(localPath, buffer);
           
           console.log(`📥 Downloaded media file: ${fileName} (${buffer.length} bytes)`);
@@ -402,17 +402,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Save media information if this is a media message
           if (message.message && isMediaMessage(message.message)) {
-            try {
-              const mediaData = await extractMediaData(message.message, message.key.id || '', instance.instanceId);
-              if (mediaData) {
-                await storage.createWhatsappMessageMedia(mediaData);
-                console.log(`💾 Saved media data for message ${message.key.id}: ${mediaData.mimetype} (${mediaData.fileSizeBytes} bytes)`);
-                if (mediaData.fileLocalPath) {
-                  console.log(`📁 File stored locally: ${mediaData.fileLocalPath}`);
-                }
-              }
-            } catch (error) {
-              console.error('Error processing media data:', error);
+            const mediaData = {
+              messageId: message.key.id || '',
+              instanceId: instance.instanceId,
+              mimetype: getMediaMimetype(message.message) || 'application/octet-stream',
+              fileSizeBytes: parseInt(getMediaSize(message.message) || '0'),
+              fileUrl: getMediaUrl(message.message),
+              fileLocalPath: null, // Temporarily disabled until module issues are resolved
+              mediaKey: message.message.imageMessage?.mediaKey || message.message.videoMessage?.mediaKey || message.message.audioMessage?.mediaKey || message.message.documentMessage?.mediaKey || null,
+              caption: getMediaCaption(message.message),
+              thumbnailUrl: null,
+              width: message.message.imageMessage?.width || message.message.videoMessage?.width || null,
+              height: message.message.imageMessage?.height || message.message.videoMessage?.height || null,
+              durationSeconds: message.message.audioMessage?.seconds || message.message.videoMessage?.seconds || null,
+              isViewOnce: message.message.imageMessage?.viewOnce || message.message.videoMessage?.viewOnce || false
+            };
+
+            if (mediaData.fileUrl) {
+              await storage.createWhatsappMessageMedia(mediaData);
+              console.log(`💾 Saved media data for message ${message.key.id}: ${mediaData.mimetype} (${mediaData.fileSizeBytes} bytes)`);
             }
           }
         }
