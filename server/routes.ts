@@ -436,8 +436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     'User-Agent': 'WhatsApp/2.2043.7 Mozilla/5.0 (compatible; WhatsApp)',
                     'Accept': '*/*',
                     'Accept-Encoding': 'gzip, deflate, br'
-                  },
-                  timeout: 30000
+                  }
                 });
                 
                 if (response.ok) {
@@ -2333,6 +2332,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get group information and participants
+  // Serve media files
+  app.get('/api/whatsapp/media/:instanceId/:messageId', async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      if (!req.user?.id) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      await setRLSContext(req.user.id);
+      
+      const { instanceId, messageId } = req.params;
+      
+      // Get media information from database
+      const [mediaInfo] = await db
+        .select()
+        .from(whatsappMessageMedia)
+        .where(and(
+          eq(whatsappMessageMedia.messageId, messageId),
+          eq(whatsappMessageMedia.instanceId, instanceId)
+        ));
+
+      if (!mediaInfo) {
+        return res.status(404).json({ error: 'Media not found' });
+      }
+
+      // Check if local file exists
+      if (mediaInfo.fileLocalPath && fs.existsSync(mediaInfo.fileLocalPath)) {
+        res.setHeader('Content-Type', mediaInfo.mimetype || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `inline; filename="${messageId}"`);
+        return res.sendFile(path.resolve(mediaInfo.fileLocalPath));
+      }
+
+      // Fallback to redirect to original URL if local file not available
+      if (mediaInfo.fileUrl) {
+        return res.redirect(mediaInfo.fileUrl);
+      }
+
+      res.status(404).json({ error: 'Media file not available' });
+    } catch (error) {
+      console.error('Error serving media:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   app.get("/api/whatsapp/groups/:instanceId/:groupJid", async (req: Request & { user?: { id: string } }, res: Response) => {
     try {
       if (!req.user) {
