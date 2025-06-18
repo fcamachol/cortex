@@ -211,7 +211,7 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
                 />
               </FormControl>
               <FormDescription>
-                Use templates: {'{'}{'{'}'sender'{'}'{'}'}, {'{'}{'{'}'content'{'}'{'}'}, {'{'}{'{'}'hashtags'{'}'{'}'}, {'{'}{'{'}'timestamp'{'}'}'}'}
+                Use templates: {'{{sender}}'}, {'{{content}}'}, {'{{hashtags}}'}, {'{{timestamp}}'}
               </FormDescription>
             </FormItem>
             <FormItem>

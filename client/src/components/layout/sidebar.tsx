@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, CheckSquare, Users, Calendar, Plug, Settings, User, Activity } from "lucide-react";
+import { MessageCircle, CheckSquare, Users, Calendar, Plug, Settings, User, Activity, Zap } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { formatPhoneNumber } from "@/lib/phoneUtils";
@@ -52,6 +52,13 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
       icon: Calendar,
       badge: "2",
       badgeColor: "bg-blue-500"
+    },
+    {
+      id: "actions",
+      label: "Actions",
+      icon: Zap,
+      badge: "3",
+      badgeColor: "bg-purple-500"
     },
     {
       id: "integrations",
