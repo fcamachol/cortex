@@ -1,0 +1,49 @@
+-- =============================================================================
+-- SCHEMA CHANGES FOR ADVANCED PERMISSIONS
+-- PURPOSE: This script updates the `whatsapp` schema to support private and
+--          shared instances with granular user access control.
+-- =============================================================================
+
+-- Step 1: Create the new ENUM type for instance visibility.
+CREATE TYPE whatsapp.instance_visibility AS ENUM ('private', 'shared');
+COMMENT ON TYPE whatsapp.instance_visibility IS 'Defines if an instance is private to its creator or shared with specific team members.';
+
+
+-- Step 2: Modify the `whatsapp.instances` table.
+-- This adds the necessary columns to track visibility and ownership.
+ALTER TABLE whatsapp.instances
+    -- Add the visibility column with a 'private' default for all new instances.
+    ADD COLUMN visibility whatsapp.instance_visibility NOT NULL DEFAULT 'private',
+
+    -- Add a column to track who originally created the instance.
+    ADD COLUMN creator_user_id UUID;
+
+-- After running the alter, you might want to backfill the creator_user_id
+-- for existing instances based on your application logic.
+-- Example: UPDATE whatsapp.instances SET creator_user_id = 'some_user_uuid' WHERE ...
+
+-- Add a foreign key constraint for the new creator_user_id column.
+ALTER TABLE whatsapp.instances
+    ADD CONSTRAINT fk_creator_user FOREIGN KEY(creator_user_id) REFERENCES app.users(user_id) ON DELETE CASCADE;
+
+
+-- Step 3: Create the new table for managing access to shared instances.
+-- This table acts as an Access Control List (ACL).
+CREATE TABLE whatsapp.instance_members (
+    instance_id VARCHAR(100) NOT NULL,
+    user_id UUID NOT NULL,
+
+    PRIMARY KEY (instance_id, user_id),
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES app.users(user_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE whatsapp.instance_members IS 'Junction table granting specific users access to an instance when its visibility is "shared".';
+
+
+-- Step 4: Add a new index for performance.
+CREATE INDEX idx_instance_members_user_id ON whatsapp.instance_members(user_id);
+
+
+-- Step 5: Add comments to the new columns for clarity.
+COMMENT ON COLUMN whatsapp.instances.visibility IS '`private`=only creator has access. `shared`=access managed in instance_members table.';
+COMMENT ON COLUMN whatsapp.instances.creator_user_id IS 'The user who created the instance and always has access.';
