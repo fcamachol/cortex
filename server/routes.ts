@@ -1697,7 +1697,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const group of groupChats) {
         try {
           // Fetch participants from Evolution API
-          const response = await evolutionApi.makeRequest(`/group/participants/${instanceId}?groupJid=${encodeURIComponent(group.chatId)}`);
+          const response: any = await evolutionApi.getGroupParticipants(instanceId, group.chatId);
           
           if (response.participants && Array.isArray(response.participants)) {
             for (const participant of response.participants) {

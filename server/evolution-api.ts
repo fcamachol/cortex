@@ -271,6 +271,10 @@ export class EvolutionApi {
     return this.makeRequest(`/group/findGroup/${instanceName}?groupJid=${groupJid}`);
   }
 
+  async getGroupParticipants(instanceName: string, groupJid: string): Promise<any> {
+    return this.makeRequest(`/group/participants/${instanceName}?groupJid=${encodeURIComponent(groupJid)}`);
+  }
+
   // Instance Status Check
   async checkInstanceStatus(instanceName: string): Promise<{
     instanceName: string;
