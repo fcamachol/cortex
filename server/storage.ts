@@ -269,6 +269,10 @@ export class DatabaseStorage implements IStorage {
     return result?.contacts || undefined;
   }
 
+  async getWhatsappContactByJid(userId: string, instanceId: string, jid: string): Promise<WhatsappContact | undefined> {
+    return this.getWhatsappContact(userId, instanceId, jid);
+  }
+
   async createWhatsappContact(contact: InsertWhatsappContact): Promise<WhatsappContact> {
     const [newContact] = await db
       .insert(whatsappContacts)

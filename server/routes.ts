@@ -2464,12 +2464,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Message not found" });
       }
       
+      // Look up sender's name from contacts database and message data
+      let senderName = null;
+      
+      // First try to get name from contacts database
+      if (result.senderJid) {
+        try {
+          const contact = await storage.getWhatsappContact(userId, instanceId as string, result.senderJid);
+          if (contact && (contact.pushName || contact.verifiedName)) {
+            senderName = contact.verifiedName || contact.pushName;
+          }
+        } catch (contactError) {
+          console.log('Could not fetch contact for sender:', result.senderJid);
+        }
+      }
+      
+      // If no contact found, try to extract from raw message payload
+      if (!senderName && result.rawApiPayload && result.rawApiPayload.pushName) {
+        senderName = result.rawApiPayload.pushName;
+      }
+      
+      // Add sender name to result
+      const enhancedResult = {
+        ...result,
+        senderName: senderName || result.senderJid?.split('@')[0] || 'Unknown sender'
+      };
+      
       // Set no-cache headers
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
       
-      res.json(result);
+      res.json(enhancedResult);
     } catch (error) {
       console.error('Error fetching message content:', error);
       res.status(500).json({ error: "Failed to fetch message content" });

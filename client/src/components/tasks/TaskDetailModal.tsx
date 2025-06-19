@@ -467,17 +467,20 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                   {/* Original Message Display */}
                   {messageData ? (
                     <div className="p-3 bg-white rounded-lg border">
-                      <div className="text-xs text-gray-500 mb-2">
-                        Original WhatsApp Message
+                      <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                        <span>Original WhatsApp Message</span>
+                        <span>
+                          {messageData.timestamp 
+                            ? format(new Date(messageData.timestamp), "MMM dd, yyyy 'at' h:mm a")
+                            : 'Unknown time'
+                          }
+                        </span>
                       </div>
                       <div className="text-sm text-gray-800 whitespace-pre-wrap bg-gray-50 p-3 rounded">
                         "{messageData.content || "No message content available"}"
                       </div>
                       <div className="mt-2 text-xs text-gray-500">
-                        {messageData.timestamp 
-                          ? format(new Date(messageData.timestamp), "MMM dd, yyyy 'at' h:mm a")
-                          : 'Unknown time'
-                        }
+                        From: {messageData.senderName || messageData.senderJid || "Unknown sender"}
                       </div>
                     </div>
                   ) : task.triggering_message_id ? (
