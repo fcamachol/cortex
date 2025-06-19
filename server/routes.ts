@@ -380,11 +380,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.deleteWhatsappMessageReaction('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instance.instanceId, targetMessageId, reactorJid);
             console.log(`🗑️ Removed reaction from ${reactorJid} on message ${targetMessageId}`);
           } else {
-            // Look up the reactor contact to determine if they are internal (is_me = true)
-            const reactorContact = await storage.getWhatsappContact('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instance.instanceId, reactorJid);
-            const isInternalUser = reactorContact?.isMe || false;
+            // Use the webhook's fromMe value directly - it's more accurate than database lookup
+            const isInternalUser = message.key.fromMe || false;
             
-            console.log(`🔍 Contact lookup for ${reactorJid}: found=${!!reactorContact}, isMe=${reactorContact?.isMe}, setting fromMe=${isInternalUser}`);
+            console.log(`🔍 Using webhook fromMe value for ${reactorJid}: fromMe=${isInternalUser}`);
 
             // Add or update reaction
             const reactionMessageData = {
