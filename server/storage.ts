@@ -539,6 +539,7 @@ export class DatabaseStorage implements IStorage {
         target: [whatsappMessageReactions.messageId, whatsappMessageReactions.instanceId, whatsappMessageReactions.reactorJid],
         set: {
           reactionEmoji: reaction.reactionEmoji,
+          fromMe: reaction.fromMe,
           timestamp: reaction.timestamp
         }
       })

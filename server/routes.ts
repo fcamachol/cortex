@@ -386,6 +386,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               instanceId: instance.instanceId,
               reactorJid: reactorJid,
               reactionEmoji: reactionEmoji,
+              fromMe: message.key.fromMe || false,
               timestamp: new Date((message.messageTimestamp || Math.floor(Date.now() / 1000)) * 1000)
             };
 
