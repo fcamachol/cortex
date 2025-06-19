@@ -2525,17 +2525,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (result.chatId) {
         try {
           if (isGroupChat) {
-            // Group chat - try to get group info
-            const chat = await storage.getWhatsappChat(userId, instanceId as string, result.chatId);
-            if (chat) {
-              // Type assertion to access the name property safely
-              const chatData = chat as any;
-              if (chatData.name || chatData.chatName) {
-                chatName = chatData.name || chatData.chatName;
+            // Group chat - try to get group info using direct SQL query
+            try {
+              const groupResult = await pool.query(
+                'SELECT chat_name FROM whatsapp_conversations WHERE remote_jid = $1 AND user_id = $2 LIMIT 1',
+                [result.chatId, userId]
+              );
+              
+              if (groupResult.rows.length > 0 && groupResult.rows[0].chat_name) {
+                chatName = groupResult.rows[0].chat_name;
               } else {
-                chatName = 'Group Chat';
+                // Fallback: extract group name from raw API payload if available
+                const payload = result.rawApiPayload as any;
+                if (payload && payload.message && payload.message.messageContextInfo && payload.message.messageContextInfo.groupSubject) {
+                  chatName = payload.message.messageContextInfo.groupSubject;
+                } else {
+                  chatName = 'Group Chat';
+                }
               }
-            } else {
+            } catch (sqlError) {
               chatName = 'Group Chat';
             }
           } else {
