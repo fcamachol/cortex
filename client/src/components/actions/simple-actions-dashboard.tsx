@@ -4,6 +4,7 @@ import { Plus, Settings, Activity, TrendingUp, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ActionRuleForm } from "./action-rule-form";
 
 interface ActionStats {
   totalRules: number;
@@ -174,27 +175,13 @@ export function SimpleActionsDashboard() {
       </Card>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-2xl m-4">
-            <CardHeader>
-              <CardTitle>Create Action Rule</CardTitle>
-              <CardDescription>
-                Set up automated workflows triggered by WhatsApp events
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  Action rule configuration form will be available once the component structure is optimized.
-                  The backend infrastructure is ready and processing triggers.
-                </p>
-                <Button onClick={() => setShowForm(false)} className="mt-4">
-                  Close
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <ActionRuleForm
+          onClose={() => setShowForm(false)}
+          onSave={() => {
+            setShowForm(false);
+            // Refresh any data if needed
+          }}
+        />
       )}
     </div>
   );

@@ -57,10 +57,7 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('/api/actions/rules', {
-      method: 'POST',
-      body: data,
-    }),
+    mutationFn: (data: any) => apiRequest('POST', '/api/actions/rules', data),
     onSuccess: () => {
       toast({
         title: "Rule created",
@@ -71,10 +68,7 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: any) => apiRequest(`/api/actions/rules/${rule.ruleId}`, {
-      method: 'PUT',
-      body: data,
-    }),
+    mutationFn: (data: any) => apiRequest('PUT', `/api/actions/rules/${rule.ruleId}`, data),
     onSuccess: () => {
       toast({
         title: "Rule updated",
@@ -85,14 +79,12 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   });
 
   const testMutation = useMutation({
-    mutationFn: (testContext: any) => apiRequest(`/api/actions/rules/${rule?.ruleId}/test`, {
-      method: 'POST',
-      body: { testContext },
-    }),
-    onSuccess: (result) => {
+    mutationFn: (testContext: any) => apiRequest('POST', `/api/actions/rules/${rule?.ruleId}/test`, { testContext }),
+    onSuccess: async (result: Response) => {
+      const data = await result.json();
       toast({
-        title: result.wouldTrigger ? "Test passed" : "Test failed",
-        description: result.wouldTrigger 
+        title: data.wouldTrigger ? "Test passed" : "Test failed",
+        description: data.wouldTrigger 
           ? "The rule would trigger with the test conditions"
           : "The rule would not trigger with the test conditions",
       });
@@ -117,14 +109,14 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   };
 
   const handleTriggerConditionChange = (key: string, value: any) => {
-    setTriggerConditions(prev => ({
+    setTriggerConditions((prev: any) => ({
       ...prev,
       [key]: value
     }));
   };
 
   const handleActionConfigChange = (key: string, value: any) => {
-    setActionConfig(prev => ({
+    setActionConfig((prev: any) => ({
       ...prev,
       [key]: value
     }));
