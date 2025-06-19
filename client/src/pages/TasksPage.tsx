@@ -96,7 +96,8 @@ export function TasksPage() {
 
   // Fetch projects
   const { data: projects, isLoading: projectsLoading } = useQuery({
-    queryKey: ['/api/crm/projects']
+    queryKey: ['/api/crm/projects'],
+    select: (data: any) => data || []
   });
 
   // Fetch checklist items for tasks
@@ -223,7 +224,7 @@ export function TasksPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Projects</SelectItem>
-                {(projects?.data || []).map((project: Project) => (
+                {(projects || []).map((project: Project) => (
                   <SelectItem key={project.project_id} value={project.project_id.toString()}>
                     {project.project_name}
                   </SelectItem>

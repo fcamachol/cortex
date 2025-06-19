@@ -99,7 +99,7 @@ export function TaskForm({ task, projects, onSubmit, onClose, isLoading }: TaskF
       due_date: data.due_date?.toISOString(),
       checklist_items: checklistItems.length > 0 ? checklistItems : undefined,
     };
-    onSubmit(formattedData);
+    onSubmit(formattedData as any);
   };
 
   const addChecklistItem = () => {
