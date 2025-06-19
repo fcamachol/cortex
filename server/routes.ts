@@ -3505,11 +3505,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         INSERT INTO crm.tasks (
           instance_id, title, description, status, priority, due_date,
           project_id, parent_task_id, assigned_to_user_id, related_chat_jid,
-          created_by_user_id, space_id
+          created_by_user_id
         ) VALUES (
           ${instanceId}, ${title}, ${description || null}, ${status}, ${priority}, ${due_date || null},
           ${project_id || null}, ${parent_task_id || null}, ${assigned_to_user_id || null}, ${related_chat_jid || null},
-          ${userId}, ${1}
+          ${userId}
         ) RETURNING *
       `);
 
