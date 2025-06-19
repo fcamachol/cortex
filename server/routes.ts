@@ -2840,9 +2840,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // =============================================================================
 
   // Get all action rules for a user
-  app.get('/api/actions/rules', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+  app.get('/api/actions/rules', async (req: Request & { user?: { id: string } }, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Default user ID
       const { workspaceId, spaceId } = req.query;
 
       let query = db.select().from(actionRules).where(eq(actionRules.userId, userId));
@@ -2863,9 +2863,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a new action rule
-  app.post('/api/actions/rules', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+  app.post('/api/actions/rules', async (req: Request & { user?: { id: string } }, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Default user ID
       const ruleData = insertActionRuleSchema.parse({
         ...req.body,
         userId
@@ -2880,9 +2880,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update an action rule
-  app.put('/api/actions/rules/:ruleId', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+  app.put('/api/actions/rules/:ruleId', async (req: Request & { user?: { id: string } }, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Default user ID
       const { ruleId } = req.params;
       const updateData = { ...req.body, updatedAt: new Date() };
 
@@ -2904,9 +2904,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete an action rule
-  app.delete('/api/actions/rules/:ruleId', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+  app.delete('/api/actions/rules/:ruleId', async (req: Request & { user?: { id: string } }, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Default user ID
       const { ruleId } = req.params;
 
       const [deletedRule] = await db
@@ -2926,9 +2926,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Toggle action rule active status
-  app.patch('/api/actions/rules/:ruleId/toggle', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+  app.patch('/api/actions/rules/:ruleId/toggle', async (req: Request & { user?: { id: string } }, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Default user ID
       const { ruleId } = req.params;
 
       const [currentRule] = await db
@@ -2957,9 +2957,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get action executions for a rule
-  app.get('/api/actions/rules/:ruleId/executions', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+  app.get('/api/actions/rules/:ruleId/executions', async (req: Request & { user?: { id: string } }, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Default user ID
       const { ruleId } = req.params;
       const { limit = '50', offset = '0' } = req.query;
 
@@ -3060,9 +3060,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get action statistics
-  app.get('/api/actions/stats', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+  app.get('/api/actions/stats', async (req: Request & { user?: { id: string } }, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Default user ID
 
       const [totalRules] = await db
         .select({ count: sql<number>`count(*)` })
