@@ -192,10 +192,8 @@ export default function SignupPage() {
               <span className="text-gray-600 dark:text-gray-400">
                 Already have an account?{' '}
               </span>
-              <Link href="/login">
-                <a className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
-                  Sign in
-                </a>
+              <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
+                Sign in
               </Link>
             </div>
           </CardContent>

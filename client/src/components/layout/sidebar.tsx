@@ -1,10 +1,11 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, CheckSquare, Users, Calendar, Plug, Settings, User, Activity, Zap } from "lucide-react";
+import { MessageCircle, CheckSquare, Users, Calendar, Plug, Settings, User, Activity, Zap, LogOut } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { formatPhoneNumber } from "@/lib/phoneUtils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SidebarProps {
   activeModule: string;
@@ -12,11 +13,13 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProps) {
-  // Mock user data - in real app this would come from auth context
+  const { user, logout } = useAuth();
+  
+  // Use authenticated user data with fallback for demo
   const currentUser = {
-    id: "7804247f-3ae8-4eb2-8c6d-2c44f967ad42",
-    name: "Demo User",
-    email: "demo@example.com",
+    id: user?.userId || "7804247f-3ae8-4eb2-8c6d-2c44f967ad42",
+    name: user?.fullName || user?.email || "Demo User",
+    email: user?.email || "demo@example.com",
     avatar: null
   };
 
