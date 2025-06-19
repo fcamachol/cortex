@@ -65,6 +65,7 @@ export function TasksPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedSubtask, setSelectedSubtask] = useState<Task | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -336,6 +337,10 @@ export function TasksPage() {
         onClose={() => setSelectedTask(null)}
         onUpdate={handleTaskUpdate}
         onDelete={handleTaskDelete}
+        onTaskClick={(subtask) => {
+          setSelectedSubtask(subtask);
+          setSelectedTask(null); // Close parent task modal
+        }}
         onRefresh={async () => {
           // Invalidate and refetch the tasks query
           await queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
@@ -347,8 +352,32 @@ export function TasksPage() {
               const transformedData = transformTasksData(freshData as Task[]);
               const updatedTask = transformedData.find(t => t.task_id === selectedTask.task_id);
               if (updatedTask) {
-                console.log('Updating selectedTask with fresh data:', updatedTask);
                 setSelectedTask(updatedTask);
+              }
+            }
+          }
+        }}
+      />
+
+      {/* Subtask Detail Modal */}
+      <TaskDetailModal
+        key={selectedSubtask?.task_id}
+        task={selectedSubtask}
+        isOpen={!!selectedSubtask}
+        onClose={() => setSelectedSubtask(null)}
+        onUpdate={handleTaskUpdate}
+        onDelete={handleTaskDelete}
+        allowSubtasks={false} // Subtasks cannot have their own subtasks
+        onRefresh={async () => {
+          await queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
+          
+          if (selectedSubtask) {
+            const freshData = await queryClient.fetchQuery({ queryKey: ['/api/crm/tasks'] });
+            if (freshData && Array.isArray(freshData)) {
+              const allTasks = freshData as Task[];
+              const updatedSubtask = allTasks.find(t => t.task_id === selectedSubtask.task_id);
+              if (updatedSubtask) {
+                setSelectedSubtask(updatedSubtask);
               }
             }
           }
