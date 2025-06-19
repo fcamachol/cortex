@@ -2447,8 +2447,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get individual WhatsApp message
-  app.get("/api/whatsapp/messages/single", async (req, res) => {
+  // Get individual WhatsApp message content (new endpoint to avoid caching)
+  app.get("/api/whatsapp/message-content", async (req, res) => {
     try {
       const { messageId, instanceId } = req.query;
       const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
@@ -2457,13 +2457,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "messageId and instanceId are required" });
       }
       
-      // Use storage function to get message
+      // Direct database query to get message content
       const result = await storage.getWhatsappMessage(userId, instanceId as string, messageId as string);
       
       if (!result) {
         return res.status(404).json({ error: "Message not found" });
       }
       
+      // Set no-cache headers
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error fetching message content:', error);
+      res.status(500).json({ error: "Failed to fetch message content" });
+    }
+  });
+
+  // Get individual WhatsApp message
+  app.get("/api/whatsapp/messages/single", async (req, res) => {
+    try {
+      const { messageId, instanceId } = req.query;
+      const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      
+      console.log('API: Received params:', { messageId, instanceId, userId });
+      
+      if (!messageId || !instanceId) {
+        return res.status(400).json({ error: "messageId and instanceId are required" });
+      }
+      
+      // Use storage function to get message
+      const result = await storage.getWhatsappMessage(userId, instanceId as string, messageId as string);
+      
+      console.log('API: Storage result:', result);
+      
+      if (!result) {
+        console.log('API: No result found, returning 404');
+        return res.status(404).json({ error: "Message not found" });
+      }
+      
+      console.log('API: Returning result:', result);
       res.json(result);
     } catch (error) {
       console.error('Error fetching individual message:', error);

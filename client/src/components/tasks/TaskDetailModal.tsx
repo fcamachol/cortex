@@ -54,17 +54,26 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
 
   // Fetch WhatsApp message data if task has triggering message
   const { data: messageData } = useQuery({
-    queryKey: ['/api/whatsapp/messages/single', task?.triggering_message_id, task?.instance_id],
+    queryKey: ['/api/whatsapp/message-content', task?.triggering_message_id, task?.instance_id, Date.now()],
     queryFn: async () => {
       if (!task?.triggering_message_id || !task?.instance_id) return null;
-      const response = await fetch(`/api/whatsapp/messages/single?messageId=${task.triggering_message_id}&instanceId=${task.instance_id}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42&t=${Date.now()}`);
+      
+      // Direct API call with cache-busting
+      const response = await fetch(`/api/whatsapp/message-content?messageId=${task.triggering_message_id}&instanceId=${task.instance_id}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42&_=${Date.now()}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
       if (!response.ok) return null;
       const data = await response.json();
       return data;
     },
     enabled: !!(task?.triggering_message_id && task?.instance_id),
-    staleTime: 0, // Force fresh data
-    gcTime: 0, // Don't cache
+    staleTime: 0,
+    gcTime: 0,
   });
 
   // Reply mutation
