@@ -343,9 +343,9 @@ export class ActionsEngine {
     // Save task to database using CRM schema
     try {
       const result = await db.execute(sql`
-        INSERT INTO crm.tasks (instance_id, title, description, priority, status, related_chat_jid, created_by_user_id)
-        VALUES ('live-test-1750199771', ${taskData.title}, ${taskData.description}, ${taskData.priority}, ${taskData.taskStatus}, ${taskData.relatedChatJid}, ${taskData.userId})
-        RETURNING task_id, title, description, status
+        INSERT INTO crm.tasks (instance_id, title, description, priority, status, related_chat_jid, triggering_message_id, created_by_user_id)
+        VALUES ('live-test-1750199771', ${taskData.title}, ${taskData.description}, ${taskData.priority}, ${taskData.taskStatus}, ${taskData.relatedChatJid}, ${context.messageId}, ${taskData.userId})
+        RETURNING task_id, title, description, status, triggering_message_id
       `);
       
       console.log('✅ Task saved to database:', result);
