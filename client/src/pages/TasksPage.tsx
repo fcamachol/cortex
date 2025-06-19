@@ -68,34 +68,36 @@ export function TasksPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Helper function to transform raw task data into hierarchical structure
+  const transformTasksData = (data: Task[]) => {
+    const taskMap = new Map<number, Task>();
+    const rootTasks: Task[] = [];
+    
+    // First pass: create task map
+    data.forEach(task => {
+      taskMap.set(task.task_id, { ...task, subtasks: [] });
+    });
+    
+    // Second pass: build hierarchy
+    data.forEach(task => {
+      const taskWithSubtasks = taskMap.get(task.task_id)!;
+      if (task.parent_task_id) {
+        const parent = taskMap.get(task.parent_task_id);
+        if (parent) {
+          parent.subtasks!.push(taskWithSubtasks);
+        }
+      } else {
+        rootTasks.push(taskWithSubtasks);
+      }
+    });
+    
+    return rootTasks;
+  };
+
   // Fetch tasks
   const { data: tasks, isLoading: tasksLoading } = useQuery({
     queryKey: ['/api/crm/tasks'],
-    select: (data: Task[]) => {
-      // Build hierarchical structure
-      const taskMap = new Map<number, Task>();
-      const rootTasks: Task[] = [];
-      
-      // First pass: create task map
-      data.forEach(task => {
-        taskMap.set(task.task_id, { ...task, subtasks: [] });
-      });
-      
-      // Second pass: build hierarchy
-      data.forEach(task => {
-        const taskWithSubtasks = taskMap.get(task.task_id)!;
-        if (task.parent_task_id) {
-          const parent = taskMap.get(task.parent_task_id);
-          if (parent) {
-            parent.subtasks!.push(taskWithSubtasks);
-          }
-        } else {
-          rootTasks.push(taskWithSubtasks);
-        }
-      });
-      
-      return rootTasks;
-    }
+    select: transformTasksData
   });
 
   // Fetch projects
@@ -321,21 +323,21 @@ export function TasksPage() {
 
       {/* Task Detail Modal */}
       <TaskDetailModal
+        key={selectedTask?.task_id} // Force re-render when task changes
         task={selectedTask}
         isOpen={!!selectedTask}
         onClose={() => setSelectedTask(null)}
         onUpdate={handleTaskUpdate}
         onDelete={handleTaskDelete}
         onRefresh={() => {
-          // Refetch tasks and update selectedTask with fresh data
-          queryClient.refetchQueries({ queryKey: ['/api/crm/tasks'] }).then(() => {
-            if (selectedTask && tasks) {
-              const updatedTask = tasks.find(t => t.task_id === selectedTask.task_id);
-              if (updatedTask) {
-                setSelectedTask(updatedTask);
-              }
+          if (selectedTask && tasks) {
+            // Find the updated task in the current tasks data
+            const updatedTask = tasks.find(t => t.task_id === selectedTask.task_id);
+            if (updatedTask) {
+              setSelectedTask(updatedTask);
             }
-          });
+          }
+          queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
         }}
       />
 
