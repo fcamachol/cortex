@@ -414,7 +414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   content: originalMessage.content || '',
                   reaction: reactionEmoji,
                   timestamp: new Date(),
-                  fromMe: originalMessage.fromMe,
+                  fromMe: isInternalUser, // Use the reaction's fromMe value, not the original message's
                 };
 
                 console.log(`🎯 Triggering actions engine for reaction: ${reactionEmoji}`);
