@@ -2473,7 +2473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Send WhatsApp message
   app.post("/api/whatsapp/send-message", async (req, res) => {
     try {
-      const { instanceId, chatId, message } = req.body;
+      const { instanceId, chatId, message, quotedMessageId } = req.body;
       
       if (!instanceId || !chatId || !message) {
         return res.status(400).json({ error: "instanceId, chatId, and message are required" });
@@ -2488,12 +2488,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Instance not found or not configured" });
       }
       
-      // Send message via Evolution API
-      const evolutionApi = getInstanceEvolutionApi(instance.apiKey);
-      const result = await evolutionApi.sendTextMessage(instanceId, {
+      // Prepare message request
+      const messageRequest: any = {
         number: chatId,
         text: message
-      });
+      };
+
+      // If this is a reply, add quoted message information
+      if (quotedMessageId) {
+        const originalMessage = await storage.getWhatsappMessage(userId, instanceId, quotedMessageId);
+        if (originalMessage) {
+          messageRequest.quoted = {
+            key: {
+              remoteJid: chatId,
+              fromMe: originalMessage.fromMe || false,
+              id: quotedMessageId
+            },
+            message: {
+              conversation: originalMessage.content
+            }
+          };
+        }
+      }
+      
+      // Send message via Evolution API
+      const evolutionApi = getInstanceEvolutionApi(instance.apiKey);
+      const result = await evolutionApi.sendTextMessage(instanceId, messageRequest);
       
       res.json({ success: true, messageId: result.key?.id, result });
     } catch (error: any) {

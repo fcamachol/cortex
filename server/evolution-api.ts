@@ -69,6 +69,14 @@ interface SendMessageRequest {
     presence?: 'unavailable' | 'available' | 'composing' | 'recording' | 'paused';
     linkPreview?: boolean;
   };
+  quoted?: {
+    key: {
+      remoteJid: string;
+      fromMe: boolean;
+      id: string;
+    };
+    message?: any;
+  };
 }
 
 export class EvolutionApi {

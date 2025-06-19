@@ -66,7 +66,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
 
   // Reply mutation
   const replyMutation = useMutation({
-    mutationFn: async (data: { instanceId: string; chatId: string; message: string }) => {
+    mutationFn: async (data: { instanceId: string; chatId: string; message: string; quotedMessageId?: string }) => {
       return fetch(`/api/whatsapp/send-message`, {
         method: 'POST',
         headers: {
@@ -75,7 +75,8 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
         body: JSON.stringify({
           instanceId: data.instanceId,
           chatId: data.chatId,
-          message: data.message
+          message: data.message,
+          quotedMessageId: data.quotedMessageId
         })
       }).then(res => res.json());
     },
@@ -102,7 +103,8 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
     replyMutation.mutate({
       instanceId: task.instance_id,
       chatId: task.related_chat_jid,
-      message: replyMessage.trim()
+      message: replyMessage.trim(),
+      quotedMessageId: task.triggering_message_id
     });
   };
 
