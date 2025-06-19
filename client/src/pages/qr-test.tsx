@@ -3,9 +3,9 @@ import { QRCodeDisplay } from '@/components/integrations/qr-code-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function QRTestPage() {
-  // Test with the newly created instance
-  const testInstanceId = "0e920f3d-5780-4f07-9541-4549cf8c3625";
-  const testInstanceName = "http-test-.1750194728";
+  // Test with the connected instance
+  const testInstanceId = "prueba 7";
+  const testInstanceName = "Whatsapp Personal";
 
   return (
     <div className="container mx-auto p-4 space-y-6">
