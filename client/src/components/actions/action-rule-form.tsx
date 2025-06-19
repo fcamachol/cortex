@@ -36,7 +36,11 @@ interface ActionRuleFormProps {
 export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   const [triggerConditions, setTriggerConditions] = useState(rule?.triggerConditions || {});
   const [actionConfig, setActionConfig] = useState(rule?.actionConfig || {});
+  const [selectedInstances, setSelectedInstances] = useState<string[]>(rule?.instanceFilters || []);
   const { toast } = useToast();
+
+  // Mock user ID - in real app this would come from auth context
+  const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
 
   const form = useForm<z.infer<typeof actionRuleSchema>>({
     resolver: zodResolver(actionRuleSchema),
@@ -53,7 +57,7 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   });
 
   const { data: instances = [] } = useQuery({
-    queryKey: ['/api/whatsapp/instances'],
+    queryKey: [`/api/whatsapp/instances/${userId}`],
   });
 
   const createMutation = useMutation({
@@ -96,6 +100,7 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
       ...values,
       triggerConditions,
       actionConfig,
+      instanceFilters: selectedInstances.length > 0 ? selectedInstances : null,
       performerFilters: {
         allowedPerformers: [values.performerFilter]
       },
@@ -465,6 +470,76 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
                       </FormItem>
                     )}
                   />
+                </CardContent>
+              </Card>
+
+              {/* Instance Selection Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>WhatsApp Instance Selection</CardTitle>
+                  <CardDescription>
+                    Choose which WhatsApp instances this rule should monitor
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <FormLabel className="text-base">Active Instances</FormLabel>
+                    <FormDescription className="mb-4">
+                      Select specific instances or leave empty to monitor all instances
+                    </FormDescription>
+                    {instances.length > 0 ? (
+                      <div className="space-y-2">
+                        {instances.map((instance: any) => (
+                          <div 
+                            key={instance.instanceId}
+                            className="flex items-center space-x-3 p-3 border rounded-lg"
+                          >
+                            <input
+                              type="checkbox"
+                              id={`instance-${instance.instanceId}`}
+                              checked={selectedInstances.includes(instance.instanceId)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedInstances(prev => [...prev, instance.instanceId]);
+                                } else {
+                                  setSelectedInstances(prev => prev.filter(id => id !== instance.instanceId));
+                                }
+                              }}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <div className="flex items-center gap-3 flex-1">
+                              <div className={`w-3 h-3 rounded-full ${instance.isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
+                              <div>
+                                <label 
+                                  htmlFor={`instance-${instance.instanceId}`}
+                                  className="font-medium text-sm cursor-pointer"
+                                >
+                                  {instance.displayName}
+                                </label>
+                                <div className="text-xs text-muted-foreground">
+                                  {instance.phoneNumber || instance.instanceId}
+                                </div>
+                              </div>
+                            </div>
+                            <Badge variant={instance.isConnected ? "default" : "secondary"} className="text-xs">
+                              {instance.isConnected ? "Active" : "Offline"}
+                            </Badge>
+                          </div>
+                        ))}
+                        <div className="text-sm text-muted-foreground mt-2">
+                          {selectedInstances.length === 0 
+                            ? `Will monitor all ${instances.length} instances` 
+                            : `Selected ${selectedInstances.length} of ${instances.length} instances`
+                          }
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+                        <p className="text-sm text-muted-foreground mb-2">No WhatsApp instances configured</p>
+                        <p className="text-xs text-muted-foreground">Configure instances in the WhatsApp management section</p>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
 

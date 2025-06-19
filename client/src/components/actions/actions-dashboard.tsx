@@ -68,9 +68,11 @@ export function ActionsDashboard() {
   });
 
   const toggleRuleMutation = useMutation({
-    mutationFn: (ruleId: string) => apiRequest(`/api/actions/rules/${ruleId}/toggle`, {
-      method: 'PATCH',
-    }),
+    mutationFn: async (ruleId: string) => {
+      return await apiRequest(`/api/actions/rules/${ruleId}/toggle`, {
+        method: 'PATCH',
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/actions/rules'] });
       queryClient.invalidateQueries({ queryKey: ['/api/actions/stats'] });
@@ -82,9 +84,11 @@ export function ActionsDashboard() {
   });
 
   const deleteRuleMutation = useMutation({
-    mutationFn: (ruleId: string) => apiRequest(`/api/actions/rules/${ruleId}`, {
-      method: 'DELETE',
-    }),
+    mutationFn: async (ruleId: string) => {
+      return await apiRequest(`/api/actions/rules/${ruleId}`, {
+        method: 'DELETE',
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/actions/rules'] });
       queryClient.invalidateQueries({ queryKey: ['/api/actions/stats'] });
@@ -191,6 +195,71 @@ export function ActionsDashboard() {
       </div>
 
       <div className="flex-1 overflow-auto p-6 space-y-6">
+        {/* Instance Overview Card */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Smartphone className="w-5 h-5" />
+                  WhatsApp Instances Overview
+                </CardTitle>
+                <CardDescription>
+                  Manage and monitor your connected WhatsApp instances
+                </CardDescription>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowInstanceManager(true)}
+                className="gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Instance
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {instances.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {instances.map((instance) => (
+                  <div 
+                    key={instance.instanceId} 
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${instance.isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
+                      <div>
+                        <div className="font-medium text-sm">{instance.displayName}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {instance.phoneNumber || instance.instanceId}
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant={instance.isConnected ? "default" : "secondary"} className="text-xs">
+                      {instance.isConnected ? "Active" : "Offline"}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+                <Smartphone className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground mb-3">No WhatsApp instances configured</p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowInstanceManager(true)}
+                  className="gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Your First Instance
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Statistics Cards */}
         {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -308,6 +377,35 @@ export function ActionsDashboard() {
                     </div>
                   </CardHeader>
                   <CardContent>
+                    {/* Instance Filters Display */}
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Smartphone className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Active on:</span>
+                      </div>
+                      {rule.instanceFilters && rule.instanceFilters.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {rule.instanceFilters.map((instanceId) => {
+                            const instance = instances.find(i => i.instanceId === instanceId);
+                            return (
+                              <Badge 
+                                key={instanceId} 
+                                variant="outline" 
+                                className="text-xs flex items-center gap-1"
+                              >
+                                <div className={`w-2 h-2 rounded-full ${instance?.isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
+                                {instance?.displayName || instanceId}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="text-xs">
+                          All instances ({instances.length})
+                        </Badge>
+                      )}
+                    </div>
+                    
                     <div className="space-y-2 text-sm text-muted-foreground">
                       <div className="flex justify-between">
                         <span>Executions:</span>
