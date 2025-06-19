@@ -122,8 +122,8 @@ export function ActionsDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="h-full flex flex-col">
+      <div className="flex-shrink-0 flex items-center justify-between p-6 border-b">
         <div>
           <h1 className="text-3xl font-bold">Actions & Automation</h1>
           <p className="text-muted-foreground mt-2">
@@ -136,8 +136,9 @@ export function ActionsDashboard() {
         </Button>
       </div>
 
-      {/* Statistics Cards */}
-      {stats && (
+      <div className="flex-1 overflow-auto p-6 space-y-6">
+        {/* Statistics Cards */}
+        {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -185,7 +186,7 @@ export function ActionsDashboard() {
           <TabsTrigger value="executions">Execution Log</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="rules" className="space-y-4">
+        <TabsContent value="rules" className="space-y-4 h-full overflow-auto">
           {rulesLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[...Array(6)].map((_, i) => (
@@ -203,7 +204,7 @@ export function ActionsDashboard() {
                 </Card>
               ))}
             </div>
-          ) : rules.length === 0 ? (
+          ) : Array.isArray(rules) && rules.length === 0 ? (
             <Card className="text-center py-12">
               <CardContent>
                 <Zap className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -218,8 +219,8 @@ export function ActionsDashboard() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {rules.map((rule: ActionRule) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-6">
+              {Array.isArray(rules) && rules.map((rule: ActionRule) => (
                 <Card key={rule.ruleId} className="hover:shadow-md transition-shadow">
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -310,6 +311,7 @@ export function ActionsDashboard() {
           <ActionExecutionLog />
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }
