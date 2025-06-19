@@ -7,7 +7,7 @@ import fetch from "node-fetch";
 import { storage } from "./storage";
 import { evolutionManager } from "./evolution-manager";
 import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings, getInstanceEvolutionApi } from "./evolution-api";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { actionsEngine, ActionsEngine } from "./actions-engine";
 import { 
   insertUserSchema,
@@ -21,7 +21,8 @@ import {
   actionTemplates,
   insertActionRuleSchema,
   ActionRule,
-  InsertActionRule
+  InsertActionRule,
+  tasks
 } from "../shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -3271,29 +3272,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { taskId } = req.params;
       const updates = req.body;
 
-      // Build dynamic update query
-      const updateFields = [];
-      const values = [];
-      let paramIndex = 1;
-
-      Object.entries(updates).forEach(([key, value]) => {
-        if (key !== 'checklist_items') {
-          updateFields.push(`${key} = $${paramIndex}`);
-          values.push(value);
-          paramIndex++;
-        }
-      });
-
-      if (updateFields.length > 0) {
+      // Build update object excluding checklist_items
+      const updateData: any = { ...updates };
+      delete updateData.checklist_items;
+      
+      if (Object.keys(updateData).length > 0) {
+        // Build dynamic update fields
+        const updateFields = Object.keys(updateData).map((key, index) => `${key} = $${index + 1}`);
+        const values = Object.values(updateData);
+        
         const updateQuery = `
           UPDATE crm.tasks 
           SET ${updateFields.join(', ')}, updated_at = NOW()
-          WHERE task_id = $${paramIndex} AND created_by_user_id = $${paramIndex + 1}
+          WHERE task_id = $${values.length + 1} AND created_by_user_id = $${values.length + 2}
           RETURNING *
         `;
-        values.push(taskId, userId);
-
-        const result = await db.execute(sql.raw(updateQuery, values));
+        
+        values.push(parseInt(taskId), userId);
+        
+        const result = await pool.query(updateQuery, values);
         
         if (result.rows.length === 0) {
           return res.status(404).json({ error: 'Task not found' });
