@@ -668,10 +668,12 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
             </>
           )}
 
-          {/* Subtasks Section */}
-          <Separator />
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
+          {/* Subtasks Section - only show if allowSubtasks is true */}
+          {allowSubtasks && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-medium text-gray-700">Subtasks</h3>
                 {task.subtasks && task.subtasks.length > 0 && (
@@ -784,7 +786,9 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                 )}
               </div>
             )}
-          </div>
+              </div>
+            </>
+          )}
 
           {/* Task Timeline */}
           <Separator />
