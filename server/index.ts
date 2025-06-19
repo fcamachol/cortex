@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { updateEvolutionApiSettings, getEvolutionApi } from "./evolution-api";
 import { evolutionManager } from "./evolution-manager";
+import { bridgeManager } from "./evolution-bridge-manager";
 
 const app = express();
 app.use(express.json());
@@ -92,6 +93,10 @@ app.use((req, res, next) => {
     // Initialize Evolution API WebSocket bridges for real WhatsApp instances
     try {
       await evolutionManager.initialize();
+      
+      // Initialize instance-specific bridge manager
+      const demoUserId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
+      await bridgeManager.initializeAllUserInstances(demoUserId);
     } catch (error) {
       console.error('Failed to initialize Evolution WebSocket manager:', error);
     }

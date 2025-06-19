@@ -3,10 +3,10 @@ import { storage } from './storage';
 import { 
   insertWhatsappMessageSchema,
   insertWhatsappContactSchema,
-  insertWhatsappConversationSchema,
+  insertWhatsappChatSchema,
   type InsertWhatsappMessage,
   type InsertWhatsappContact,
-  type InsertWhatsappConversation
+  type InsertWhatsappChat
 } from '@shared/schema';
 
 interface BridgeConfig {

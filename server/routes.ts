@@ -9,6 +9,7 @@ import { evolutionManager } from "./evolution-manager";
 import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings, getInstanceEvolutionApi } from "./evolution-api";
 import { db, pool } from "./db";
 import { actionsEngine, ActionsEngine } from "./actions-engine";
+import { bridgeManager } from "./evolution-bridge-manager";
 import { 
   insertUserSchema,
   insertWhatsappInstanceSchema,
@@ -1437,21 +1438,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.set('Pragma', 'no-cache');
       res.set('Expires', '0');
       
-      const instances = await storage.getWhatsappInstances(req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
+      const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const instances = await storage.getWhatsappInstances(userId);
       
       const statusWithDetails = instances.map(instance => {
-        // Use the database isConnected field as the source of truth for bridge status
-        const isConnected = instance.isConnected;
+        // Check if bridge exists and is connected for this instance
+        const bridge = bridgeManager.getBridge(userId, instance.instanceId);
+        const websocketConnected = bridge ? bridge.isConnected() : false;
+        const bridgeExists = bridge !== null;
         
         return {
           instanceId: instance.instanceId,
           instanceName: instance.instanceId,
           phoneNumber: instance.ownerJid || 'Not set',
-          status: isConnected ? 'connected' : 'disconnected',
-          websocketConnected: isConnected, // Use same value as database
-          bridgeExists: true, // Always true if instance exists in database
+          status: instance.isConnected ? 'connected' : 'disconnected',
+          websocketConnected: websocketConnected,
+          bridgeExists: bridgeExists,
           lastConnected: instance.lastConnectionAt,
-          connectionState: isConnected ? 'open' : 'closed'
+          connectionState: websocketConnected ? 'open' : 'closed'
         };
       });
 
