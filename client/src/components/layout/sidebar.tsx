@@ -242,10 +242,10 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
                     <Hash className="w-3 h-3 text-blue-500 mr-3" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {space.name}
+                        {space.spaceName}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        {space.description || 'No description'}
+                        Created {new Date(space.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
