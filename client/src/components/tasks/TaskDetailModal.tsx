@@ -46,8 +46,6 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
 
   useEffect(() => {
     if (task) {
-      console.log('Task data in modal:', task);
-      console.log('Task status:', task.status);
       setEditedTask(task);
       setDueDate(task.due_date ? new Date(task.due_date) : undefined);
       setIsEditing(false); // Reset editing state when task changes
@@ -223,7 +221,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                   Status
                 </div>
                 <Select
-                  value={task.status || "todo"}
+                  value={task.status || "to_do"}
                   onValueChange={handleStatusChange}
                 >
                   <SelectTrigger className={cn("w-40 h-8", getStatusColor(task.status))}>
@@ -236,7 +234,6 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="todo">To Do</SelectItem>
                     <SelectItem value="to_do">To Do</SelectItem>
                     <SelectItem value="in_progress">In Progress</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
