@@ -2453,21 +2453,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { messageId, instanceId } = req.query;
       const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
       
-      console.log('Fetching message:', { messageId, instanceId, userId });
-      
       if (!messageId || !instanceId) {
         return res.status(400).json({ error: "messageId and instanceId are required" });
       }
       
-      const message = await storage.getWhatsappMessage(userId, instanceId as string, messageId as string);
+      // Direct database query to avoid caching issues
+      const [result] = await db
+        .select({
+          messageId: whatsappMessages.messageId,
+          instanceId: whatsappMessages.instanceId,
+          chatId: whatsappMessages.chatId,
+          senderJid: whatsappMessages.senderJid,
+          fromMe: whatsappMessages.fromMe,
+          messageType: whatsappMessages.messageType,
+          content: whatsappMessages.content,
+          timestamp: whatsappMessages.timestamp,
+          quotedMessageId: whatsappMessages.quotedMessageId,
+          isForwarded: whatsappMessages.isForwarded,
+          forwardingScore: whatsappMessages.forwardingScore,
+          isStarred: whatsappMessages.isStarred,
+          isEdited: whatsappMessages.isEdited,
+          lastEditedAt: whatsappMessages.lastEditedAt,
+          sourcePlatform: whatsappMessages.sourcePlatform,
+          rawApiPayload: whatsappMessages.rawApiPayload,
+          createdAt: whatsappMessages.createdAt
+        })
+        .from(whatsappMessages)
+        .innerJoin(whatsappInstances, eq(whatsappMessages.instanceId, whatsappInstances.instanceId))
+        .where(and(
+          eq(whatsappInstances.clientId, userId),
+          eq(whatsappMessages.instanceId, instanceId as string),
+          eq(whatsappMessages.messageId, messageId as string)
+        ));
       
-      console.log('Retrieved message:', message);
-      
-      if (!message) {
+      if (!result) {
         return res.status(404).json({ error: "Message not found" });
       }
       
-      res.json(message);
+      res.json(result);
     } catch (error) {
       console.error('Error fetching individual message:', error);
       res.status(500).json({ error: "Failed to fetch message" });

@@ -424,6 +424,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWhatsappMessage(userId: string, instanceId: string, messageId: string): Promise<WhatsappMessage | undefined> {
+    console.log('Storage: fetching message with params:', { userId, instanceId, messageId });
+    
     const [result] = await db
       .select({
         messageId: whatsappMessages.messageId,
@@ -451,6 +453,8 @@ export class DatabaseStorage implements IStorage {
         eq(whatsappMessages.instanceId, instanceId),
         eq(whatsappMessages.messageId, messageId)
       ));
+    
+    console.log('Storage: query result:', result);
     return result || undefined;
   }
 
