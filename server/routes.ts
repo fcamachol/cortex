@@ -2451,12 +2451,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/whatsapp/messages/single", async (req, res) => {
     try {
       const { messageId, instanceId } = req.query;
+      const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
       
       if (!messageId || !instanceId) {
         return res.status(400).json({ error: "messageId and instanceId are required" });
       }
       
-      const message = await storage.getWhatsappMessage(messageId as string, instanceId as string);
+      const message = await storage.getWhatsappMessage(userId, instanceId as string, messageId as string);
       
       if (!message) {
         return res.status(404).json({ error: "Message not found" });
@@ -2479,7 +2480,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get instance details to find API key
-      const instances = await storage.getWhatsappInstances();
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Default user for now
+      const instances = await storage.getWhatsappInstances(userId);
       const instance = instances.find(i => i.instanceId === instanceId);
       
       if (!instance || !instance.apiKey) {

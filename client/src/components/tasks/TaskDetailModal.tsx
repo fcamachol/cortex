@@ -55,20 +55,29 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
   // Fetch WhatsApp message data if task has triggering message
   const { data: messageData } = useQuery({
     queryKey: ['/api/whatsapp/messages/single', task?.triggering_message_id, task?.instance_id],
+    queryFn: async () => {
+      if (!task?.triggering_message_id || !task?.instance_id) return null;
+      const response = await fetch(`/api/whatsapp/messages/single?messageId=${task.triggering_message_id}&instanceId=${task.instance_id}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42`);
+      if (!response.ok) return null;
+      return response.json();
+    },
     enabled: !!(task?.triggering_message_id && task?.instance_id),
   });
 
   // Reply mutation
   const replyMutation = useMutation({
     mutationFn: async (data: { instanceId: string; chatId: string; message: string }) => {
-      return apiRequest(`/api/whatsapp/send-message`, {
+      return fetch(`/api/whatsapp/send-message`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           instanceId: data.instanceId,
           chatId: data.chatId,
           message: data.message
         })
-      });
+      }).then(res => res.json());
     },
     onSuccess: () => {
       toast({
@@ -444,24 +453,51 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                   </div>
 
                   {/* Original Message Display */}
-                  {messageData && (
+                  {messageData && Array.isArray(messageData) && messageData.length > 0 ? (
                     <div className="mt-3 p-3 bg-white rounded-lg border">
                       <div className="text-xs text-gray-500 mb-2 flex items-center justify-between">
                         <span>Original Message</span>
-                        <span>{format(new Date(messageData.timestamp), "PPP 'at' p")}</span>
+                        <span>
+                          {messageData[0].timestamp 
+                            ? format(new Date(messageData[0].timestamp), "PPP 'at' p")
+                            : 'Unknown time'
+                          }
+                        </span>
                       </div>
                       <div className="text-sm text-gray-800 whitespace-pre-wrap">
-                        {messageData.content || messageData.textContent || "No text content"}
+                        {messageData[0].content || messageData[0].textContent || "No text content"}
                       </div>
-                      {messageData.messageType !== 'text' && (
+                      {messageData[0].messageType !== 'text' && (
                         <div className="mt-2">
                           <Badge variant="secondary" className="text-xs">
-                            {messageData.messageType}
+                            {messageData[0].messageType}
                           </Badge>
                         </div>
                       )}
                     </div>
-                  )}
+                  ) : messageData && !Array.isArray(messageData) ? (
+                    <div className="mt-3 p-3 bg-white rounded-lg border">
+                      <div className="text-xs text-gray-500 mb-2 flex items-center justify-between">
+                        <span>Original Message</span>
+                        <span>
+                          {(messageData as any).timestamp 
+                            ? format(new Date((messageData as any).timestamp), "PPP 'at' p")
+                            : 'Unknown time'
+                          }
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-800 whitespace-pre-wrap">
+                        {(messageData as any).content || (messageData as any).textContent || "No text content"}
+                      </div>
+                      {(messageData as any).messageType !== 'text' && (
+                        <div className="mt-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {(messageData as any).messageType}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
 
                   {/* Reply Interface */}
                   <div className="mt-3 space-y-2">
