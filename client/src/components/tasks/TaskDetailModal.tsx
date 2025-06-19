@@ -122,7 +122,6 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
       }).then(res => res.json());
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
       setNewSubtaskTitle("");
       setIsCreatingSubtask(false);
       toast({
@@ -134,11 +133,6 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
       if (onRefresh) {
         onRefresh();
       }
-      
-      // Force re-render by triggering a state update
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ['/api/crm/tasks'] });
-      }, 100);
     },
     onError: (error: any) => {
       toast({

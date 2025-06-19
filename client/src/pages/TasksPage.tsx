@@ -305,11 +305,7 @@ export function TasksPage() {
             onPriorityChange={handleTaskPriorityChange}
             onEditTask={setEditingTask}
             onCreateSubtask={handleCreateSubtask}
-            onTaskClick={(task) => {
-              console.log('Task clicked:', task);
-              console.log('Task subtasks:', task.subtasks);
-              setSelectedTask(task);
-            }}
+            onTaskClick={setSelectedTask}
           />
         </TabsContent>
         <TabsContent value="list" className="space-y-4">
@@ -340,15 +336,22 @@ export function TasksPage() {
         onClose={() => setSelectedTask(null)}
         onUpdate={handleTaskUpdate}
         onDelete={handleTaskDelete}
-        onRefresh={() => {
-          if (selectedTask && tasks) {
-            // Find the updated task in the current tasks data
-            const updatedTask = tasks.find(t => t.task_id === selectedTask.task_id);
-            if (updatedTask) {
-              setSelectedTask(updatedTask);
+        onRefresh={async () => {
+          // Invalidate and refetch the tasks query
+          await queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
+          
+          // Wait for the query to refetch and update selectedTask with fresh data
+          if (selectedTask) {
+            const freshData = await queryClient.fetchQuery({ queryKey: ['/api/crm/tasks'] });
+            if (freshData && Array.isArray(freshData)) {
+              const transformedData = transformTasksData(freshData as Task[]);
+              const updatedTask = transformedData.find(t => t.task_id === selectedTask.task_id);
+              if (updatedTask) {
+                console.log('Updating selectedTask with fresh data:', updatedTask);
+                setSelectedTask(updatedTask);
+              }
             }
           }
-          queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
         }}
       />
 
