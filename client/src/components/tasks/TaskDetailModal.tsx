@@ -10,6 +10,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import {
   CalendarIcon,
   Clock,
@@ -27,7 +30,9 @@ import {
   UserPlus,
   Calendar as CalendarDays,
   Timer,
-  Hash
+  Hash,
+  Send,
+  Reply
 } from "lucide-react";
 import type { Task } from "../../pages/TasksPage";
 
@@ -43,6 +48,54 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
   const [isEditing, setIsEditing] = useState(false);
   const [editedTask, setEditedTask] = useState<Partial<Task>>({});
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [replyMessage, setReplyMessage] = useState("");
+  const [isReplying, setIsReplying] = useState(false);
+  const { toast } = useToast();
+
+  // Fetch WhatsApp message data if task has triggering message
+  const { data: messageData } = useQuery({
+    queryKey: ['/api/whatsapp/messages/single', task?.triggering_message_id, task?.instance_id],
+    enabled: !!(task?.triggering_message_id && task?.instance_id),
+  });
+
+  // Reply mutation
+  const replyMutation = useMutation({
+    mutationFn: async (data: { instanceId: string; chatId: string; message: string }) => {
+      return apiRequest(`/api/whatsapp/send-message`, {
+        method: 'POST',
+        body: JSON.stringify({
+          instanceId: data.instanceId,
+          chatId: data.chatId,
+          message: data.message
+        })
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Message sent",
+        description: "Your reply has been sent successfully.",
+      });
+      setReplyMessage("");
+      setIsReplying(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to send message",
+        description: error.message || "An error occurred while sending the message.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleSendReply = () => {
+    if (!replyMessage.trim() || !task?.instance_id || !task?.related_chat_jid) return;
+    
+    replyMutation.mutate({
+      instanceId: task.instance_id,
+      chatId: task.related_chat_jid,
+      message: replyMessage.trim()
+    });
+  };
 
   useEffect(() => {
     if (task) {
@@ -368,7 +421,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                   <MessageSquare className="h-4 w-4" />
                   WhatsApp Integration
                 </h3>
-                <div className="p-3 bg-blue-50 rounded-lg space-y-2">
+                <div className="p-3 bg-blue-50 rounded-lg space-y-3">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">Related Chat:</span>
                     <Badge variant="outline" className="bg-white">
@@ -388,6 +441,77 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                     <Badge variant="outline" className="bg-white">
                       {task.instance_id}
                     </Badge>
+                  </div>
+
+                  {/* Original Message Display */}
+                  {messageData && (
+                    <div className="mt-3 p-3 bg-white rounded-lg border">
+                      <div className="text-xs text-gray-500 mb-2 flex items-center justify-between">
+                        <span>Original Message</span>
+                        <span>{format(new Date(messageData.timestamp), "PPP 'at' p")}</span>
+                      </div>
+                      <div className="text-sm text-gray-800 whitespace-pre-wrap">
+                        {messageData.content || messageData.textContent || "No text content"}
+                      </div>
+                      {messageData.messageType !== 'text' && (
+                        <div className="mt-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {messageData.messageType}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Reply Interface */}
+                  <div className="mt-3 space-y-2">
+                    {!isReplying ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsReplying(true)}
+                        className="w-full"
+                      >
+                        <Reply className="h-4 w-4 mr-2" />
+                        Reply to Message
+                      </Button>
+                    ) : (
+                      <div className="space-y-2">
+                        <Textarea
+                          placeholder="Type your reply..."
+                          value={replyMessage}
+                          onChange={(e) => setReplyMessage(e.target.value)}
+                          rows={3}
+                          className="resize-none"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={handleSendReply}
+                            disabled={!replyMessage.trim() || replyMutation.isPending}
+                          >
+                            {replyMutation.isPending ? (
+                              <>Sending...</>
+                            ) : (
+                              <>
+                                <Send className="h-4 w-4 mr-2" />
+                                Send
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setIsReplying(false);
+                              setReplyMessage("");
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

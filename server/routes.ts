@@ -2447,6 +2447,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get individual WhatsApp message
+  app.get("/api/whatsapp/messages/single", async (req, res) => {
+    try {
+      const { messageId, instanceId } = req.query;
+      
+      if (!messageId || !instanceId) {
+        return res.status(400).json({ error: "messageId and instanceId are required" });
+      }
+      
+      const message = await storage.getWhatsappMessage(messageId as string, instanceId as string);
+      
+      if (!message) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+      
+      res.json(message);
+    } catch (error) {
+      console.error('Error fetching individual message:', error);
+      res.status(500).json({ error: "Failed to fetch message" });
+    }
+  });
+
+  // Send WhatsApp message
+  app.post("/api/whatsapp/send-message", async (req, res) => {
+    try {
+      const { instanceId, chatId, message } = req.body;
+      
+      if (!instanceId || !chatId || !message) {
+        return res.status(400).json({ error: "instanceId, chatId, and message are required" });
+      }
+      
+      // Get instance details to find API key
+      const instances = await storage.getWhatsappInstances();
+      const instance = instances.find(i => i.instanceId === instanceId);
+      
+      if (!instance || !instance.apiKey) {
+        return res.status(404).json({ error: "Instance not found or not configured" });
+      }
+      
+      // Send message via Evolution API
+      const evolutionApi = getInstanceEvolutionApi(instance.apiKey);
+      const result = await evolutionApi.sendTextMessage(instanceId, {
+        number: chatId,
+        text: message
+      });
+      
+      res.json({ success: true, messageId: result.key?.id, result });
+    } catch (error: any) {
+      console.error('Error sending WhatsApp message:', error);
+      res.status(500).json({ 
+        error: "Failed to send message", 
+        message: error.message 
+      });
+    }
+  });
+
   // Manual sync endpoint for group participants
   // Manual participant sync endpoint
   app.post('/api/whatsapp/groups/:instanceId/:groupJid/sync-participants', async (req: Request & { user?: { id: string } }, res: Response) => {
