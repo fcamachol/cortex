@@ -24,6 +24,7 @@ const actionRuleSchema = z.object({
   isActive: z.boolean().default(true),
   cooldownMinutes: z.number().min(0).default(0),
   maxExecutionsPerDay: z.number().min(1).default(100),
+  performerFilter: z.enum(["user_only", "contacts_only", "both"]).default("both"),
 });
 
 interface ActionRuleFormProps {
@@ -47,6 +48,7 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
       isActive: rule?.isActive ?? true,
       cooldownMinutes: rule?.cooldownMinutes || 0,
       maxExecutionsPerDay: rule?.maxExecutionsPerDay || 100,
+      performerFilter: rule?.performerFilters?.allowedPerformers?.[0] || "both",
     },
   });
 
@@ -102,6 +104,9 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
       ...values,
       triggerConditions,
       actionConfig,
+      performerFilters: {
+        allowedPerformers: [values.performerFilter]
+      },
     };
 
     if (rule) {
@@ -591,6 +596,31 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
                         </FormControl>
                         <FormDescription>
                           Maximum number of times this rule can execute in 24 hours
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="performerFilter"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Who Can Trigger</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select who can trigger this action" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="both">Anyone (You or Contacts)</SelectItem>
+                            <SelectItem value="user_only">Only Me</SelectItem>
+                            <SelectItem value="contacts_only">Only Contacts</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Control whether this action triggers from your actions or contact actions
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
