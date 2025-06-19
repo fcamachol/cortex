@@ -1439,20 +1439,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.set('Expires', '0');
       
       const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const instances = await storage.getWhatsappInstances(userId);
       
-      const statusWithDetails = instances.map(instance => {
-        // Use the database isConnected field as the source of truth for bridge status
-        const isConnected = instance.isConnected;
+      // Query database directly to avoid schema mismatch
+      const result = await pool.query(
+        'SELECT instance_name, display_name, phone_number, status, last_connected_at FROM whatsapp_instances WHERE user_id = $1 ORDER BY created_at DESC',
+        [userId]
+      );
+      
+      const statusWithDetails = result.rows.map(instance => {
+        const isConnected = instance.status === 'connected';
         
         return {
-          instanceId: instance.instanceId,
-          instanceName: instance.instanceId,
-          phoneNumber: instance.ownerJid || 'Not set',
+          instanceId: instance.instance_name,
+          instanceName: instance.display_name || instance.instance_name,
+          phoneNumber: instance.phone_number || 'Not set',
           status: isConnected ? 'connected' : 'disconnected',
-          websocketConnected: isConnected, // Use same value as database
-          bridgeExists: true, // Always true if instance exists in database
-          lastConnected: instance.lastConnectionAt,
+          websocketConnected: isConnected,
+          bridgeExists: true,
+          lastConnected: instance.last_connected_at,
           connectionState: isConnected ? 'open' : 'closed'
         };
       });
