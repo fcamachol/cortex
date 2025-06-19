@@ -57,11 +57,14 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
     queryKey: ['/api/whatsapp/messages/single', task?.triggering_message_id, task?.instance_id],
     queryFn: async () => {
       if (!task?.triggering_message_id || !task?.instance_id) return null;
-      const response = await fetch(`/api/whatsapp/messages/single?messageId=${task.triggering_message_id}&instanceId=${task.instance_id}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42`);
+      const response = await fetch(`/api/whatsapp/messages/single?messageId=${task.triggering_message_id}&instanceId=${task.instance_id}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42&t=${Date.now()}`);
       if (!response.ok) return null;
-      return response.json();
+      const data = await response.json();
+      return data;
     },
     enabled: !!(task?.triggering_message_id && task?.instance_id),
+    staleTime: 0, // Force fresh data
+    gcTime: 0, // Don't cache
   });
 
   // Reply mutation

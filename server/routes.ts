@@ -2457,34 +2457,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "messageId and instanceId are required" });
       }
       
-      // Direct database query to avoid caching issues
-      const [result] = await db
-        .select({
-          messageId: whatsappMessages.messageId,
-          instanceId: whatsappMessages.instanceId,
-          chatId: whatsappMessages.chatId,
-          senderJid: whatsappMessages.senderJid,
-          fromMe: whatsappMessages.fromMe,
-          messageType: whatsappMessages.messageType,
-          content: whatsappMessages.content,
-          timestamp: whatsappMessages.timestamp,
-          quotedMessageId: whatsappMessages.quotedMessageId,
-          isForwarded: whatsappMessages.isForwarded,
-          forwardingScore: whatsappMessages.forwardingScore,
-          isStarred: whatsappMessages.isStarred,
-          isEdited: whatsappMessages.isEdited,
-          lastEditedAt: whatsappMessages.lastEditedAt,
-          sourcePlatform: whatsappMessages.sourcePlatform,
-          rawApiPayload: whatsappMessages.rawApiPayload,
-          createdAt: whatsappMessages.createdAt
-        })
-        .from(whatsappMessages)
-        .innerJoin(whatsappInstances, eq(whatsappMessages.instanceId, whatsappInstances.instanceId))
-        .where(and(
-          eq(whatsappInstances.clientId, userId),
-          eq(whatsappMessages.instanceId, instanceId as string),
-          eq(whatsappMessages.messageId, messageId as string)
-        ));
+      // Use storage function to get message
+      const result = await storage.getWhatsappMessage(userId, instanceId as string, messageId as string);
       
       if (!result) {
         return res.status(404).json({ error: "Message not found" });
