@@ -3170,5 +3170,275 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== CRM API ROUTES =====
+
+  // Get all tasks for user
+  app.get('/api/crm/tasks', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      
+      const tasks = await db.execute(sql`
+        SELECT 
+          t.*,
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'item_id', ci.item_id,
+                'content', ci.content,
+                'is_completed', ci.is_completed,
+                'display_order', ci.display_order
+              ) ORDER BY ci.display_order
+            ) FILTER (WHERE ci.item_id IS NOT NULL), 
+            '[]'::json
+          ) as checklist_items
+        FROM crm.tasks t
+        LEFT JOIN crm.task_checklist_items ci ON t.task_id = ci.task_id
+        WHERE t.created_by_user_id = ${userId}
+        GROUP BY t.task_id
+        ORDER BY t.created_at DESC
+      `);
+
+      res.json(tasks.rows);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      res.status(500).json({ error: 'Failed to fetch tasks' });
+    }
+  });
+
+  // Create new task
+  app.post('/api/crm/tasks', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const {
+        title,
+        description,
+        status = 'to_do',
+        priority = 'medium',
+        due_date,
+        project_id,
+        parent_task_id,
+        assigned_to_user_id,
+        related_chat_jid,
+        checklist_items
+      } = req.body;
+
+      // Get user's instance ID
+      const userInstances = await db.execute(sql`
+        SELECT instance_id FROM whatsapp.instances WHERE client_id = ${userId} LIMIT 1
+      `);
+      
+      const instanceId = userInstances.rows[0]?.instance_id || 'default';
+
+      // Create task
+      const newTask = await db.execute(sql`
+        INSERT INTO crm.tasks (
+          instance_id, title, description, status, priority, due_date,
+          project_id, parent_task_id, assigned_to_user_id, related_chat_jid,
+          created_by_user_id, space_id
+        ) VALUES (
+          ${instanceId}, ${title}, ${description}, ${status}, ${priority}, ${due_date},
+          ${project_id}, ${parent_task_id}, ${assigned_to_user_id}, ${related_chat_jid},
+          ${userId}, 1
+        ) RETURNING *
+      `);
+
+      const taskId = newTask.rows[0].task_id;
+
+      // Add checklist items if provided
+      if (checklist_items && checklist_items.length > 0) {
+        for (let i = 0; i < checklist_items.length; i++) {
+          await db.execute(sql`
+            INSERT INTO crm.task_checklist_items (
+              task_id, instance_id, content, display_order
+            ) VALUES (
+              ${taskId}, ${instanceId}, ${checklist_items[i]}, ${i}
+            )
+          `);
+        }
+      }
+
+      res.json(newTask.rows[0]);
+    } catch (error) {
+      console.error('Error creating task:', error);
+      res.status(500).json({ error: 'Failed to create task' });
+    }
+  });
+
+  // Update task
+  app.patch('/api/crm/tasks/:taskId', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const { taskId } = req.params;
+      const updates = req.body;
+
+      // Build dynamic update query
+      const updateFields = [];
+      const values = [];
+      let paramIndex = 1;
+
+      Object.entries(updates).forEach(([key, value]) => {
+        if (key !== 'checklist_items') {
+          updateFields.push(`${key} = $${paramIndex}`);
+          values.push(value);
+          paramIndex++;
+        }
+      });
+
+      if (updateFields.length > 0) {
+        const updateQuery = `
+          UPDATE crm.tasks 
+          SET ${updateFields.join(', ')}, updated_at = NOW()
+          WHERE task_id = $${paramIndex} AND created_by_user_id = $${paramIndex + 1}
+          RETURNING *
+        `;
+        values.push(taskId, userId);
+
+        const result = await db.execute(sql.raw(updateQuery, values));
+        
+        if (result.rows.length === 0) {
+          return res.status(404).json({ error: 'Task not found' });
+        }
+
+        res.json(result.rows[0]);
+      } else {
+        res.json({ message: 'No updates provided' });
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
+      res.status(500).json({ error: 'Failed to update task' });
+    }
+  });
+
+  // Delete task
+  app.delete('/api/crm/tasks/:taskId', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const { taskId } = req.params;
+
+      // Delete checklist items first
+      await db.execute(sql`
+        DELETE FROM crm.task_checklist_items WHERE task_id = ${taskId}
+      `);
+
+      // Delete task
+      const result = await db.execute(sql`
+        DELETE FROM crm.tasks 
+        WHERE task_id = ${taskId} AND created_by_user_id = ${userId}
+        RETURNING task_id
+      `);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
+
+      res.json({ message: 'Task deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      res.status(500).json({ error: 'Failed to delete task' });
+    }
+  });
+
+  // Get all projects for user
+  app.get('/api/crm/projects', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      
+      const projects = await db.execute(sql`
+        SELECT p.*, COUNT(t.task_id) as task_count
+        FROM crm.projects p
+        LEFT JOIN crm.tasks t ON p.project_id = t.project_id
+        WHERE p.owner_user_id = ${userId}
+        GROUP BY p.project_id
+        ORDER BY p.created_at DESC
+      `);
+
+      res.json(projects.rows);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      res.status(500).json({ error: 'Failed to fetch projects' });
+    }
+  });
+
+  // Create new project
+  app.post('/api/crm/projects', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const { project_name, description, status = 'active', start_date, end_date } = req.body;
+
+      // Get user's instance ID
+      const userInstances = await db.execute(sql`
+        SELECT instance_id FROM whatsapp.instances WHERE client_id = ${userId} LIMIT 1
+      `);
+      
+      const instanceId = userInstances.rows[0]?.instance_id || 'default';
+
+      const newProject = await db.execute(sql`
+        INSERT INTO crm.projects (
+          instance_id, project_name, description, status, start_date, end_date,
+          owner_user_id, space_id
+        ) VALUES (
+          ${instanceId}, ${project_name}, ${description}, ${status}, ${start_date}, ${end_date},
+          ${userId}, 1
+        ) RETURNING *
+      `);
+
+      res.json(newProject.rows[0]);
+    } catch (error) {
+      console.error('Error creating project:', error);
+      res.status(500).json({ error: 'Failed to create project' });
+    }
+  });
+
+  // Get checklist items for all tasks
+  app.get('/api/crm/checklist-items', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      
+      const items = await db.execute(sql`
+        SELECT ci.* 
+        FROM crm.task_checklist_items ci
+        JOIN crm.tasks t ON ci.task_id = t.task_id
+        WHERE t.created_by_user_id = ${userId}
+        ORDER BY ci.task_id, ci.display_order
+      `);
+
+      res.json(items.rows);
+    } catch (error) {
+      console.error('Error fetching checklist items:', error);
+      res.status(500).json({ error: 'Failed to fetch checklist items' });
+    }
+  });
+
+  // Update checklist item
+  app.patch('/api/crm/checklist-items/:itemId', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const { itemId } = req.params;
+      const { is_completed, content } = req.body;
+
+      const result = await db.execute(sql`
+        UPDATE crm.task_checklist_items ci
+        SET 
+          is_completed = COALESCE(${is_completed}, ci.is_completed),
+          content = COALESCE(${content}, ci.content),
+          updated_at = NOW()
+        FROM crm.tasks t
+        WHERE ci.item_id = ${itemId} 
+          AND ci.task_id = t.task_id 
+          AND t.created_by_user_id = ${userId}
+        RETURNING ci.*
+      `);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Checklist item not found' });
+      }
+
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error('Error updating checklist item:', error);
+      res.status(500).json({ error: 'Failed to update checklist item' });
+    }
+  });
+
   return httpServer;
 }

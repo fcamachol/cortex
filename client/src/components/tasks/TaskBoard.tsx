@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Calendar, MessageSquare, User, MoreHorizontal, Plus, ChevronDown, ChevronRight } from 'lucide-react';
-import { TaskCard } from './TaskCard';
+
 
 interface Task {
   task_id: number;

@@ -106,10 +106,7 @@ export function TasksPage() {
 
   // Create task mutation
   const createTaskMutation = useMutation({
-    mutationFn: (taskData: Partial<Task>) => apiRequest('/api/crm/tasks', {
-      method: 'POST',
-      body: JSON.stringify(taskData)
-    }),
+    mutationFn: (taskData: any) => apiRequest('POST', '/api/crm/tasks', taskData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
       toast({ title: 'Task created successfully' });
@@ -123,11 +120,8 @@ export function TasksPage() {
 
   // Update task mutation
   const updateTaskMutation = useMutation({
-    mutationFn: ({ taskId, updates }: { taskId: number; updates: Partial<Task> }) => 
-      apiRequest(`/api/crm/tasks/${taskId}`, {
-        method: 'PATCH',
-        body: JSON.stringify(updates)
-      }),
+    mutationFn: ({ taskId, updates }: { taskId: number; updates: any }) => 
+      apiRequest('PATCH', `/api/crm/tasks/${taskId}`, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
       toast({ title: 'Task updated successfully' });
@@ -139,10 +133,7 @@ export function TasksPage() {
 
   // Create project mutation
   const createProjectMutation = useMutation({
-    mutationFn: (projectData: Partial<Project>) => apiRequest('/api/crm/projects', {
-      method: 'POST',
-      body: JSON.stringify(projectData)
-    }),
+    mutationFn: (projectData: any) => apiRequest('POST', '/api/crm/projects', projectData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/projects'] });
       toast({ title: 'Project created successfully' });
