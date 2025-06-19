@@ -275,7 +275,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                   value={task.priority || "medium"}
                   onValueChange={handlePriorityChange}
                 >
-                  <SelectTrigger className={cn("w-40 h-8", getPriorityColor(task.priority || "medium"))}>
+                  <SelectTrigger className={cn("w-40 h-8", getPriorityColor(task.priority))}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
