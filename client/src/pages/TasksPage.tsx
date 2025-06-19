@@ -299,7 +299,7 @@ export function TasksPage() {
           <TabsTrigger value="board">Board View</TabsTrigger>
           <TabsTrigger value="list">List View</TabsTrigger>
         </TabsList>
-        <TabsContent value="board" className="space-y-4">
+        <TabsContent value="board" className="space-y-4 h-[calc(100vh-220px)] overflow-hidden">
           <TaskBoard 
             tasks={filteredTasks || []}
             onStatusChange={handleTaskStatusChange}
@@ -309,7 +309,7 @@ export function TasksPage() {
             onTaskClick={setSelectedTask}
           />
         </TabsContent>
-        <TabsContent value="list" className="space-y-4">
+        <TabsContent value="list" className="space-y-4 h-[calc(100vh-220px)] overflow-hidden">
           {filteredTasks.length === 0 ? (
             <Card className="p-8 text-center">
               <div className="text-muted-foreground">

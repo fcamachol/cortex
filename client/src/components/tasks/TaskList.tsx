@@ -246,7 +246,7 @@ export function TaskList({
   );
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400 scroll-smooth">
       {tasks.length === 0 ? (
         <Card className="p-8 text-center">
           <div className="text-muted-foreground">

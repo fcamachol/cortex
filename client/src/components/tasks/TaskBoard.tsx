@@ -228,7 +228,7 @@ export function TaskBoard({
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className={`flex-1 p-3 bg-gray-50 rounded-b-lg min-h-96 max-h-[calc(100vh-300px)] overflow-y-auto ${
+                    className={`flex-1 p-3 bg-gray-50 rounded-b-lg min-h-96 max-h-[calc(100vh-300px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400 scroll-smooth ${
                       snapshot.isDraggingOver ? 'bg-blue-50' : ''
                     }`}
                   >
