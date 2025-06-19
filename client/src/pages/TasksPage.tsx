@@ -9,10 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-// import { TaskBoard } from '@/components/tasks/TaskBoard';
-// import { TaskList } from '@/components/tasks/TaskList';
-// import { TaskForm } from '@/components/tasks/TaskForm';
-// import { ProjectForm } from '@/components/tasks/ProjectForm';
+import { TaskBoard } from '@/components/tasks/TaskBoard';
+import { TaskList } from '@/components/tasks/TaskList';
+import { TaskForm } from '@/components/tasks/TaskForm';
+import { ProjectForm } from '@/components/tasks/ProjectForm';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -171,6 +171,14 @@ export function TasksPage() {
     createTaskMutation.mutate({ ...subtaskData, parent_task_id: parentTaskId });
   };
 
+  const handleTaskUpdate = (taskId: number, updates: Partial<Task>) => {
+    updateTaskMutation.mutate({ taskId, updates });
+  };
+
+  const handleTaskDelete = (taskId: number) => {
+    deleteTaskMutation.mutate(taskId);
+  };
+
   if (tasksLoading || projectsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -260,122 +268,39 @@ export function TasksPage() {
       </Card>
 
       {/* Task Display */}
-      <div className="space-y-4">
-        {filteredTasks.length === 0 ? (
-          <Card className="p-8 text-center">
-            <div className="text-muted-foreground">
-              <h3 className="text-lg font-medium mb-2">No tasks found</h3>
-              <p className="text-sm">Create your first task to get started with your productivity journey.</p>
-            </div>
-          </Card>
-        ) : (
-          <div className="grid gap-4">
-            {filteredTasks.map((task) => (
-              <Card key={task.task_id} className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Checkbox
-                      checked={task.status === 'done'}
-                      onCheckedChange={(checked) => 
-                        handleTaskStatusChange(task.task_id, checked ? 'done' : 'to_do')
-                      }
-                    />
-                    <div className="flex-1">
-                      <h3 className={`font-medium ${task.status === 'done' ? 'line-through text-muted-foreground' : ''}`}>
-                        {task.title}
-                      </h3>
-                      {task.description && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {task.description}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="outline" className={`text-xs ${
-                          task.status === 'to_do' ? 'bg-slate-100 text-slate-800' :
-                          task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                          task.status === 'done' ? 'bg-green-100 text-green-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {task.status.replace('_', ' ')}
-                        </Badge>
-                        {task.priority && (
-                          <Badge variant="outline" className={`text-xs ${
-                            task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                            task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                            task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-blue-100 text-blue-800'
-                          }`}>
-                            {task.priority}
-                          </Badge>
-                        )}
-                        {task.related_chat_jid && (
-                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
-                            WhatsApp
-                          </Badge>
-                        )}
-                        {task.due_date && (
-                          <span className="text-xs text-muted-foreground">
-                            Due: {new Date(task.due_date).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditingTask(task)}
-                    >
-                      Edit
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleTaskStatusChange(task.task_id, 'in_progress')}>
-                          Start Task
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleTaskPriorityChange(task.task_id, 'urgent')}>
-                          Mark Urgent
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleTaskStatusChange(task.task_id, 'done')}>
-                          Complete Task
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-                
-                {/* Subtasks */}
-                {task.subtasks && task.subtasks.length > 0 && (
-                  <div className="ml-6 mt-3 space-y-2">
-                    {task.subtasks.map((subtask) => (
-                      <div key={subtask.task_id} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                        <Checkbox
-                          checked={subtask.status === 'done'}
-                          onCheckedChange={(checked) => 
-                            handleTaskStatusChange(subtask.task_id, checked ? 'done' : 'to_do')
-                          }
-                        />
-                        <span className={`text-sm ${subtask.status === 'done' ? 'line-through text-muted-foreground' : ''}`}>
-                          {subtask.title}
-                        </span>
-                        <Badge variant="outline" className="text-xs">
-                          {subtask.status}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
+      <Tabs defaultValue="board" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="board">Board View</TabsTrigger>
+          <TabsTrigger value="list">List View</TabsTrigger>
+        </TabsList>
+        <TabsContent value="board" className="space-y-4">
+          <TaskBoard 
+            tasks={filteredTasks || []}
+            onStatusChange={handleTaskStatusChange}
+            onPriorityChange={handleTaskPriorityChange}
+            onEditTask={setEditingTask}
+            onCreateSubtask={handleCreateSubtask}
+          />
+        </TabsContent>
+        <TabsContent value="list" className="space-y-4">
+          {filteredTasks.length === 0 ? (
+            <Card className="p-8 text-center">
+              <div className="text-muted-foreground">
+                <h3 className="text-lg font-medium mb-2">No tasks found</h3>
+                <p className="text-sm">Create your first task to get started with your productivity journey.</p>
+              </div>
+            </Card>
+          ) : (
+            <TaskList 
+              tasks={filteredTasks || []}
+              onStatusChange={handleTaskStatusChange}
+              onPriorityChange={handleTaskPriorityChange}
+              onEditTask={setEditingTask}
+              onCreateSubtask={handleCreateSubtask}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
