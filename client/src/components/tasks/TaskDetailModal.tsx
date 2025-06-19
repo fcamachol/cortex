@@ -453,49 +453,34 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                   </div>
 
                   {/* Original Message Display */}
-                  {messageData && Array.isArray(messageData) && messageData.length > 0 ? (
+                  {messageData ? (
                     <div className="mt-3 p-3 bg-white rounded-lg border">
                       <div className="text-xs text-gray-500 mb-2 flex items-center justify-between">
-                        <span>Original Message</span>
+                        <span>Original WhatsApp Message</span>
                         <span>
-                          {messageData[0].timestamp 
-                            ? format(new Date(messageData[0].timestamp), "PPP 'at' p")
+                          {messageData.timestamp 
+                            ? format(new Date(messageData.timestamp), "MMM dd, yyyy 'at' h:mm a")
                             : 'Unknown time'
                           }
                         </span>
                       </div>
-                      <div className="text-sm text-gray-800 whitespace-pre-wrap">
-                        {messageData[0].content || messageData[0].textContent || "No text content"}
+                      <div className="text-sm text-gray-800 whitespace-pre-wrap bg-gray-50 p-2 rounded">
+                        "{messageData.content || "No message content available"}"
                       </div>
-                      {messageData[0].messageType !== 'text' && (
-                        <div className="mt-2">
+                      <div className="mt-2 text-xs text-gray-500 flex items-center justify-between">
+                        <span>From: {messageData.sender_jid || messageData.senderJid || "Unknown sender"}</span>
+                        {messageData.message_type && messageData.message_type !== 'text' && (
                           <Badge variant="secondary" className="text-xs">
-                            {messageData[0].messageType}
+                            {messageData.message_type}
                           </Badge>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  ) : messageData && !Array.isArray(messageData) ? (
-                    <div className="mt-3 p-3 bg-white rounded-lg border">
-                      <div className="text-xs text-gray-500 mb-2 flex items-center justify-between">
-                        <span>Original Message</span>
-                        <span>
-                          {(messageData as any).timestamp 
-                            ? format(new Date((messageData as any).timestamp), "PPP 'at' p")
-                            : 'Unknown time'
-                          }
-                        </span>
+                  ) : task.triggering_message_id ? (
+                    <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-dashed">
+                      <div className="text-sm text-gray-500 text-center">
+                        Loading message content...
                       </div>
-                      <div className="text-sm text-gray-800 whitespace-pre-wrap">
-                        {(messageData as any).content || (messageData as any).textContent || "No text content"}
-                      </div>
-                      {(messageData as any).messageType !== 'text' && (
-                        <div className="mt-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {(messageData as any).messageType}
-                          </Badge>
-                        </div>
-                      )}
                     </div>
                   ) : null}
 
