@@ -519,6 +519,8 @@ export const appUsers = appSchema.table("users", {
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   fullName: varchar("full_name", { length: 255 }),
   avatarUrl: varchar("avatar_url", { length: 512 }),
+  passwordResetToken: varchar("password_reset_token", { length: 10 }),
+  passwordResetExpiry: timestamp("password_reset_expiry", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

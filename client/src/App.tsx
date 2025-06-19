@@ -11,6 +11,7 @@ import DebugPage from "@/pages/debug";
 import { TasksPage } from "@/pages/TasksPage";
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
+import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -32,6 +33,7 @@ function UnauthenticatedRoutes() {
     <Switch>
       <Route path="/login" component={LoginPage} />
       <Route path="/signup" component={SignupPage} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route component={LoginPage} />
     </Switch>
   );

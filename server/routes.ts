@@ -3982,5 +3982,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/auth/forgot-password', async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+      }
+
+      if (!isValidEmail(email)) {
+        return res.status(400).json({ error: 'Invalid email format' });
+      }
+
+      // Check if user exists
+      const [user] = await db
+        .select()
+        .from(appUsers)
+        .where(eq(appUsers.email, email))
+        .limit(1);
+
+      if (!user) {
+        // Don't reveal if user exists or not for security
+        return res.json({ 
+          message: 'If an account with that email exists, you will receive a password reset link.' 
+        });
+      }
+
+      // Generate reset token (6-digit code for simplicity)
+      const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+      const resetTokenExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+      // Store reset token in database (you might want to create a separate table for this)
+      await db
+        .update(appUsers)
+        .set({
+          passwordResetToken: resetToken,
+          passwordResetExpiry: resetTokenExpiry,
+        })
+        .where(eq(appUsers.userId, user.userId));
+
+      // In a real app, you would send an email here
+      // For demo purposes, we'll log the token
+      console.log(`Password reset token for ${email}: ${resetToken}`);
+
+      res.json({ 
+        message: 'If an account with that email exists, you will receive a password reset link.',
+        // For demo purposes only - remove in production
+        resetToken: resetToken
+      });
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      res.status(500).json({ error: 'Failed to process password reset request' });
+    }
+  });
+
+  app.post('/api/auth/reset-password', async (req: Request, res: Response) => {
+    try {
+      const { email, resetToken, newPassword } = req.body;
+
+      if (!email || !resetToken || !newPassword) {
+        return res.status(400).json({ error: 'Email, reset token, and new password are required' });
+      }
+
+      const passwordValidation = isValidPassword(newPassword);
+      if (!passwordValidation.valid) {
+        return res.status(400).json({ error: passwordValidation.message });
+      }
+
+      // Find user with valid reset token
+      const [user] = await db
+        .select()
+        .from(appUsers)
+        .where(eq(appUsers.email, email))
+        .limit(1);
+
+      if (!user || 
+          !user.passwordResetToken || 
+          user.passwordResetToken !== resetToken ||
+          !user.passwordResetExpiry ||
+          new Date() > user.passwordResetExpiry) {
+        return res.status(400).json({ error: 'Invalid or expired reset token' });
+      }
+
+      // Hash new password
+      const hashedPassword = await hashPassword(newPassword);
+
+      // Update password and clear reset token
+      await db
+        .update(appUsers)
+        .set({
+          passwordHash: hashedPassword,
+          passwordResetToken: null,
+          passwordResetExpiry: null,
+        })
+        .where(eq(appUsers.userId, user.userId));
+
+      res.json({ message: 'Password has been reset successfully' });
+    } catch (error) {
+      console.error('Reset password error:', error);
+      res.status(500).json({ error: 'Failed to reset password' });
+    }
+  });
+
   return httpServer;
 }
