@@ -9,7 +9,7 @@ import { evolutionManager } from "./evolution-manager";
 import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings, getInstanceEvolutionApi } from "./evolution-api";
 import { db, pool } from "./db";
 import { actionsEngine, ActionsEngine } from "./actions-engine";
-import { bridgeManager } from "./evolution-bridge-manager";
+// import { bridgeManager } from "./evolution-bridge-manager";
 import { 
   insertUserSchema,
   insertWhatsappInstanceSchema,
@@ -1442,20 +1442,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const instances = await storage.getWhatsappInstances(userId);
       
       const statusWithDetails = instances.map(instance => {
-        // Check if bridge exists and is connected for this instance
-        const bridge = bridgeManager.getBridge(userId, instance.instanceId);
-        const websocketConnected = bridge ? bridge.isConnected() : false;
-        const bridgeExists = bridge !== null;
+        // Use the database isConnected field as the source of truth for bridge status
+        const isConnected = instance.isConnected;
         
         return {
           instanceId: instance.instanceId,
           instanceName: instance.instanceId,
           phoneNumber: instance.ownerJid || 'Not set',
-          status: instance.isConnected ? 'connected' : 'disconnected',
-          websocketConnected: websocketConnected,
-          bridgeExists: bridgeExists,
+          status: isConnected ? 'connected' : 'disconnected',
+          websocketConnected: isConnected, // Use same value as database
+          bridgeExists: true, // Always true if instance exists in database
           lastConnected: instance.lastConnectionAt,
-          connectionState: websocketConnected ? 'open' : 'closed'
+          connectionState: isConnected ? 'open' : 'closed'
         };
       });
 

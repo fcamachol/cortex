@@ -406,7 +406,7 @@ export class EvolutionWebSocketBridge {
     }
   }
 
-  private processConversationData(chat: any): InsertWhatsappConversation | null {
+  private processConversationData(chat: any): InsertWhatsappChat | null {
     try {
       return {
         instanceId: this.instanceId,
