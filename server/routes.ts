@@ -25,7 +25,9 @@ import {
   tasks,
   appUsers,
   insertAppUserSchema,
-  AppUser
+  AppUser,
+  appSpaces,
+  insertAppSpaceSchema
 } from "../shared/schema";
 import { 
   authenticateToken, 
@@ -4081,6 +4083,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Reset password error:', error);
       res.status(500).json({ error: 'Failed to reset password' });
+    }
+  });
+
+  // Spaces management routes
+  app.get('/api/spaces/:userId', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.params.userId;
+      
+      // Verify user can access these spaces
+      if (req.user?.userId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const userSpaces = await db
+        .select({
+          spaceId: appSpaces.spaceId,
+          name: appSpaces.name,
+          description: appSpaces.description,
+          createdAt: appSpaces.createdAt,
+        })
+        .from(appSpaces)
+        .where(eq(appSpaces.ownerId, userId))
+        .orderBy(appSpaces.createdAt);
+
+      res.json(userSpaces);
+    } catch (error) {
+      console.error('Error fetching spaces:', error);
+      res.status(500).json({ error: 'Failed to fetch spaces' });
+    }
+  });
+
+  app.post('/api/spaces', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const { name, description } = req.body;
+      const userId = req.user?.userId;
+
+      if (!name || !userId) {
+        return res.status(400).json({ error: 'Name is required' });
+      }
+
+      const [newSpace] = await db
+        .insert(appSpaces)
+        .values({
+          name: name.trim(),
+          description: description?.trim() || null,
+          ownerId: userId,
+        })
+        .returning({
+          spaceId: appSpaces.spaceId,
+          name: appSpaces.name,
+          description: appSpaces.description,
+          createdAt: appSpaces.createdAt,
+        });
+
+      res.status(201).json(newSpace);
+    } catch (error) {
+      console.error('Error creating space:', error);
+      res.status(500).json({ error: 'Failed to create space' });
+    }
+  });
+
+  app.put('/api/spaces/:spaceId', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const { spaceId } = req.params;
+      const { name, description } = req.body;
+      const userId = req.user?.userId;
+
+      if (!name) {
+        return res.status(400).json({ error: 'Name is required' });
+      }
+
+      // Verify user owns this space
+      const [space] = await db
+        .select()
+        .from(appSpaces)
+        .where(eq(appSpaces.spaceId, spaceId))
+        .limit(1);
+
+      if (!space || space.ownerId !== userId) {
+        return res.status(404).json({ error: 'Space not found or access denied' });
+      }
+
+      const [updatedSpace] = await db
+        .update(appSpaces)
+        .set({
+          name: name.trim(),
+          description: description?.trim() || null,
+        })
+        .where(eq(appSpaces.spaceId, spaceId))
+        .returning({
+          spaceId: appSpaces.spaceId,
+          name: appSpaces.name,
+          description: appSpaces.description,
+          createdAt: appSpaces.createdAt,
+        });
+
+      res.json(updatedSpace);
+    } catch (error) {
+      console.error('Error updating space:', error);
+      res.status(500).json({ error: 'Failed to update space' });
+    }
+  });
+
+  app.delete('/api/spaces/:spaceId', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const { spaceId } = req.params;
+      const userId = req.user?.userId;
+
+      // Verify user owns this space
+      const [space] = await db
+        .select()
+        .from(appSpaces)
+        .where(eq(appSpaces.spaceId, spaceId))
+        .limit(1);
+
+      if (!space || space.ownerId !== userId) {
+        return res.status(404).json({ error: 'Space not found or access denied' });
+      }
+
+      await db
+        .delete(appSpaces)
+        .where(eq(appSpaces.spaceId, spaceId));
+
+      res.json({ message: 'Space deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting space:', error);
+      res.status(500).json({ error: 'Failed to delete space' });
     }
   });
 

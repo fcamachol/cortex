@@ -1,11 +1,18 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, CheckSquare, Users, Calendar, Plug, Settings, User, Activity, Zap, LogOut } from "lucide-react";
+import { MessageCircle, CheckSquare, Users, Calendar, Plug, Settings, User, Activity, Zap, LogOut, Plus, Hash } from "lucide-react";
 import { Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatPhoneNumber } from "@/lib/phoneUtils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 interface SidebarProps {
   activeModule: string;
@@ -14,6 +21,13 @@ interface SidebarProps {
 
 export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProps) {
   const { user, logout } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isCreateSpaceOpen, setIsCreateSpaceOpen] = useState(false);
+  const [spaceForm, setSpaceForm] = useState({
+    name: '',
+    description: '',
+  });
   
   // Use authenticated user data with fallback for demo
   const currentUser = {
@@ -23,8 +37,38 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
     avatar: null
   };
 
-  const { data: whatsappInstances = [] } = useQuery<any[]>({
-    queryKey: [`/api/whatsapp/instances/${currentUser.id}`],
+  // Fetch user's spaces
+  const { data: spaces = [] } = useQuery<any[]>({
+    queryKey: [`/api/spaces/${currentUser.id}`],
+  });
+
+  const handleCreateSpace = (e: React.FormEvent) => {
+    e.preventDefault();
+    createSpaceMutation.mutate(spaceForm);
+  };
+
+  // Create space mutation
+  const createSpaceMutation = useMutation({
+    mutationFn: async (spaceData: { name: string; description?: string }) => {
+      const response = await apiRequest('POST', '/api/spaces', spaceData);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/spaces/${currentUser.id}`] });
+      setIsCreateSpaceOpen(false);
+      setSpaceForm({ name: '', description: '' });
+      toast({
+        title: "Space created",
+        description: "Your new space has been created successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create space",
+        variant: "destructive",
+      });
+    },
   });
 
   const navigationItems = [
@@ -123,37 +167,92 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
           </div>
         </div>
 
-        {/* WhatsApp Instances */}
+        {/* Spaces */}
         <div className="border-t border-gray-200 dark:border-gray-800 mt-4">
           <div className="p-3">
-            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-              WhatsApp Instances
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Spaces
+              </h3>
+              <Dialog open={isCreateSpaceOpen} onOpenChange={setIsCreateSpaceOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create New Space</DialogTitle>
+                    <DialogDescription>
+                      Create a new workspace to organize your projects and tasks.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form
+                    onSubmit={handleCreateSpace}
+                    className="space-y-4"
+                  >
+                    <div className="space-y-2">
+                      <Label htmlFor="space-name">Space Name</Label>
+                      <Input
+                        id="space-name"
+                        placeholder="e.g., Personal Projects"
+                        value={spaceForm.name}
+                        onChange={(e) => setSpaceForm(prev => ({ ...prev, name: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="space-description">Description (Optional)</Label>
+                      <Textarea
+                        id="space-description"
+                        placeholder="Describe what this space is for..."
+                        value={spaceForm.description}
+                        onChange={(e) => setSpaceForm(prev => ({ ...prev, description: e.target.value }))}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="flex justify-end space-x-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsCreateSpaceOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={createSpaceMutation.isPending || !spaceForm.name.trim()}
+                      >
+                        {createSpaceMutation.isPending ? 'Creating...' : 'Create Space'}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
             <div className="space-y-2">
-              {whatsappInstances.length === 0 ? (
-                <div className="flex items-center px-3 py-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full mr-3"></div>
+              {spaces.length === 0 ? (
+                <div className="flex items-center px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <Hash className="w-3 h-3 text-blue-500 mr-3" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                      No instances connected
+                      No spaces yet
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Connect your WhatsApp
+                      Create your first space
                     </p>
                   </div>
                 </div>
               ) : (
-                whatsappInstances.map((instance: any) => (
-                  <div key={instance.instanceId} className="flex items-center px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <div className={`w-3 h-3 rounded-full mr-3 ${
-                      instance.isConnected ? 'bg-green-500' : 'bg-gray-400'
-                    }`}></div>
+                spaces.map((space: any) => (
+                  <div key={space.spaceId} className="flex items-center px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 cursor-pointer transition-colors">
+                    <Hash className="w-3 h-3 text-blue-500 mr-3" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {instance.displayName || instance.instanceName}
+                        {space.name}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {instance.phoneNumber ? formatPhoneNumber(instance.phoneNumber) : 'Not connected'}
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {space.description || 'No description'}
                       </p>
                     </div>
                   </div>
