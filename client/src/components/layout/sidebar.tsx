@@ -192,7 +192,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
         <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-800">
           <div className="flex items-center space-x-3 min-w-0 flex-1">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={currentUser.avatar} />
+              <AvatarImage src={currentUser.avatar || undefined} />
               <AvatarFallback>
                 {currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase()}
               </AvatarFallback>
