@@ -26,7 +26,6 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
   const [isCreateSpaceOpen, setIsCreateSpaceOpen] = useState(false);
   const [spaceForm, setSpaceForm] = useState({
     name: '',
-    description: '',
   });
   
   // Use authenticated user data with fallback for demo
@@ -49,14 +48,14 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
 
   // Create space mutation
   const createSpaceMutation = useMutation({
-    mutationFn: async (spaceData: { name: string; description?: string }) => {
+    mutationFn: async (spaceData: { name: string }) => {
       const response = await apiRequest('POST', '/api/spaces', spaceData);
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/spaces/${currentUser.id}`] });
       setIsCreateSpaceOpen(false);
-      setSpaceForm({ name: '', description: '' });
+      setSpaceForm({ name: '' });
       toast({
         title: "Space created",
         description: "Your new space has been created successfully.",
@@ -201,21 +200,15 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
                         required
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="space-description">Description (Optional)</Label>
-                      <Textarea
-                        id="space-description"
-                        placeholder="Describe what this space is for..."
-                        value={spaceForm.description}
-                        onChange={(e) => setSpaceForm(prev => ({ ...prev, description: e.target.value }))}
-                        rows={3}
-                      />
-                    </div>
+
                     <div className="flex justify-end space-x-2">
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => setIsCreateSpaceOpen(false)}
+                        onClick={() => {
+                          setIsCreateSpaceOpen(false);
+                          setSpaceForm({ name: '' });
+                        }}
                       >
                         Cancel
                       </Button>
