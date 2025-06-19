@@ -38,6 +38,7 @@ interface TaskBoardProps {
   onPriorityChange: (taskId: number, newPriority: string) => void;
   onEditTask: (task: Task) => void;
   onCreateSubtask: (parentTaskId: number, subtaskData: Partial<Task>) => void;
+  onTaskClick: (task: Task) => void;
 }
 
 const statusColumns = [
@@ -52,7 +53,8 @@ export function TaskBoard({
   onStatusChange, 
   onPriorityChange, 
   onEditTask, 
-  onCreateSubtask 
+  onCreateSubtask,
+  onTaskClick 
 }: TaskBoardProps) {
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
 
@@ -104,7 +106,10 @@ export function TaskBoard({
           {...provided.dragHandleProps}
           className={`mb-3 ${snapshot.isDragging ? 'rotate-2' : ''}`}
         >
-          <Card className="cursor-pointer hover:shadow-md transition-shadow">
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => onTaskClick(task)}
+          >
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-2">
                 <h4 className="font-medium text-sm line-clamp-2 flex-1">
