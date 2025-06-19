@@ -46,6 +46,8 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
 
   useEffect(() => {
     if (task) {
+      console.log('Task data in modal:', task);
+      console.log('Task status:', task.status);
       setEditedTask(task);
       setDueDate(task.due_date ? new Date(task.due_date) : undefined);
       setIsEditing(false); // Reset editing state when task changes
@@ -89,6 +91,9 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
         return <CheckCircle2 className="h-4 w-4 text-green-600" />;
       case 'in_progress':
         return <Clock className="h-4 w-4 text-blue-600" />;
+      case 'todo':
+      case 'to_do':
+        return <Circle className="h-4 w-4 text-gray-400" />;
       default:
         return <Circle className="h-4 w-4 text-gray-400" />;
     }
@@ -101,6 +106,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
       case 'in_progress':
         return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'todo':
+      case 'to_do':
         return 'bg-gray-100 text-gray-800 border-gray-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -217,14 +223,21 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                   Status
                 </div>
                 <Select
-                  value={task.status}
+                  value={task.status || "todo"}
                   onValueChange={handleStatusChange}
                 >
                   <SelectTrigger className={cn("w-40 h-8", getStatusColor(task.status))}>
-                    <SelectValue />
+                    <SelectValue placeholder="Select status">
+                      {task.status ? 
+                        (task.status === 'in_progress' ? 'In Progress' : 
+                         task.status === 'completed' ? 'Completed' :
+                         task.status === 'todo' || task.status === 'to_do' ? 'To Do' : task.status) 
+                        : 'Select status'}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todo">To Do</SelectItem>
+                    <SelectItem value="to_do">To Do</SelectItem>
                     <SelectItem value="in_progress">In Progress</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
                   </SelectContent>
