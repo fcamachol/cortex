@@ -46,9 +46,10 @@ interface TaskDetailModalProps {
   onClose: () => void;
   onUpdate: (taskId: number, updates: Partial<Task>) => void;
   onDelete: (taskId: number) => void;
+  onRefresh?: () => void;
 }
 
-export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: TaskDetailModalProps) {
+export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onRefresh }: TaskDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTask, setEditedTask] = useState<Partial<Task>>({});
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
@@ -129,8 +130,12 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
         description: "The subtask has been created successfully.",
       });
       
+      // Call refresh function to update the selected task data
+      if (onRefresh) {
+        onRefresh();
+      }
+      
       // Force re-render by triggering a state update
-      // This ensures the modal shows updated task data with new subtasks
       setTimeout(() => {
         queryClient.refetchQueries({ queryKey: ['/api/crm/tasks'] });
       }, 100);
