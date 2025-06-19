@@ -93,7 +93,7 @@ export class EvolutionBridgeManager {
 
   async closeAllBridges(): Promise<void> {
     console.log('🔌 Closing all WebSocket bridges...');
-    for (const [key, bridgeInstance] of this.bridges) {
+    for (const [key, bridgeInstance] of Array.from(this.bridges.entries())) {
       await bridgeInstance.bridge.shutdown();
     }
     this.bridges.clear();
@@ -158,7 +158,7 @@ export class EvolutionBridgeManager {
         connectionState: 'error',
         bridgeConnected: false,
         apiKeyStatus: 'invalid',
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
     }
   }
