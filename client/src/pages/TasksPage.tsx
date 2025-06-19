@@ -13,10 +13,11 @@ import { TaskBoard } from '@/components/tasks/TaskBoard';
 import { TaskList } from '@/components/tasks/TaskList';
 import { TaskForm } from '@/components/tasks/TaskForm';
 import { ProjectForm } from '@/components/tasks/ProjectForm';
+import { TaskDetailModal } from '@/components/tasks/TaskDetailModal';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
-interface Task {
+export interface Task {
   task_id: number;
   title: string;
   description?: string;
@@ -31,6 +32,8 @@ interface Task {
   updated_at: string;
   subtasks?: Task[];
   checklist_items?: ChecklistItem[];
+  triggering_message_id?: string;
+  instance_id?: string;
 }
 
 interface Project {
@@ -61,6 +64,7 @@ export function TasksPage() {
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -292,6 +296,7 @@ export function TasksPage() {
             onPriorityChange={handleTaskPriorityChange}
             onEditTask={setEditingTask}
             onCreateSubtask={handleCreateSubtask}
+            onTaskClick={setSelectedTask}
           />
         </TabsContent>
         <TabsContent value="list" className="space-y-4">
@@ -313,6 +318,41 @@ export function TasksPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Task Detail Modal */}
+      <TaskDetailModal
+        task={selectedTask}
+        isOpen={!!selectedTask}
+        onClose={() => setSelectedTask(null)}
+        onUpdate={handleTaskUpdate}
+        onDelete={handleTaskDelete}
+      />
+
+      {/* Task Form Modal */}
+      {showTaskForm && (
+        <TaskForm
+          isOpen={showTaskForm}
+          onClose={() => {
+            setShowTaskForm(false);
+            setEditingTask(null);
+          }}
+          onSubmit={editingTask ? handleTaskUpdate : handleTaskCreate}
+          task={editingTask}
+        />
+      )}
+
+      {/* Project Form Modal */}
+      {showProjectForm && (
+        <ProjectForm
+          isOpen={showProjectForm}
+          onClose={() => {
+            setShowProjectForm(false);
+            setEditingProject(null);
+          }}
+          onSubmit={handleProjectCreate}
+          project={editingProject}
+        />
+      )}
     </div>
   );
 }
