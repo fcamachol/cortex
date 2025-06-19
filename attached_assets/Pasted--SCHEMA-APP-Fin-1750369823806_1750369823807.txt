@@ -1,0 +1,148 @@
+-- =============================================================================
+-- SCHEMA: APP (Final and Complete)
+-- PURPOSE: Manages application users, authentication, multi-tenant workspaces,
+--          and the hierarchical organization of spaces and channels. This schema
+--          is the security and structural foundation for the entire application.
+-- =============================================================================
+
+CREATE SCHEMA IF NOT EXISTS app;
+
+-- =============================================================================
+-- ENUMERATED TYPES
+-- =============================================================================
+CREATE TYPE app.workspace_role AS ENUM ('admin', 'member', 'viewer');
+COMMENT ON TYPE app.workspace_role IS 'Defines the permission level of a user within a specific workspace.';
+
+CREATE TYPE app.space_role AS ENUM ('admin', 'editor', 'viewer');
+COMMENT ON TYPE app.space_role IS 'Defines the granular permission level of a user for a specific space.';
+
+CREATE TYPE app.channel_type AS ENUM ('whatsapp', 'email', 'slack', 'sms');
+COMMENT ON TYPE app.channel_type IS 'Defines the supported types of communication channels.';
+
+
+-- =============================================================================
+-- CORE TABLE STRUCTURES
+-- =============================================================================
+
+---
+--- TABLE: app.users
+---
+CREATE TABLE app.users (
+    user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255),
+    avatar_url VARCHAR(512),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE app.users IS 'Stores global user accounts for authentication.';
+
+---
+--- TABLE: app.workspaces
+---
+CREATE TABLE app.workspaces (
+    workspace_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_name VARCHAR(255) NOT NULL,
+    owner_id UUID NOT NULL REFERENCES app.users(user_id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE app.workspaces IS 'Represents a single tenant, team, or company account within the application.';
+
+
+---
+--- TABLE: app.spaces
+---
+CREATE TABLE app.spaces (
+    space_id SERIAL PRIMARY KEY,
+    workspace_id UUID, -- Can be NULL for personal spaces
+    creator_user_id UUID NOT NULL,
+    space_name VARCHAR(100) NOT NULL,
+    icon VARCHAR(50),
+    color VARCHAR(7),
+    display_order INTEGER DEFAULT 0 NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_workspace FOREIGN KEY(workspace_id) REFERENCES app.workspaces(workspace_id) ON DELETE CASCADE,
+    CONSTRAINT fk_creator_user FOREIGN KEY(creator_user_id) REFERENCES app.users(user_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE app.spaces IS 'Organizational units that can be personal (workspace_id is NULL) or belong to a workspace.';
+
+---
+--- TABLE: app.channels
+---
+CREATE TABLE app.channels (
+    channel_id SERIAL PRIMARY KEY,
+    workspace_id UUID NOT NULL,
+    channel_type app.channel_type NOT NULL,
+    display_name VARCHAR(100) NOT NULL,
+    credentials JSONB,
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_workspace FOREIGN KEY(workspace_id) REFERENCES app.workspaces(workspace_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE app.channels IS 'Stores configured instances of communication channels like WhatsApp, Email, etc.';
+COMMENT ON COLUMN app.channels.credentials IS 'Securely stores the necessary credentials (API keys, tokens) for the channel.';
+
+
+---
+--- TABLE: app.workspace_members
+---
+CREATE TABLE app.workspace_members (
+    workspace_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    role app.workspace_role NOT NULL DEFAULT 'member',
+
+    PRIMARY KEY (workspace_id, user_id),
+    CONSTRAINT fk_workspace FOREIGN KEY(workspace_id) REFERENCES app.workspaces(workspace_id) ON DELETE CASCADE,
+    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES app.users(user_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE app.workspace_members IS 'Junction table linking users to workspaces and defining their high-level role.';
+
+
+---
+--- TABLE: app.space_members
+---
+CREATE TABLE app.space_members (
+    space_id INTEGER NOT NULL,
+    user_id UUID NOT NULL,
+    role app.space_role NOT NULL DEFAULT 'viewer',
+
+    PRIMARY KEY (space_id, user_id),
+    CONSTRAINT fk_space FOREIGN KEY(space_id) REFERENCES app.spaces(space_id) ON DELETE CASCADE,
+    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES app.users(user_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE app.space_members IS 'Manages granular access control, linking workspace members to specific spaces with a defined role.';
+
+
+---
+--- TABLE: app.user_preferences
+---
+CREATE TABLE app.user_preferences (
+    user_id UUID PRIMARY KEY,
+    theme VARCHAR(20) DEFAULT 'system' NOT NULL,
+    language VARCHAR(10) DEFAULT 'en' NOT NULL,
+    timezone VARCHAR(50) DEFAULT 'UTC' NOT NULL,
+    notifications JSONB,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES app.users(user_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE app.user_preferences IS 'Stores individual user preferences for the app UI/UX, such as theme and notification settings.';
+
+
+-- =============================================================================
+-- INDEXES FOR PERFORMANCE
+-- =============================================================================
+CREATE INDEX idx_users_email ON app.users(email);
+CREATE INDEX idx_workspace_members_user_id ON app.workspace_members(user_id);
+CREATE INDEX idx_workspace_members_workspace_id ON app.workspace_members(workspace_id);
+CREATE INDEX idx_spaces_workspace_id ON app.spaces(workspace_id);
+CREATE INDEX idx_spaces_creator_user_id ON app.spaces(creator_user_id);
+CREATE INDEX idx_channels_workspace_id ON app.channels(workspace_id);
+CREATE INDEX idx_space_members_user_id ON app.space_members(user_id);
+CREATE INDEX idx_space_members_space_id ON app.space_members(space_id);

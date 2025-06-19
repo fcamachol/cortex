@@ -9,6 +9,11 @@ export const crmSchema = pgSchema("crm");
 export const appSchema = pgSchema("app");
 export const actionsSchema = pgSchema("actions");
 
+// Enums for App schema
+export const workspaceRoleEnum = appSchema.enum("workspace_role", ["admin", "member", "viewer"]);
+export const spaceRoleEnum = appSchema.enum("space_role", ["admin", "editor", "viewer"]);
+export const channelTypeEnum = appSchema.enum("channel_type", ["whatsapp", "email", "slack", "sms"]);
+
 // Enums for WhatsApp schema
 export const chatTypeEnum = whatsappSchema.enum("chat_type", ["individual", "group"]);
 export const messageTypeEnum = whatsappSchema.enum("message_type", [
@@ -501,6 +506,203 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export const usersRelations = relations(users, ({ many }) => ({
   whatsappInstances: many(whatsappInstances),
+}));
+
+// =============================================================================
+// APP SCHEMA TABLES
+// =============================================================================
+
+// Core app users table (new structure)
+export const appUsers = appSchema.table("users", {
+  userId: uuid("user_id").primaryKey().defaultRandom(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  fullName: varchar("full_name", { length: 255 }),
+  avatarUrl: varchar("avatar_url", { length: 512 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Workspaces table
+export const appWorkspaces = appSchema.table("workspaces", {
+  workspaceId: uuid("workspace_id").primaryKey().defaultRandom(),
+  workspaceName: varchar("workspace_name", { length: 255 }).notNull(),
+  ownerId: uuid("owner_id").notNull().references(() => appUsers.userId),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Spaces table
+export const appSpaces = appSchema.table("spaces", {
+  spaceId: serial("space_id").primaryKey(),
+  workspaceId: uuid("workspace_id").references(() => appWorkspaces.workspaceId),
+  creatorUserId: uuid("creator_user_id").notNull().references(() => appUsers.userId),
+  spaceName: varchar("space_name", { length: 100 }).notNull(),
+  icon: varchar("icon", { length: 50 }),
+  color: varchar("color", { length: 7 }),
+  displayOrder: integer("display_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Channels table
+export const appChannels = appSchema.table("channels", {
+  channelId: serial("channel_id").primaryKey(),
+  workspaceId: uuid("workspace_id").notNull().references(() => appWorkspaces.workspaceId),
+  channelType: channelTypeEnum("channel_type").notNull(),
+  displayName: varchar("display_name", { length: 100 }).notNull(),
+  credentials: jsonb("credentials"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Workspace members junction table
+export const appWorkspaceMembers = appSchema.table("workspace_members", {
+  workspaceId: uuid("workspace_id").notNull().references(() => appWorkspaces.workspaceId),
+  userId: uuid("user_id").notNull().references(() => appUsers.userId),
+  role: workspaceRoleEnum("role").notNull().default("member"),
+}, (table) => ({
+  pk: {
+    name: "workspace_members_pkey",
+    columns: [table.workspaceId, table.userId]
+  }
+}));
+
+// Space members junction table
+export const appSpaceMembers = appSchema.table("space_members", {
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId),
+  userId: uuid("user_id").notNull().references(() => appUsers.userId),
+  role: spaceRoleEnum("role").notNull().default("viewer"),
+}, (table) => ({
+  pk: {
+    name: "space_members_pkey",
+    columns: [table.spaceId, table.userId]
+  }
+}));
+
+// User preferences table
+export const appUserPreferences = appSchema.table("user_preferences", {
+  userId: uuid("user_id").primaryKey().references(() => appUsers.userId),
+  theme: varchar("theme", { length: 20 }).notNull().default("system"),
+  language: varchar("language", { length: 10 }).notNull().default("en"),
+  timezone: varchar("timezone", { length: 50 }).notNull().default("UTC"),
+  notifications: jsonb("notifications"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// App schema insert schemas
+export const insertAppUserSchema = createInsertSchema(appUsers).omit({
+  userId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAppWorkspaceSchema = createInsertSchema(appWorkspaces).omit({
+  workspaceId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAppSpaceSchema = createInsertSchema(appSpaces).omit({
+  spaceId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAppChannelSchema = createInsertSchema(appChannels).omit({
+  channelId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAppWorkspaceMemberSchema = createInsertSchema(appWorkspaceMembers);
+export const insertAppSpaceMemberSchema = createInsertSchema(appSpaceMembers);
+export const insertAppUserPreferencesSchema = createInsertSchema(appUserPreferences).omit({
+  updatedAt: true,
+});
+
+// App schema types
+export type AppUser = typeof appUsers.$inferSelect;
+export type InsertAppUser = z.infer<typeof insertAppUserSchema>;
+export type AppWorkspace = typeof appWorkspaces.$inferSelect;
+export type InsertAppWorkspace = z.infer<typeof insertAppWorkspaceSchema>;
+export type AppSpace = typeof appSpaces.$inferSelect;
+export type InsertAppSpace = z.infer<typeof insertAppSpaceSchema>;
+export type AppChannel = typeof appChannels.$inferSelect;
+export type InsertAppChannel = z.infer<typeof insertAppChannelSchema>;
+export type AppWorkspaceMember = typeof appWorkspaceMembers.$inferSelect;
+export type InsertAppWorkspaceMember = z.infer<typeof insertAppWorkspaceMemberSchema>;
+export type AppSpaceMember = typeof appSpaceMembers.$inferSelect;
+export type InsertAppSpaceMember = z.infer<typeof insertAppSpaceMemberSchema>;
+export type AppUserPreferences = typeof appUserPreferences.$inferSelect;
+export type InsertAppUserPreferences = z.infer<typeof insertAppUserPreferencesSchema>;
+
+// App schema relations
+export const appUsersRelations = relations(appUsers, ({ many, one }) => ({
+  ownedWorkspaces: many(appWorkspaces),
+  workspaceMembers: many(appWorkspaceMembers),
+  spaceMembers: many(appSpaceMembers),
+  createdSpaces: many(appSpaces),
+  preferences: one(appUserPreferences),
+}));
+
+export const appWorkspacesRelations = relations(appWorkspaces, ({ one, many }) => ({
+  owner: one(appUsers, {
+    fields: [appWorkspaces.ownerId],
+    references: [appUsers.userId],
+  }),
+  members: many(appWorkspaceMembers),
+  spaces: many(appSpaces),
+  channels: many(appChannels),
+}));
+
+export const appSpacesRelations = relations(appSpaces, ({ one, many }) => ({
+  workspace: one(appWorkspaces, {
+    fields: [appSpaces.workspaceId],
+    references: [appWorkspaces.workspaceId],
+  }),
+  creator: one(appUsers, {
+    fields: [appSpaces.creatorUserId],
+    references: [appUsers.userId],
+  }),
+  members: many(appSpaceMembers),
+}));
+
+export const appChannelsRelations = relations(appChannels, ({ one }) => ({
+  workspace: one(appWorkspaces, {
+    fields: [appChannels.workspaceId],
+    references: [appWorkspaces.workspaceId],
+  }),
+}));
+
+export const appWorkspaceMembersRelations = relations(appWorkspaceMembers, ({ one }) => ({
+  workspace: one(appWorkspaces, {
+    fields: [appWorkspaceMembers.workspaceId],
+    references: [appWorkspaces.workspaceId],
+  }),
+  user: one(appUsers, {
+    fields: [appWorkspaceMembers.userId],
+    references: [appUsers.userId],
+  }),
+}));
+
+export const appSpaceMembersRelations = relations(appSpaceMembers, ({ one }) => ({
+  space: one(appSpaces, {
+    fields: [appSpaceMembers.spaceId],
+    references: [appSpaces.spaceId],
+  }),
+  user: one(appUsers, {
+    fields: [appSpaceMembers.userId],
+    references: [appUsers.userId],
+  }),
+}));
+
+export const appUserPreferencesRelations = relations(appUserPreferences, ({ one }) => ({
+  user: one(appUsers, {
+    fields: [appUserPreferences.userId],
+    references: [appUsers.userId],
+  }),
 }));
 
 // Legacy tables for backward compatibility during migration
