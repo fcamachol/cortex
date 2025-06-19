@@ -2525,22 +2525,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (result.chatId) {
         try {
           if (isGroupChat) {
-            // Group chat - try to get group info using direct SQL query
+            // Group chat - try to get group name from whatsapp.groups table
             try {
               const groupResult = await pool.query(
-                'SELECT chat_name FROM whatsapp_conversations WHERE remote_jid = $1 AND user_id = $2 LIMIT 1',
-                [result.chatId, userId]
+                'SELECT subject FROM whatsapp.groups WHERE group_jid = $1 LIMIT 1',
+                [result.chatId]
               );
               
-              if (groupResult.rows.length > 0 && groupResult.rows[0].chat_name) {
-                chatName = groupResult.rows[0].chat_name;
+              if (groupResult.rows.length > 0 && groupResult.rows[0].subject) {
+                chatName = groupResult.rows[0].subject;
               } else {
-                // Fallback: extract group name from raw API payload if available
-                const payload = result.rawApiPayload as any;
-                if (payload && payload.message && payload.message.messageContextInfo && payload.message.messageContextInfo.groupSubject) {
-                  chatName = payload.message.messageContextInfo.groupSubject;
+                // Fallback: try whatsapp_conversations table
+                const conversationResult = await pool.query(
+                  'SELECT chat_name FROM whatsapp_conversations WHERE remote_jid = $1 AND user_id = $2 LIMIT 1',
+                  [result.chatId, userId]
+                );
+                
+                if (conversationResult.rows.length > 0 && conversationResult.rows[0].chat_name) {
+                  chatName = conversationResult.rows[0].chat_name;
                 } else {
-                  chatName = 'Group Chat';
+                  // Final fallback: extract group name from raw API payload if available
+                  const payload = result.rawApiPayload as any;
+                  if (payload && payload.message && payload.message.messageContextInfo && payload.message.messageContextInfo.groupSubject) {
+                    chatName = payload.message.messageContextInfo.groupSubject;
+                  } else {
+                    chatName = 'Group Chat';
+                  }
                 }
               }
             } catch (sqlError) {
