@@ -37,6 +37,7 @@ import {
   isValidPassword,
   AuthRequest 
 } from "./auth";
+import crypto from 'crypto';
 import { eq, and, desc, sql } from "drizzle-orm";
 
 // Format phone number to E.164 International Format
