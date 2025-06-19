@@ -57,7 +57,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
     if (task) {
       const updates = {
         ...editedTask,
-        due_date: dueDate?.toISOString() || null
+        due_date: dueDate?.toISOString() || undefined
       };
       onUpdate(task.task_id, updates);
       setIsEditing(false);
