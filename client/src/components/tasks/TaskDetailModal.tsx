@@ -935,6 +935,10 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                             onUpdate(subtask.task_id, { 
                               status: checked ? 'completed' : 'todo' 
                             });
+                            // Trigger parent task refresh to show updated subtask status
+                            if (onRefresh) {
+                              setTimeout(() => onRefresh(), 100);
+                            }
                           }}
                           onClick={(e) => e.stopPropagation()}
                         />
