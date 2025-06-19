@@ -326,6 +326,17 @@ export function TasksPage() {
         onClose={() => setSelectedTask(null)}
         onUpdate={handleTaskUpdate}
         onDelete={handleTaskDelete}
+        onRefresh={() => {
+          // Refetch tasks and update selectedTask with fresh data
+          queryClient.refetchQueries({ queryKey: ['/api/crm/tasks'] }).then(() => {
+            if (selectedTask && tasks) {
+              const updatedTask = tasks.find(t => t.task_id === selectedTask.task_id);
+              if (updatedTask) {
+                setSelectedTask(updatedTask);
+              }
+            }
+          });
+        }}
       />
 
       {/* Task Form Modal */}
