@@ -96,46 +96,66 @@ const requireAuth = (req: Request & { user?: { id: string } }, res: Response, ne
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
+  // Test endpoint to verify webhook accessibility
+  app.get('/api/evolution/webhook/test', async (req, res) => {
+    console.log('🔧 Webhook test endpoint accessed');
+    res.json({ status: 'webhook endpoint is accessible', timestamp: new Date().toISOString() });
+  });
+
   // Evolution API Webhook endpoint for real-time WhatsApp events
   app.post('/api/evolution/webhook/:instanceName', async (req, res) => {
     try {
       const { instanceName } = req.params;
       const webhookData = req.body;
       
-      console.log(`📨 Evolution API Webhook for ${instanceName}:`, JSON.stringify(webhookData, null, 2));
+      console.log(`🚨 WEBHOOK RECEIVED for ${instanceName} 🚨`);
+      console.log(`📨 Headers:`, JSON.stringify(req.headers, null, 2));
+      console.log(`📨 Body:`, JSON.stringify(webhookData, null, 2));
+      console.log(`📨 Raw body size:`, JSON.stringify(webhookData).length, 'bytes');
       
       // Process different event types from Evolution API
       const { event, data } = webhookData;
       
       switch (event) {
         case 'messages.upsert':
+        case 'MESSAGES_UPSERT':
+          console.log(`✅ Processing MESSAGES_UPSERT for ${instanceName}`);
           await handleWebhookMessagesUpsert(instanceName, data);
           break;
         case 'send.message':
+        case 'SEND_MESSAGE':
           await handleWebhookMessagesUpsert(instanceName, data);
           break;
         case 'messages.update':
+        case 'MESSAGES_UPDATE':
           await handleWebhookMessagesUpdate(instanceName, data);
           break;
         case 'contacts.upsert':
+        case 'CONTACTS_UPSERT':
           await handleWebhookContactsUpsert(instanceName, data);
           break;
         case 'chats.upsert':
+        case 'CHATS_UPSERT':
           await handleWebhookChatsUpsert(instanceName, data);
           break;
         case 'groups.upsert':
+        case 'GROUPS_UPSERT':
           await handleWebhookGroupsUpsert(instanceName, data);
           break;
         case 'group-participants.update':
+        case 'GROUP_PARTICIPANTS_UPDATE':
           await handleWebhookGroupParticipantsUpdate(instanceName, data);
           break;
         case 'messages.reaction':
+        case 'MESSAGES_REACTION':
           await handleWebhookMessageReaction(instanceName, data);
           break;
         case 'presence.update':
+        case 'PRESENCE_UPDATE':
           console.log(`👁️ Presence update for ${instanceName}:`, data);
           break;
         case 'connection.update':
+        case 'CONNECTION_UPDATE':
           console.log(`🔗 Connection update for ${instanceName}:`, data);
           break;
         default:
