@@ -36,7 +36,8 @@ import {
   Reply,
   Plus,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft
 } from "lucide-react";
 import type { Task } from "../../pages/TasksPage";
 
@@ -49,9 +50,11 @@ interface TaskDetailModalProps {
   onRefresh?: () => void;
   onTaskClick?: (task: Task) => void;
   allowSubtasks?: boolean;
+  parentTask?: Task | null;
+  onReturnToParent?: () => void;
 }
 
-export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onRefresh, onTaskClick, allowSubtasks = true }: TaskDetailModalProps) {
+export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onRefresh, onTaskClick, allowSubtasks = true, parentTask, onReturnToParent }: TaskDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTask, setEditedTask] = useState<Partial<Task>>({});
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
@@ -296,6 +299,17 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
         <DialogHeader className="pb-4">
           <div className="flex items-start justify-between">
             <div className="flex-1">
+              {parentTask && onReturnToParent && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onReturnToParent}
+                  className="mb-2 h-8 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Back to {parentTask.title}
+                </Button>
+              )}
               {isEditing ? (
                 <Input
                   value={editedTask.title || ''}

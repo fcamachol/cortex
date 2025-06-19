@@ -333,13 +333,13 @@ export function TasksPage() {
       <TaskDetailModal
         key={selectedTask?.task_id} // Force re-render when task changes
         task={selectedTask}
-        isOpen={!!selectedTask}
+        isOpen={!!selectedTask && !selectedSubtask} // Only show if no subtask is selected
         onClose={() => setSelectedTask(null)}
         onUpdate={handleTaskUpdate}
         onDelete={handleTaskDelete}
         onTaskClick={(subtask) => {
           setSelectedSubtask(subtask);
-          setSelectedTask(null); // Close parent task modal
+          // Keep selectedTask for the return functionality
         }}
         onRefresh={async () => {
           // Invalidate and refetch the tasks query
@@ -368,6 +368,11 @@ export function TasksPage() {
         onUpdate={handleTaskUpdate}
         onDelete={handleTaskDelete}
         allowSubtasks={false} // Subtasks cannot have their own subtasks
+        parentTask={selectedTask}
+        onReturnToParent={() => {
+          setSelectedSubtask(null);
+          // selectedTask is already set, so parent modal will show
+        }}
         onRefresh={async () => {
           await queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
           
