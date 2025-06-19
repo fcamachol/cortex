@@ -3173,9 +3173,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== CRM API ROUTES =====
 
   // Get all tasks for user
-  app.get('/api/crm/tasks', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+  app.get('/api/crm/tasks', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Demo user ID
       
       const tasks = await db.execute(sql`
         SELECT 
@@ -3206,9 +3206,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new task
-  app.post('/api/crm/tasks', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+  app.post('/api/crm/tasks', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Demo user ID
       const {
         title,
         description,
@@ -3265,9 +3265,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update task
-  app.patch('/api/crm/tasks/:taskId', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+  app.patch('/api/crm/tasks/:taskId', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Demo user ID
       const { taskId } = req.params;
       const updates = req.body;
 
@@ -3310,9 +3310,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete task
-  app.delete('/api/crm/tasks/:taskId', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+  app.delete('/api/crm/tasks/:taskId', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Demo user ID
       const { taskId } = req.params;
 
       // Delete checklist items first
@@ -3339,9 +3339,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all projects for user
-  app.get('/api/crm/projects', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+  app.get('/api/crm/projects', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Demo user ID
       
       const projects = await db.execute(sql`
         SELECT p.*, COUNT(t.task_id) as task_count
@@ -3360,9 +3360,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new project
-  app.post('/api/crm/projects', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+  app.post('/api/crm/projects', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Demo user ID
       const { project_name, description, status = 'active', start_date, end_date } = req.body;
 
       // Get user's instance ID
@@ -3390,9 +3390,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get checklist items for all tasks
-  app.get('/api/crm/checklist-items', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+  app.get('/api/crm/checklist-items', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Demo user ID
       
       const items = await db.execute(sql`
         SELECT ci.* 
@@ -3410,9 +3410,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update checklist item
-  app.patch('/api/crm/checklist-items/:itemId', requireAuth, async (req: Request & { user?: { id: string } }, res: Response) => {
+  app.patch('/api/crm/checklist-items/:itemId', async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Demo user ID
       const { itemId } = req.params;
       const { is_completed, content } = req.body;
 
