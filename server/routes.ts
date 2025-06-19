@@ -3676,6 +3676,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create checklist item
+  app.post('/api/crm/checklist-items', async (req: Request, res: Response) => {
+    try {
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Demo user ID
+      const { task_id, content, is_completed = false } = req.body;
+
+      // Verify the task belongs to the user
+      const taskCheck = await db.execute(sql`
+        SELECT task_id FROM crm.tasks 
+        WHERE task_id = ${task_id} AND created_by_user_id = ${userId}
+      `);
+
+      if (taskCheck.rows.length === 0) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
+
+      // Get the next display order
+      const orderResult = await db.execute(sql`
+        SELECT COALESCE(MAX(display_order), 0) + 1 as next_order
+        FROM crm.task_checklist_items
+        WHERE task_id = ${task_id}
+      `);
+
+      const displayOrder = orderResult.rows[0]?.next_order || 1;
+
+      // Create the checklist item
+      const result = await db.execute(sql`
+        INSERT INTO crm.task_checklist_items (task_id, content, is_completed, display_order, created_at, updated_at)
+        VALUES (${task_id}, ${content}, ${is_completed}, ${displayOrder}, NOW(), NOW())
+        RETURNING *
+      `);
+
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error('Error creating checklist item:', error);
+      res.status(500).json({ error: 'Failed to create checklist item' });
+    }
+  });
+
   // Update checklist item
   app.patch('/api/crm/checklist-items/:itemId', async (req: Request, res: Response) => {
     try {
@@ -3704,6 +3743,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error updating checklist item:', error);
       res.status(500).json({ error: 'Failed to update checklist item' });
+    }
+  });
+
+  // Delete checklist item
+  app.delete('/api/crm/checklist-items/:itemId', async (req: Request, res: Response) => {
+    try {
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Demo user ID
+      const { itemId } = req.params;
+
+      const result = await db.execute(sql`
+        DELETE FROM crm.task_checklist_items ci
+        USING crm.tasks t
+        WHERE ci.item_id = ${itemId} 
+          AND ci.task_id = t.task_id 
+          AND t.created_by_user_id = ${userId}
+        RETURNING ci.*
+      `);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Checklist item not found' });
+      }
+
+      res.json({ message: 'Checklist item deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting checklist item:', error);
+      res.status(500).json({ error: 'Failed to delete checklist item' });
     }
   });
 
