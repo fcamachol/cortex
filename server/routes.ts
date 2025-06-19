@@ -409,7 +409,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   reactionId: `${targetMessageId}_${reactionEmoji}`,
                   messageId: targetMessageId,
                   instanceId: instance.instanceId,
-                  chatId: chatId,
+                  chatId: message.key.remoteJid, // Use the actual chat/group ID from webhook
                   senderJid: reactorJid,
                   content: originalMessage.content || '',
                   reaction: reactionEmoji,
