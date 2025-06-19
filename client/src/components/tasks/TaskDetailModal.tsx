@@ -53,9 +53,9 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
   const { toast } = useToast();
 
   // State for message data
-  const [messageData, setMessageData] = useState(null);
+  const [messageData, setMessageData] = useState<any>(null);
   const [messageLoading, setMessageLoading] = useState(false);
-  const [messageError, setMessageError] = useState(null);
+  const [messageError, setMessageError] = useState<any>(null);
 
   // Fetch WhatsApp message data when task changes
   useEffect(() => {
@@ -83,7 +83,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
 
         const data = await response.json();
         setMessageData(data);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching message data:', error);
         setMessageError(error);
         setMessageData(null);
@@ -455,7 +455,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
           </div>
 
           {/* WhatsApp Integration Info */}
-          {task.related_chat_jid && (
+          {(task.related_chat_jid || task.triggering_message_id) && (
             <>
               <Separator />
               <div className="space-y-3">
@@ -464,49 +464,20 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                   WhatsApp Integration
                 </h3>
                 <div className="p-3 bg-blue-50 rounded-lg space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Related Chat:</span>
-                    <Badge variant="outline" className="bg-white">
-                      {task.related_chat_jid}
-                    </Badge>
-                  </div>
-                  {task.triggering_message_id && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Message ID:</span>
-                      <Badge variant="outline" className="bg-white font-mono text-xs">
-                        {task.triggering_message_id}
-                      </Badge>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Instance:</span>
-                    <Badge variant="outline" className="bg-white">
-                      {task.instance_id}
-                    </Badge>
-                  </div>
-
                   {/* Original Message Display */}
                   {messageData ? (
-                    <div className="mt-3 p-3 bg-white rounded-lg border">
-                      <div className="text-xs text-gray-500 mb-2 flex items-center justify-between">
-                        <span>Original WhatsApp Message</span>
-                        <span>
-                          {messageData.timestamp 
-                            ? format(new Date(messageData.timestamp), "MMM dd, yyyy 'at' h:mm a")
-                            : 'Unknown time'
-                          }
-                        </span>
+                    <div className="p-3 bg-white rounded-lg border">
+                      <div className="text-xs text-gray-500 mb-2">
+                        Original WhatsApp Message
                       </div>
-                      <div className="text-sm text-gray-800 whitespace-pre-wrap bg-gray-50 p-2 rounded">
+                      <div className="text-sm text-gray-800 whitespace-pre-wrap bg-gray-50 p-3 rounded">
                         "{messageData.content || "No message content available"}"
                       </div>
-                      <div className="mt-2 text-xs text-gray-500 flex items-center justify-between">
-                        <span>From: {messageData.sender_jid || messageData.senderJid || "Unknown sender"}</span>
-                        {messageData.message_type && messageData.message_type !== 'text' && (
-                          <Badge variant="secondary" className="text-xs">
-                            {messageData.message_type}
-                          </Badge>
-                        )}
+                      <div className="mt-2 text-xs text-gray-500">
+                        {messageData.timestamp 
+                          ? format(new Date(messageData.timestamp), "MMM dd, yyyy 'at' h:mm a")
+                          : 'Unknown time'
+                        }
                       </div>
                     </div>
                   ) : task.triggering_message_id ? (
