@@ -3693,7 +3693,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const taskInstanceId = taskCheck.rows[0]?.instance_id;
-      console.log('Task instance ID:', taskInstanceId, 'for task:', task_id);
 
       // Get the next display order
       const orderResult = await db.execute(sql`
