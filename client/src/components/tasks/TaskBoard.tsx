@@ -210,45 +210,47 @@ export function TaskBoard({
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statusColumns.map((column) => (
-          <div key={column.id} className="flex flex-col">
-            <div className={`rounded-t-lg p-3 ${column.color}`}>
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-sm">{column.title}</h3>
-                <Badge variant="secondary" className="text-xs">
-                  {getTasksByStatus(column.id).length}
-                </Badge>
-              </div>
-            </div>
-            
-            <Droppable droppableId={column.id}>
-              {(provided, snapshot) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  className={`flex-1 p-3 bg-gray-50 rounded-b-lg min-h-96 ${
-                    snapshot.isDraggingOver ? 'bg-blue-50' : ''
-                  }`}
-                >
-                  {getTasksByStatus(column.id).map((task, index) => 
-                    renderTask(task, index)
-                  )}
-                  {provided.placeholder}
-                  
-                  <Button
-                    variant="ghost"
-                    className="w-full h-8 text-xs text-muted-foreground border-dashed border-2 border-gray-300 hover:border-gray-400"
-                    onClick={() => onCreateSubtask(0, { status: column.id, title: 'New Task' })}
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add Task
-                  </Button>
+      <div className="h-full overflow-auto">
+        <div className="flex gap-6 min-w-max p-4">
+          {statusColumns.map((column) => (
+            <div key={column.id} className="flex flex-col w-80 flex-shrink-0">
+              <div className={`rounded-t-lg p-3 ${column.color}`}>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-sm">{column.title}</h3>
+                  <Badge variant="secondary" className="text-xs">
+                    {getTasksByStatus(column.id).length}
+                  </Badge>
                 </div>
-              )}
-            </Droppable>
-          </div>
-        ))}
+              </div>
+              
+              <Droppable droppableId={column.id}>
+                {(provided, snapshot) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className={`flex-1 p-3 bg-gray-50 rounded-b-lg min-h-96 max-h-[calc(100vh-300px)] overflow-y-auto ${
+                      snapshot.isDraggingOver ? 'bg-blue-50' : ''
+                    }`}
+                  >
+                    {getTasksByStatus(column.id).map((task, index) => 
+                      renderTask(task, index)
+                    )}
+                    {provided.placeholder}
+                    
+                    <Button
+                      variant="ghost"
+                      className="w-full h-8 text-xs text-muted-foreground border-dashed border-2 border-gray-300 hover:border-gray-400"
+                      onClick={() => onCreateSubtask(0, { status: column.id, title: 'New Task' })}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add Task
+                    </Button>
+                  </div>
+                )}
+              </Droppable>
+            </div>
+          ))}
+        </div>
       </div>
     </DragDropContext>
   );
