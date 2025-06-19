@@ -3445,10 +3445,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ) ORDER BY ci.display_order
             ) FILTER (WHERE ci.item_id IS NOT NULL), 
             '[]'::json
-          ) as checklist_items
+          ) as checklist_items,
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'task_id', st.task_id,
+                'title', st.title,
+                'description', st.description,
+                'status', st.status,
+                'priority', st.priority,
+                'due_date', st.due_date,
+                'created_at', st.created_at,
+                'updated_at', st.updated_at
+              ) ORDER BY st.created_at
+            ) FILTER (WHERE st.task_id IS NOT NULL), 
+            '[]'::json
+          ) as subtasks
         FROM crm.tasks t
         LEFT JOIN crm.task_checklist_items ci ON t.task_id = ci.task_id
-        WHERE t.created_by_user_id = ${userId}
+        LEFT JOIN crm.tasks st ON t.task_id = st.parent_task_id
+        WHERE t.created_by_user_id = ${userId} AND t.parent_task_id IS NULL
         GROUP BY t.task_id
         ORDER BY t.created_at DESC
       `);
@@ -3489,11 +3505,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         INSERT INTO crm.tasks (
           instance_id, title, description, status, priority, due_date,
           project_id, parent_task_id, assigned_to_user_id, related_chat_jid,
-          created_by_user_id
+          created_by_user_id, space_id
         ) VALUES (
           ${instanceId}, ${title}, ${description}, ${status}, ${priority}, ${due_date},
           ${project_id}, ${parent_task_id}, ${assigned_to_user_id}, ${related_chat_jid},
-          ${userId}
+          ${userId}, 1
         ) RETURNING *
       `);
 
