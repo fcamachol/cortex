@@ -546,7 +546,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                         <span>
                           From: {messageData.fromMe ? "You" : 
                                 messageData.isGroupChat ? 
-                                  (messageData.senderName || messageData.participantName || messageData.senderJid?.split('@')[0] || "Unknown sender") :
+                                  (messageData.participantName || messageData.senderName || messageData.senderJid?.split('@')[0] || "Unknown sender") :
                                   (messageData.senderName || messageData.senderJid?.split('@')[0] || "Unknown sender")
                                }
                         </span>
