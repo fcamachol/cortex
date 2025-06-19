@@ -47,6 +47,8 @@ export function TaskList({
   onCreateSubtask 
 }: TaskListProps) {
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
+  const [expandedChecklists, setExpandedChecklists] = useState<Set<number>>(new Set());
+  const [expandedSubtasks, setExpandedSubtasks] = useState<Set<number>>(new Set());
 
   const toggleTaskExpansion = (taskId: number) => {
     const newExpanded = new Set(expandedTasks);
@@ -56,6 +58,26 @@ export function TaskList({
       newExpanded.add(taskId);
     }
     setExpandedTasks(newExpanded);
+  };
+
+  const toggleChecklistExpansion = (taskId: number) => {
+    const newExpanded = new Set(expandedChecklists);
+    if (newExpanded.has(taskId)) {
+      newExpanded.delete(taskId);
+    } else {
+      newExpanded.add(taskId);
+    }
+    setExpandedChecklists(newExpanded);
+  };
+
+  const toggleSubtasksExpansion = (taskId: number) => {
+    const newExpanded = new Set(expandedSubtasks);
+    if (newExpanded.has(taskId)) {
+      newExpanded.delete(taskId);
+    } else {
+      newExpanded.add(taskId);
+    }
+    setExpandedSubtasks(newExpanded);
   };
 
   const getStatusColor = (status: string) => {
@@ -142,6 +164,19 @@ export function TaskList({
                 <Badge variant="outline" className={`text-xs ${getStatusColor(task.status)}`}>
                   {task.status.replace('_', ' ')}
                 </Badge>
+
+                {/* Summary counts */}
+                {task.subtasks && task.subtasks.length > 0 && (
+                  <span className="text-xs text-gray-500">
+                    {task.subtasks.filter(subtask => subtask.status === 'completed').length}/{task.subtasks.length} subtasks
+                  </span>
+                )}
+
+                {task.checklist_items && task.checklist_items.length > 0 && (
+                  <span className="text-xs text-gray-500">
+                    {task.checklist_items.filter(item => item.is_completed).length}/{task.checklist_items.length} checklist
+                  </span>
+                )}
               </div>
 
               {task.description && (
@@ -215,33 +250,94 @@ export function TaskList({
             </DropdownMenu>
           </div>
 
-          {/* Checklist Items */}
+          {/* Checklist Items Dropdown */}
           {task.checklist_items && task.checklist_items.length > 0 && (
-            <div className="mt-3 pl-6">
-              <div className="space-y-1">
-                {task.checklist_items.map((item) => (
-                  <div key={item.item_id} className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={item.is_completed}
-                      className="h-3 w-3"
-                    />
-                    <span className={item.is_completed ? 'line-through text-muted-foreground' : ''}>
-                      {item.content}
-                    </span>
-                  </div>
-                ))}
-              </div>
+            <div className="mt-3">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleChecklistExpansion(task.task_id);
+                }}
+                className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                {expandedChecklists.has(task.task_id) ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronRight className="h-3 w-3" />
+                )}
+                <span>
+                  {task.checklist_items.filter(item => item.is_completed).length}/{task.checklist_items.length} checklist items
+                </span>
+              </button>
+              
+              {expandedChecklists.has(task.task_id) && (
+                <div className="mt-2 pl-5 space-y-1">
+                  {task.checklist_items.map((item) => (
+                    <div key={item.item_id} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={item.is_completed}
+                        className="h-3 w-3"
+                        disabled
+                      />
+                      <span className={item.is_completed ? 'line-through text-muted-foreground' : ''}>
+                        {item.content}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Subtasks Dropdown */}
+          {task.subtasks && task.subtasks.length > 0 && (
+            <div className="mt-3">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleSubtasksExpansion(task.task_id);
+                }}
+                className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                {expandedSubtasks.has(task.task_id) ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronRight className="h-3 w-3" />
+                )}
+                <span>
+                  {task.subtasks.filter(subtask => subtask.status === 'completed').length}/{task.subtasks.length} subtasks
+                </span>
+              </button>
+              
+              {expandedSubtasks.has(task.task_id) && (
+                <div className="mt-2 pl-5 space-y-2">
+                  {task.subtasks.map((subtask) => (
+                    <div key={subtask.task_id} className="flex items-center gap-3 p-2 bg-gray-50 rounded border">
+                      <Checkbox
+                        checked={subtask.status === 'completed'}
+                        className="h-3 w-3"
+                        disabled
+                      />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium">{subtask.title}</div>
+                        {subtask.description && (
+                          <div className="text-xs text-gray-500 mt-1">{subtask.description}</div>
+                        )}
+                      </div>
+                      <Badge 
+                        variant={subtask.status === 'completed' ? 'default' : 'secondary'}
+                        className="text-xs"
+                      >
+                        {subtask.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Render Subtasks */}
-      {expandedTasks.has(task.task_id) && task.subtasks && task.subtasks.length > 0 && (
-        <div className="ml-4 border-l-2 border-gray-200 pl-4">
-          {task.subtasks.map(subtask => renderTask(subtask, depth + 1))}
-        </div>
-      )}
     </div>
   );
 
@@ -257,7 +353,7 @@ export function TaskList({
         </Card>
       ) : (
         <>
-          {tasks.map(task => renderTask(task))}
+          {tasks.map(task => renderTask(task, 0))}
           
           <Card className="border-dashed border-2 border-gray-300 hover:border-gray-400 transition-colors">
             <CardContent className="p-4">
