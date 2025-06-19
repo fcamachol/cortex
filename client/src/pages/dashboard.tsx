@@ -6,7 +6,7 @@ import { TasksPage } from "@/pages/TasksPage";
 import ContactModule from "@/components/contacts/contact-module";
 import CalendarModule from "@/components/calendar/calendar-module";
 import IntegrationModule from "@/components/integrations/integration-module";
-import { SimpleActionsDashboard } from "@/components/actions/simple-actions-dashboard";
+import { ActionsDashboard } from "@/components/actions/actions-dashboard";
 
 export default function Dashboard() {
   const [activeModule, setActiveModule] = useState("conversations");
@@ -31,7 +31,7 @@ export default function Dashboard() {
       case "calendar":
         return <CalendarModule />;
       case "actions":
-        return <SimpleActionsDashboard />;
+        return <ActionsDashboard />;
       case "integrations":
         return <IntegrationModule />;
       default:
