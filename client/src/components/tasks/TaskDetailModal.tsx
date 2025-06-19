@@ -128,6 +128,12 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
         title: "Subtask created",
         description: "The subtask has been created successfully.",
       });
+      
+      // Force re-render by triggering a state update
+      // This ensures the modal shows updated task data with new subtasks
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ['/api/crm/tasks'] });
+      }, 100);
     },
     onError: (error: any) => {
       toast({
