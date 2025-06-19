@@ -3437,5 +3437,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CRM Action Mappings API
+  app.get('/api/crm/action-mappings', async (req: Request, res: Response) => {
+    try {
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Demo user ID
+      
+      const mappings = await db.execute(sql`
+        SELECT 
+          am.mapping_id,
+          am.instance_id,
+          am.trigger_type,
+          am.trigger_value,
+          am.action_type,
+          am.default_title,
+          am.is_active,
+          am.created_at,
+          am.updated_at
+        FROM crm.action_mappings am
+        INNER JOIN whatsapp.instances wi ON am.instance_id = wi.instance_name
+        WHERE wi.client_id = ${userId}
+        ORDER BY am.created_at DESC
+      `);
+
+      res.json(mappings.rows);
+    } catch (error) {
+      console.error('Error fetching CRM action mappings:', error);
+      res.status(500).json({ error: 'Failed to fetch CRM action mappings' });
+    }
+  });
+
+  // CRM Action Stats API
+  app.get('/api/crm/action-stats', async (req: Request, res: Response) => {
+    try {
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Demo user ID
+      
+      const stats = await db.execute(sql`
+        SELECT 
+          COUNT(*) as total_mappings,
+          COUNT(CASE WHEN am.is_active THEN 1 END) as active_mappings,
+          0 as total_executions,
+          0 as recent_executions
+        FROM crm.action_mappings am
+        INNER JOIN whatsapp.instances wi ON am.instance_id = wi.instance_name
+        WHERE wi.client_id = ${userId}
+      `);
+
+      const result = stats.rows[0] || {
+        total_mappings: 0,
+        active_mappings: 0,
+        total_executions: 0,
+        recent_executions: 0
+      };
+
+      res.json({
+        totalMappings: parseInt(result.total_mappings) || 0,
+        activeMappings: parseInt(result.active_mappings) || 0,
+        totalExecutions: parseInt(result.total_executions) || 0,
+        recentExecutions: parseInt(result.recent_executions) || 0
+      });
+    } catch (error) {
+      console.error('Error fetching CRM action stats:', error);
+      res.status(500).json({ error: 'Failed to fetch CRM action stats' });
+    }
+  });
+
   return httpServer;
 }
