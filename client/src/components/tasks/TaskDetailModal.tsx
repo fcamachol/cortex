@@ -47,9 +47,11 @@ interface TaskDetailModalProps {
   onUpdate: (taskId: number, updates: Partial<Task>) => void;
   onDelete: (taskId: number) => void;
   onRefresh?: () => void;
+  onTaskClick?: (task: Task) => void;
+  allowSubtasks?: boolean;
 }
 
-export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onRefresh }: TaskDetailModalProps) {
+export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onRefresh, onTaskClick, allowSubtasks = true }: TaskDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTask, setEditedTask] = useState<Partial<Task>>({});
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
@@ -694,7 +696,11 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                 {task.subtasks && task.subtasks.length > 0 ? (
                   <div className="space-y-2">
                     {task.subtasks.map((subtask) => (
-                      <div key={subtask.task_id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                      <div 
+                        key={subtask.task_id} 
+                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => onTaskClick && onTaskClick(subtask)}
+                      >
                         <Checkbox
                           checked={subtask.status === 'completed'}
                           onCheckedChange={(checked) => {
@@ -702,6 +708,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                               status: checked ? 'completed' : 'todo' 
                             });
                           }}
+                          onClick={(e) => e.stopPropagation()}
                         />
                         <div className="flex-1">
                           <div className="text-sm font-medium">{subtask.title}</div>
@@ -718,14 +725,19 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                       </div>
                     ))}
                   </div>
-                ) : (
+                ) : allowSubtasks ? (
                   <div className="text-sm text-gray-500 text-center py-4">
                     No subtasks yet. Add one below.
                   </div>
+                ) : (
+                  <div className="text-sm text-gray-500 text-center py-4">
+                    No subtasks.
+                  </div>
                 )}
 
-                {/* Add new subtask */}
-                <div className="space-y-2">
+                {/* Add new subtask - only show if allowSubtasks is true */}
+                {allowSubtasks && (
+                  <div className="space-y-2">
                   {isCreatingSubtask ? (
                     <div className="flex gap-2">
                       <Input
@@ -769,6 +781,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                     </Button>
                   )}
                 </div>
+                )}
               </div>
             )}
           </div>
