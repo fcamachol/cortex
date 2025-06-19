@@ -32,6 +32,19 @@ export class ActionsEngine {
   async processMessageTriggers(context: TriggerContext): Promise<void> {
     console.log('🎯 Starting processMessageTriggers with context:', context);
     try {
+      // Get user ID from instance to filter rules by user
+      const [instance] = await db
+        .select({ clientId: whatsappInstances.clientId })
+        .from(whatsappInstances)
+        .where(eq(whatsappInstances.instanceId, context.instanceId));
+
+      if (!instance) {
+        console.log('❌ Instance not found:', context.instanceId);
+        return;
+      }
+
+      const userId = instance.clientId;
+
       // STEP 1: Authorization Check (Who Reacted?)
       if (context.reaction && context.reactionId) {
         console.log('🔍 Checking authorization for reaction:', context.reactionId);
@@ -97,6 +110,7 @@ export class ActionsEngine {
         .where(
           and(
             eq(actionRules.isActive, true),
+            eq(actionRules.userId, userId),
             sql`(${actionRules.instanceFilters} IS NULL OR ${actionRules.instanceFilters}::jsonb ? ${context.instanceId})`
           )
         );
