@@ -2,7 +2,7 @@ import { useState } from "react";
 import Sidebar from "@/components/layout/sidebar";
 import ConversationList from "@/components/conversations/conversation-list";
 import ChatInterface from "@/components/conversations/chat-interface";
-import TaskModule from "@/components/tasks/task-module";
+import { TasksPage } from "@/pages/TasksPage";
 import ContactModule from "@/components/contacts/contact-module";
 import CalendarModule from "@/components/calendar/calendar-module";
 import IntegrationModule from "@/components/integrations/integration-module";
@@ -25,7 +25,7 @@ export default function Dashboard() {
           </div>
         );
       case "tasks":
-        return <TaskModule />;
+        return <TasksPage />;
       case "contacts":
         return <ContactModule />;
       case "calendar":
