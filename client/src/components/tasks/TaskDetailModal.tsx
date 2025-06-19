@@ -480,7 +480,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                         "{messageData.content || "No message content available"}"
                       </div>
                       <div className="mt-2 text-xs text-gray-500">
-                        From: {messageData.senderName || messageData.senderJid || "Unknown sender"}
+                        From: {messageData.fromMe ? "You" : (messageData.senderName || messageData.senderJid || "Unknown sender")}
                       </div>
                     </div>
                   ) : task.triggering_message_id ? (
