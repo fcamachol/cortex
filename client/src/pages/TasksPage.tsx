@@ -132,6 +132,18 @@ export function TasksPage() {
     }
   });
 
+  // Delete task mutation
+  const deleteTaskMutation = useMutation({
+    mutationFn: (taskId: number) => apiRequest('DELETE', `/api/crm/tasks/${taskId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
+      toast({ title: 'Task deleted successfully' });
+    },
+    onError: () => {
+      toast({ title: 'Failed to delete task', variant: 'destructive' });
+    }
+  });
+
   // Create project mutation
   const createProjectMutation = useMutation({
     mutationFn: (projectData: any) => apiRequest('POST', '/api/crm/projects', projectData),
