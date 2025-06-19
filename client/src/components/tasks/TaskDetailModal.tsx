@@ -534,70 +534,71 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                           className="resize-none"
                         />
                         
-                        {/* Reply Options */}
-                        <div className="space-y-3">
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id="waitingForReply"
-                              checked={waitingForReply}
-                              onCheckedChange={(checked) => setWaitingForReply(checked as boolean)}
-                            />
-                            <label
-                              htmlFor="waitingForReply"
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                              Waiting for reply
-                            </label>
-                          </div>
-                          
-                          {waitingForReply && (
-                            <div className="ml-6">
-                              <label className="text-sm text-gray-600 mb-1 block">
-                                Change status to:
-                              </label>
-                              <Select value={statusAfterReply} onValueChange={setStatusAfterReply}>
-                                <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="todo">To Do</SelectItem>
-                                  <SelectItem value="in_progress">In Progress</SelectItem>
-                                  <SelectItem value="waiting_for_reply">Waiting for Reply</SelectItem>
-                                  <SelectItem value="on_hold">On Hold</SelectItem>
-                                  <SelectItem value="completed">Completed</SelectItem>
-                                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                                </SelectContent>
-                              </Select>
+                        <div className="flex flex-col gap-3">
+                          {/* Button row with options */}
+                          <div className="flex items-center justify-between gap-4">
+                            {/* Action buttons */}
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={handleSendReply}
+                                disabled={!replyMessage.trim() || replyMutation.isPending}
+                              >
+                                {replyMutation.isPending ? (
+                                  <>Sending...</>
+                                ) : (
+                                  <>
+                                    <Send className="h-4 w-4 mr-2" />
+                                    Send
+                                  </>
+                                )}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setIsReplying(false);
+                                  setReplyMessage("");
+                                  setWaitingForReply(false);
+                                }}
+                              >
+                                Cancel
+                              </Button>
                             </div>
-                          )}
-                        </div>
 
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={handleSendReply}
-                            disabled={!replyMessage.trim() || replyMutation.isPending}
-                          >
-                            {replyMutation.isPending ? (
-                              <>Sending...</>
-                            ) : (
-                              <>
-                                <Send className="h-4 w-4 mr-2" />
-                                Send
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setIsReplying(false);
-                              setReplyMessage("");
-                              setWaitingForReply(false);
-                            }}
-                          >
-                            Cancel
-                          </Button>
+                            {/* Reply options */}
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center space-x-2">
+                                <Checkbox
+                                  id="waitingForReply"
+                                  checked={waitingForReply}
+                                  onCheckedChange={(checked) => setWaitingForReply(checked as boolean)}
+                                />
+                                <label
+                                  htmlFor="waitingForReply"
+                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 whitespace-nowrap"
+                                >
+                                  Waiting for reply
+                                </label>
+                              </div>
+                              
+                              {waitingForReply && (
+                                <Select value={statusAfterReply} onValueChange={setStatusAfterReply}>
+                                  <SelectTrigger className="w-40">
+                                    <SelectValue placeholder="Select status" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="todo">To Do</SelectItem>
+                                    <SelectItem value="in_progress">In Progress</SelectItem>
+                                    <SelectItem value="waiting_for_reply">Waiting for Reply</SelectItem>
+                                    <SelectItem value="on_hold">On Hold</SelectItem>
+                                    <SelectItem value="completed">Completed</SelectItem>
+                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
