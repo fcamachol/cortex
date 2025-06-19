@@ -73,18 +73,25 @@ export function TasksPage() {
     const taskMap = new Map<number, Task>();
     const rootTasks: Task[] = [];
     
-    // First pass: create task map
+    // First pass: create task map with existing subtasks preserved
     data.forEach(task => {
-      taskMap.set(task.task_id, { ...task, subtasks: [] });
+      taskMap.set(task.task_id, { 
+        ...task, 
+        subtasks: task.subtasks || [] // Preserve existing subtasks from API
+      });
     });
     
-    // Second pass: build hierarchy
+    // Second pass: build hierarchy from parent_task_id relationships
     data.forEach(task => {
       const taskWithSubtasks = taskMap.get(task.task_id)!;
       if (task.parent_task_id) {
         const parent = taskMap.get(task.parent_task_id);
         if (parent) {
-          parent.subtasks!.push(taskWithSubtasks);
+          // Only add if not already in subtasks array
+          const existsInSubtasks = parent.subtasks!.some(st => st.task_id === task.task_id);
+          if (!existsInSubtasks) {
+            parent.subtasks!.push(taskWithSubtasks);
+          }
         }
       } else {
         rootTasks.push(taskWithSubtasks);
@@ -298,7 +305,11 @@ export function TasksPage() {
             onPriorityChange={handleTaskPriorityChange}
             onEditTask={setEditingTask}
             onCreateSubtask={handleCreateSubtask}
-            onTaskClick={setSelectedTask}
+            onTaskClick={(task) => {
+              console.log('Task clicked:', task);
+              console.log('Task subtasks:', task.subtasks);
+              setSelectedTask(task);
+            }}
           />
         </TabsContent>
         <TabsContent value="list" className="space-y-4">
