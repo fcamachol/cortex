@@ -333,17 +333,18 @@ export class ActionsEngine {
       priority: config.priority || 'medium',
       taskStatus: 'to_do',
       dueDate: config.dueDate ? new Date(config.dueDate) : null,
-      conversationJid: context.chatId,
-      contactJid: context.senderJid,
+      relatedChatJid: context.chatId, // This should be the chat/group ID, not the sender
+      originalSenderJid: context.originalSenderJid || context.senderJid, // The person who sent the original message
     };
 
     console.log('📝 Task data prepared:', taskData);
+    console.log(`🎯 Task will be related to chat: ${taskData.relatedChatJid}, original sender: ${taskData.originalSenderJid}`);
 
     // Save task to database using CRM schema
     try {
       const result = await db.execute(sql`
         INSERT INTO crm.tasks (instance_id, title, description, priority, status, related_chat_jid, created_by_user_id)
-        VALUES ('live-test-1750199771', ${taskData.title}, ${taskData.description}, ${taskData.priority}, ${taskData.taskStatus}, ${taskData.conversationJid}, ${taskData.userId})
+        VALUES ('live-test-1750199771', ${taskData.title}, ${taskData.description}, ${taskData.priority}, ${taskData.taskStatus}, ${taskData.relatedChatJid}, ${taskData.userId})
         RETURNING task_id, title, description, status
       `);
       
