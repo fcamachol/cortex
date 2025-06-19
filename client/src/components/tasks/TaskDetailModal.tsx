@@ -33,7 +33,10 @@ import {
   Timer,
   Hash,
   Send,
-  Reply
+  Reply,
+  Plus,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
 import type { Task } from "../../pages/TasksPage";
 
@@ -53,6 +56,9 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
   const [isReplying, setIsReplying] = useState(false);
   const [waitingForReply, setWaitingForReply] = useState(false);
   const [statusAfterReply, setStatusAfterReply] = useState<string>("");
+  const [showSubtasks, setShowSubtasks] = useState(true);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [isCreatingSubtask, setIsCreatingSubtask] = useState(false);
   const { toast } = useToast();
 
   // State for message data
@@ -97,6 +103,40 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
 
     fetchMessageData();
   }, [task?.triggering_message_id, task?.instance_id]);
+
+  // Create subtask mutation
+  const createSubtaskMutation = useMutation({
+    mutationFn: async (subtaskData: { title: string; parent_task_id: number }) => {
+      return fetch('/api/crm/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: subtaskData.title,
+          parent_task_id: subtaskData.parent_task_id,
+          status: 'todo',
+          priority: 'medium'
+        })
+      }).then(res => res.json());
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
+      setNewSubtaskTitle("");
+      setIsCreatingSubtask(false);
+      toast({
+        title: "Subtask created",
+        description: "The subtask has been created successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to create subtask",
+        description: error.message || "An error occurred while creating the subtask.",
+        variant: "destructive",
+      });
+    }
+  });
 
   // Reply mutation
   const replyMutation = useMutation({
@@ -149,6 +189,15 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
       chatId: task.related_chat_jid,
       message: replyMessage.trim(),
       quotedMessageId: task.triggering_message_id
+    });
+  };
+
+  const handleCreateSubtask = () => {
+    if (!newSubtaskTitle.trim() || !task?.task_id) return;
+    
+    createSubtaskMutation.mutate({
+      title: newSubtaskTitle.trim(),
+      parent_task_id: task.task_id
     });
   };
 
@@ -605,6 +654,113 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
               </div>
             </>
           )}
+
+          {/* Subtasks Section */}
+          <Separator />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-medium text-gray-700">Subtasks</h3>
+                {task.subtasks && task.subtasks.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {task.subtasks.length}
+                  </Badge>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSubtasks(!showSubtasks)}
+                className="h-6 px-2"
+              >
+                {showSubtasks ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              </Button>
+            </div>
+
+            {showSubtasks && (
+              <div className="space-y-2">
+                {/* Existing subtasks */}
+                {task.subtasks && task.subtasks.length > 0 ? (
+                  <div className="space-y-2">
+                    {task.subtasks.map((subtask) => (
+                      <div key={subtask.task_id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                        <Checkbox
+                          checked={subtask.status === 'completed'}
+                          onCheckedChange={(checked) => {
+                            onUpdate(subtask.task_id, { 
+                              status: checked ? 'completed' : 'todo' 
+                            });
+                          }}
+                        />
+                        <div className="flex-1">
+                          <div className="text-sm font-medium">{subtask.title}</div>
+                          {subtask.description && (
+                            <div className="text-xs text-gray-500 mt-1">{subtask.description}</div>
+                          )}
+                        </div>
+                        <Badge 
+                          variant={subtask.status === 'completed' ? 'default' : 'secondary'}
+                          className="text-xs"
+                        >
+                          {subtask.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500 text-center py-4">
+                    No subtasks yet. Add one below.
+                  </div>
+                )}
+
+                {/* Add new subtask */}
+                <div className="space-y-2">
+                  {isCreatingSubtask ? (
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter subtask title..."
+                        value={newSubtaskTitle}
+                        onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            handleCreateSubtask();
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        onClick={handleCreateSubtask}
+                        disabled={!newSubtaskTitle.trim() || createSubtaskMutation.isPending}
+                      >
+                        {createSubtaskMutation.isPending ? 'Adding...' : 'Add'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setIsCreatingSubtask(false);
+                          setNewSubtaskTitle("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsCreatingSubtask(true)}
+                      className="w-full border-dashed"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Subtask
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Task Timeline */}
           <Separator />
