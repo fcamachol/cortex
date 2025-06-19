@@ -2521,16 +2521,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Look up instance display name
       let instanceDisplayName = null;
       try {
-        // Query the instance directly since storage method has parameter mismatch
-        const [instance] = await db.select()
-          .from(whatsappInstances)
-          .where(and(
-            eq(whatsappInstances.userId, userId),
-            eq(whatsappInstances.instanceName, instanceId as string)
-          ));
+        // Query the instance directly using raw SQL since Drizzle schema might be mismatched
+        const instanceResult = await pool.query(
+          'SELECT display_name FROM whatsapp_instances WHERE user_id = $1 AND instance_name = $2 LIMIT 1',
+          [userId, instanceId]
+        );
         
-        if (instance && instance.displayName) {
-          instanceDisplayName = instance.displayName;
+        if (instanceResult.rows.length > 0 && instanceResult.rows[0].display_name) {
+          instanceDisplayName = instanceResult.rows[0].display_name;
         }
       } catch (instanceError) {
         console.log('Could not fetch instance info:', instanceError);
