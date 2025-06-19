@@ -391,8 +391,8 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
+    <div className="h-full flex flex-col">
+      <div className="flex-shrink-0 flex items-center gap-4 p-6 border-b">
         <Button variant="ghost" size="icon" onClick={onClose}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
@@ -406,8 +406,9 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+      <div className="flex-1 overflow-auto p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <Card>
@@ -690,6 +691,7 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
               <p>• Monitor execution logs</p>
             </CardContent>
           </Card>
+        </div>
         </div>
       </div>
     </div>
