@@ -2453,11 +2453,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { messageId, instanceId } = req.query;
       const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
       
+      console.log('Fetching message:', { messageId, instanceId, userId });
+      
       if (!messageId || !instanceId) {
         return res.status(400).json({ error: "messageId and instanceId are required" });
       }
       
       const message = await storage.getWhatsappMessage(userId, instanceId as string, messageId as string);
+      
+      console.log('Retrieved message:', message);
       
       if (!message) {
         return res.status(404).json({ error: "Message not found" });

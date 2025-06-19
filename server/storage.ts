@@ -425,7 +425,25 @@ export class DatabaseStorage implements IStorage {
 
   async getWhatsappMessage(userId: string, instanceId: string, messageId: string): Promise<WhatsappMessage | undefined> {
     const [result] = await db
-      .select()
+      .select({
+        messageId: whatsappMessages.messageId,
+        instanceId: whatsappMessages.instanceId,
+        chatId: whatsappMessages.chatId,
+        senderJid: whatsappMessages.senderJid,
+        fromMe: whatsappMessages.fromMe,
+        messageType: whatsappMessages.messageType,
+        content: whatsappMessages.content,
+        timestamp: whatsappMessages.timestamp,
+        quotedMessageId: whatsappMessages.quotedMessageId,
+        isForwarded: whatsappMessages.isForwarded,
+        forwardingScore: whatsappMessages.forwardingScore,
+        isStarred: whatsappMessages.isStarred,
+        isEdited: whatsappMessages.isEdited,
+        lastEditedAt: whatsappMessages.lastEditedAt,
+        sourcePlatform: whatsappMessages.sourcePlatform,
+        rawApiPayload: whatsappMessages.rawApiPayload,
+        createdAt: whatsappMessages.createdAt
+      })
       .from(whatsappMessages)
       .innerJoin(whatsappInstances, eq(whatsappMessages.instanceId, whatsappInstances.instanceId))
       .where(and(
@@ -433,7 +451,7 @@ export class DatabaseStorage implements IStorage {
         eq(whatsappMessages.instanceId, instanceId),
         eq(whatsappMessages.messageId, messageId)
       ));
-    return result?.messages || undefined;
+    return result || undefined;
   }
 
   async createWhatsappMessage(message: InsertWhatsappMessage): Promise<WhatsappMessage> {
