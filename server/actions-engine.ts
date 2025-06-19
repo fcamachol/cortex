@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { actionRules, actionExecutions, tasks, whatsappInstances, ActionRule, InsertActionExecution } from "@shared/schema";
+import { actionRules, actionExecutions, tasks, whatsappInstances, whatsappContacts, whatsappMessages, whatsappMessageReactions, ActionRule, InsertActionExecution } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { EvolutionApi } from "./evolution-api";
 
@@ -9,12 +9,14 @@ export interface TriggerContext {
   instanceId: string;
   chatId: string;
   senderJid: string;
+  reactorJid?: string; // Who performed the reaction
   content?: string;
   reaction?: string;
   hashtags?: string[];
   keywords?: string[];
   timestamp: Date;
   fromMe: boolean;
+  originalSenderJid?: string; // Sender of the original message being reacted to
 }
 
 export class ActionsEngine {
@@ -30,7 +32,65 @@ export class ActionsEngine {
   async processMessageTriggers(context: TriggerContext): Promise<void> {
     console.log('🎯 Starting processMessageTriggers with context:', context);
     try {
-      // Get all active rules for this user's instances
+      // STEP 1: Authorization Check (Who Reacted?)
+      if (context.reaction && context.reactionId) {
+        console.log('🔍 Checking authorization for reaction:', context.reactionId);
+        
+        // Look up the reaction in whatsapp.message_reactions table
+        const [reaction] = await db
+          .select()
+          .from(whatsappMessageReactions)
+          .where(
+            and(
+              eq(whatsappMessageReactions.messageId, context.messageId || ''),
+              eq(whatsappMessageReactions.instanceId, context.instanceId),
+              eq(whatsappMessageReactions.reactionEmoji, context.reaction)
+            )
+          )
+          .orderBy(desc(whatsappMessageReactions.timestamp))
+          .limit(1);
+
+        if (!reaction) {
+          console.log('❌ Reaction not found in database, stopping action processing');
+          return;
+        }
+
+        // Check if reaction is from internal user (from_me flag)
+        if (!reaction.fromMe) {
+          console.log('❌ Reaction is not from internal user (from_me = false), stopping action processing');
+          return;
+        }
+
+        console.log('✅ Authorization passed: Reaction is from internal user');
+        
+        // STEP 3: Context Gathering (What was the original context?)
+        if (context.messageId) {
+          console.log('🔍 Gathering context for original message:', context.messageId);
+          
+          const [originalMessage] = await db
+            .select()
+            .from(whatsappMessages)
+            .where(
+              and(
+                eq(whatsappMessages.messageId, context.messageId),
+                eq(whatsappMessages.instanceId, context.instanceId)
+              )
+            );
+
+          if (originalMessage) {
+            context.originalSenderJid = originalMessage.senderJid;
+            context.chatId = originalMessage.chatId;
+            console.log('✅ Original message context gathered:', {
+              originalSender: context.originalSenderJid,
+              chatId: context.chatId
+            });
+          } else {
+            console.log('⚠️ Original message not found in database');
+          }
+        }
+      }
+
+      // STEP 2: Rule Check (Is this a Trigger?)
       const rules = await db
         .select()
         .from(actionRules)
@@ -51,6 +111,7 @@ export class ActionsEngine {
 
       console.log('✅ Matching rules:', matchingRules.length, matchingRules.map(r => r.ruleName));
 
+      // STEP 4: Task Creation (Execute matching rules)
       for (const rule of matchingRules) {
         console.log(`⚡ Checking if rule "${rule.ruleName}" should execute...`);
         if (await this.shouldExecuteRule(rule)) {

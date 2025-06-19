@@ -130,6 +130,7 @@ export const whatsappMessageReactions = whatsappSchema.table("message_reactions"
   instanceId: varchar("instance_id", { length: 100 }).notNull(),
   reactorJid: varchar("reactor_jid", { length: 100 }).notNull(),
   reactionEmoji: varchar("reaction_emoji", { length: 10 }),
+  fromMe: boolean("from_me").notNull().default(false),
   timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
 });
 
