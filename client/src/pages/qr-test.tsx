@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function QRTestPage() {
   // Test with the connected instance
-  const testInstanceId = "prueba 7";
-  const testInstanceName = "Whatsapp Personal";
+  const testInstanceId = "live-test-1750199771";
+  const testInstanceName = "Cel USA";
 
   return (
     <div className="container mx-auto p-4 space-y-6">
