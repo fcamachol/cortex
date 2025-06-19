@@ -1,0 +1,389 @@
+-- =============================================================================
+-- SCHEMA: CRM (Final and Complete)
+-- PURPOSE: Contains all user-created business logic, including projects,
+--          companies, tasks, checklists, calendar events, and automation rules.
+-- =============================================================================
+
+CREATE SCHEMA IF NOT EXISTS crm;
+
+-- =============================================================================
+-- ENUMERATED TYPES
+-- =============================================================================
+CREATE TYPE crm.action_type AS ENUM ('create_task', 'create_calendar_event');
+COMMENT ON TYPE crm.action_type IS 'Defines the types of automated actions that can be triggered.';
+
+CREATE TYPE crm.trigger_type AS ENUM ('reaction', 'hashtag');
+COMMENT ON TYPE crm.trigger_type IS 'Defines the method that triggers an automated action.';
+
+CREATE TYPE crm.task_activity_type AS ENUM (
+    'created',
+    'status_changed',
+    'priority_changed',
+    'assignment_changed',
+    'due_date_changed',
+    'title_changed',
+    'description_changed',
+    'comment_added',
+    'reply_sent'
+);
+COMMENT ON TYPE crm.task_activity_type IS 'Defines the types of activities that can be logged for a task.';
+
+CREATE TYPE crm.task_message_link_type AS ENUM (
+    'trigger',              -- The message that triggered the task's creation
+    'context',              -- The original message being replied to by the trigger
+    'reply',                -- A reply sent from the task UI
+    'forward_from_task',    -- A message forwarded from the task UI
+    'message_from_task'     -- A new message sent from the task UI
+);
+COMMENT ON TYPE crm.task_message_link_type IS 'Differentiates the role of a message linked to a task, providing a full communication audit trail.';
+
+-- NEW ENUM FOR POLYMORPHIC LINKING
+CREATE TYPE crm.linked_entity_type AS ENUM ('project', 'task', 'contact');
+COMMENT ON TYPE crm.linked_entity_type IS 'Defines the types of entities that notes and documents can be linked to.';
+
+
+-- =============================================================================
+-- CORE TABLE STRUCTURES
+-- =============================================================================
+
+---
+--- TABLE: crm.action_mappings
+---
+CREATE TABLE crm.action_mappings (
+    mapping_id SERIAL PRIMARY KEY,
+    instance_id VARCHAR(100) NOT NULL,
+    trigger_type crm.trigger_type NOT NULL,
+    trigger_value VARCHAR(50) NOT NULL,
+    action_type crm.action_type NOT NULL,
+    default_title VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT uq_instance_trigger UNIQUE (instance_id, trigger_type, trigger_value),
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE crm.action_mappings IS 'Stores user-defined mappings from a trigger (emoji or hashtag) to a specific automated action.';
+
+---
+--- TABLE: crm.empresas
+---
+CREATE TABLE crm.empresas (
+    empresa_id SERIAL PRIMARY KEY,
+    instance_id VARCHAR(100) NOT NULL,
+    space_id INTEGER NOT NULL,
+    nombre VARCHAR(255) NOT NULL,
+    sitio_web VARCHAR(255),
+    industria VARCHAR(100),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_space FOREIGN KEY(space_id) REFERENCES app.spaces(space_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE crm.empresas IS 'Stores company/organization information, organized by space.';
+
+---
+--- TABLE: crm.contact_details
+---
+CREATE TABLE crm.contact_details (
+    contact_detail_id SERIAL PRIMARY KEY,
+    instance_id VARCHAR(100) NOT NULL,
+    phone_number VARCHAR(50) NOT NULL,
+    contact_jid VARCHAR(100),
+    first_name VARCHAR(255),
+    last_name VARCHAR(255),
+    email_address VARCHAR(255),
+    job_title VARCHAR(255),
+    empresa_id INTEGER,
+    assigned_to_user_id UUID,
+    lifecycle_stage VARCHAR(50),
+    lead_source VARCHAR(100),
+    secondary_phone_number VARCHAR(50),
+    address JSONB,
+    social_profiles JSONB,
+    custom_properties JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    UNIQUE (instance_id, phone_number),
+    UNIQUE (instance_id, contact_jid),
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_contact FOREIGN KEY(contact_jid, instance_id) REFERENCES whatsapp.contacts(jid, instance_id) ON DELETE SET NULL,
+    CONSTRAINT fk_empresa FOREIGN KEY(empresa_id) REFERENCES crm.empresas(empresa_id) ON DELETE SET NULL,
+    CONSTRAINT fk_assigned_user FOREIGN KEY(assigned_to_user_id) REFERENCES app.users(user_id) ON DELETE SET NULL
+);
+COMMENT ON TABLE crm.contact_details IS 'The central record for a contact, enriching channel data with business logic and user-defined fields.';
+
+---
+--- TABLE: crm.projects
+---
+CREATE TABLE crm.projects (
+    project_id SERIAL PRIMARY KEY,
+    instance_id VARCHAR(100) NOT NULL,
+    space_id INTEGER NOT NULL,
+    project_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'active' NOT NULL,
+    start_date DATE,
+    end_date DATE,
+    empresa_id INTEGER,
+    owner_user_id UUID,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_space FOREIGN KEY(space_id) REFERENCES app.spaces(space_id) ON DELETE CASCADE,
+    CONSTRAINT fk_empresa FOREIGN KEY(empresa_id) REFERENCES crm.empresas(empresa_id) ON DELETE SET NULL,
+    CONSTRAINT fk_owner_user FOREIGN KEY(owner_user_id) REFERENCES app.users(user_id) ON DELETE SET NULL
+);
+COMMENT ON TABLE crm.projects IS 'Stores high-level projects that can group tasks and be associated with companies.';
+
+---
+--- TABLE: crm.tasks
+---
+CREATE TABLE crm.tasks (
+    task_id SERIAL PRIMARY KEY,
+    instance_id VARCHAR(100) NOT NULL,
+    space_id INTEGER NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'pending' NOT NULL,
+    due_date TIMESTAMPTZ,
+    priority VARCHAR(50) DEFAULT 'medium',
+    project_id INTEGER,
+    parent_task_id INTEGER,
+    assigned_to_user_id UUID,
+    created_by_user_id UUID,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_space FOREIGN KEY(space_id) REFERENCES app.spaces(space_id) ON DELETE CASCADE,
+    CONSTRAINT fk_project FOREIGN KEY(project_id) REFERENCES crm.projects(project_id) ON DELETE CASCADE,
+    CONSTRAINT fk_parent_task FOREIGN KEY(parent_task_id) REFERENCES crm.tasks(task_id) ON DELETE CASCADE,
+    CONSTRAINT fk_assigned_user FOREIGN KEY(assigned_to_user_id) REFERENCES app.users(user_id) ON DELETE SET NULL,
+    CONSTRAINT fk_created_by_user FOREIGN KEY(created_by_user_id) REFERENCES app.users(user_id) ON DELETE SET NULL
+);
+COMMENT ON TABLE crm.tasks IS 'Stores actionable to-do items. Message and contact relationships are managed in linking tables.';
+
+---
+--- TABLE: crm.task_contacts
+---
+CREATE TABLE crm.task_contacts (
+    task_id INTEGER NOT NULL,
+    contact_detail_id INTEGER NOT NULL,
+    instance_id VARCHAR(100) NOT NULL,
+
+    PRIMARY KEY (task_id, contact_detail_id),
+    CONSTRAINT fk_task FOREIGN KEY (task_id) REFERENCES crm.tasks(task_id) ON DELETE CASCADE,
+    CONSTRAINT fk_contact_detail FOREIGN KEY (contact_detail_id) REFERENCES crm.contact_details(contact_detail_id) ON DELETE CASCADE,
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE crm.task_contacts IS 'Junction table to manually link multiple contacts to a single task, and vice-versa.';
+
+---
+--- TABLE: crm.task_message_links
+---
+CREATE TABLE crm.task_message_links (
+    task_id INTEGER NOT NULL,
+    message_id VARCHAR(255) NOT NULL,
+    instance_id VARCHAR(100) NOT NULL,
+    link_type crm.task_message_link_type NOT NULL,
+    
+    PRIMARY KEY (task_id, message_id, instance_id),
+    CONSTRAINT fk_task FOREIGN KEY (task_id) REFERENCES crm.tasks(task_id) ON DELETE CASCADE,
+    CONSTRAINT fk_message FOREIGN KEY (message_id, instance_id) REFERENCES whatsapp.messages(message_id, instance_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE crm.task_message_links IS 'Links tasks to messages, distinguishing between trigger, context, and reply messages.';
+
+---
+--- TABLE: crm.task_activity_log
+---
+CREATE TABLE crm.task_activity_log (
+    activity_id SERIAL PRIMARY KEY,
+    task_id INTEGER NOT NULL,
+    instance_id VARCHAR(100) NOT NULL,
+    actor_user_id UUID,
+    activity_type crm.task_activity_type NOT NULL,
+    change_data JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_task FOREIGN KEY(task_id) REFERENCES crm.tasks(task_id) ON DELETE CASCADE,
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_actor_user FOREIGN KEY(actor_user_id) REFERENCES app.users(user_id) ON DELETE SET NULL
+);
+COMMENT ON TABLE crm.task_activity_log IS 'An audit trail of all changes and comments related to a task.';
+
+---
+--- TABLE: crm.task_checklist_items
+---
+CREATE TABLE crm.task_checklist_items (
+    item_id SERIAL PRIMARY KEY,
+    task_id INTEGER NOT NULL,
+    instance_id VARCHAR(100) NOT NULL,
+    content TEXT NOT NULL,
+    is_completed BOOLEAN DEFAULT FALSE NOT NULL,
+    display_order INTEGER DEFAULT 0 NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_task FOREIGN KEY (task_id) REFERENCES crm.tasks(task_id) ON DELETE CASCADE,
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE
+);
+
+---
+--- TABLE: crm.list_templates
+---
+CREATE TABLE crm.list_templates (
+    template_id SERIAL PRIMARY KEY,
+    instance_id VARCHAR(100) NOT NULL,
+    space_id INTEGER NOT NULL,
+    template_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_space FOREIGN KEY(space_id) REFERENCES app.spaces(space_id) ON DELETE CASCADE
+);
+
+---
+--- TABLE: crm.list_template_items
+---
+CREATE TABLE crm.list_template_items (
+    template_item_id SERIAL PRIMARY KEY,
+    template_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    display_order INTEGER DEFAULT 0 NOT NULL,
+    default_assigned_to_user_id UUID,
+    CONSTRAINT fk_template FOREIGN KEY(template_id) REFERENCES crm.list_templates(template_id) ON DELETE CASCADE,
+    CONSTRAINT fk_default_user FOREIGN KEY(default_assigned_to_user_id) REFERENCES app.users(user_id) ON DELETE SET NULL
+);
+
+---
+--- TABLE: crm.calendar_events
+---
+CREATE TABLE crm.calendar_events (
+    event_id SERIAL PRIMARY KEY,
+    instance_id VARCHAR(100) NOT NULL,
+    space_id INTEGER NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    start_time TIMESTAMPTZ NOT NULL,
+    end_time TIMESTAMPTZ NOT NULL,
+    location VARCHAR(255),
+    is_all_day BOOLEAN DEFAULT FALSE NOT NULL,
+    created_by_user_id UUID,
+    project_id INTEGER,
+    task_id INTEGER,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_space FOREIGN KEY(space_id) REFERENCES app.spaces(space_id) ON DELETE CASCADE,
+    CONSTRAINT fk_created_by_user FOREIGN KEY(created_by_user_id) REFERENCES app.users(user_id) ON DELETE SET NULL,
+    CONSTRAINT fk_project FOREIGN KEY(project_id) REFERENCES crm.projects(project_id) ON DELETE SET NULL,
+    CONSTRAINT fk_task FOREIGN KEY(task_id) REFERENCES crm.tasks(task_id) ON DELETE SET NULL,
+    CONSTRAINT chk_end_time CHECK (end_time >= start_time)
+);
+COMMENT ON TABLE crm.calendar_events IS 'Stores user-created calendar events, organized by space.';
+
+---
+--- TABLE: crm.event_message_links
+---
+CREATE TABLE crm.event_message_links (
+    event_id INTEGER NOT NULL,
+    message_id VARCHAR(255) NOT NULL,
+    instance_id VARCHAR(100) NOT NULL,
+    link_type crm.task_message_link_type NOT NULL, -- Reusing the same ENUM for consistency
+
+    PRIMARY KEY (event_id, message_id, instance_id),
+    CONSTRAINT fk_event FOREIGN KEY(event_id) REFERENCES crm.calendar_events(event_id) ON DELETE CASCADE,
+    CONSTRAINT fk_message FOREIGN KEY (message_id, instance_id) REFERENCES whatsapp.messages(message_id, instance_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE crm.event_message_links IS 'Links calendar events to messages, distinguishing between trigger, context, and replies.';
+
+
+---
+--- TABLE: crm.event_attendees
+---
+CREATE TABLE crm.event_attendees (
+    event_id INTEGER NOT NULL,
+    attendee_user_id UUID NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending' NOT NULL,
+    PRIMARY KEY (event_id, attendee_user_id),
+    CONSTRAINT fk_event FOREIGN KEY(event_id) REFERENCES crm.calendar_events(event_id) ON DELETE CASCADE,
+    CONSTRAINT fk_attendee FOREIGN KEY(attendee_user_id) REFERENCES app.users(user_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE crm.event_attendees IS 'Links internal app users to the calendar events they are attending.';
+
+
+---
+--- NEW TABLE: crm.notes
+---
+CREATE TABLE crm.notes (
+    note_id SERIAL PRIMARY KEY,
+    instance_id VARCHAR(100) NOT NULL,
+    space_id INTEGER NOT NULL,
+    title VARCHAR(255),
+    content TEXT NOT NULL,
+    created_by_user_id UUID NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_space FOREIGN KEY(space_id) REFERENCES app.spaces(space_id) ON DELETE CASCADE,
+    CONSTRAINT fk_created_by FOREIGN KEY(created_by_user_id) REFERENCES app.users(user_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE crm.notes IS 'Stores rich text notes created by users.';
+
+
+---
+--- NEW TABLE: crm.documents
+---
+CREATE TABLE crm.documents (
+    document_id SERIAL PRIMARY KEY,
+    instance_id VARCHAR(100) NOT NULL,
+    space_id INTEGER NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_type VARCHAR(100), -- Mimetype
+    file_size_bytes BIGINT,
+    storage_path TEXT NOT NULL, -- e.g., an S3 key or local file path
+    uploaded_by_user_id UUID NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_instance FOREIGN KEY(instance_id) REFERENCES whatsapp.instances(instance_id) ON DELETE CASCADE,
+    CONSTRAINT fk_space FOREIGN KEY(space_id) REFERENCES app.spaces(space_id) ON DELETE CASCADE,
+    CONSTRAINT fk_uploaded_by FOREIGN KEY(uploaded_by_user_id) REFERENCES app.users(user_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE crm.documents IS 'Stores metadata for uploaded files.';
+
+
+---
+--- NEW TABLE: crm.note_links
+--- PURPOSE: A polymorphic junction table to link notes to various entities.
+---
+CREATE TABLE crm.note_links (
+    note_id INTEGER NOT NULL,
+    linked_entity_id INTEGER NOT NULL,
+    linked_entity_type crm.linked_entity_type NOT NULL, -- 'project', 'task', or 'contact'
+
+    PRIMARY KEY (note_id, linked_entity_id, linked_entity_type),
+    CONSTRAINT fk_note FOREIGN KEY(note_id) REFERENCES crm.notes(note_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE crm.note_links IS 'A polymorphic link table to attach notes to projects, tasks, or contacts.';
+
+
+---
+--- NEW TABLE: crm.document_links
+--- PURPOSE: A polymorphic junction table to link documents to various entities.
+---
+CREATE TABLE crm.document_links (
+    document_id INTEGER NOT NULL,
+    linked_entity_id INTEGER NOT NULL,
+    linked_entity_type crm.linked_entity_type NOT NULL, -- 'project', 'task', or 'contact'
+
+    PRIMARY KEY (document_id, linked_entity_id, linked_entity_type),
+    CONSTRAINT fk_document FOREIGN KEY(document_id) REFERENCES crm.documents(document_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE crm.document_links IS 'A polymorphic link table to attach documents to projects, tasks, or contacts.';
+
