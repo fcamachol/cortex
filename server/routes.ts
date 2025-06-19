@@ -380,18 +380,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.deleteWhatsappMessageReaction('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instance.instanceId, targetMessageId, reactorJid);
             console.log(`🗑️ Removed reaction from ${reactorJid} on message ${targetMessageId}`);
           } else {
+            // Look up the reactor contact to determine if they are internal (is_me = true)
+            const reactorContact = await storage.getWhatsappContact('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instance.instanceId, reactorJid);
+            const isInternalUser = reactorContact?.isMe || false;
+            
+            console.log(`🔍 Contact lookup for ${reactorJid}: found=${!!reactorContact}, isMe=${reactorContact?.isMe}, setting fromMe=${isInternalUser}`);
+
             // Add or update reaction
             const reactionMessageData = {
               messageId: targetMessageId,
               instanceId: instance.instanceId,
               reactorJid: reactorJid,
               reactionEmoji: reactionEmoji,
-              fromMe: message.key.fromMe || false,
+              fromMe: isInternalUser,
               timestamp: new Date((message.messageTimestamp || Math.floor(Date.now() / 1000)) * 1000)
             };
 
             await storage.createWhatsappMessageReaction(reactionMessageData);
-            console.log(`👍 Saved reaction ${reactionEmoji} from ${reactorJid} on message ${targetMessageId}`);
+            console.log(`👍 Saved reaction ${reactionEmoji} from ${reactorJid} (fromMe=${isInternalUser}) on message ${targetMessageId}`);
 
             // Process actions triggers for this reaction
             try {
