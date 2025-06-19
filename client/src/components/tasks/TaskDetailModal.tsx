@@ -48,6 +48,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
     if (task) {
       setEditedTask(task);
       setDueDate(task.due_date ? new Date(task.due_date) : undefined);
+      setIsEditing(false); // Reset editing state when task changes
     }
   }, [task]);
 
@@ -106,7 +107,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
     }
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: string | undefined) => {
     switch (priority) {
       case 'urgent':
         return 'bg-red-100 text-red-800 border-red-200';
@@ -212,14 +213,14 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
               {/* Status */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                  {getStatusIcon(editedTask.status || task.status)}
+                  {getStatusIcon(task.status)}
                   Status
                 </div>
                 <Select
-                  value={editedTask.status || task.status}
+                  value={task.status}
                   onValueChange={handleStatusChange}
                 >
-                  <SelectTrigger className={cn("w-40 h-8", getStatusColor(editedTask.status || task.status))}>
+                  <SelectTrigger className={cn("w-40 h-8", getStatusColor(task.status))}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -271,10 +272,10 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                   Priority
                 </div>
                 <Select
-                  value={editedTask.priority || task.priority}
+                  value={task.priority || "medium"}
                   onValueChange={handlePriorityChange}
                 >
-                  <SelectTrigger className={cn("w-40 h-8", getPriorityColor(editedTask.priority || task.priority))}>
+                  <SelectTrigger className={cn("w-40 h-8", getPriorityColor(task.priority || "medium"))}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
