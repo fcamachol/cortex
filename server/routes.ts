@@ -2464,12 +2464,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Message not found" });
       }
       
+      // Detect if this is a group chat
+      const isGroupChat = result.chatId && result.chatId.includes('@g.us');
+      
       // Look up sender's name and chat name
       let senderName = null;
+      let participantName = null;
       let chatName = null;
       
-      // First try to get sender name from contacts database
-      if (result.senderJid) {
+      // For group messages, extract participant info from rawApiPayload
+      if (isGroupChat && result.rawApiPayload) {
+        const payload = result.rawApiPayload as any;
+        if (payload.key && payload.key.participant) {
+          const participantJid = payload.key.participant;
+          
+          // Try to get participant name from contacts
+          try {
+            const participantContact = await storage.getWhatsappContact(userId, instanceId as string, participantJid);
+            if (participantContact && (participantContact.pushName || participantContact.verifiedName)) {
+              participantName = participantContact.verifiedName || participantContact.pushName;
+            }
+          } catch (contactError) {
+            console.log('Could not fetch contact for participant:', participantJid);
+          }
+          
+          // If no contact found, try to extract from raw message payload
+          if (!participantName && payload.pushName) {
+            participantName = payload.pushName;
+          }
+          
+          // Fallback to formatted phone number
+          if (!participantName) {
+            const phoneNumber = participantJid.split('@')[0];
+            participantName = `+${phoneNumber}`;
+          }
+        }
+      }
+      
+      // For non-group messages, get sender name
+      if (!isGroupChat && result.senderJid) {
         try {
           const contact = await storage.getWhatsappContact(userId, instanceId as string, result.senderJid);
           if (contact && (contact.pushName || contact.verifiedName)) {
@@ -2478,21 +2511,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (contactError) {
           console.log('Could not fetch contact for sender:', result.senderJid);
         }
-      }
-      
-      // If no contact found, try to extract from raw message payload
-      if (!senderName && result.rawApiPayload && result.rawApiPayload.pushName) {
-        senderName = result.rawApiPayload.pushName;
+        
+        // If no contact found, try to extract from raw message payload
+        if (!senderName && result.rawApiPayload) {
+          const payload = result.rawApiPayload as any;
+          if (payload.pushName) {
+            senderName = payload.pushName;
+          }
+        }
       }
       
       // Look up chat name (for personal chats use contact name, for groups use group name)
       if (result.chatId) {
         try {
-          if (result.chatId.includes('@g.us')) {
+          if (isGroupChat) {
             // Group chat - try to get group info
             const chat = await storage.getWhatsappChat(userId, instanceId as string, result.chatId);
-            if (chat && chat.name) {
-              chatName = chat.name;
+            if (chat) {
+              // Type assertion to access the name property safely
+              const chatData = chat as any;
+              if (chatData.name || chatData.chatName) {
+                chatName = chatData.name || chatData.chatName;
+              } else {
+                chatName = 'Group Chat';
+              }
             } else {
               chatName = 'Group Chat';
             }
@@ -2509,7 +2551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } catch (chatError) {
           // Fallback formatting
-          if (result.chatId.includes('@g.us')) {
+          if (isGroupChat) {
             chatName = 'Group Chat';
           } else {
             const phoneNumber = result.chatId.split('@')[0];
@@ -2537,7 +2579,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add enhanced data to result
       const enhancedResult = {
         ...result,
+        isGroupChat: isGroupChat,
         senderName: result.fromMe ? "You" : (senderName || result.senderJid?.split('@')[0] || 'Unknown sender'),
+        participantName: participantName, // For group messages, this is who sent the message
         chatName: chatName || 'Unknown Chat',
         instanceDisplayName: instanceDisplayName || instanceId
       };
