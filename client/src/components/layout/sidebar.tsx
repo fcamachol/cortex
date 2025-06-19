@@ -169,6 +169,11 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
             <span className="text-xs text-gray-600 dark:text-gray-400">Connected</span>
           </div>
           <div className="flex items-center space-x-1">
+            <Link href="/tasks">
+              <Button variant="ghost" size="sm" title="Task Management">
+                <CheckSquare className="h-4 w-4" />
+              </Button>
+            </Link>
             <Link href="/debug">
               <Button variant="ghost" size="sm" title="WebSocket Debug Monitor">
                 <Activity className="h-4 w-4" />
