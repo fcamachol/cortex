@@ -469,18 +469,19 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                     <div className="p-3 bg-white rounded-lg border">
                       <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
                         <span>{messageData.chatName || 'WhatsApp Message'}</span>
+                        <span>{messageData.instanceDisplayName || 'WhatsApp'}</span>
+                      </div>
+                      <div className="text-sm text-gray-800 whitespace-pre-wrap bg-gray-50 p-3 rounded">
+                        "{messageData.content || "No message content available"}"
+                      </div>
+                      <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                        <span>From: {messageData.fromMe ? "You" : (messageData.senderName || messageData.senderJid || "Unknown sender")}</span>
                         <span>
                           {messageData.timestamp 
                             ? format(new Date(messageData.timestamp), "MMM dd, yyyy 'at' h:mm a")
                             : 'Unknown time'
                           }
                         </span>
-                      </div>
-                      <div className="text-sm text-gray-800 whitespace-pre-wrap bg-gray-50 p-3 rounded">
-                        "{messageData.content || "No message content available"}"
-                      </div>
-                      <div className="mt-2 text-xs text-gray-500">
-                        From: {messageData.fromMe ? "You" : (messageData.senderName || messageData.senderJid || "Unknown sender")}
                       </div>
                     </div>
                   ) : task.triggering_message_id ? (

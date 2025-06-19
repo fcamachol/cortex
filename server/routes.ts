@@ -2518,11 +2518,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Look up instance display name
+      let instanceDisplayName = null;
+      try {
+        // Query the instance directly since storage method has parameter mismatch
+        const [instance] = await db.select()
+          .from(whatsappInstances)
+          .where(and(
+            eq(whatsappInstances.userId, userId),
+            eq(whatsappInstances.instanceName, instanceId as string)
+          ));
+        
+        if (instance && instance.displayName) {
+          instanceDisplayName = instance.displayName;
+        }
+      } catch (instanceError) {
+        console.log('Could not fetch instance info:', instanceError);
+      }
+      
       // Add enhanced data to result
       const enhancedResult = {
         ...result,
         senderName: result.fromMe ? "You" : (senderName || result.senderJid?.split('@')[0] || 'Unknown sender'),
-        chatName: chatName || 'Unknown Chat'
+        chatName: chatName || 'Unknown Chat',
+        instanceDisplayName: instanceDisplayName || instanceId
       };
       
       // Set no-cache headers
