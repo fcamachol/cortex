@@ -22,8 +22,21 @@ import {
   insertActionRuleSchema,
   ActionRule,
   InsertActionRule,
-  tasks
+  tasks,
+  appUsers,
+  insertAppUserSchema,
+  AppUser
 } from "../shared/schema";
+import { 
+  authenticateToken, 
+  optionalAuth, 
+  generateToken, 
+  hashPassword, 
+  comparePassword, 
+  isValidEmail, 
+  isValidPassword,
+  AuthRequest 
+} from "./auth";
 import { eq, and, desc, sql } from "drizzle-orm";
 
 // Format phone number to E.164 International Format
@@ -3835,6 +3848,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching CRM action stats:', error);
       res.status(500).json({ error: 'Failed to fetch CRM action stats' });
+    }
+  });
+
+  // Authentication Routes
+  app.post('/api/auth/signup', async (req: Request, res: Response) => {
+    try {
+      const { email, password, fullName } = req.body;
+
+      // Validate input
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+      }
+
+      if (!isValidEmail(email)) {
+        return res.status(400).json({ error: 'Invalid email format' });
+      }
+
+      const passwordValidation = isValidPassword(password);
+      if (!passwordValidation.valid) {
+        return res.status(400).json({ error: passwordValidation.message });
+      }
+
+      // Check if user already exists
+      const [existingUser] = await db
+        .select()
+        .from(appUsers)
+        .where(eq(appUsers.email, email))
+        .limit(1);
+
+      if (existingUser) {
+        return res.status(409).json({ error: 'User already exists with this email' });
+      }
+
+      // Hash password and create user
+      const hashedPassword = await hashPassword(password);
+      const userId = crypto.randomUUID();
+
+      const [newUser] = await db
+        .insert(appUsers)
+        .values({
+          userId,
+          email,
+          passwordHash: hashedPassword,
+          fullName: fullName || null,
+        })
+        .returning({
+          userId: appUsers.userId,
+          email: appUsers.email,
+          fullName: appUsers.fullName,
+        });
+
+      // Generate JWT token
+      const token = generateToken({
+        userId: newUser.userId,
+        email: newUser.email,
+        fullName: newUser.fullName || undefined,
+      });
+
+      res.status(201).json({
+        message: 'User created successfully',
+        user: newUser,
+        token,
+      });
+    } catch (error) {
+      console.error('Signup error:', error);
+      res.status(500).json({ error: 'Failed to create user' });
+    }
+  });
+
+  app.post('/api/auth/login', async (req: Request, res: Response) => {
+    try {
+      const { email, password } = req.body;
+
+      // Validate input
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+      }
+
+      // Find user
+      const [user] = await db
+        .select()
+        .from(appUsers)
+        .where(eq(appUsers.email, email))
+        .limit(1);
+
+      if (!user) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+
+      // Check password
+      const isValidPassword = await comparePassword(password, user.passwordHash);
+      if (!isValidPassword) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+
+      // Generate JWT token
+      const token = generateToken({
+        userId: user.userId,
+        email: user.email,
+        fullName: user.fullName || undefined,
+      });
+
+      res.json({
+        message: 'Login successful',
+        user: {
+          userId: user.userId,
+          email: user.email,
+          fullName: user.fullName,
+        },
+        token,
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ error: 'Login failed' });
+    }
+  });
+
+  app.get('/api/auth/me', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const user = req.user!;
+      res.json({
+        user: {
+          userId: user.userId,
+          email: user.email,
+          fullName: user.fullName,
+        },
+      });
+    } catch (error) {
+      console.error('Get user error:', error);
+      res.status(500).json({ error: 'Failed to get user information' });
     }
   });
 
