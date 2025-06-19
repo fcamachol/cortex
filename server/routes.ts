@@ -2464,11 +2464,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Message not found" });
       }
       
-      // Look up sender's name from contacts database and message data
+      // Look up sender's name and chat name
       let senderName = null;
       let chatName = null;
       
-      // First try to get name from contacts database
+      // First try to get sender name from contacts database
       if (result.senderJid) {
         try {
           const contact = await storage.getWhatsappContact(userId, instanceId as string, result.senderJid);
@@ -2480,13 +2480,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // If no contact found, try to extract from raw message payload
+      if (!senderName && result.rawApiPayload && result.rawApiPayload.pushName) {
+        senderName = result.rawApiPayload.pushName;
+      }
+      
       // Look up chat name (for personal chats use contact name, for groups use group name)
-      console.log('Looking up chat name for chatId:', result.chatId);
       if (result.chatId) {
         try {
           if (result.chatId.includes('@g.us')) {
             // Group chat - try to get group info
-            console.log('Group chat detected, looking up group info');
             const chat = await storage.getWhatsappChat(userId, instanceId as string, result.chatId);
             if (chat && chat.name) {
               chatName = chat.name;
@@ -2495,20 +2498,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           } else {
             // Personal chat - use contact name
-            console.log('Personal chat detected, looking up contact');
             const chatContact = await storage.getWhatsappContact(userId, instanceId as string, result.chatId);
-            console.log('Contact lookup result:', chatContact);
             if (chatContact && (chatContact.pushName || chatContact.verifiedName)) {
               chatName = chatContact.verifiedName || chatContact.pushName;
             } else {
               // Extract phone number and format it nicely
               const phoneNumber = result.chatId.split('@')[0];
               chatName = `+${phoneNumber}`;
-              console.log('Using fallback phone number format:', chatName);
             }
           }
         } catch (chatError) {
-          console.log('Could not fetch chat info for:', result.chatId, chatError);
           // Fallback formatting
           if (result.chatId.includes('@g.us')) {
             chatName = 'Group Chat';
@@ -2518,17 +2517,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      console.log('Final chatName:', chatName);
-      
-      // If no contact found, try to extract from raw message payload
-      if (!senderName && result.rawApiPayload && result.rawApiPayload.pushName) {
-        senderName = result.rawApiPayload.pushName;
-      }
       
       // Add enhanced data to result
       const enhancedResult = {
         ...result,
-        senderName: senderName || result.senderJid?.split('@')[0] || 'Unknown sender',
+        senderName: result.fromMe ? "You" : (senderName || result.senderJid?.split('@')[0] || 'Unknown sender'),
         chatName: chatName || 'Unknown Chat'
       };
       
