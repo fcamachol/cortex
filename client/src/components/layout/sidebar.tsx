@@ -166,7 +166,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
 
       {/* Footer */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
             <span className="text-xs text-gray-600 dark:text-gray-400">Connected</span>
@@ -186,6 +186,35 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
               <Settings className="h-4 w-4" />
             </Button>
           </div>
+        </div>
+        
+        {/* User Section */}
+        <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-800">
+          <div className="flex items-center space-x-3 min-w-0 flex-1">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={currentUser.avatar} />
+              <AvatarFallback>
+                {currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                {currentUser.name}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                {currentUser.email}
+              </p>
+            </div>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={logout}
+            title="Sign out"
+            className="ml-2 text-gray-500 hover:text-red-600"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
       </div>
     </div>
