@@ -68,6 +68,11 @@ export class ActionsEngine {
   private evaluateRule(rule: ActionRule, context: TriggerContext): boolean {
     const conditions = rule.triggerConditions as any;
     
+    // Check performer filters first
+    if (!this.matchesPerformerFilters(rule, context)) {
+      return false;
+    }
+    
     switch (rule.triggerType) {
       case 'reaction':
         return Boolean(context.reaction) && this.matchesReactionConditions(conditions, context);
@@ -117,6 +122,31 @@ export class ActionsEngine {
       return new RegExp(regexPattern, 'i').test(text);
     }
     return text.toLowerCase() === pattern.toLowerCase();
+  }
+
+  private matchesPerformerFilters(rule: ActionRule, context: TriggerContext): boolean {
+    const performerFilters = rule.performerFilters as any;
+    
+    // If no performer filters set, allow all
+    if (!performerFilters || !performerFilters.allowedPerformers) {
+      return true;
+    }
+    
+    const allowedPerformers = performerFilters.allowedPerformers;
+    
+    // Check performer type
+    if (allowedPerformers.includes('user_only') && !context.fromMe) {
+      return false;
+    }
+    
+    if (allowedPerformers.includes('contacts_only') && context.fromMe) {
+      return false;
+    }
+    
+    // If 'both' is specified or no restrictions, allow
+    return allowedPerformers.includes('both') || 
+           (allowedPerformers.includes('user_only') && context.fromMe) ||
+           (allowedPerformers.includes('contacts_only') && !context.fromMe);
   }
 
   private async shouldExecuteRule(rule: ActionRule): Promise<boolean> {

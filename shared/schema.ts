@@ -637,6 +637,7 @@ export const actionRules = actionsSchema.table("action_rules", {
   // Filtering and Scoping
   instanceFilters: jsonb("instance_filters"), // Which WhatsApp instances
   contactFilters: jsonb("contact_filters"), // Which contacts/groups
+  performerFilters: jsonb("performer_filters"), // Who can trigger (user_only, contacts_only, both)
   timeFilters: jsonb("time_filters"), // Time-based restrictions
   
   // Execution Settings
