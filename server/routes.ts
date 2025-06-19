@@ -2466,6 +2466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Look up sender's name from contacts database and message data
       let senderName = null;
+      let chatName = null;
       
       // First try to get name from contacts database
       if (result.senderJid) {
@@ -2479,15 +2480,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Look up chat name (for personal chats use contact name, for groups use group name)
+      console.log('Looking up chat name for chatId:', result.chatId);
+      if (result.chatId) {
+        try {
+          if (result.chatId.includes('@g.us')) {
+            // Group chat - try to get group info
+            console.log('Group chat detected, looking up group info');
+            const chat = await storage.getWhatsappChat(userId, instanceId as string, result.chatId);
+            if (chat && chat.name) {
+              chatName = chat.name;
+            } else {
+              chatName = 'Group Chat';
+            }
+          } else {
+            // Personal chat - use contact name
+            console.log('Personal chat detected, looking up contact');
+            const chatContact = await storage.getWhatsappContact(userId, instanceId as string, result.chatId);
+            console.log('Contact lookup result:', chatContact);
+            if (chatContact && (chatContact.pushName || chatContact.verifiedName)) {
+              chatName = chatContact.verifiedName || chatContact.pushName;
+            } else {
+              // Extract phone number and format it nicely
+              const phoneNumber = result.chatId.split('@')[0];
+              chatName = `+${phoneNumber}`;
+              console.log('Using fallback phone number format:', chatName);
+            }
+          }
+        } catch (chatError) {
+          console.log('Could not fetch chat info for:', result.chatId, chatError);
+          // Fallback formatting
+          if (result.chatId.includes('@g.us')) {
+            chatName = 'Group Chat';
+          } else {
+            const phoneNumber = result.chatId.split('@')[0];
+            chatName = `+${phoneNumber}`;
+          }
+        }
+      }
+      console.log('Final chatName:', chatName);
+      
       // If no contact found, try to extract from raw message payload
       if (!senderName && result.rawApiPayload && result.rawApiPayload.pushName) {
         senderName = result.rawApiPayload.pushName;
       }
       
-      // Add sender name to result
+      // Add enhanced data to result
       const enhancedResult = {
         ...result,
-        senderName: senderName || result.senderJid?.split('@')[0] || 'Unknown sender'
+        senderName: senderName || result.senderJid?.split('@')[0] || 'Unknown sender',
+        chatName: chatName || 'Unknown Chat'
       };
       
       // Set no-cache headers

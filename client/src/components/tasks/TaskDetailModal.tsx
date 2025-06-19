@@ -468,7 +468,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                   {messageData ? (
                     <div className="p-3 bg-white rounded-lg border">
                       <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                        <span>Original WhatsApp Message</span>
+                        <span>{messageData.chatName || 'WhatsApp Message'}</span>
                         <span>
                           {messageData.timestamp 
                             ? format(new Date(messageData.timestamp), "MMM dd, yyyy 'at' h:mm a")
