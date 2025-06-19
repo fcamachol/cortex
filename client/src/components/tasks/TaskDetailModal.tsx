@@ -65,12 +65,27 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
   const [showSubtasks, setShowSubtasks] = useState(true);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [isCreatingSubtask, setIsCreatingSubtask] = useState(false);
+  const [showChecklist, setShowChecklist] = useState(true);
+  const [newChecklistItem, setNewChecklistItem] = useState("");
+  const [isCreatingChecklistItem, setIsCreatingChecklistItem] = useState(false);
   const { toast } = useToast();
 
   // State for message data
   const [messageData, setMessageData] = useState<any>(null);
   const [messageLoading, setMessageLoading] = useState(false);
   const [messageError, setMessageError] = useState<any>(null);
+
+  // Fetch checklist items for the task
+  const { data: checklistItems, refetch: refetchChecklist } = useQuery({
+    queryKey: ['/api/crm/checklist-items', task?.task_id],
+    queryFn: async () => {
+      if (!task?.task_id) return [];
+      const response = await fetch('/api/crm/checklist-items');
+      const allItems = await response.json();
+      return allItems.filter((item: any) => item.task_id === task.task_id);
+    },
+    enabled: !!task?.task_id,
+  });
 
   // Fetch WhatsApp message data when task changes
   useEffect(() => {
@@ -109,6 +124,85 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
 
     fetchMessageData();
   }, [task?.triggering_message_id, task?.instance_id]);
+
+  // Create checklist item mutation
+  const createChecklistItemMutation = useMutation({
+    mutationFn: async (itemData: { content: string; task_id: number }) => {
+      return fetch('/api/crm/checklist-items', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          task_id: itemData.task_id,
+          content: itemData.content,
+          is_completed: false
+        })
+      }).then(res => res.json());
+    },
+    onSuccess: () => {
+      setNewChecklistItem("");
+      setIsCreatingChecklistItem(false);
+      refetchChecklist();
+      toast({
+        title: "Checklist item created",
+        description: "The checklist item has been added successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to create checklist item",
+        description: error.message || "An error occurred while creating the checklist item.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Update checklist item mutation
+  const updateChecklistItemMutation = useMutation({
+    mutationFn: async ({ itemId, updates }: { itemId: number; updates: any }) => {
+      return fetch(`/api/crm/checklist-items/${itemId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates)
+      }).then(res => res.json());
+    },
+    onSuccess: () => {
+      refetchChecklist();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update checklist item",
+        description: error.message || "An error occurred while updating the checklist item.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Delete checklist item mutation
+  const deleteChecklistItemMutation = useMutation({
+    mutationFn: async (itemId: number) => {
+      return fetch(`/api/crm/checklist-items/${itemId}`, {
+        method: 'DELETE'
+      }).then(res => res.json());
+    },
+    onSuccess: () => {
+      refetchChecklist();
+      toast({
+        title: "Checklist item deleted",
+        description: "The checklist item has been removed successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to delete checklist item",
+        description: error.message || "An error occurred while deleting the checklist item.",
+        variant: "destructive",
+      });
+    }
+  });
 
   // Create subtask mutation
   const createSubtaskMutation = useMutation({
@@ -208,6 +302,15 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
     createSubtaskMutation.mutate({
       title: newSubtaskTitle.trim(),
       parent_task_id: task.task_id
+    });
+  };
+
+  const handleCreateChecklistItem = () => {
+    if (!newChecklistItem.trim() || !task?.task_id) return;
+    
+    createChecklistItemMutation.mutate({
+      content: newChecklistItem.trim(),
+      task_id: task.task_id
     });
   };
 
@@ -681,6 +784,115 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
               </div>
             </>
           )}
+
+          {/* Checklist Section */}
+          <Separator />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-medium text-gray-700">Checklist</h3>
+                {checklistItems && checklistItems.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {checklistItems.filter((item: any) => item.is_completed).length}/{checklistItems.length}
+                  </Badge>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowChecklist(!showChecklist)}
+                className="h-6 px-2"
+              >
+                {showChecklist ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              </Button>
+            </div>
+
+            {showChecklist && (
+              <div className="space-y-2">
+                {/* Existing checklist items */}
+                {checklistItems && checklistItems.length > 0 ? (
+                  <div className="space-y-2">
+                    {checklistItems.map((item: any) => (
+                      <div key={item.item_id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                        <Checkbox
+                          checked={item.is_completed}
+                          onCheckedChange={(checked) => {
+                            updateChecklistItemMutation.mutate({
+                              itemId: item.item_id,
+                              updates: { is_completed: checked }
+                            });
+                          }}
+                        />
+                        <div className="flex-1">
+                          <div className={`text-sm ${item.is_completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                            {item.content}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteChecklistItemMutation.mutate(item.item_id)}
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500 text-center py-4">
+                    No checklist items yet. Add one below.
+                  </div>
+                )}
+
+                {/* Add new checklist item */}
+                <div className="space-y-2">
+                  {isCreatingChecklistItem ? (
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter checklist item..."
+                        value={newChecklistItem}
+                        onChange={(e) => setNewChecklistItem(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            handleCreateChecklistItem();
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        onClick={handleCreateChecklistItem}
+                        disabled={!newChecklistItem.trim() || createChecklistItemMutation.isPending}
+                      >
+                        {createChecklistItemMutation.isPending ? 'Adding...' : 'Add'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setIsCreatingChecklistItem(false);
+                          setNewChecklistItem("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsCreatingChecklistItem(true)}
+                      className="w-full border-dashed"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Checklist Item
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Subtasks Section - only show if allowSubtasks is true */}
           {allowSubtasks && (
