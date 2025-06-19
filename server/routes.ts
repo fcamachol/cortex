@@ -3682,15 +3682,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Demo user ID
       const { task_id, content, is_completed = false } = req.body;
 
-      // Verify the task belongs to the user
+      // Verify the task belongs to the user and get instance_id
       const taskCheck = await db.execute(sql`
-        SELECT task_id FROM crm.tasks 
+        SELECT task_id, instance_id FROM crm.tasks 
         WHERE task_id = ${task_id} AND created_by_user_id = ${userId}
       `);
 
       if (taskCheck.rows.length === 0) {
         return res.status(404).json({ error: 'Task not found' });
       }
+
+      const taskInstanceId = taskCheck.rows[0]?.instance_id;
+      console.log('Task instance ID:', taskInstanceId, 'for task:', task_id);
 
       // Get the next display order
       const orderResult = await db.execute(sql`
@@ -3703,8 +3706,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create the checklist item
       const result = await db.execute(sql`
-        INSERT INTO crm.task_checklist_items (task_id, content, is_completed, display_order, created_at, updated_at)
-        VALUES (${task_id}, ${content}, ${is_completed}, ${displayOrder}, NOW(), NOW())
+        INSERT INTO crm.task_checklist_items (task_id, instance_id, content, is_completed, display_order, created_at, updated_at)
+        VALUES (${task_id}, ${taskInstanceId}, ${content}, ${is_completed}, ${displayOrder}, NOW(), NOW())
         RETURNING *
       `);
 
