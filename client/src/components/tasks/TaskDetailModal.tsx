@@ -52,29 +52,48 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
   const [isReplying, setIsReplying] = useState(false);
   const { toast } = useToast();
 
-  // Fetch WhatsApp message data if task has triggering message
-  const { data: messageData } = useQuery({
-    queryKey: ['/api/whatsapp/message-content', task?.triggering_message_id, task?.instance_id, Date.now()],
-    queryFn: async () => {
-      if (!task?.triggering_message_id || !task?.instance_id) return null;
-      
-      // Direct API call with cache-busting
-      const response = await fetch(`/api/whatsapp/message-content?messageId=${task.triggering_message_id}&instanceId=${task.instance_id}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42&_=${Date.now()}`, {
-        method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
+  // State for message data
+  const [messageData, setMessageData] = useState(null);
+  const [messageLoading, setMessageLoading] = useState(false);
+  const [messageError, setMessageError] = useState(null);
+
+  // Fetch WhatsApp message data when task changes
+  useEffect(() => {
+    const fetchMessageData = async () => {
+      if (!task?.triggering_message_id || !task?.instance_id) {
+        setMessageData(null);
+        return;
+      }
+
+      setMessageLoading(true);
+      setMessageError(null);
+
+      try {
+        const response = await fetch(`/api/whatsapp/message-content?messageId=${task.triggering_message_id}&instanceId=${task.instance_id}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch message: ${response.status}`);
         }
-      });
-      
-      if (!response.ok) return null;
-      const data = await response.json();
-      return data;
-    },
-    enabled: !!(task?.triggering_message_id && task?.instance_id),
-    staleTime: 0,
-    gcTime: 0,
-  });
+
+        const data = await response.json();
+        setMessageData(data);
+      } catch (error) {
+        console.error('Error fetching message data:', error);
+        setMessageError(error);
+        setMessageData(null);
+      } finally {
+        setMessageLoading(false);
+      }
+    };
+
+    fetchMessageData();
+  }, [task?.triggering_message_id, task?.instance_id]);
 
   // Reply mutation
   const replyMutation = useMutation({
@@ -493,8 +512,15 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                   ) : task.triggering_message_id ? (
                     <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-dashed">
                       <div className="text-sm text-gray-500 text-center">
-                        Loading message content...
+                        {messageLoading ? 'Loading message content...' : 
+                         messageError ? `Error loading message: ${messageError.message}` :
+                         'No message data available'}
                       </div>
+                      {messageError && (
+                        <div className="mt-2 text-xs text-red-500 text-center">
+                          {JSON.stringify(messageError)}
+                        </div>
+                      )}
                     </div>
                   ) : null}
 
