@@ -120,8 +120,8 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
         description: "Your reply has been sent successfully.",
       });
       
-      // Update task status if requested
-      if (waitingForReply && task) {
+      // Update task status if a different status is selected
+      if (task && statusAfterReply && statusAfterReply !== task.status) {
         const updates: Partial<Task> = {
           status: statusAfterReply
         };
@@ -582,21 +582,19 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete }: T
                                 </label>
                               </div>
                               
-                              {waitingForReply && (
-                                <Select value={statusAfterReply} onValueChange={setStatusAfterReply}>
-                                  <SelectTrigger className="w-40">
-                                    <SelectValue placeholder="Select status" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="todo">To Do</SelectItem>
-                                    <SelectItem value="in_progress">In Progress</SelectItem>
-                                    <SelectItem value="waiting_for_reply">Waiting for Reply</SelectItem>
-                                    <SelectItem value="on_hold">On Hold</SelectItem>
-                                    <SelectItem value="completed">Completed</SelectItem>
-                                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              )}
+                              <Select value={statusAfterReply} onValueChange={setStatusAfterReply}>
+                                <SelectTrigger className="w-40">
+                                  <SelectValue placeholder="Change status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="todo">To Do</SelectItem>
+                                  <SelectItem value="in_progress">In Progress</SelectItem>
+                                  <SelectItem value="waiting_for_reply">Waiting for Reply</SelectItem>
+                                  <SelectItem value="on_hold">On Hold</SelectItem>
+                                  <SelectItem value="completed">Completed</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                           </div>
                         </div>
