@@ -3454,7 +3454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           am.created_at,
           am.updated_at
         FROM crm.action_mappings am
-        INNER JOIN whatsapp.instances wi ON am.instance_id = wi.instance_name
+        INNER JOIN whatsapp.instances wi ON am.instance_id = wi.instance_id
         WHERE wi.client_id = ${userId}
         ORDER BY am.created_at DESC
       `);
@@ -3478,7 +3478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           0 as total_executions,
           0 as recent_executions
         FROM crm.action_mappings am
-        INNER JOIN whatsapp.instances wi ON am.instance_id = wi.instance_name
+        INNER JOIN whatsapp.instances wi ON am.instance_id = wi.instance_id
         WHERE wi.client_id = ${userId}
       `);
 
