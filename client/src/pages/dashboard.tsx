@@ -36,7 +36,7 @@ export default function Dashboard() {
       case "integrations":
         return <IntegrationModule />;
       case "database":
-        return <DatabaseViewer />;
+        return <SimpleDBViewer />;
       default:
         return (
           <div className="flex-1 flex">

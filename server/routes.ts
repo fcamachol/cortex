@@ -9,7 +9,7 @@ import { db, pool } from "./db";
 import { setRLSContext } from "./rls-context";
 import { ActionsEngine } from "./actions-engine";
 import { sql } from "drizzle-orm";
-import { IntelligentWebhookController } from "./intelligent-webhook-controller";
+import { OptimizedWebhookController } from "./optimized-webhook-controller";
 import { 
   insertUserSchema,
   insertWhatsappInstanceSchema,
@@ -156,39 +156,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Additional webhook endpoints for alternative URL patterns
   app.post('/api/evolution/webhook/:instanceName/messages-upsert', async (req, res) => {
-    try {
-      const { instanceName } = req.params;
-      console.log(`📨 Messages upsert webhook for ${instanceName}:`, JSON.stringify(req.body, null, 2));
-      await handleWebhookMessagesUpsert(instanceName, req.body);
-      res.status(200).json({ status: 'received' });
-    } catch (error) {
-      console.error('Messages upsert webhook error:', error);
-      res.status(500).json({ error: 'Webhook processing failed' });
-    }
+    await OptimizedWebhookController.handleIncomingEvent(req, res);
   });
 
   app.post('/api/evolution/webhook/:instanceName/chats-update', async (req, res) => {
-    try {
-      const { instanceName } = req.params;
-      console.log(`📨 Chats update webhook for ${instanceName}:`, JSON.stringify(req.body, null, 2));
-      await handleWebhookChatsUpsert(instanceName, req.body);
-      res.status(200).json({ status: 'received' });
-    } catch (error) {
-      console.error('Chats update webhook error:', error);
-      res.status(500).json({ error: 'Webhook processing failed' });
-    }
+    await OptimizedWebhookController.handleIncomingEvent(req, res);
   });
 
   app.post('/api/evolution/webhook/:instanceName/contacts-update', async (req, res) => {
-    try {
-      const { instanceName } = req.params;
-      console.log(`📨 Contacts update webhook for ${instanceName}:`, JSON.stringify(req.body, null, 2));
-      await handleWebhookContactsUpsert(instanceName, req.body);
-      res.status(200).json({ status: 'received' });
-    } catch (error) {
-      console.error('Contacts update webhook error:', error);
-      res.status(500).json({ error: 'Webhook processing failed' });
-    }
+    await OptimizedWebhookController.handleIncomingEvent(req, res);
+  });
+
+  app.post('/api/evolution/webhook/:instanceName/messages-update', async (req, res) => {
+    await OptimizedWebhookController.handleIncomingEvent(req, res);
+  });
+
+  app.post('/api/evolution/webhook/:instanceName/chats-upsert', async (req, res) => {
+    await OptimizedWebhookController.handleIncomingEvent(req, res);
   });
 
   // Webhook handler functions for Evolution API events
