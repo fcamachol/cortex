@@ -226,10 +226,7 @@ export default function CalendarModule() {
   // Calendar management mutations
   const createCalendarMutation = useMutation({
     mutationFn: async (calendarData: { name: string; color: string; description?: string }) => {
-      return apiRequest('/api/calendar/calendars', {
-        method: 'POST',
-        body: JSON.stringify(calendarData)
-      });
+      return apiRequest('/api/calendar/calendars', 'POST', calendarData);
     },
     onSuccess: () => {
       refetchCalendars();
@@ -251,9 +248,7 @@ export default function CalendarModule() {
 
   const deleteCalendarMutation = useMutation({
     mutationFn: async (calendarId: string) => {
-      return apiRequest(`/api/calendar/calendars/${calendarId}`, {
-        method: 'DELETE'
-      });
+      return apiRequest(`/api/calendar/calendars/${calendarId}`, 'DELETE');
     },
     onSuccess: () => {
       refetchCalendars();
@@ -290,7 +285,14 @@ export default function CalendarModule() {
         endTime: '',
         location: '',
         isAllDay: false,
-        calendarId: 'personal'
+        calendarId: 'personal',
+        guests: [],
+        hasGoogleMeet: false,
+        meetLink: '',
+        attachments: [],
+        availability: 'busy',
+        visibility: 'default',
+        notifications: ['10']
       });
       refetchEvents();
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
@@ -431,14 +433,14 @@ export default function CalendarModule() {
       const isInDateRange = eventStart >= dayStart && eventStart <= dayEnd;
       
       // Check if event's calendar is visible
-      const calendar = subCalendars.find(cal => 
+      const calendar = subCalendars?.find((cal: any) => 
         cal.id === event.calendarId || cal.provider === event.provider
       );
       const isCalendarVisible = calendar ? calendar.visible : true;
       
       return isInDateRange && isCalendarVisible;
     }).map((event: any) => {
-      const calendar = subCalendars.find(cal => cal.id === event.calendarId || cal.provider === event.provider);
+      const calendar = subCalendars?.find((cal: any) => cal.id === event.calendarId || cal.provider === event.provider);
       return {
         ...event,
         color: calendar ? calendar.color : 'bg-gray-500'
@@ -620,7 +622,7 @@ export default function CalendarModule() {
                 </Button>
               </div>
               <div className="space-y-1">
-                {subCalendars.map((calendar) => {
+                {subCalendars?.map((calendar: any) => {
                   const calendarEventCount = events.filter((event: any) => 
                     event.calendarId === calendar.id || event.provider === calendar.provider
                   ).length;
