@@ -130,7 +130,7 @@ export default function CalendarModule() {
     attachments: [] as string[],
     availability: 'busy' as 'busy' | 'free',
     visibility: 'default' as 'default' | 'public' | 'private',
-    notifications: ['10'] as string[]
+    notifications: [10] as number[]
   });
   const [eventTab, setEventTab] = useState<'event' | 'task' | 'appointment'>('event');
   const [guestEmail, setGuestEmail] = useState('');
@@ -138,6 +138,13 @@ export default function CalendarModule() {
   const [repeatOption, setRepeatOption] = useState('no-repeat');
   const [showCustomRecurrence, setShowCustomRecurrence] = useState(false);
   const [showAvailabilityDropdown, setShowAvailabilityDropdown] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showCustomNotification, setShowCustomNotification] = useState(false);
+  const [customNotification, setCustomNotification] = useState({
+    type: 'notification',
+    value: 30,
+    unit: 'minutos'
+  });
   const [customRecurrence, setCustomRecurrence] = useState({
     frequency: 'weekly',
     interval: 1,
@@ -1410,11 +1417,48 @@ export default function CalendarModule() {
               </div>
 
               {/* Notifications */}
-              <div className="flex items-center space-x-4 py-3">
-                <Bell className="h-5 w-5 text-gray-500" />
+              <div className="flex items-start space-x-4 py-3">
+                <Bell className="h-5 w-5 text-gray-500 mt-1" />
                 <div className="flex-1">
                   <div className="text-gray-700">Notificaciones</div>
-                  <div className="text-sm text-gray-500">10 minutos antes</div>
+                  <div className="space-y-2 mt-2">
+                    {newEvent.notifications.map((notification, index) => {
+                      const formatNotification = (minutes: number) => {
+                        if (minutes < 60) return `${minutes} minutos antes`;
+                        if (minutes < 1440) return `${minutes / 60} hora${minutes / 60 > 1 ? 's' : ''} antes`;
+                        if (minutes < 10080) return `${minutes / 1440} día${minutes / 1440 > 1 ? 's' : ''} antes`;
+                        return `${minutes / 10080} semana${minutes / 10080 > 1 ? 's' : ''} antes`;
+                      };
+                      
+                      return (
+                        <div key={index} className="flex items-center gap-2">
+                          <div className="bg-gray-100 rounded-lg px-3 py-2 flex items-center gap-2 min-w-[160px]">
+                            <span className="text-sm text-gray-700">{formatNotification(notification)}</span>
+                            <svg className="w-3 h-3 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        {newEvent.notifications.length > 1 && (
+                          <button
+                            onClick={() => {
+                              const updatedNotifications = newEvent.notifications.filter((_, i) => i !== index);
+                              setNewEvent({ ...newEvent, notifications: updatedNotifications });
+                            }}
+                            className="text-gray-400 hover:text-red-500 p-1"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                    })}
+                    <button
+                      onClick={() => setShowNotificationsModal(true)}
+                      className="text-blue-600 text-sm hover:underline"
+                    >
+                      Añadir una notificación
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1617,6 +1661,170 @@ export default function CalendarModule() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Notifications Modal */}
+        {showNotificationsModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4">
+              <div className="p-4">
+                <div className="flex justify-between items-center mb-4">
+                  <div></div>
+                  <button
+                    onClick={() => setShowNotificationsModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Predefined notification options */}
+                  {[5, 10, 15, 30].map((minutes) => (
+                    <button
+                      key={minutes}
+                      onClick={() => {
+                        if (!newEvent.notifications.includes(minutes)) {
+                          setNewEvent({ 
+                            ...newEvent, 
+                            notifications: [...newEvent.notifications, minutes].sort((a, b) => a - b)
+                          });
+                        }
+                        setShowNotificationsModal(false);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 text-sm border-b border-gray-100"
+                    >
+                      {minutes} minutos antes
+                    </button>
+                  ))}
+                  
+                  <button
+                    onClick={() => {
+                      if (!newEvent.notifications.includes(60)) {
+                        setNewEvent({ 
+                          ...newEvent, 
+                          notifications: [...newEvent.notifications, 60].sort((a, b) => a - b)
+                        });
+                      }
+                      setShowNotificationsModal(false);
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 text-sm border-b border-gray-100"
+                  >
+                    1 hora antes
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      if (!newEvent.notifications.includes(1440)) {
+                        setNewEvent({ 
+                          ...newEvent, 
+                          notifications: [...newEvent.notifications, 1440].sort((a, b) => a - b)
+                        });
+                      }
+                      setShowNotificationsModal(false);
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 text-sm border-b border-gray-100"
+                  >
+                    1 día antes
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowNotificationsModal(false);
+                      setShowCustomNotification(true);
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 text-sm"
+                  >
+                    Personalizar...
+                  </button>
+                </div>
+
+                <div className="mt-4 pt-3 border-t">
+                  <button
+                    onClick={() => setShowNotificationsModal(false)}
+                    className="text-blue-600 text-sm hover:underline"
+                  >
+                    Añadir una notificación
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Custom Notification Modal */}
+        {showCustomNotification && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4">
+              <div className="p-4">
+                <h3 className="text-lg font-semibold mb-4">Notificación personalizada</h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={customNotification.type}
+                      onChange={(e) => setCustomNotification({ ...customNotification, type: e.target.value })}
+                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    >
+                      <option value="notification">Notificación</option>
+                    </select>
+                    
+                    <input
+                      type="number"
+                      value={customNotification.value}
+                      onChange={(e) => setCustomNotification({ ...customNotification, value: parseInt(e.target.value) || 0 })}
+                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-20 text-center"
+                      min="1"
+                    />
+                    
+                    <div className="relative">
+                      <select
+                        value={customNotification.unit}
+                        onChange={(e) => setCustomNotification({ ...customNotification, unit: e.target.value })}
+                        className="border border-gray-300 rounded-lg px-3 py-2 text-sm appearance-none bg-white pr-8"
+                      >
+                        <option value="minutos">minutos</option>
+                        <option value="horas">horas</option>
+                        <option value="días">días</option>
+                        <option value="semanas">semanas</option>
+                      </select>
+                      <svg className="w-3 h-3 absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    onClick={() => setShowCustomNotification(false)}
+                    className="text-blue-600 px-4 py-2 text-sm hover:underline"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => {
+                      let minutes = customNotification.value;
+                      if (customNotification.unit === 'horas') minutes *= 60;
+                      else if (customNotification.unit === 'días') minutes *= 1440;
+                      else if (customNotification.unit === 'semanas') minutes *= 10080;
+                      
+                      if (!newEvent.notifications.includes(minutes)) {
+                        setNewEvent({ 
+                          ...newEvent, 
+                          notifications: [...newEvent.notifications, minutes].sort((a, b) => a - b)
+                        });
+                      }
+                      setShowCustomNotification(false);
+                    }}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+                  >
+                    Guardar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DragDropContext>
   );
