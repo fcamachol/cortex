@@ -600,21 +600,33 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createWhatsappMessage(message: InsertWhatsappMessage): Promise<WhatsappMessage> {
-    const [newMessage] = await db
-      .insert(whatsappMessages)
-      .values(message)
-      .onConflictDoUpdate({
-        target: [whatsappMessages.messageId, whatsappMessages.instanceId],
-        set: {
-          content: message.content,
-          messageType: message.messageType,
-          isEdited: message.isEdited,
-          lastEditedAt: message.lastEditedAt,
-          rawApiPayload: message.rawApiPayload
+    try {
+      const [newMessage] = await db
+        .insert(whatsappMessages)
+        .values(message)
+        .onConflictDoUpdate({
+          target: [whatsappMessages.messageId, whatsappMessages.instanceId],
+          set: {
+            content: message.content,
+            messageType: message.messageType,
+            isEdited: message.isEdited || false,
+            lastEditedAt: message.lastEditedAt,
+            rawApiPayload: message.rawApiPayload,
+            updatedAt: new Date()
+          }
+        })
+        .returning();
+      return newMessage;
+    } catch (error: any) {
+      if (error.message?.includes('No values to set')) {
+        // Message already exists and is identical, just fetch and return it
+        const existingMessage = await this.getWhatsappMessage('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', message.instanceId, message.messageId);
+        if (existingMessage) {
+          return existingMessage;
         }
-      })
-      .returning();
-    return newMessage;
+      }
+      throw error;
+    }
   }
 
   async updateWhatsappMessage(userId: string, instanceId: string, messageId: string, message: Partial<InsertWhatsappMessage>): Promise<WhatsappMessage> {
