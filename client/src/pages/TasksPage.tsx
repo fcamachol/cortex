@@ -60,6 +60,7 @@ export function TasksPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [instanceFilter, setInstanceFilter] = useState<string>('all');
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -111,6 +112,12 @@ export function TasksPage() {
   // Fetch projects
   const { data: projects, isLoading: projectsLoading } = useQuery({
     queryKey: ['/api/crm/projects'],
+    select: (data: any) => data || []
+  });
+
+  // Fetch WhatsApp instances
+  const { data: instances } = useQuery({
+    queryKey: ['/api/whatsapp/instances'],
     select: (data: any) => data || []
   });
 
@@ -181,8 +188,9 @@ export function TasksPage() {
     const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
     const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
     const matchesProject = !selectedProject || task.project_id === selectedProject;
+    const matchesInstance = instanceFilter === 'all' || task.instance_id === instanceFilter;
     
-    return matchesSearch && matchesStatus && matchesPriority && matchesProject;
+    return matchesSearch && matchesStatus && matchesPriority && matchesProject && matchesInstance;
   }) || [];
 
   const handleTaskStatusChange = (taskId: number, newStatus: string) => {
@@ -287,6 +295,20 @@ export function TasksPage() {
                 <SelectItem value="medium">Medium</SelectItem>
                 <SelectItem value="high">High</SelectItem>
                 <SelectItem value="urgent">Urgent</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={instanceFilter} onValueChange={setInstanceFilter}>
+              <SelectTrigger className="w-52">
+                <SelectValue placeholder="All Instances" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Instances</SelectItem>
+                {(instances || []).map((instance: any) => (
+                  <SelectItem key={instance.instanceId} value={instance.instanceId}>
+                    {instance.displayName || instance.instanceId}
+                    {instance.phoneNumber && ` (${instance.phoneNumber})`}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
