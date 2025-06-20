@@ -32,7 +32,7 @@ interface ContactTasksAndEventsProps {
 }
 
 export function ContactTasksAndEvents({ contactJid, contactName, instanceId }: ContactTasksAndEventsProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(false);

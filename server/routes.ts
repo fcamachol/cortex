@@ -2862,21 +2862,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updated_at,
           metadata
         FROM tasks 
-        WHERE user_id = $1 
+        WHERE user_id = $1::uuid 
         AND (
-          metadata->>'related_chat_jid' = $2 
-          OR metadata->>'contact_jid' = $2
+          metadata->>'related_chat_jid' = $2::text 
+          OR metadata->>'contact_jid' = $2::text
           OR contact_id IN (
             SELECT contact_id FROM contacts 
-            WHERE user_id = $1 
-            AND (phone = $3 OR metadata->>'jid' = $2)
+            WHERE user_id = $1::uuid 
+            AND (phone = $3::text OR metadata->>'jid' = $2::text)
           )
         )
         ORDER BY 
           CASE WHEN status = 'completed' THEN 1 ELSE 0 END,
           due_date ASC NULLS LAST,
           created_at DESC
-      `, [userId, contactJid, contactJid.split('@')[0]]);
+      `, [userId, contactJid, (contactJid as string).split('@')[0]]);
 
       res.json(tasksQuery.rows);
     } catch (error) {
@@ -2895,6 +2895,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Query upcoming calendar events linked to this contact
+      const phoneNumber = (contactJid as string).split('@')[0];
+      const emailGuess = (contactJid as string).replace('@s.whatsapp.net', '@gmail.com');
+      
       const eventsQuery = await pool.query(`
         SELECT DISTINCT
           ce.event_id,
@@ -2913,19 +2916,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         WHERE ca.user_id = $1::uuid
         AND ce.start_time >= NOW()
         AND (
-          ce.description ILIKE '%' || $3 || '%'
-          OR cat.email = $4
-          OR ce.title ILIKE '%' || $5 || '%'
+          ce.description ILIKE '%' || $2::text || '%'
+          OR cat.email = $3::text
+          OR ce.title ILIKE '%' || $2::text || '%'
         )
         ORDER BY ce.start_time ASC
         LIMIT 10
-      `, [
-        userId, 
-        contactJid,
-        contactJid.split('@')[0], // phone number search
-        contactJid.replace('@s.whatsapp.net', '@gmail.com'), // email guess
-        contactJid.split('@')[0] // name search
-      ]);
+      `, [userId, phoneNumber, emailGuess]);
 
       res.json(eventsQuery.rows);
     } catch (error) {

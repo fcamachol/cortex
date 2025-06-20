@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Paperclip, Smile, Send, User, Plus, MoreVertical } from "lucide-react";
+import { Paperclip, Smile, Send, CheckSquare, Plus, MoreVertical } from "lucide-react";
 import { ContactTasksAndEvents } from "@/components/contacts/ContactTasksAndEvents";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 // WebSocket functionality removed - using webhook-based system
 import { apiRequest } from "@/lib/queryClient";
 import { formatPhoneNumber } from "@/lib/phoneUtils";
@@ -96,7 +97,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       <div className="flex-1 flex items-center justify-center chat-area">
         <div className="text-center">
           <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-            <User className="w-12 h-12 text-gray-400" />
+            <CheckSquare className="w-12 h-12 text-gray-400" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
             Welcome to your Personal CRM
@@ -144,9 +145,20 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="sm">
-              <User className="h-4 w-4" />
-            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <CheckSquare className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-0" align="end">
+                <ContactTasksAndEvents
+                  contactJid={conversation.chatId}
+                  contactName={conversation.title || 'Unknown Contact'}
+                  instanceId={instanceId}
+                />
+              </PopoverContent>
+            </Popover>
             <Button variant="ghost" size="sm">
               <Plus className="h-4 w-4" />
             </Button>
@@ -157,19 +169,8 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
         </div>
       </div>
 
-      {/* Contact Tasks & Events */}
-      {conversation && (
-        <div className="border-b border-gray-200 dark:border-gray-700 p-4">
-          <ContactTasksAndEvents
-            contactJid={conversation.chatId}
-            contactName={conversation.title || 'Unknown Contact'}
-            instanceId={instanceId}
-          />
-        </div>
-      )}
-
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 chat-area max-h-[calc(100vh-300px)] scroll-smooth scrollbar-thin chat-messages-scroll">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 chat-area max-h-[calc(100vh-200px)] scroll-smooth scrollbar-thin chat-messages-scroll">
         <div className="space-y-4">
           {messages.length === 0 ? (
             <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
