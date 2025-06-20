@@ -761,7 +761,7 @@ export default function CalendarModule() {
 
   // Handle create task form submission
   const handleCreateTask = () => {
-    if (!newTask.title) {
+    if (!newEvent.title) {
       toast({
         title: "Title required",
         description: "Please enter a title for the task.",
@@ -781,7 +781,7 @@ export default function CalendarModule() {
 
     // Create both task and calendar event
     const taskData = {
-      title: newTask.title,
+      title: newEvent.title,
       description: newTask.description,
       dueDate: dueDateTime ? dueDateTime.toISOString() : null,
       estimatedTimeMinutes: newTask.estimatedTime,
@@ -800,7 +800,7 @@ export default function CalendarModule() {
       const endTime = new Date(dueDateTime.getTime() + (newTask.estimatedTime * 60 * 1000));
       
       createEventMutation.mutate({
-        title: newTask.title,
+        title: newEvent.title,
         description: newTask.description,
         startTime: dueDateTime.toISOString(),
         endTime: endTime.toISOString(),
