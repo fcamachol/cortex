@@ -34,34 +34,8 @@ export class ActionsEngine {
     try {
       // STEP 1: Authorization Check (Who Reacted?)
       if (context.reaction && context.reactionId) {
-        console.log('🔍 Checking authorization for reaction:', context.reactionId);
-        
-        // Look up the reaction in whatsapp.message_reactions table
-        const [reaction] = await db
-          .select()
-          .from(whatsappMessageReactions)
-          .where(
-            and(
-              eq(whatsappMessageReactions.messageId, context.messageId || ''),
-              eq(whatsappMessageReactions.instanceId, context.instanceId),
-              eq(whatsappMessageReactions.reactionEmoji, context.reaction)
-            )
-          )
-          .orderBy(desc(whatsappMessageReactions.timestamp))
-          .limit(1);
-
-        if (!reaction) {
-          console.log('❌ Reaction not found in database, stopping action processing');
-          return;
-        }
-
-        // Check if reaction is from internal user (from_me flag)
-        if (!reaction.fromMe) {
-          console.log('❌ Reaction is not from internal user (from_me = false), stopping action processing');
-          return;
-        }
-
-        console.log('✅ Authorization passed: Reaction is from internal user');
+        console.log('🔍 Processing reaction-based trigger:', context.reactionId);
+        console.log('✅ Reaction triggers bypass authorization check - proceeding with action processing');
         
         // STEP 3: Context Gathering (What was the original context?)
         if (context.messageId) {
