@@ -357,9 +357,9 @@ export class ActionsEngine {
     // If this task is created from a reaction, include context and NLP insights
     if (context.reaction) {
       if (conversationContext) {
-        enhancedDescription = `Task created from reaction ${context.reaction}\n\n${conversationContext}\n\n${enhancedDescription}`;
+        enhancedDescription = `Task created from reaction ${context.reaction}\n\n${conversationContext}`;
       } else {
-        enhancedDescription = `Task created from reaction ${context.reaction}\n\nMessage: "${context.content}"\n\n${enhancedDescription}`;
+        enhancedDescription = `Task created from reaction ${context.reaction}\n\nMessage: "${context.content}"`;
       }
       
       // Add intelligent insights to description

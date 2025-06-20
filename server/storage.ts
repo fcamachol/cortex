@@ -800,6 +800,115 @@ export class DatabaseStorage implements IStorage {
   async createEvolutionMessage(message: InsertWhatsappMessage): Promise<WhatsappMessage> {
     return this.createWhatsappMessage(message);
   }
+
+  // Calendar integration implementations
+  async getCalendarAccount(userId: string): Promise<CalendarAccount | undefined> {
+    const [account] = await db.select().from(calendarAccounts).where(eq(calendarAccounts.userId, userId));
+    return account || undefined;
+  }
+
+  async createCalendarAccount(account: InsertCalendarAccount): Promise<CalendarAccount> {
+    const [newAccount] = await db.insert(calendarAccounts).values(account).returning();
+    return newAccount;
+  }
+
+  async updateCalendarAccount(userId: string, account: Partial<InsertCalendarAccount>): Promise<CalendarAccount> {
+    const [updatedAccount] = await db
+      .update(calendarAccounts)
+      .set({ ...account, updatedAt: new Date() })
+      .where(eq(calendarAccounts.userId, userId))
+      .returning();
+    return updatedAccount;
+  }
+
+  async deleteCalendarAccount(userId: string): Promise<void> {
+    await db.delete(calendarAccounts).where(eq(calendarAccounts.userId, userId));
+  }
+
+  async getCalendarCalendars(userId: string): Promise<CalendarCalendar[]> {
+    const account = await this.getCalendarAccount(userId);
+    if (!account) return [];
+    return await db.select().from(calendarCalendars).where(eq(calendarCalendars.accountId, account.accountId));
+  }
+
+  async createCalendarCalendar(calendar: InsertCalendarCalendar): Promise<CalendarCalendar> {
+    const [newCalendar] = await db.insert(calendarCalendars).values(calendar).returning();
+    return newCalendar;
+  }
+
+  async updateCalendarCalendar(calendarId: number, calendar: Partial<InsertCalendarCalendar>): Promise<CalendarCalendar> {
+    const [updatedCalendar] = await db
+      .update(calendarCalendars)
+      .set({ ...calendar, updatedAt: new Date() })
+      .where(eq(calendarCalendars.calendarId, calendarId))
+      .returning();
+    return updatedCalendar;
+  }
+
+  async deleteCalendarCalendar(calendarId: number): Promise<void> {
+    await db.delete(calendarCalendars).where(eq(calendarCalendars.calendarId, calendarId));
+  }
+
+  async getCalendarEvents(userId: string, calendarId?: number): Promise<CalendarEvent[]> {
+    const account = await this.getCalendarAccount(userId);
+    if (!account) return [];
+    
+    if (calendarId) {
+      return await db.select().from(calendarEvents).where(eq(calendarEvents.calendarId, calendarId));
+    }
+    
+    // Get events from all user's calendars
+    const calendars = await this.getCalendarCalendars(userId);
+    const calendarIds = calendars.map(c => c.calendarId);
+    if (calendarIds.length === 0) return [];
+    
+    return await db.select().from(calendarEvents).where(sql`${calendarEvents.calendarId} = ANY(${calendarIds})`);
+  }
+
+  async getCalendarEvent(eventId: number): Promise<CalendarEvent | undefined> {
+    const [event] = await db.select().from(calendarEvents).where(eq(calendarEvents.eventId, eventId));
+    return event || undefined;
+  }
+
+  async createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent> {
+    const [newEvent] = await db.insert(calendarEvents).values(event).returning();
+    return newEvent;
+  }
+
+  async updateCalendarEvent(eventId: number, event: Partial<InsertCalendarEvent>): Promise<CalendarEvent> {
+    const [updatedEvent] = await db
+      .update(calendarEvents)
+      .set({ ...event, updatedAt: new Date() })
+      .where(eq(calendarEvents.eventId, eventId))
+      .returning();
+    return updatedEvent;
+  }
+
+  async deleteCalendarEvent(eventId: number): Promise<void> {
+    await db.delete(calendarEvents).where(eq(calendarEvents.eventId, eventId));
+  }
+
+  async getCalendarAttendees(eventId: number): Promise<CalendarAttendee[]> {
+    return await db.select().from(calendarAttendees).where(eq(calendarAttendees.eventId, eventId));
+  }
+
+  async createCalendarAttendee(attendee: InsertCalendarAttendee): Promise<CalendarAttendee> {
+    const [newAttendee] = await db.insert(calendarAttendees).values(attendee).returning();
+    return newAttendee;
+  }
+
+  async updateCalendarAttendee(attendeeId: number, attendee: Partial<InsertCalendarAttendee>): Promise<CalendarAttendee> {
+    const [updatedAttendee] = await db
+      .update(calendarAttendees)
+      .set(attendee)
+      .where(eq(calendarAttendees.attendeeId, attendeeId))
+      .returning();
+    return updatedAttendee;
+  }
+
+  async deleteCalendarAttendee(attendeeId: number): Promise<void> {
+    await db.delete(calendarAttendees).where(eq(calendarAttendees.attendeeId, attendeeId));
+  }
 }
 
 export const storage = new DatabaseStorage();
