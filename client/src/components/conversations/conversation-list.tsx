@@ -109,11 +109,11 @@ export default function ConversationList({ selectedConversation, onSelectConvers
         ) : (
           filteredConversations.map((conversation: any) => (
             <div
-              key={conversation.id}
+              key={conversation.chatId || conversation.id}
               className={`whatsapp-conversation-item ${
-                selectedConversation === conversation.id ? 'active' : ''
+                selectedConversation === (conversation.chatId || conversation.id) ? 'active' : ''
               }`}
-              onClick={() => onSelectConversation(conversation.id)}
+              onClick={() => onSelectConversation(conversation.chatId || conversation.id)}
             >
               <div className="flex items-start space-x-3">
                 <Avatar className="w-12 h-12">

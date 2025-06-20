@@ -29,7 +29,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   const { data: rawMessages = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/whatsapp/messages/${conversationId}`],
-    enabled: !!conversationId,
+    enabled: !!conversationId && conversationId !== 'undefined',
   });
 
   // Transform messages to match frontend expectations

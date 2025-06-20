@@ -34,11 +34,15 @@ interface Message {
 
 interface Chat {
   chatId: string;
-  chatName: string;
-  lastMessage: string;
-  lastMessageTimestamp: string;
+  instanceId: string;
+  displayName: string;
+  type: 'individual' | 'group';
   unreadCount: number;
-  chatType: 'individual' | 'group';
+  lastMessageTimestamp: string | null;
+  isArchived: boolean;
+  isPinned: boolean;
+  contactInfo?: any;
+  groupInfo?: any;
 }
 
 interface WhatsAppChatInterfaceProps {
@@ -67,13 +71,13 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
   const { data: messages, isLoading: messagesLoading } = useQuery({
     queryKey: ['whatsapp-messages', selectedChat],
     queryFn: async () => {
-      if (!selectedChat) return [];
+      if (!selectedChat || selectedChat === 'undefined') return [];
       const response = await fetch(`/api/whatsapp/messages/${selectedChat}`);
       if (!response.ok) throw new Error('Failed to fetch messages');
       const data = await response.json();
       return data as Message[];
     },
-    enabled: !!selectedChat,
+    enabled: !!selectedChat && selectedChat !== 'undefined',
     refetchInterval: 10000, // More frequent updates for real-time messaging
   });
 
@@ -149,16 +153,16 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h4 className="font-medium truncate">
-                          {chat.chatName || chat.chatId}
+                          {chat.displayName || chat.chatId}
                         </h4>
-                        {chat.chatType === 'group' && (
+                        {chat.type === 'group' && (
                           <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">
                             Group
                           </span>
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground truncate">
-                        {chat.lastMessage || 'No messages'}
+                        No messages
                       </p>
                       {chat.lastMessageTimestamp && (
                         <p className="text-xs text-muted-foreground">

@@ -2377,6 +2377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const finalConversations = Array.from(conversationMap.values())
+        .filter(conv => conv.chatId && conv.chatId !== 'undefined') // Filter out undefined chatIds
         .sort((a, b) => (b.lastMessageTimestamp?.getTime() || 0) - (a.lastMessageTimestamp?.getTime() || 0));
       
       // Enhance conversations with contact/group information
