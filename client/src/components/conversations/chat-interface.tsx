@@ -43,9 +43,11 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     queryKey: [`/api/whatsapp/chat-messages`, conversationId, instanceId],
     queryFn: async () => {
       if (!conversationId || !instanceId) return [];
-      const response = await fetch(`/api/whatsapp/chat-messages?chatId=${encodeURIComponent(conversationId)}&instanceId=${instanceId}&limit=100`);
+      console.log('Fetching messages for chatId:', conversationId, 'instanceId:', instanceId);
+      const response = await fetch(`/api/whatsapp/chat-messages?chatId=${encodeURIComponent(conversationId)}&instanceId=${instanceId}&userId=${userId}&limit=100`);
       if (!response.ok) throw new Error('Failed to fetch messages');
       const data = await response.json();
+      console.log('Fetched messages:', data.length, 'messages for chat:', conversationId);
       return data.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     },
     enabled: !!conversationId && conversationId !== 'undefined' && !!instanceId,

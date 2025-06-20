@@ -1088,12 +1088,56 @@ export class DatabaseStorage implements IStorage {
     return [];
   }
 
-  async getCalendars(): Promise<any[]> {
+  async getCalendarCalendars(userId: string): Promise<any[]> {
     try {
-      return await db.select().from(calendarCalendars);
+      const results = await db
+        .select()
+        .from(calendarCalendars)
+        .innerJoin(calendarAccounts, eq(calendarCalendars.accountId, calendarAccounts.accountId))
+        .where(eq(calendarAccounts.userId, userId))
+        .orderBy(calendarCalendars.summary);
+      return results.map(result => result.calendars);
     } catch (error) {
       console.error('Error fetching calendars:', error);
       return [];
+    }
+  }
+
+  async createCalendarCalendar(calendar: any): Promise<any> {
+    try {
+      const [newCalendar] = await db
+        .insert(calendarCalendars)
+        .values(calendar)
+        .returning();
+      return newCalendar;
+    } catch (error) {
+      console.error('Error creating calendar:', error);
+      throw error;
+    }
+  }
+
+  async updateCalendarCalendar(id: number, updates: any): Promise<any> {
+    try {
+      const [updatedCalendar] = await db
+        .update(calendarCalendars)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(calendarCalendars.calendarId, id))
+        .returning();
+      return updatedCalendar;
+    } catch (error) {
+      console.error('Error updating calendar:', error);
+      throw error;
+    }
+  }
+
+  async deleteCalendarCalendar(id: number): Promise<void> {
+    try {
+      await db
+        .delete(calendarCalendars)
+        .where(eq(calendarCalendars.calendarId, id));
+    } catch (error) {
+      console.error('Error deleting calendar:', error);
+      throw error;
     }
   }
 

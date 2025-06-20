@@ -355,11 +355,45 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get('/api/calendar/calendars', async (req: Request, res: Response) => {
     try {
-      const calendars = await storage.getCalendars();
+      const { userId } = req.query;
+      const finalUserId = userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const calendars = await storage.getCalendarCalendars(finalUserId);
       res.json(calendars);
     } catch (error) {
       console.error('Error fetching calendars:', error);
       res.status(500).json({ error: 'Failed to fetch calendars' });
+    }
+  });
+
+  app.post('/api/calendar/calendars', async (req: Request, res: Response) => {
+    try {
+      const calendar = await storage.createCalendarCalendar(req.body);
+      res.json(calendar);
+    } catch (error) {
+      console.error('Error creating calendar:', error);
+      res.status(500).json({ error: 'Failed to create calendar' });
+    }
+  });
+
+  app.put('/api/calendar/calendars/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const calendar = await storage.updateCalendarCalendar(parseInt(id), req.body);
+      res.json(calendar);
+    } catch (error) {
+      console.error('Error updating calendar:', error);
+      res.status(500).json({ error: 'Failed to update calendar' });
+    }
+  });
+
+  app.delete('/api/calendar/calendars/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteCalendarCalendar(parseInt(id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting calendar:', error);
+      res.status(500).json({ error: 'Failed to delete calendar' });
     }
   });
 
