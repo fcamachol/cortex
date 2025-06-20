@@ -246,6 +246,10 @@ export function TasksPage() {
     createTaskMutation.mutate({ ...subtaskData, parent_task_id: parentTaskId });
   };
 
+  const handleTaskCreate = (taskData: Partial<Task>) => {
+    createTaskMutation.mutate(taskData);
+  };
+
   const handleTaskUpdate = (taskId: number, updates: Partial<Task>) => {
     updateTaskMutation.mutate({ taskId, updates });
   };
