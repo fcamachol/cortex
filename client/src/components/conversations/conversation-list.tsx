@@ -18,9 +18,34 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   // Mock user ID - in real app this would come from auth context
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
 
+  // Helper function to get display name for conversation
+  const getConversationDisplayName = (conv: any) => {
+    // Try to find matching contact first
+    const contact = contacts.find((c: any) => c.jid === conv.chatId);
+    
+    if (contact) {
+      return contact.pushName || contact.verifiedName || 'Unknown Contact';
+    }
+    
+    if (conv.type === 'group') {
+      // For groups, try to get the group name from the chatId
+      return conv.chatId.includes('@g.us') ? 'Group Chat' : conv.chatId;
+    } else {
+      // For individuals, format the phone number
+      const phoneNumber = conv.chatId.replace('@s.whatsapp.net', '');
+      return formatPhoneNumber(phoneNumber);
+    }
+  };
+
   const { data: conversations = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/whatsapp/conversations/${userId}`],
     refetchInterval: 3000, // Refresh every 3 seconds
+  });
+
+  // Also fetch contacts for display names
+  const { data: contacts = [] } = useQuery<any[]>({
+    queryKey: [`/api/contacts/${userId}`],
+    refetchInterval: 5000,
   });
 
   // Auto-refresh when new messages arrive or conversations change
@@ -39,25 +64,22 @@ export default function ConversationList({ selectedConversation, onSelectConvers
 
   const filteredConversations = conversations
     .filter((conv: any) => {
-      // Filter out conversations without any latest message
-      if (!conv.latestMessage) {
+      // Skip status broadcasts
+      if (conv.chatId === 'status@broadcast') {
         return false;
       }
       
-      // Show conversations with text content or non-text message types (stickers, images, etc.)
-      const hasTextContent = conv.latestMessage.content && conv.latestMessage.content.trim() !== '';
-      const hasNonTextMessage = conv.latestMessage.messageType && conv.latestMessage.messageType !== 'text';
-      const hasMessages = hasTextContent || hasNonTextMessage;
-      
       // Apply search filter if there's a search query
       if (searchQuery.trim() === '') {
-        return hasMessages;
+        return true; // Show all conversations when no search
       }
       
-      return hasMessages && (
-        conv.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (conv.latestMessage?.content && conv.latestMessage.content.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
+      // Search by chat ID (phone number for individuals) or group name
+      const searchTerm = searchQuery.toLowerCase();
+      const chatId = conv.chatId?.toLowerCase() || '';
+      const displayName = getConversationDisplayName(conv).toLowerCase();
+      
+      return chatId.includes(searchTerm) || displayName.includes(searchTerm);
     })
     .sort((a: any, b: any) => {
       // Sort by most recent message timestamp (newest first)

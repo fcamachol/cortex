@@ -1061,6 +1061,55 @@ export class DatabaseStorage implements IStorage {
     const [deletion] = await db.select().from(whatsappMessageDeletions).where(eq(whatsappMessageDeletions.deletionId, deletionId));
     return deletion || undefined;
   }
+
+  // Additional API methods implementation
+  async getAppSpaces(userId: string): Promise<any[]> {
+    // Return empty array for now - can be implemented based on your app schema
+    return [];
+  }
+
+  async getCrmTasks(): Promise<any[]> {
+    // Return empty array for now - can be implemented based on your CRM schema
+    return [];
+  }
+
+  async getCrmProjects(): Promise<any[]> {
+    // Return empty array for now - can be implemented based on your CRM schema
+    return [];
+  }
+
+  async getCrmChecklistItems(): Promise<any[]> {
+    // Return empty array for now - can be implemented based on your CRM schema
+    return [];
+  }
+
+  async getCalendarTasks(): Promise<any[]> {
+    // Return empty array for now - can be implemented based on your calendar schema
+    return [];
+  }
+
+  async getCalendars(): Promise<any[]> {
+    try {
+      return await db.select().from(calendarCalendars);
+    } catch (error) {
+      console.error('Error fetching calendars:', error);
+      return [];
+    }
+  }
+
+  async getCalendarProviders(): Promise<any[]> {
+    try {
+      return await db.select().from(calendarAccounts);
+    } catch (error) {
+      console.error('Error fetching calendar providers:', error);
+      return [];
+    }
+  }
+
+  async getActionsInstances(): Promise<any[]> {
+    // Return empty array for now - can be implemented based on your actions schema
+    return [];
+  }
 }
 
 export const storage = new DatabaseStorage();
