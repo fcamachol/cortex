@@ -2944,8 +2944,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         SELECT 
           reaction_id as "reactionId",
           message_id as "messageId",
-          sender_jid as "senderJid",
-          reaction,
+          reactor_jid as "senderJid",
+          reaction_emoji as "reaction",
           from_me as "fromMe",
           timestamp
         FROM whatsapp.message_reactions 

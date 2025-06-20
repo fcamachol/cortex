@@ -7,6 +7,7 @@ import { Paperclip, Smile, Send, CheckSquare, Plus, MoreVertical } from "lucide-
 import { ContactTasksAndEvents } from "@/components/contacts/ContactTasksAndEvents";
 import { MessageReactions } from "@/components/conversations/MessageReactions";
 import { MessageHoverActions } from "@/components/conversations/MessageHoverActions";
+import { CreateTaskFromMessageModal } from "@/components/tasks/CreateTaskFromMessageModal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 // WebSocket functionality removed - using webhook-based system
 import { apiRequest } from "@/lib/queryClient";
@@ -20,6 +21,8 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [messageInput, setMessageInput] = useState("");
   const [messageReactions, setMessageReactions] = useState<Record<string, any[]>>({});
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedMessageForTask, setSelectedMessageForTask] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
