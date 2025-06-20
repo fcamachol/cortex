@@ -3470,7 +3470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         FROM crm.tasks t
         LEFT JOIN crm.task_checklist_items ci ON t.task_id = ci.task_id
         LEFT JOIN crm.tasks st ON t.task_id = st.parent_task_id
-        WHERE t.created_by_user_id = ${userId} AND t.parent_task_id IS NULL
+        WHERE t.parent_task_id IS NULL
         GROUP BY t.task_id
         ORDER BY t.created_at DESC
       `);

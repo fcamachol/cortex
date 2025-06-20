@@ -221,7 +221,7 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4 bg-gray-50 dark:bg-gray-900">
+            <ScrollArea className="flex-1 p-4 bg-gray-50 dark:bg-gray-900 h-[calc(100vh-200px)] scroll-smooth">
               {messagesLoading ? (
                 <div className="text-center text-muted-foreground">
                   Loading messages...
