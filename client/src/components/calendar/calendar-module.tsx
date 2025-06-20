@@ -64,6 +64,7 @@ export default function CalendarModule() {
   const [guestEmail, setGuestEmail] = useState('');
   const [showRepeatDropdown, setShowRepeatDropdown] = useState(false);
   const [repeatOption, setRepeatOption] = useState('no-repeat');
+  const repeatDropdownRef = useRef<HTMLDivElement>(null);
   const [newCalendar, setNewCalendar] = useState({
     name: '',
     color: 'bg-blue-500',
@@ -84,6 +85,23 @@ export default function CalendarModule() {
     const option = repeatOptions.find(opt => opt.value === value);
     return option ? option.label : 'No se repite';
   };
+
+  // Close repeat dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (repeatDropdownRef.current && !repeatDropdownRef.current.contains(event.target as Node)) {
+        setShowRepeatDropdown(false);
+      }
+    };
+
+    if (showRepeatDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showRepeatDropdown]);
 
   const { toast } = useToast();
 
@@ -653,7 +671,7 @@ export default function CalendarModule() {
                 </Button>
               </div>
               <div className="space-y-1">
-                {subCalendars?.map((calendar: any) => {
+                {subCalendars?.map((calendar) => {
                   const calendarEventCount = events.filter((event: any) => 
                     event.calendarId === calendar.id || event.provider === calendar.provider
                   ).length;
@@ -1078,7 +1096,7 @@ export default function CalendarModule() {
                   <div className="text-sm text-gray-500 flex items-center gap-2">
                     <span>Zona horaria</span>
                     <span>•</span>
-                    <div className="relative">
+                    <div className="relative" ref={repeatDropdownRef}>
                       <button
                         onClick={() => setShowRepeatDropdown(!showRepeatDropdown)}
                         className="flex items-center gap-1 text-gray-500 hover:text-blue-600 transition-colors"
