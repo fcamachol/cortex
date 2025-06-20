@@ -98,60 +98,9 @@ const requireAuth = (req: Request & { user?: { id: string } }, res: Response, ne
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
-  // Evolution API Webhook endpoint for real-time WhatsApp events
+  // Evolution API Webhook endpoint - using optimized controller
   app.post('/api/evolution/webhook/:instanceName', async (req, res) => {
-    try {
-      const { instanceName } = req.params;
-      const webhookData = req.body;
-      
-      console.log(`📨 Evolution API Webhook for ${instanceName}:`, JSON.stringify(webhookData, null, 2));
-      
-      // Process different event types from Evolution API
-      const { event, data } = webhookData;
-      
-      switch (event) {
-        case 'messages.upsert':
-          await handleWebhookMessagesUpsert(instanceName, data);
-          break;
-        case 'send.message':
-          await handleWebhookMessagesUpsert(instanceName, data);
-          break;
-        case 'messages.update':
-          await handleWebhookMessagesUpdate(instanceName, data);
-          break;
-        case 'contacts.upsert':
-          await handleWebhookContactsUpsert(instanceName, data);
-          break;
-        case 'chats.upsert':
-          await handleWebhookChatsUpsert(instanceName, data);
-          break;
-        case 'groups.upsert':
-          await handleWebhookGroupsUpsert(instanceName, data);
-          break;
-        case 'group-participants.update':
-          await handleWebhookGroupParticipantsUpdate(instanceName, data);
-          break;
-        case 'messages.reaction':
-          await handleWebhookMessageReaction(instanceName, data);
-          break;
-        case 'messages.reaction.update':
-          await handleWebhookMessageReaction(instanceName, data);
-          break;
-        case 'presence.update':
-          console.log(`👁️ Presence update for ${instanceName}:`, data);
-          break;
-        case 'connection.update':
-          console.log(`🔗 Connection update for ${instanceName}:`, data);
-          break;
-        default:
-          console.log(`🎯 Unhandled Evolution API event: ${event}`, data);
-      }
-      
-      res.status(200).json({ status: 'received' });
-    } catch (error) {
-      console.error('Evolution API webhook error:', error);
-      res.status(500).json({ error: 'Webhook processing failed' });
-    }
+    await OptimizedWebhookController.handleIncomingEvent(req, res);
   });
 
   // Additional webhook endpoints for alternative URL patterns
