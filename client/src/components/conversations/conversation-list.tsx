@@ -155,11 +155,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                      {conversation.type === 'group' ? 
-                        (conversation.chatId || 'Unknown Group') :
-                        (conversation.title && conversation.title.includes('@') ? 
-                          formatPhoneNumber(conversation.title) : 
-                          (conversation.title || formatPhoneNumber(conversation.chatId || 'Unknown Contact')))}
+                      {getConversationDisplayName(conversation)}
                     </h3>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
                       {conversation.latestMessage?.createdAt ? new Date(conversation.latestMessage.createdAt).toLocaleTimeString([], { 
