@@ -110,7 +110,63 @@ export default function CalendarModule() {
     queryFn: async () => {
       const response = await fetch('/api/calendar/events');
       if (!response.ok) throw new Error('Failed to fetch events');
-      return response.json();
+      const data = await response.json();
+      
+      // Add some sample events for demonstration if no events exist
+      if (data.length === 0) {
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+        
+        return [
+          {
+            eventId: 'sample-1',
+            title: 'Team Meeting',
+            description: 'Weekly team sync',
+            startTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 0).toISOString(),
+            endTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 11, 0).toISOString(),
+            location: 'Conference Room A',
+            isAllDay: false,
+            provider: 'local',
+            calendarId: 'work'
+          },
+          {
+            eventId: 'sample-2',
+            title: 'Lunch with Sarah',
+            description: 'Birthday lunch',
+            startTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 30).toISOString(),
+            endTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 14, 0).toISOString(),
+            location: 'Downtown Restaurant',
+            isAllDay: false,
+            provider: 'local',
+            calendarId: 'personal'
+          },
+          {
+            eventId: 'sample-3',
+            title: 'Project Review',
+            description: 'Q4 project milestone review',
+            startTime: new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 14, 0).toISOString(),
+            endTime: new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 15, 30).toISOString(),
+            location: 'Virtual Meeting',
+            isAllDay: false,
+            provider: 'local',
+            calendarId: 'work'
+          },
+          {
+            eventId: 'sample-4',
+            title: 'Family Dinner',
+            description: 'Monthly family gathering',
+            startTime: new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 18, 0).toISOString(),
+            endTime: new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 20, 0).toISOString(),
+            location: 'Mom\'s House',
+            isAllDay: false,
+            provider: 'local',
+            calendarId: 'family'
+          }
+        ];
+      }
+      
+      return data;
     }
   });
 
@@ -273,14 +329,22 @@ export default function CalendarModule() {
     return slots;
   };
 
-  // Get events for a specific day
+  // Get events for a specific day (filtered by visible calendars)
   const getEventsForDay = (date: Date) => {
     const dayStart = startOfDay(date);
     const dayEnd = endOfDay(date);
     
     return events.filter((event: any) => {
       const eventStart = new Date(event.startTime);
-      return eventStart >= dayStart && eventStart <= dayEnd;
+      const isInDateRange = eventStart >= dayStart && eventStart <= dayEnd;
+      
+      // Check if event's calendar is visible
+      const calendar = subCalendars.find(cal => 
+        cal.id === event.calendarId || cal.provider === event.provider
+      );
+      const isCalendarVisible = calendar ? calendar.visible : true;
+      
+      return isInDateRange && isCalendarVisible;
     }).map((event: any) => {
       const calendar = subCalendars.find(cal => cal.id === event.calendarId || cal.provider === event.provider);
       return {
@@ -453,20 +517,48 @@ export default function CalendarModule() {
           <div className="flex-1 overflow-y-auto">
             <div className="p-4">
               <h3 className="text-sm font-medium text-gray-700 mb-3">My calendars</h3>
-              <div className="space-y-2">
-                {subCalendars.map((calendar) => (
-                  <div key={calendar.id} className="flex items-center gap-3 py-1 px-2 rounded hover:bg-gray-50">
-                    <Checkbox
-                      checked={calendar.visible}
-                      onCheckedChange={() => toggleCalendarVisibility(calendar.id)}
-                      className="data-[state=checked]:bg-transparent data-[state=checked]:border-current"
-                      style={{ color: calendar.color.replace('bg-', '') }}
-                    />
-                    <div className={cn("w-3 h-3 rounded", calendar.color)}></div>
-                    <span className="text-sm text-gray-700 flex-1">{calendar.name}</span>
-                    <MoreVertical className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />
-                  </div>
-                ))}
+              <div className="space-y-1">
+                {subCalendars.map((calendar) => {
+                  const calendarEventCount = events.filter((event: any) => 
+                    event.calendarId === calendar.id || event.provider === calendar.provider
+                  ).length;
+                  
+                  return (
+                    <div key={calendar.id} className="flex items-center gap-3 py-2 px-2 rounded hover:bg-gray-50 cursor-pointer group transition-colors" onClick={() => toggleCalendarVisibility(calendar.id)}>
+                      <div className="relative">
+                        {calendar.visible ? (
+                          <div className={cn("w-4 h-4 rounded border-2 flex items-center justify-center", calendar.color)}>
+                            <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        ) : (
+                          <div className="w-4 h-4 rounded border-2 border-gray-300 bg-white"></div>
+                        )}
+                      </div>
+                      <div className={cn("w-3 h-3 rounded", calendar.color)}></div>
+                      <span className={cn("text-sm flex-1 select-none transition-colors", 
+                        calendar.visible ? "text-gray-900" : "text-gray-400"
+                      )}>
+                        {calendar.name}
+                      </span>
+                      {calendarEventCount > 0 && (
+                        <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                          {calendarEventCount}
+                        </span>
+                      )}
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Handle calendar options menu
+                        }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <MoreVertical className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
