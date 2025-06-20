@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronLeft, ChevronRight, Plus, MoreVertical, Calendar as CalendarIcon, Clock, MapPin, Menu, Search, Settings, Trash2, Edit3, Palette } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, MoreVertical, Calendar as CalendarIcon, Clock, MapPin, Menu, Search, Settings, Trash2, Edit3, Palette, Users, Video, Paperclip, X, Bell } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, addDays, subDays, isSameDay, startOfMonth, endOfMonth, isSameMonth, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -51,8 +51,17 @@ export default function CalendarModule() {
     endTime: '',
     location: '',
     isAllDay: false,
-    calendarId: 'personal'
+    calendarId: 'personal',
+    guests: [] as string[],
+    hasGoogleMeet: false,
+    meetLink: '',
+    attachments: [] as string[],
+    availability: 'busy' as 'busy' | 'free',
+    visibility: 'default' as 'default' | 'public' | 'private',
+    notifications: ['10'] as string[]
   });
+  const [eventTab, setEventTab] = useState<'event' | 'task' | 'appointment'>('event');
+  const [guestEmail, setGuestEmail] = useState('');
   const [newCalendar, setNewCalendar] = useState({
     name: '',
     color: 'bg-blue-500',
@@ -640,15 +649,45 @@ export default function CalendarModule() {
                           {calendarEventCount}
                         </span>
                       )}
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Handle calendar options menu
-                        }}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <MoreVertical className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                      </button>
+                      <div className="relative">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCalendarForMenu(selectedCalendarForMenu === calendar.id ? null : calendar.id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <MoreVertical className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                        </button>
+                        {selectedCalendarForMenu === calendar.id && (
+                          <div className="absolute right-0 top-6 bg-white border rounded-md shadow-lg z-50 min-w-[120px]">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCalendarForMenu(null);
+                                // Edit calendar functionality would go here
+                              }}
+                              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              Edit
+                            </button>
+                            {calendar.provider === 'google_calendar' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedCalendarForMenu(null);
+                                  deleteCalendarMutation.mutate(calendar.id);
+                                }}
+                                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

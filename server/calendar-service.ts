@@ -313,6 +313,69 @@ export class CalendarService {
   }
 
   /**
+   * Create new Google Calendar
+   */
+  async createCalendar(userId: string, calendarData: { name: string; description?: string; color?: string }): Promise<CalendarCalendar> {
+    const { oauth2Client } = await this.getAuthenticatedClient(userId);
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+    // Create calendar in Google Calendar
+    const googleCalendar = await calendar.calendars.insert({
+      requestBody: {
+        summary: calendarData.name,
+        description: calendarData.description,
+        timeZone: 'UTC'
+      }
+    });
+
+    if (!googleCalendar.data.id) {
+      throw new Error('Failed to create Google Calendar');
+    }
+
+    // Save to local database
+    const localCalendarData: InsertCalendarCalendar = {
+      userId,
+      providerCalendarId: googleCalendar.data.id,
+      summary: calendarData.name,
+      description: calendarData.description,
+      timezone: 'UTC',
+      colorId: calendarData.color || 'blue',
+      isPrimary: false,
+      isEnabledForSync: true
+    };
+
+    return await storage.createCalendarCalendar(localCalendarData);
+  }
+
+  /**
+   * Delete Google Calendar
+   */
+  async deleteCalendar(userId: string, calendarId: string): Promise<void> {
+    const { oauth2Client } = await this.getAuthenticatedClient(userId);
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+    // Get calendar details from local database
+    const userCalendars = await storage.getCalendarCalendars(userId);
+    const targetCalendar = userCalendars.find(c => c.calendarId.toString() === calendarId);
+
+    if (!targetCalendar) {
+      throw new Error('Calendar not found');
+    }
+
+    if (targetCalendar.isPrimary) {
+      throw new Error('Cannot delete primary calendar');
+    }
+
+    // Delete from Google Calendar
+    await calendar.calendars.delete({
+      calendarId: targetCalendar.providerCalendarId
+    });
+
+    // Delete from local database
+    await storage.deleteCalendarCalendar(calendarId);
+  }
+
+  /**
    * Check if user has calendar integration set up
    */
   async hasCalendarIntegration(userId: string): Promise<boolean> {
