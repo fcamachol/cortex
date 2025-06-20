@@ -195,6 +195,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test endpoint for hashtag processing
+  app.post('/api/test-hashtag-processing', async (req, res) => {
+    try {
+      const { messageId, instanceId } = req.body;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      
+      console.log('Testing hashtag processing for message:', messageId);
+      
+      // Get the message
+      const message = await storage.getWhatsappMessage(userId, instanceId, messageId);
+      if (!message) {
+        return res.status(404).json({ error: 'Message not found' });
+      }
+      
+      console.log('Message content:', message.content);
+      
+      // Import actions engine
+      const { ActionsEngine } = await import('./actions-engine');
+      
+      // Extract hashtags and keywords
+      const { hashtags, keywords } = ActionsEngine.extractHashtagsAndKeywords(message.content || '');
+      console.log('Extracted hashtags:', hashtags);
+      console.log('Extracted keywords:', keywords);
+      
+      // Create trigger context
+      const triggerContext = {
+        messageId: message.messageId,
+        instanceId: message.instanceId,
+        chatId: message.chatId,
+        senderJid: message.senderJid,
+        content: message.content || '',
+        hashtags,
+        keywords,
+        timestamp: new Date(message.timestamp),
+        fromMe: message.fromMe || false
+      };
+      
+      console.log('Trigger context:', triggerContext);
+      
+      // Process message for actions
+      await ActionsEngine.processMessageForActions(triggerContext);
+      
+      // Check if task was created
+      const tasks = await storage.getCrmTasks(userId, instanceId);
+      const newTask = tasks.find(task => 
+        task.sourceMessageId === messageId && 
+        task.sourceInstanceId === instanceId
+      );
+      
+      res.json({
+        success: true,
+        message: 'Hashtag processing completed',
+        extractedHashtags: hashtags,
+        extractedKeywords: keywords,
+        taskCreated: !!newTask,
+        createdTask: newTask || null
+      });
+      
+    } catch (error) {
+      console.error('Hashtag processing test error:', error);
+      res.status(500).json({ 
+        error: 'Hashtag processing test failed',
+        message: error.message,
+        stack: error.stack
+      });
+    }
+  });
+
   // Webhook handler functions for Evolution API events
   async function handleWebhookMessagesUpsert(instanceName: string, data: any) {
     // Override Evolution API's internal instance IDs IMMEDIATELY before any processing

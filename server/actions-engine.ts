@@ -477,7 +477,10 @@ export class ActionsEngine {
   }
 
   static extractHashtagsAndKeywords(content: string): { hashtags: string[]; keywords: string[] } {
-    const hashtags = content.match(/#\w+/g) || [];
+    // Extract hashtags and remove the # symbol for matching
+    const hashtagMatches = content.match(/#\w+/g) || [];
+    const hashtags = hashtagMatches.map(tag => tag.substring(1)); // Remove # symbol
+    
     const keywords = content.toLowerCase()
       .split(/\s+/)
       .filter(word => word.length > 3 && !['the', 'and', 'for', 'with', 'this', 'that'].includes(word))
