@@ -264,8 +264,8 @@ export class ActionsEngine {
     // Save task to database using correct CRM schema
     try {
       const result = await db.execute(sql`
-        INSERT INTO crm.tasks (title, description, priority, status, due_date, instance_id)
-        VALUES (${taskData.title}, ${taskData.description}, ${taskData.priority}, ${taskData.taskStatus}, ${taskData.dueDate}, ${context.instanceId})
+        INSERT INTO crm.tasks (title, description, priority, status, due_date, instance_id, triggering_message_id, related_chat_jid)
+        VALUES (${taskData.title}, ${taskData.description}, ${taskData.priority}, ${taskData.taskStatus}, ${taskData.dueDate}, ${context.instanceId}, ${context.messageId}, ${context.chatId})
         RETURNING task_id, title, description, status
       `);
       
