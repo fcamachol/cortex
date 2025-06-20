@@ -144,6 +144,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test endpoint for calendar creation
+  app.post('/api/test-calendar-creation', async (req, res) => {
+    try {
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const { messageContent = 'Test meeting from WhatsApp' } = req.body;
+      
+      console.log('Testing default calendar creation for user:', userId);
+      
+      // Check current calendar status
+      const existingAccount = await storage.getCalendarAccount(userId);
+      console.log('Existing calendar account:', existingAccount);
+      
+      // Import calendar service
+      const { calendarService } = await import('./calendar-service');
+      
+      // Create test event data
+      const eventData = {
+        title: 'Test Meeting from WhatsApp',
+        description: `Event created from WhatsApp message: "${messageContent}"`,
+        startTime: new Date(Date.now() + 24*60*60*1000), // Tomorrow
+        endTime: new Date(Date.now() + 24*60*60*1000 + 60*60*1000), // Tomorrow + 1 hour
+        location: 'Office'
+      };
+      
+      console.log('Creating calendar event:', eventData);
+      
+      // This should trigger default calendar creation
+      const createdEvent = await calendarService.createEvent(userId, eventData);
+      
+      // Verify calendar was created
+      const newAccount = await storage.getCalendarAccount(userId);
+      const calendars = await storage.getCalendarCalendars(userId);
+      
+      res.json({
+        success: true,
+        message: 'Default calendar system created successfully',
+        event: createdEvent,
+        account: newAccount,
+        calendars: calendars
+      });
+      
+    } catch (error) {
+      console.error('Calendar creation test error:', error);
+      res.status(500).json({ 
+        error: 'Calendar creation test failed',
+        message: error.message,
+        stack: error.stack
+      });
+    }
+  });
+
   // Webhook handler functions for Evolution API events
   async function handleWebhookMessagesUpsert(instanceName: string, data: any) {
     // Override Evolution API's internal instance IDs IMMEDIATELY before any processing
