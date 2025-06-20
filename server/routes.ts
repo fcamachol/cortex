@@ -7,9 +7,8 @@ import fetch from "node-fetch";
 import { storage } from "./storage";
 import { evolutionManager } from "./evolution-manager";
 import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings, getInstanceEvolutionApi } from "./evolution-api";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { actionsEngine, ActionsEngine } from "./actions-engine";
-// import { bridgeManager } from "./evolution-bridge-manager";
 import { 
   insertUserSchema,
   insertWhatsappInstanceSchema,
@@ -17,7 +16,6 @@ import {
   insertWhatsappChatSchema,
   insertWhatsappMessageSchema,
   whatsappInstances,
-  whatsappMessageMedia,
   actionRules,
   actionExecutions,
   actionTemplates,
@@ -31,7 +29,6 @@ import {
   appSpaces,
   insertAppSpaceSchema
 } from "../shared/schema";
-import { eq, desc, and, or, sql } from "drizzle-orm";
 import { 
   authenticateToken, 
   optionalAuth, 
@@ -43,6 +40,7 @@ import {
   AuthRequest 
 } from "./auth";
 import crypto from 'crypto';
+import { eq, and, desc, sql } from "drizzle-orm";
 
 // Format phone number to E.164 International Format
 function formatToE164(phoneNumber: string): string {
@@ -98,66 +96,46 @@ const requireAuth = (req: Request & { user?: { id: string } }, res: Response, ne
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
-  // Test endpoint to verify webhook accessibility
-  app.get('/api/evolution/webhook/test', async (req, res) => {
-    console.log('🔧 Webhook test endpoint accessed');
-    res.json({ status: 'webhook endpoint is accessible', timestamp: new Date().toISOString() });
-  });
-
   // Evolution API Webhook endpoint for real-time WhatsApp events
   app.post('/api/evolution/webhook/:instanceName', async (req, res) => {
     try {
       const { instanceName } = req.params;
       const webhookData = req.body;
       
-      console.log(`🚨 WEBHOOK RECEIVED for ${instanceName} 🚨`);
-      console.log(`📨 Headers:`, JSON.stringify(req.headers, null, 2));
-      console.log(`📨 Body:`, JSON.stringify(webhookData, null, 2));
-      console.log(`📨 Raw body size:`, JSON.stringify(webhookData).length, 'bytes');
+      console.log(`📨 Evolution API Webhook for ${instanceName}:`, JSON.stringify(webhookData, null, 2));
       
       // Process different event types from Evolution API
       const { event, data } = webhookData;
       
       switch (event) {
         case 'messages.upsert':
-        case 'MESSAGES_UPSERT':
-          console.log(`✅ Processing MESSAGES_UPSERT for ${instanceName}`);
           await handleWebhookMessagesUpsert(instanceName, data);
           break;
         case 'send.message':
-        case 'SEND_MESSAGE':
           await handleWebhookMessagesUpsert(instanceName, data);
           break;
         case 'messages.update':
-        case 'MESSAGES_UPDATE':
           await handleWebhookMessagesUpdate(instanceName, data);
           break;
         case 'contacts.upsert':
-        case 'CONTACTS_UPSERT':
           await handleWebhookContactsUpsert(instanceName, data);
           break;
         case 'chats.upsert':
-        case 'CHATS_UPSERT':
           await handleWebhookChatsUpsert(instanceName, data);
           break;
         case 'groups.upsert':
-        case 'GROUPS_UPSERT':
           await handleWebhookGroupsUpsert(instanceName, data);
           break;
         case 'group-participants.update':
-        case 'GROUP_PARTICIPANTS_UPDATE':
           await handleWebhookGroupParticipantsUpdate(instanceName, data);
           break;
         case 'messages.reaction':
-        case 'MESSAGES_REACTION':
           await handleWebhookMessageReaction(instanceName, data);
           break;
         case 'presence.update':
-        case 'PRESENCE_UPDATE':
           console.log(`👁️ Presence update for ${instanceName}:`, data);
           break;
         case 'connection.update':
-        case 'CONNECTION_UPDATE':
           console.log(`🔗 Connection update for ${instanceName}:`, data);
           break;
         default:
@@ -1434,8 +1412,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WebSocket connection status endpoint
   app.get('/api/whatsapp/websocket/status', async (req, res) => {
     try {
-      // Return empty array for now to prevent errors
-      res.json([]);
+      // Disable caching to ensure fresh data
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      
+      const instances = await storage.getWhatsappInstances(req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
+      
+      const statusWithDetails = instances.map(instance => {
+        // Use the database isConnected field as the source of truth for bridge status
+        const isConnected = instance.isConnected;
+        
+        return {
+          instanceId: instance.instanceId,
+          instanceName: instance.instanceId,
+          phoneNumber: instance.ownerJid || 'Not set',
+          status: isConnected ? 'connected' : 'disconnected',
+          websocketConnected: isConnected, // Use same value as database
+          bridgeExists: true, // Always true if instance exists in database
+          lastConnected: instance.lastConnectionAt,
+          connectionState: isConnected ? 'open' : 'closed'
+        };
+      });
+
+      res.json(statusWithDetails);
     } catch (error) {
       console.error('Error getting WebSocket status:', error);
       res.status(500).json({ error: 'Failed to get WebSocket status' });
@@ -2246,15 +2246,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allConversations = [];
       
       for (const instance of instances) {
-        // Skip instances that don't exist in Evolution API (like "prueba 7")
-        if (instance.isConnected && instance.apiKey && instance.instanceId !== 'prueba 7') {
+        if (instance.isConnected && instance.apiKey) {
           try {
-            // Load conversations directly from database (populated via webhooks)
-            console.log(`📋 Loading conversations from database for instance: ${instance.instanceId}`);
-            const dbChats = await storage.getWhatsappChats(userId, instance.instanceId);
+            // Fetch chats from Evolution API
+            const evolutionApi = getInstanceEvolutionApi(instance.apiKey);
+            const chats = await evolutionApi.fetchChats(instance.instanceId);
             
-            for (const chat of dbChats) {
-              allConversations.push(chat);
+            if (chats && Array.isArray(chats)) {
+              for (const chat of chats) {
+                // Create or update conversation in database
+                const conversationData = {
+                  instanceId: instance.instanceId,
+                  chatId: chat.id,
+                  type: chat.id.includes('@g.us') ? 'group' as const : 'individual' as const,
+                  unreadCount: chat.unreadCount || 0,
+                  lastMessageTimestamp: chat.lastMessage?.messageTimestamp ? new Date(chat.lastMessage.messageTimestamp * 1000) : null
+                };
+                
+                // Check if conversation exists
+                const existingConversations = await storage.getWhatsappChats(userId, instance.instanceId);
+                const existing = existingConversations.find(c => c.chatId === chat.id);
+                
+                let conversation;
+                if (existing) {
+                  conversation = await storage.updateWhatsappChat(userId, instance.instanceId, chat.id, conversationData);
+                } else {
+                  conversation = await storage.createWhatsappChat(conversationData);
+                }
+                
+                allConversations.push(conversation);
+              }
             }
           } catch (apiError) {
             console.error(`Failed to fetch chats for instance ${instance.instanceId}:`, apiError);
@@ -2308,9 +2329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           return {
             ...conversation,
-            id: conversation.chatId, // Map chatId to id for frontend compatibility
             displayName,
-            title: displayName, // Add title field for frontend
             contactInfo: contact,
             groupInfo
           };
@@ -2351,36 +2370,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get WhatsApp messages for a specific conversation
-  app.get("/api/whatsapp/messages/:conversationId", async (req, res) => {
-    try {
-      const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const { conversationId } = req.params;
-      const { limit = '50' } = req.query;
-      const limitNum = parseInt(limit as string, 10);
-      
-      // Handle case where conversationId is undefined
-      if (!conversationId || conversationId === 'undefined') {
-        return res.json([]);
-      }
-      
-      // Get conversation to find instanceId and chatId
-      const conversation = await storage.getWhatsappChat(userId, "", conversationId);
-      if (!conversation) {
-        return res.status(404).json({ error: "Conversation not found" });
-      }
-      
-      // Get messages for this specific conversation
-      const messages = await storage.getWhatsappMessages(userId, conversation.instanceId, conversation.chatId, limitNum);
-      res.json(messages);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-      res.status(500).json({ error: "Failed to get messages" });
-    }
-  });
-
   // Get WhatsApp messages for a specific instance (all messages) or specific chat
-  app.get("/api/whatsapp/messages/instance/:instanceId", async (req, res) => {
+  app.get("/api/whatsapp/messages/:instanceId", async (req, res) => {
     try {
       const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
       const { instanceId } = req.params;
@@ -2550,8 +2541,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (result.chatId) {
         try {
           if (isGroupChat) {
-            // Group chat - use chatId as fallback name
-            chatName = result.chatId || 'Group Chat';
+            // Group chat - try to get group name from whatsapp.groups table
+            try {
+              const groupResult = await pool.query(
+                'SELECT subject FROM whatsapp.groups WHERE group_jid = $1 LIMIT 1',
+                [result.chatId]
+              );
+              
+              if (groupResult.rows.length > 0 && groupResult.rows[0].subject) {
+                chatName = groupResult.rows[0].subject;
+              } else {
+                // Fallback: try whatsapp_conversations table
+                const conversationResult = await pool.query(
+                  'SELECT chat_name FROM whatsapp_conversations WHERE remote_jid = $1 AND user_id = $2 LIMIT 1',
+                  [result.chatId, userId]
+                );
+                
+                if (conversationResult.rows.length > 0 && conversationResult.rows[0].chat_name) {
+                  chatName = conversationResult.rows[0].chat_name;
+                } else {
+                  // Final fallback: extract group name from raw API payload if available
+                  const payload = result.rawApiPayload as any;
+                  if (payload && payload.message && payload.message.messageContextInfo && payload.message.messageContextInfo.groupSubject) {
+                    chatName = payload.message.messageContextInfo.groupSubject;
+                  } else {
+                    chatName = 'Group Chat';
+                  }
+                }
+              }
+            } catch (sqlError) {
+              chatName = 'Group Chat';
+            }
           } else {
             // Personal chat - use contact name
             const chatContact = await storage.getWhatsappContact(userId, instanceId as string, result.chatId);
@@ -2577,8 +2597,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Look up instance display name
       let instanceDisplayName = null;
       try {
-        // For now, skip instance display name lookup to avoid schema issues
-        instanceDisplayName = instanceId;
+        // Query the instance directly using raw SQL since Drizzle schema might be mismatched
+        const instanceResult = await pool.query(
+          'SELECT display_name FROM whatsapp_instances WHERE user_id = $1 AND instance_name = $2 LIMIT 1',
+          [userId, instanceId]
+        );
+        
+        if (instanceResult.rows.length > 0 && instanceResult.rows[0].display_name) {
+          instanceDisplayName = instanceResult.rows[0].display_name;
+        }
       } catch (instanceError) {
         console.log('Could not fetch instance info:', instanceError);
       }
@@ -2911,8 +2938,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      // Set RLS context for multi-tenant security
-      // await setRLSContext(req.user.id); // TODO: Implement RLS if needed
+      await setRLSContext(req.user.id);
       
       const { instanceId, messageId } = req.params;
       

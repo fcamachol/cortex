@@ -1,17 +1,14 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Settings, Activity, TrendingUp, Zap, Play, Pause, Trash2, Smartphone, Link } from "lucide-react";
+import { Plus, Settings, Activity, TrendingUp, Zap, Play, Pause, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ActionRuleForm } from "./action-rule-form";
 import { ActionTemplatesGallery } from "./action-templates-gallery";
 import { ActionExecutionLog } from "./action-execution-log";
-import { WhatsAppInstanceManager } from "@/components/integrations/whatsapp-manager";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -24,7 +21,6 @@ interface ActionRule {
   actionType: string;
   triggerConditions: any;
   actionConfig: any;
-  instanceFilters?: string[] | null;
   totalExecutions: number;
   lastExecutedAt?: string;
   createdAt: string;
@@ -37,23 +33,11 @@ interface ActionStats {
   recentExecutions: number;
 }
 
-interface WhatsAppInstance {
-  instanceId: string;
-  displayName: string;
-  isConnected: boolean;
-  phoneNumber?: string;
-}
-
 export function ActionsDashboard() {
   const [showForm, setShowForm] = useState(false);
   const [editingRule, setEditingRule] = useState<ActionRule | null>(null);
-  const [showInstanceManager, setShowInstanceManager] = useState(false);
-  const [selectedInstances, setSelectedInstances] = useState<string[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  // Mock user ID - in real app this would come from auth context
-  const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
 
   const { data: rules = [], isLoading: rulesLoading } = useQuery({
     queryKey: ['/api/actions/rules'],
@@ -63,16 +47,10 @@ export function ActionsDashboard() {
     queryKey: ['/api/actions/stats'],
   });
 
-  const { data: instances = [] } = useQuery<WhatsAppInstance[]>({
-    queryKey: [`/api/whatsapp/instances/${userId}`],
-  });
-
   const toggleRuleMutation = useMutation({
-    mutationFn: async (ruleId: string) => {
-      return await apiRequest(`/api/actions/rules/${ruleId}/toggle`, {
-        method: 'PATCH',
-      });
-    },
+    mutationFn: (ruleId: string) => apiRequest(`/api/actions/rules/${ruleId}/toggle`, {
+      method: 'PATCH',
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/actions/rules'] });
       queryClient.invalidateQueries({ queryKey: ['/api/actions/stats'] });
@@ -84,11 +62,9 @@ export function ActionsDashboard() {
   });
 
   const deleteRuleMutation = useMutation({
-    mutationFn: async (ruleId: string) => {
-      return await apiRequest(`/api/actions/rules/${ruleId}`, {
-        method: 'DELETE',
-      });
-    },
+    mutationFn: (ruleId: string) => apiRequest(`/api/actions/rules/${ruleId}`, {
+      method: 'DELETE',
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/actions/rules'] });
       queryClient.invalidateQueries({ queryKey: ['/api/actions/stats'] });
@@ -127,30 +103,6 @@ export function ActionsDashboard() {
     return type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  if (showInstanceManager) {
-    return (
-      <div className="h-full">
-        <div className="flex items-center justify-between p-6 border-b">
-          <div>
-            <h1 className="text-2xl font-bold">WhatsApp Instance Management</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage your WhatsApp connections for automation
-            </p>
-          </div>
-          <Button 
-            variant="outline" 
-            onClick={() => setShowInstanceManager(false)}
-          >
-            Back to Actions
-          </Button>
-        </div>
-        <div className="p-6">
-          <WhatsAppInstanceManager />
-        </div>
-      </div>
-    );
-  }
-
   if (showForm) {
     return (
       <ActionRuleForm
@@ -175,91 +127,16 @@ export function ActionsDashboard() {
         <div>
           <h1 className="text-3xl font-bold">Actions & Automation</h1>
           <p className="text-muted-foreground mt-2">
-            Create automated workflows triggered by WhatsApp events across multiple instances
+            Create automated workflows triggered by WhatsApp events
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
-            onClick={() => setShowInstanceManager(true)} 
-            className="gap-2"
-          >
-            <Smartphone className="w-4 h-4" />
-            Manage Instances ({instances.length})
-          </Button>
-          <Button onClick={() => setShowForm(true)} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Create Rule
-          </Button>
-        </div>
+        <Button onClick={() => setShowForm(true)} className="gap-2">
+          <Plus className="w-4 h-4" />
+          Create Rule
+        </Button>
       </div>
 
       <div className="flex-1 overflow-auto p-6 space-y-6">
-        {/* Instance Overview Card */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Smartphone className="w-5 h-5" />
-                  WhatsApp Instances Overview
-                </CardTitle>
-                <CardDescription>
-                  Manage and monitor your connected WhatsApp instances
-                </CardDescription>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowInstanceManager(true)}
-                className="gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Add Instance
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {instances.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {instances.map((instance) => (
-                  <div 
-                    key={instance.instanceId} 
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${instance.isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
-                      <div>
-                        <div className="font-medium text-sm">{instance.displayName}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {instance.phoneNumber || instance.instanceId}
-                        </div>
-                      </div>
-                    </div>
-                    <Badge variant={instance.isConnected ? "default" : "secondary"} className="text-xs">
-                      {instance.isConnected ? "Active" : "Offline"}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
-                <Smartphone className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground mb-3">No WhatsApp instances configured</p>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setShowInstanceManager(true)}
-                  className="gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Your First Instance
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Statistics Cards */}
         {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -377,35 +254,6 @@ export function ActionsDashboard() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {/* Instance Filters Display */}
-                    <div className="mb-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Smartphone className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">Active on:</span>
-                      </div>
-                      {rule.instanceFilters && rule.instanceFilters.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {rule.instanceFilters.map((instanceId) => {
-                            const instance = instances.find(i => i.instanceId === instanceId);
-                            return (
-                              <Badge 
-                                key={instanceId} 
-                                variant="outline" 
-                                className="text-xs flex items-center gap-1"
-                              >
-                                <div className={`w-2 h-2 rounded-full ${instance?.isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
-                                {instance?.displayName || instanceId}
-                              </Badge>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <Badge variant="outline" className="text-xs">
-                          All instances ({instances.length})
-                        </Badge>
-                      )}
-                    </div>
-                    
                     <div className="space-y-2 text-sm text-muted-foreground">
                       <div className="flex justify-between">
                         <span>Executions:</span>

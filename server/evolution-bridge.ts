@@ -3,10 +3,10 @@ import { storage } from './storage';
 import { 
   insertWhatsappMessageSchema,
   insertWhatsappContactSchema,
-  insertWhatsappChatSchema,
+  insertWhatsappConversationSchema,
   type InsertWhatsappMessage,
   type InsertWhatsappContact,
-  type InsertWhatsappChat
+  type InsertWhatsappConversation
 } from '@shared/schema';
 
 interface BridgeConfig {
@@ -406,7 +406,7 @@ export class EvolutionWebSocketBridge {
     }
   }
 
-  private processConversationData(chat: any): InsertWhatsappChat | null {
+  private processConversationData(chat: any): InsertWhatsappConversation | null {
     try {
       return {
         instanceId: this.instanceId,

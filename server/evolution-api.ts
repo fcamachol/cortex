@@ -190,8 +190,8 @@ export class EvolutionApi {
         return cachedChats;
       }
       
-      // Try REST endpoint for initial sync - correct Evolution API endpoint format
-      return await this.makeRequest(`/chat/findChats/${instanceName}`);
+      // Try REST endpoint for initial sync
+      return await this.makeRequest(`/chat/whatsapp/findMany/${instanceName}`);
     } catch (error) {
       console.log('Chat data will be populated via WebSocket events');
       return [];
