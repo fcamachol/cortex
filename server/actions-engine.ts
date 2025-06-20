@@ -300,15 +300,67 @@ export class ActionsEngine {
     console.log('📋 Config received:', config);
     console.log('📍 Context received:', context);
 
-    // Intelligent NLP analysis of the message content
-    const nlpAnalysis = this.analyzeMessageIntelligently(context.content || '');
+    // Get the current message details
+    const currentMessage = await db
+      .select()
+      .from(whatsappMessages)
+      .where(
+        and(
+          eq(whatsappMessages.messageId, context.messageId),
+          eq(whatsappMessages.instanceId, context.instanceId)
+        )
+      )
+      .limit(1);
+
+    let fullContextText = context.content || '';
+    let conversationContext = '';
+    let taskTitle = context.content || 'New Task';
+
+    // Enhanced context gathering for quoted/replied messages
+    if (currentMessage[0]?.quotedMessageId) {
+      console.log('🔗 Found quoted message, gathering conversation context...');
+      
+      const quotedMessage = await db
+        .select()
+        .from(whatsappMessages)
+        .where(
+          and(
+            eq(whatsappMessages.messageId, currentMessage[0].quotedMessageId),
+            eq(whatsappMessages.instanceId, context.instanceId)
+          )
+        )
+        .limit(1);
+
+      if (quotedMessage[0]) {
+        console.log(`📨 Original message: "${quotedMessage[0].content}"`);
+        console.log(`💬 Reply message: "${context.content}"`);
+        
+        // Combine context for better NLP analysis
+        fullContextText = `${quotedMessage[0].content} ${context.content}`;
+        conversationContext = `Original: "${quotedMessage[0].content}"\nReply: "${context.content}"`;
+        
+        // Use original message as primary title source if it's more descriptive
+        if (quotedMessage[0].content && quotedMessage[0].content.length > 10) {
+          taskTitle = quotedMessage[0].content;
+        }
+        
+        console.log(`🧠 Combined context text: "${fullContextText}"`);
+      }
+    }
+
+    // Intelligent NLP analysis of the combined context
+    const nlpAnalysis = this.analyzeMessageIntelligently(fullContextText);
     
-    // Enhanced description with intelligent insights
+    // Enhanced description with conversation context and intelligent insights
     let enhancedDescription = this.interpolateTemplate(config.description, context);
     
-    // If this task is created from a reaction, include the original message and NLP insights
-    if (context.reaction && context.content) {
-      enhancedDescription = `Task created from reaction ${context.reaction}\n\nOriginal message: "${context.content}"\n\n${enhancedDescription}`;
+    // If this task is created from a reaction, include context and NLP insights
+    if (context.reaction) {
+      if (conversationContext) {
+        enhancedDescription = `Task created from reaction ${context.reaction}\n\nConversation context:\n${conversationContext}\n\n${enhancedDescription}`;
+      } else {
+        enhancedDescription = `Task created from reaction ${context.reaction}\n\nMessage: "${context.content}"\n\n${enhancedDescription}`;
+      }
       
       // Add intelligent insights to description
       if (nlpAnalysis.isUrgent) {
@@ -336,9 +388,18 @@ export class ActionsEngine {
       dueDate = nlpAnalysis.suggestedDueDate;
     }
 
+    // Generate intelligent title from conversation context
+    let intelligentTitle = this.createIntelligentTitle(config.title, context, nlpAnalysis);
+    if (taskTitle && taskTitle.length < 80) {
+      intelligentTitle = taskTitle;
+      if (nlpAnalysis.isUrgent && !intelligentTitle.toLowerCase().includes('urgent')) {
+        intelligentTitle = `[URGENT] ${intelligentTitle}`;
+      }
+    }
+
     const taskData = {
       userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42', // Use default user ID
-      title: this.createIntelligentTitle(config.title, context, nlpAnalysis),
+      title: intelligentTitle,
       description: enhancedDescription,
       priority: intelligentPriority,
       taskStatus: 'to_do',
@@ -348,6 +409,9 @@ export class ActionsEngine {
     };
 
     console.log('📝 Intelligent task data prepared:', taskData);
+    if (conversationContext) {
+      console.log('💬 Used conversation context for enhanced intelligence');
+    }
     console.log(`🎯 Task will be related to chat: ${taskData.relatedChatJid}, original sender: ${taskData.originalSenderJid}`);
     if (nlpAnalysis.suggestedDueDate) {
       console.log(`🧠 Intelligent due date applied: ${nlpAnalysis.suggestedDueDate.toISOString()}`);
@@ -362,7 +426,13 @@ export class ActionsEngine {
       `);
       
       console.log('✅ Intelligent task saved to database:', result);
-      return { success: true, data: result, nlpEnhanced: true, analysis: nlpAnalysis };
+      return { 
+        success: true, 
+        data: result, 
+        nlpEnhanced: true, 
+        conversationAware: !!conversationContext,
+        analysis: nlpAnalysis 
+      };
     } catch (error) {
       console.error('❌ Error saving intelligent task to database:', error);
       return { success: false, error: String(error) };
@@ -374,8 +444,56 @@ export class ActionsEngine {
     console.log('📋 Config received:', config);
     console.log('📍 Context received:', context);
 
-    // Intelligent NLP analysis of the message content
-    const nlpAnalysis = this.analyzeMessageIntelligently(context.content || '');
+    // Get the current message details
+    const currentMessage = await db
+      .select()
+      .from(whatsappMessages)
+      .where(
+        and(
+          eq(whatsappMessages.messageId, context.messageId),
+          eq(whatsappMessages.instanceId, context.instanceId)
+        )
+      )
+      .limit(1);
+
+    let fullContextText = context.content || '';
+    let conversationContext = '';
+    let eventTitle = context.content || 'New Event';
+
+    // Enhanced context gathering for quoted/replied messages
+    if (currentMessage[0]?.quotedMessageId) {
+      console.log('🔗 Found quoted message, gathering conversation context...');
+      
+      const quotedMessage = await db
+        .select()
+        .from(whatsappMessages)
+        .where(
+          and(
+            eq(whatsappMessages.messageId, currentMessage[0].quotedMessageId),
+            eq(whatsappMessages.instanceId, context.instanceId)
+          )
+        )
+        .limit(1);
+
+      if (quotedMessage[0]) {
+        console.log(`📨 Original message: "${quotedMessage[0].content}"`);
+        console.log(`💬 Reply message: "${context.content}"`);
+        
+        // Combine context for better NLP analysis
+        fullContextText = `${quotedMessage[0].content} ${context.content}`;
+        conversationContext = `Original: "${quotedMessage[0].content}"\nReply: "${context.content}"`;
+        
+        // Use original message as primary title source if it's more descriptive
+        if (quotedMessage[0].content && quotedMessage[0].content.length > 10) {
+          eventTitle = quotedMessage[0].content;
+        }
+        
+        console.log(`🧠 Combined context text: "${fullContextText}"`);
+      }
+    }
+
+    // Intelligent NLP analysis of the combined context
+    const nlpAnalysis = this.analyzeMessageIntelligently(fullContextText);
     
     // Use intelligent date parsing or fallback to config/defaults
     let startDate = new Date();
@@ -383,7 +501,7 @@ export class ActionsEngine {
     
     if (nlpAnalysis.suggestedDueDate) {
       startDate = nlpAnalysis.suggestedDueDate;
-      console.log(`🧠 Intelligent date detected: ${startDate.toISOString()}`);
+      console.log(`🧠 Intelligent date detected from conversation: ${startDate.toISOString()}`);
     } else if (config.startDate) {
       startDate = new Date(config.startDate);
     }
@@ -392,27 +510,33 @@ export class ActionsEngine {
     const durationMs = (config.durationMinutes || 60) * 60 * 1000;
     endDate = new Date(startDate.getTime() + durationMs);
 
-    // Use intelligent location detection
+    // Use intelligent location detection from combined context
     let location = config.location;
     if (nlpAnalysis.extractedLocation) {
       location = nlpAnalysis.extractedLocation;
-      console.log(`🧠 Intelligent location detected: ${location}`);
+      console.log(`🧠 Intelligent location detected from conversation: ${location}`);
     }
     
-    // Generate intelligent title
+    // Generate intelligent title from conversation context
     let title = this.interpolateTemplate(config.title, context);
-    if (context.content && context.content.length < 60) {
-      // Use the original message as title if it's concise
-      title = context.content;
+    if (eventTitle && eventTitle.length < 80) {
+      title = eventTitle;
     }
     
-    // Enhanced description with NLP insights
+    // Enhanced description with conversation context and NLP insights
     let description = this.interpolateTemplate(config.description || '', context);
-    if (context.reaction && context.content) {
-      description = `Calendar event created from reaction ${context.reaction}\n\nOriginal message: "${context.content}"\n\n${description}`;
+    if (context.reaction) {
+      if (conversationContext) {
+        description = `Calendar event created from reaction ${context.reaction}\n\nConversation context:\n${conversationContext}\n\n${description}`;
+      } else {
+        description = `Calendar event created from reaction ${context.reaction}\n\nMessage: "${context.content}"\n\n${description}`;
+      }
       
       if (nlpAnalysis.needsMeetLink) {
         description += `\n🔗 Virtual meeting requested`;
+      }
+      if (nlpAnalysis.extractedLocation) {
+        description += `\n📍 Location: ${nlpAnalysis.extractedLocation}`;
       }
       if (nlpAnalysis.keywords.length > 0) {
         description += `\n🏷️ Key topics: ${nlpAnalysis.keywords.slice(0, 3).join(', ')}`;
@@ -429,10 +553,14 @@ export class ActionsEngine {
       sourceInstanceId: context.instanceId,
       sourceChatId: context.chatId,
       nlpEnhanced: true,
+      conversationAware: !!conversationContext,
       analysis: nlpAnalysis
     };
 
     console.log('📅 Intelligent calendar event data prepared:', eventData);
+    if (conversationContext) {
+      console.log('💬 Used conversation context for enhanced intelligence');
+    }
     if (nlpAnalysis.suggestedDueDate) {
       console.log(`🗓️ Using intelligent start time: ${startDate.toISOString()}`);
     }

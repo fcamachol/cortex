@@ -1,0 +1,318 @@
+import { Request, Response } from 'express';
+import { storage } from './storage';
+import * as chrono from 'chrono-node'; // NLP date parsing library
+// Import the final table types for clarity and type safety
+import {
+    type WhatsappMessages,
+    type WhatsappContacts,
+    type WhatsappChats
+} from '@shared/schema';
+
+// =============================================================================
+// MOCK EXTERNAL API (Placeholder for Google Calendar Integration)
+// =============================================================================
+const googleCalendarApi = {
+    async createEvent({ title, startTime, endTime, attendees }: { title: string, startTime: Date, endTime: Date, attendees: string[] }) {
+        console.log(`📅 Mock Google API: Creating event "${title}" for attendees: ${attendees.join(', ')}`);
+        // In a real app, this would use the Google Calendar API to create an event
+        // and would return the actual event details.
+        return {
+            success: true,
+            htmlLink: `https://meet.google.com/new`, // Returns a generic link for simulation
+            googleEventId: `mock_event_${Date.now()}`
+        };
+    }
+};
+
+
+// =============================================================================
+// WEBHOOK CONTROLLER LOGIC
+// This object encapsulates all the logic for processing incoming webhooks.
+// =============================================================================
+
+export const WebhookController = {
+
+    /**
+     * The main entry point for all incoming webhooks from the Evolution API.
+     */
+    async handleIncomingEvent(req: Request, res: Response) {
+        try {
+            const instanceName = req.params.instanceName;
+            const eventPayload = req.body;
+            res.status(200).json({ status: "received", instance: instanceName });
+            this.processEvolutionEvent(instanceName, eventPayload);
+        } catch (error) {
+            console.error('❌ Critical error in webhook handler:', error);
+        }
+    },
+
+    /**
+     * Routes the event to the appropriate handler based on its type.
+     */
+    async processEvolutionEvent(instanceId: string, event: any) {
+        const { event: eventType, data, sender } = event; // `sender` is the reactor in reaction updates
+        console.log(`📨 Webhook Event Received: ${eventType} for instance ${instanceId}`);
+
+        switch (eventType) {
+            case 'messages.upsert':
+                // Check for reactions first
+                if (data.messages && data.messages[0]?.message?.reactionMessage) {
+                    await this.handleReaction(instanceId, data.messages[0], sender);
+                } else {
+                    await this.handleMessageUpsert(instanceId, data);
+                }
+                break;
+            case 'messages.update':
+                 // This might contain reactions or status updates
+                 if (data.updates && data.updates[0]?.message?.reactionMessage) {
+                    await this.handleReaction(instanceId, data.updates[0], sender);
+                } else {
+                    await this.handleMessageUpdate(instanceId, data);
+                }
+                break;
+            // ... other cases
+            default:
+                console.log(`- Unhandled event type: ${eventType}`);
+        }
+    },
+
+    /**
+     * Handles a reaction event.
+     */
+    async handleReaction(instanceId: string, reactionData: any, reactorJid: string) {
+        const reactionEmoji = reactionData.message.reactionMessage.text;
+        const targetMessageId = reactionData.message.reactionMessage.key.id;
+
+        // Security Check should be implemented in storage layer
+        // if (!await storage.isInternalUser(reactorJid)) { return; }
+        
+        console.log(`👍 Reaction '${reactionEmoji}' on message ${targetMessageId} by ${reactorJid}`);
+        await this.triggerAction(instanceId, 'reaction', reactionEmoji, { messageId: targetMessageId, reactorJid });
+    },
+
+    /**
+     * Central action trigger logic with support for subtasks and NLP date/location parsing.
+     */
+    async triggerAction(instanceId: string, triggerType: 'reaction' | 'hashtag', triggerValue: string, context: { messageId: string, reactorJid: string }) {
+        const rule = await storage.findActionRule(instanceId, triggerType, triggerValue);
+        if (!rule) {
+            console.log(`- No action rule found for trigger: ${triggerType} -> ${triggerValue}`);
+            return;
+        }
+
+        const existingTaskLink = await storage.findTaskLinkByMessage(instanceId, context.messageId, 'trigger');
+
+        if (existingTaskLink) {
+            if (rule.action_type === 'update_task_status') {
+                const newStatus = rule.action_config?.new_status || 'completed';
+                await storage.updateTaskStatus(existingTaskLink.task_id, newStatus);
+                console.log(`✅ [${instanceId}] Updated task ${existingTaskLink.task_id} status to '${newStatus}'`);
+            } else {
+                console.log(`- Rule is for creation, but task ${existingTaskLink.task_id} already exists. Ignoring.`);
+            }
+        } else {
+            const triggeringMessage = await storage.getWhatsappMessage(instanceId, context.messageId);
+            if (!triggeringMessage) {
+                console.error(`- Could not find triggering message ${context.messageId} to create entity.`);
+                return;
+            }
+
+            if (rule.action_type === 'create_task') {
+                await this.createTaskFromTrigger(instanceId, rule, triggeringMessage, context);
+            } else if (rule.action_type === 'create_calendar_event') {
+                await this.createCalendarEventFromTrigger(instanceId, rule, triggeringMessage, context);
+            } else {
+                 console.log(`- Unhandled action type for creation: ${rule.action_type}`);
+            }
+        }
+    },
+
+    async createTaskFromTrigger(instanceId: string, rule: any, triggeringMessage: any, context: any) {
+        let parentTaskId = null;
+        let fullContextText = triggeringMessage.content || '';
+        
+        if (triggeringMessage.quoted_message_id) {
+            const originalMessage = await storage.getWhatsappMessage(instanceId, triggeringMessage.quoted_message_id);
+            if (originalMessage) {
+                fullContextText = `${originalMessage.content} ${fullContextText}`;
+                const parentTaskLink = await storage.findTaskLinkByMessage(instanceId, originalMessage.message_id, 'trigger');
+                if (parentTaskLink) parentTaskId = parentTaskLink.task_id;
+            }
+        }
+
+        const nlpResult = this.parseMessageForNlp(fullContextText);
+
+        const newTask = await storage.createTaskFromRule(rule, {
+            instanceId,
+            spaceId: 1, // This needs to be determined from context
+            createdByUserId: context.reactorJid,
+            relatedChatJid: triggeringMessage.chat_id,
+            title: triggeringMessage.content || rule.action_config?.default_title || 'New Task',
+            parent_task_id: parentTaskId,
+            due_date: nlpResult.date || undefined,
+        });
+
+        await storage.createTaskMessageLink(newTask.task_id, context.messageId, instanceId, 'trigger');
+        if (triggeringMessage.quoted_message_id) {
+            await storage.createTaskMessageLink(newTask.task_id, triggeringMessage.quoted_message_id, instanceId, 'context');
+        }
+        console.log(`✅ [${instanceId}] Created new task/subtask ${newTask.task_id} from trigger.`);
+    },
+
+    async createCalendarEventFromTrigger(instanceId: string, rule: any, triggeringMessage: any, context: any) {
+        let fullContextText = triggeringMessage.content || '';
+        let eventTitle = triggeringMessage.content || rule.action_config?.default_title || 'New Event';
+        
+        // ** NEW CONTEXT-AWARE LOGIC **
+        if (triggeringMessage.quoted_message_id) {
+            const originalMessage = await storage.getWhatsappMessage(instanceId, triggeringMessage.quoted_message_id);
+            if(originalMessage) {
+                fullContextText = `${originalMessage.content} ${fullContextText}`;
+                // Use the original message's content as a more meaningful title
+                eventTitle = originalMessage.content || eventTitle;
+            }
+        }
+
+        const nlpResult = this.parseMessageForNlp(fullContextText);
+        
+        const eventStartTime = nlpResult.date || new Date();
+        const eventEndTime = nlpResult.date ? new Date(nlpResult.date.getTime() + 60*60*1000) : new Date(Date.now() + 60*60*1000);
+        let eventLocation = nlpResult.location;
+        const attendeesToInvite: string[] = [];
+
+        const contactDetails = await storage.getContactDetailsByJid(instanceId, triggeringMessage.sender_jid);
+        if (contactDetails?.email_address) {
+            attendeesToInvite.push(contactDetails.email_address);
+        }
+
+        if (eventLocation === "https://meet.google.com/new") {
+            const googleEvent = await googleCalendarApi.createEvent({
+                title: eventTitle,
+                startTime: eventStartTime,
+                endTime: eventEndTime,
+                attendees: attendeesToInvite
+            });
+            if (googleEvent.success) {
+                eventLocation = googleEvent.htmlLink;
+                console.log(`🔗 Google Meet link created: ${eventLocation}`);
+            }
+        }
+
+        const newEvent = await storage.createCalendarEvent({
+            instanceId,
+            spaceId: 1,
+            createdByUserId: context.reactorJid,
+            title: eventTitle,
+            start_time: eventStartTime,
+            end_time: eventEndTime,
+            location: eventLocation,
+            related_chat_jid: triggeringMessage.chat_id,
+        });
+
+        await storage.createEventMessageLink(newEvent.event_id, context.messageId, instanceId, 'trigger');
+        console.log(`✅ [${instanceId}] Created new calendar event ${newEvent.event_id} from trigger.`);
+    },
+    
+    /**
+     * Intelligent NLP parsing for dates and locations.
+     */
+    parseMessageForNlp(text: string): { date: Date | null, location: string | null } {
+        if (!text) return { date: null, location: null };
+
+        let remainingText = text;
+        const parsedResults = chrono.parse(text, new Date(), { forwardDate: true });
+        const date = parsedResults.length > 0 ? parsedResults[0].start.date() : null;
+
+        // If a date was found, remove it from the string to avoid confusion with location parsing
+        if (parsedResults.length > 0) {
+            remainingText = text.replace(parsedResults[0].text, '').trim();
+        }
+
+        let location = null;
+        const lowerCaseText = remainingText.toLowerCase();
+
+        if (lowerCaseText.includes("meet") || lowerCaseText.includes("videocall")) {
+            location = "https://meet.google.com/new"; // Special keyword for meet generation
+        } else {
+            // A more robust regex to find locations like "at the park" or "en el sushi"
+            const locationMatch = lowerCaseText.match(/(at|en|in)\s+(the\s+)?([a-z0-9\s]+)/i);
+            if (locationMatch && locationMatch[3]) {
+                location = locationMatch[3].trim();
+            }
+        }
+        
+        if (date || location) {
+            console.log(`🧠 NLP found: Date=${date?.toISOString()}, Location=${location}`);
+        }
+
+        return { date, location };
+    },
+
+    // --- Core Event Handlers ---
+
+    async handleMessageUpsert(instanceId: string, data: any) {
+        if (!data || !Array.isArray(data.messages)) return;
+        for (const rawMessage of data.messages) {
+            const messageForDb = this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
+            if (messageForDb) {
+                await storage.upsertWhatsappMessage(messageForDb);
+                console.log(`✅ [${instanceId}] Saved/Updated message: ${messageForDb.message_id}`);
+                
+                if (messageForDb.quoted_message_id) {
+                    await this.handleReplyToContextMessage(instanceId, messageForDb);
+                }
+            }
+        }
+    },
+    
+    /**
+     * Logic to handle replies to messages that might be linked to tasks/events.
+     */
+    async handleReplyToContextMessage(instanceId: string, replyMessage: Omit<WhatsappMessages, 'created_at'>) {
+        if (!replyMessage.quoted_message_id) return;
+
+        // Check for linked tasks
+        const taskLink = await storage.findTaskLinkByMessage(instanceId, replyMessage.quoted_message_id);
+        if (taskLink) {
+            const task = await storage.getTask(taskLink.task_id);
+            if (task && !task.due_date) {
+                const nlpResult = this.parseMessageForNlp(replyMessage.content || '');
+                if (nlpResult.date) {
+                    await storage.updateTask(task.task_id, { due_date: nlpResult.date });
+                    console.log(`💡 Updated task ${task.task_id} with new due date from reply.`);
+                }
+            }
+        }
+        
+        // Check for linked events
+        const eventLink = await storage.findEventLinkByMessage(instanceId, replyMessage.quoted_message_id);
+        if (eventLink) {
+            const event = await storage.getCalendarEvent(eventLink.event_id);
+            if (event) {
+                 const nlpResult = this.parseMessageForNlp(replyMessage.content || '');
+                 const updates: any = {};
+                 if (nlpResult.date) {
+                     updates.start_time = nlpResult.date;
+                     updates.end_time = new Date(nlpResult.date.getTime() + 60*60*1000);
+                 }
+                 if (nlpResult.location) {
+                     updates.location = nlpResult.location;
+                 }
+                 if (Object.keys(updates).length > 0) {
+                    await storage.updateCalendarEvent(event.event_id, updates);
+                    console.log(`💡 Updated event ${event.event_id} with new details from reply.`);
+                 }
+            }
+        }
+    },
+
+    // ... (rest of the file is the same as before)
+    async handleMessageUpdate(instanceId: string, data: any) { /* ... */ },
+    async handleContactsUpsert(instanceId: string, data: any) { /* ... */ },
+    async handleChatsUpsert(instanceId: string, data: any) { /* ... */ },
+    async handleConnectionUpdate(instanceId: string, data: any) { /* ... */ },
+    mapApiPayloadToWhatsappMessage(rawMessage: any, instanceId: string): Omit<WhatsappMessages, 'created_at'> | null { /* ... */ },
+    mapApiPayloadToWhatsappContact(rawContact: any, instanceId: string): Omit<WhatsappContacts, 'first_seen_at' | 'last_updated_at'> | null { /* ... */ },
+    mapApiPayloadToWhatsappChat(rawChat: any, instanceId: string): Omit<WhatsappChats, 'created_at' | 'updated_at'> | null { /* ... */ },
+    extractMessageContent(message: any): string { /* ... */ }
+};
