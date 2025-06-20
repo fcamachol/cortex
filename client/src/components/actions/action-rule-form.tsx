@@ -41,8 +41,9 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   const { toast } = useToast();
 
   // Fetch available WhatsApp instances for multi-instance support
+  const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42"; // Demo user ID
   const { data: whatsappInstances = [] } = useQuery({
-    queryKey: ['/api/whatsapp/instances'],
+    queryKey: [`/api/whatsapp/instances/${userId}`],
   });
 
   const form = useForm<z.infer<typeof actionRuleSchema>>({
