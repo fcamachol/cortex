@@ -147,6 +147,7 @@ export default function CalendarModule() {
   const [eventTab, setEventTab] = useState<'event' | 'task' | 'appointment'>('event');
   const [guestEmail, setGuestEmail] = useState('');
   const [showRepeatDropdown, setShowRepeatDropdown] = useState(false);
+  const [showDueDateDropdown, setShowDueDateDropdown] = useState(false);
   const [repeatOption, setRepeatOption] = useState('no-repeat');
   const [showCustomRecurrence, setShowCustomRecurrence] = useState(false);
   const [showAvailabilityDropdown, setShowAvailabilityDropdown] = useState(false);
@@ -166,6 +167,7 @@ export default function CalendarModule() {
     repetitions: 13
   });
   const repeatDropdownRef = useRef<HTMLDivElement>(null);
+  const dueDateDropdownRef = useRef<HTMLDivElement>(null);
   const availabilityDropdownRef = useRef<HTMLDivElement>(null);
   const [newCalendar, setNewCalendar] = useState({
     name: '',
@@ -188,11 +190,14 @@ export default function CalendarModule() {
     return option ? option.label : 'No se repite';
   };
 
-  // Close repeat dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (repeatDropdownRef.current && !repeatDropdownRef.current.contains(event.target as Node)) {
         setShowRepeatDropdown(false);
+      }
+      if (dueDateDropdownRef.current && !dueDateDropdownRef.current.contains(event.target as Node)) {
+        setShowDueDateDropdown(false);
       }
       if (availabilityDropdownRef.current && !availabilityDropdownRef.current.contains(event.target as Node)) {
         setShowAvailabilityDropdown(false);
@@ -1675,7 +1680,7 @@ export default function CalendarModule() {
                         </label>
                       </div>
                       
-                      {/* Recurrence Section */}
+                      {/* Recurrence and Due Date Section */}
                       <div className="flex items-center space-x-3">
                         <div className="relative">
                           <button
@@ -1684,7 +1689,7 @@ export default function CalendarModule() {
                             className="bg-gray-100 border-0 rounded-lg px-4 py-2 text-gray-700 flex items-center space-x-2"
                           >
                             <Repeat className="h-4 w-4" />
-                            <span>{repeatOptions.find(opt => opt.value === newEvent.recurrence)?.label || 'No se repite'}</span>
+                            <span>No se repite</span>
                             <ChevronDown className="h-4 w-4" />
                           </button>
                           
@@ -1695,7 +1700,6 @@ export default function CalendarModule() {
                                   key={option.value}
                                   type="button"
                                   onClick={() => {
-                                    setNewEvent({ ...newEvent, recurrence: option.value });
                                     setShowRepeatDropdown(false);
                                     if (option.value === 'custom') {
                                       setShowCustomRecurrence(true);
@@ -1706,6 +1710,65 @@ export default function CalendarModule() {
                                   {option.label}
                                 </button>
                               ))}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Due Date Button */}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setShowDueDateDropdown(!showDueDateDropdown)}
+                            className="bg-gray-100 border-0 rounded-lg px-4 py-2 text-gray-700 flex items-center space-x-2"
+                          >
+                            <CalendarIcon className="h-4 w-4" />
+                            <span>
+                              {newTask.dueDate ? format(new Date(newTask.dueDate), 'dd MMM yyyy') : 'Fecha límite'}
+                            </span>
+                            <ChevronDown className="h-4 w-4" />
+                          </button>
+                          
+                          {showDueDateDropdown && (
+                            <div ref={dueDateDropdownRef} className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4">
+                              <div className="space-y-3">
+                                <div>
+                                  <Label className="text-sm font-medium text-gray-700">Fecha límite</Label>
+                                  <Input
+                                    type="date"
+                                    value={newTask.dueDate || format(selectedDate || new Date(), 'yyyy-MM-dd')}
+                                    onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-sm font-medium text-gray-700">Hora límite</Label>
+                                  <TimeDropdown
+                                    value={newTask.dueTime || '23:59'}
+                                    onChange={(time: string) => setNewTask({ ...newTask, dueTime: time })}
+                                    className="mt-1 w-full"
+                                  />
+                                </div>
+                                <div className="flex justify-end space-x-2 pt-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setNewTask({ ...newTask, dueDate: '', dueTime: '' });
+                                      setShowDueDateDropdown(false);
+                                    }}
+                                  >
+                                    Limpiar
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => setShowDueDateDropdown(false)}
+                                  >
+                                    Listo
+                                  </Button>
+                                </div>
+                              </div>
                             </div>
                           )}
                         </div>
