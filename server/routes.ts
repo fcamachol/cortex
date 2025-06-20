@@ -457,7 +457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             messageType: messageType,
             content: extractMessageContent(message),
             timestamp: new Date((message.messageTimestamp || Math.floor(Date.now() / 1000)) * 1000),
-            quotedMessageId: message.message?.extendedTextMessage?.contextInfo?.quotedMessage?.key?.id || null,
+            quotedMessageId: extractQuotedMessageId(message),
             rawApiPayload: message
           };
 
@@ -1210,6 +1210,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (messageContent.videoMessage?.caption) return messageContent.videoMessage.caption;
     if (messageContent.documentMessage?.caption) return messageContent.documentMessage.caption;
     
+    return null;
+  }
+
+  function extractQuotedMessageId(message: any): string | null {
+    if (!message?.message) return null;
+
+    // Check different message types for quoted message references
+    const messageContent = message.message;
+
+    // Extended text message (most common for replies)
+    if (messageContent.extendedTextMessage?.contextInfo?.quotedMessage) {
+      return messageContent.extendedTextMessage.contextInfo.stanzaId || 
+             messageContent.extendedTextMessage.contextInfo.quotedMessage.key?.id || null;
+    }
+
+    // Regular text message with context
+    if (messageContent.conversation && messageContent.contextInfo?.quotedMessage) {
+      return messageContent.contextInfo.stanzaId || 
+             messageContent.contextInfo.quotedMessage.key?.id || null;
+    }
+
+    // Image message with quoted content
+    if (messageContent.imageMessage?.contextInfo?.quotedMessage) {
+      return messageContent.imageMessage.contextInfo.stanzaId || 
+             messageContent.imageMessage.contextInfo.quotedMessage.key?.id || null;
+    }
+
+    // Video message with quoted content
+    if (messageContent.videoMessage?.contextInfo?.quotedMessage) {
+      return messageContent.videoMessage.contextInfo.stanzaId || 
+             messageContent.videoMessage.contextInfo.quotedMessage.key?.id || null;
+    }
+
+    // Audio message with quoted content
+    if (messageContent.audioMessage?.contextInfo?.quotedMessage) {
+      return messageContent.audioMessage.contextInfo.stanzaId || 
+             messageContent.audioMessage.contextInfo.quotedMessage.key?.id || null;
+    }
+
+    // Document message with quoted content
+    if (messageContent.documentMessage?.contextInfo?.quotedMessage) {
+      return messageContent.documentMessage.contextInfo.stanzaId || 
+             messageContent.documentMessage.contextInfo.quotedMessage.key?.id || null;
+    }
+
     return null;
   }
 
