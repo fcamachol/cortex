@@ -369,18 +369,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const chatId = message.key.remoteJid || '';
         const senderJid = message.participant || message.key.remoteJid || '';
         
+        // Override the instanceId from Evolution API with our database instance name
+        // Evolution API sends different internal IDs but we need to use our consistent instance name
+        const correctedInstanceId = instanceName; // Use the webhook URL instance name
+        
         try {
           // For individual chats, the contact JID should match the chat ID
           // For group chats, we create contacts for both the chat and the sender
           const contactJid = chatId.includes('@g.us') ? senderJid : chatId;
           
           // First, ensure the main contact exists (for the chat)
-          let chatContact = await storage.getWhatsappContact('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instance.instanceId, contactJid);
+          let chatContact = await storage.getWhatsappContact('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', correctedInstanceId, contactJid);
           
           if (!chatContact) {
             // Create the contact if it doesn't exist
             const newContactData = {
-              instanceId: instance.instanceId,
+              instanceId: correctedInstanceId,
               jid: contactJid,
               name: message.pushName || contactJid.split('@')[0],
               isMyContact: false,
@@ -393,11 +397,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // For group chats, also ensure the sender contact exists if different
           if (chatId.includes('@g.us') && senderJid !== contactJid) {
-            let senderContact = await storage.getWhatsappContact('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instance.instanceId, senderJid);
+            let senderContact = await storage.getWhatsappContact('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', correctedInstanceId, senderJid);
             
             if (!senderContact) {
               const senderContactData = {
-                instanceId: instance.instanceId,
+                instanceId: correctedInstanceId,
                 jid: senderJid,
                 name: message.pushName || senderJid.split('@')[0],
                 isMyContact: false,
@@ -410,13 +414,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           // Then, ensure the chat exists
-          let chat = await storage.getWhatsappChat('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instance.instanceId, chatId);
+          let chat = await storage.getWhatsappChat('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', correctedInstanceId, chatId);
           
           if (!chat) {
             // Create the chat if it doesn't exist
             const chatType: 'individual' | 'group' = chatId.includes('@g.us') ? 'group' : 'individual';
             const newChatData = {
-              instanceId: instance.instanceId,
+              instanceId: correctedInstanceId,
               chatId: chatId,
               type: chatType,
               unreadCount: 0,
@@ -442,7 +446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // If emoji is empty, this is a reaction removal
           if (!reactionEmoji) {
-            await storage.deleteWhatsappMessageReaction('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instance.instanceId, targetMessageId, reactorJid);
+            await storage.deleteWhatsappMessageReaction('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', correctedInstanceId, targetMessageId, reactorJid);
             console.log(`🗑️ Removed reaction from ${reactorJid} on message ${targetMessageId}`);
           } else {
             // Use the webhook's fromMe value directly - it's more accurate than database lookup
@@ -453,7 +457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Add or update reaction
             const reactionMessageData = {
               messageId: targetMessageId,
-              instanceId: instance.instanceId,
+              instanceId: correctedInstanceId,
               reactorJid: reactorJid,
               reactionEmoji: reactionEmoji,
               fromMe: isInternalUser,
@@ -465,8 +469,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // Process actions triggers for this reaction
             try {
-              console.log(`🔍 Looking for original message: ${targetMessageId} in instance: ${instance.instanceId}`);
-              const originalMessage = await storage.getWhatsappMessage('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instance.instanceId, targetMessageId);
+              console.log(`🔍 Looking for original message: ${targetMessageId} in instance: ${correctedInstanceId}`);
+              const originalMessage = await storage.getWhatsappMessage('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', correctedInstanceId, targetMessageId);
               
               if (originalMessage) {
                 console.log(`📨 Found original message: "${originalMessage.content?.substring(0, 50) || 'No content'}"`);
