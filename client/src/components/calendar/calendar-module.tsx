@@ -1572,6 +1572,163 @@ export default function CalendarModule() {
               </div>
                 </>
               )}
+
+              {activeTab === 'task' && (
+                <>
+                  {/* Task Date and Time */}
+                  <div className="flex items-start space-x-4">
+                    <Clock className="h-5 w-5 text-gray-500 mt-2" />
+                    <div className="flex-1 space-y-3">
+                      {/* Due Date Selection */}
+                      <div className="flex items-center space-x-4">
+                        <Input
+                          type="date"
+                          value={newTask.dueDate}
+                          onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                          className="bg-gray-100 border-0 rounded-lg px-4 py-2 text-gray-700"
+                        />
+                        <span className="text-gray-500">No se repite</span>
+                      </div>
+                      
+                      {/* Due Time Selection */}
+                      <div className="flex items-center space-x-2">
+                        <TimeDropdown
+                          value={newTask.dueTime}
+                          onChange={(time: string) => setNewTask({ ...newTask, dueTime: time })}
+                          className="bg-blue-50 border border-blue-200 text-blue-700"
+                        />
+                        <span className="text-gray-500">Fecha límite</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Estimated Time */}
+                  <div className="flex items-center space-x-4 py-3">
+                    <div className="h-5 w-5 flex items-center justify-center">
+                      <Clock className="h-4 w-4 text-gray-500" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-gray-700">Tiempo estimado:</span>
+                        <select
+                          value={newTask.estimatedTime}
+                          onChange={(e) => setNewTask({ ...newTask, estimatedTime: parseInt(e.target.value) })}
+                          className="bg-gray-100 border-0 rounded-lg px-3 py-1 text-gray-700"
+                        >
+                          {Array.from({ length: 24 }, (_, i) => (i + 1) * 15).map((minutes) => (
+                            <option key={minutes} value={minutes}>
+                              {minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)}h ${minutes % 60 > 0 ? `${minutes % 60}m` : ''}`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Priority */}
+                  <div className="flex items-center space-x-4 py-3">
+                    <div className="h-5 w-5 flex items-center justify-center">
+                      <div className={cn(
+                        "w-3 h-3 rounded-full",
+                        newTask.priority === 'high' && "bg-red-500",
+                        newTask.priority === 'medium' && "bg-yellow-500", 
+                        newTask.priority === 'low' && "bg-green-500"
+                      )}></div>
+                    </div>
+                    <div className="flex-1">
+                      <select
+                        value={newTask.priority}
+                        onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as 'low' | 'medium' | 'high' })}
+                        className="bg-transparent border-0 focus:ring-0 text-gray-700"
+                      >
+                        <option value="low">Prioridad baja</option>
+                        <option value="medium">Prioridad media</option>
+                        <option value="high">Prioridad alta</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Task Description */}
+                  <div className="flex items-start space-x-4 py-3">
+                    <div className="h-5 w-5 border-2 border-gray-400 mt-1"></div>
+                    <div className="flex-1">
+                      <Textarea
+                        value={newTask.description}
+                        onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                        placeholder="Añadir una descripción"
+                        className="border-0 border-b border-gray-300 rounded-none focus:ring-0 focus:border-blue-500 min-h-[60px]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Task List Selection */}
+                  <div className="flex items-center space-x-4 py-3">
+                    <div className="h-5 w-5 flex items-center justify-center">
+                      <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                    </div>
+                    <div className="flex-1">
+                      <select
+                        value={newTask.taskList}
+                        onChange={(e) => setNewTask({ ...newTask, taskList: e.target.value })}
+                        className="bg-transparent border-0 focus:ring-0 text-gray-700"
+                      >
+                        <option value="My Tasks">My Tasks</option>
+                        <option value="Personal">Personal</option>
+                        <option value="Work">Work</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Create Calendar Event Option */}
+                  {newTask.dueDate && (
+                    <div className="flex items-center space-x-4 py-3 border-t border-gray-200">
+                      <CalendarIcon className="h-5 w-5 text-gray-500" />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-700">Crear evento en calendario</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (newTask.dueDate && newTask.title) {
+                                const taskDueDate = new Date(newTask.dueDate);
+                                if (newTask.dueTime) {
+                                  const [hours, minutes] = newTask.dueTime.split(':');
+                                  taskDueDate.setHours(parseInt(hours), parseInt(minutes));
+                                }
+                                const endTime = new Date(taskDueDate.getTime() + (newTask.estimatedTime * 60 * 1000));
+
+                                createEventMutation.mutate({
+                                  title: `Tarea: ${newTask.title}`,
+                                  description: newTask.description || `Completar tarea: ${newTask.title}`,
+                                  startTime: taskDueDate.toISOString(),
+                                  endTime: endTime.toISOString(),
+                                  location: '',
+                                  isAllDay: false,
+                                  calendarId: 'personal',
+                                  metadata: {
+                                    isTaskEvent: true,
+                                    estimatedTime: newTask.estimatedTime,
+                                    priority: newTask.priority
+                                  }
+                                });
+                              }
+                            }}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            <CalendarIcon className="h-4 w-4 mr-1" />
+                            Programar
+                          </Button>
+                        </div>
+                        <div className="text-sm text-gray-500 mt-1">
+                          Se creará un evento de {newTask.estimatedTime < 60 ? `${newTask.estimatedTime} min` : `${Math.floor(newTask.estimatedTime / 60)}h ${newTask.estimatedTime % 60 > 0 ? `${newTask.estimatedTime % 60}m` : ''}`} en tu calendario
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Footer */}
@@ -1580,11 +1737,11 @@ export default function CalendarModule() {
                 Más opciones
               </Button>
               <Button 
-                onClick={handleCreateEvent}
-                disabled={createEventMutation.isPending}
+                onClick={activeTab === 'event' ? handleCreateEvent : handleCreateTask}
+                disabled={activeTab === 'event' ? createEventMutation.isPending : createTaskMutation.isPending}
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                {createEventMutation.isPending ? "Guardando..." : "Guardar"}
+                {(activeTab === 'event' ? createEventMutation.isPending : createTaskMutation.isPending) ? "Guardando..." : "Guardar"}
               </Button>
             </div>
           </DialogContent>
