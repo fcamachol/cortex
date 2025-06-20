@@ -438,6 +438,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
-  // Return a mock server for now
-  return {} as Server;
+  // Return the app for server creation
+  return app as any;
 }
