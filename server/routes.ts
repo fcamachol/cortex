@@ -242,6 +242,35 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.get('/api/whatsapp/chat-messages', async (req: Request, res: Response) => {
+    try {
+      const { chatId, userId, instanceId, limit } = req.query;
+      
+      if (chatId && userId && instanceId) {
+        // Get messages for specific chat
+        const messages = await storage.getWhatsappMessages(
+          userId as string, 
+          instanceId as string, 
+          chatId as string, 
+          parseInt(limit as string || '50')
+        );
+        res.json(messages);
+      } else {
+        // Get recent messages across all chats
+        const messages = await storage.getWhatsappMessages(
+          userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42', 
+          instanceId as string, 
+          chatId as string, 
+          parseInt(limit as string || '50')
+        );
+        res.json(messages);
+      }
+    } catch (error) {
+      console.error('Error fetching chat messages:', error);
+      res.status(500).json({ error: 'Failed to fetch chat messages' });
+    }
+  });
+
   app.get('/api/spaces/:userId', async (req: Request, res: Response) => {
     try {
       const { userId } = req.params;
