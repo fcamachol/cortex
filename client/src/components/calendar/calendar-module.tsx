@@ -64,6 +64,15 @@ export default function CalendarModule() {
   const [guestEmail, setGuestEmail] = useState('');
   const [showRepeatDropdown, setShowRepeatDropdown] = useState(false);
   const [repeatOption, setRepeatOption] = useState('no-repeat');
+  const [showCustomRecurrence, setShowCustomRecurrence] = useState(false);
+  const [customRecurrence, setCustomRecurrence] = useState({
+    frequency: 'weekly',
+    interval: 1,
+    daysOfWeek: ['J'], // Thursday selected by default
+    endType: 'never',
+    endDate: '',
+    repetitions: 13
+  });
   const repeatDropdownRef = useRef<HTMLDivElement>(null);
   const [newCalendar, setNewCalendar] = useState({
     name: '',
@@ -1114,8 +1123,13 @@ export default function CalendarModule() {
                               <button
                                 key={option.value}
                                 onClick={() => {
-                                  setRepeatOption(option.value);
-                                  setShowRepeatDropdown(false);
+                                  if (option.value === 'custom') {
+                                    setShowCustomRecurrence(true);
+                                    setShowRepeatDropdown(false);
+                                  } else {
+                                    setRepeatOption(option.value);
+                                    setShowRepeatDropdown(false);
+                                  }
                                 }}
                                 className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-3"
                               >
@@ -1266,6 +1280,189 @@ export default function CalendarModule() {
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 {createEventMutation.isPending ? "Guardando..." : "Guardar"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Custom Recurrence Modal */}
+        <Dialog open={showCustomRecurrence} onOpenChange={setShowCustomRecurrence}>
+          <DialogContent className="sm:max-w-[500px]" aria-describedby="custom-recurrence-description">
+            <DialogTitle className="text-xl font-medium text-gray-900 mb-6">
+              Periodicidad personalizada
+            </DialogTitle>
+            <div id="custom-recurrence-description" className="sr-only">
+              Configure la repetición personalizada del evento
+            </div>
+            
+            <div className="space-y-6">
+              {/* Frequency Section */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-gray-700">Repetir cada</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCustomRecurrence(prev => ({ ...prev, interval: Math.max(1, prev.interval - 1) }))}
+                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded"
+                    >
+                      ▼
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      value={customRecurrence.interval}
+                      onChange={(e) => setCustomRecurrence(prev => ({ ...prev, interval: parseInt(e.target.value) || 1 }))}
+                      className="w-16 px-2 py-1 text-center border border-gray-300 rounded bg-gray-100"
+                    />
+                    <button
+                      onClick={() => setCustomRecurrence(prev => ({ ...prev, interval: prev.interval + 1 }))}
+                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded"
+                    >
+                      ▲
+                    </button>
+                  </div>
+                  <select
+                    value={customRecurrence.frequency}
+                    onChange={(e) => setCustomRecurrence(prev => ({ ...prev, frequency: e.target.value }))}
+                    className="px-3 py-1 border border-gray-300 rounded bg-white"
+                  >
+                    <option value="daily">día</option>
+                    <option value="weekly">semana</option>
+                    <option value="monthly">mes</option>
+                    <option value="yearly">año</option>
+                  </select>
+                  <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded">
+                    ▼
+                  </button>
+                </div>
+              </div>
+
+              {/* Days of Week Section */}
+              {customRecurrence.frequency === 'weekly' && (
+                <div>
+                  <div className="text-gray-700 mb-3">Se repite el</div>
+                  <div className="flex gap-2">
+                    {['D', 'L', 'M', 'X', 'J', 'V', 'S'].map((day, index) => {
+                      const isSelected = customRecurrence.daysOfWeek.includes(day);
+                      return (
+                        <button
+                          key={day}
+                          onClick={() => {
+                            const newDays = isSelected
+                              ? customRecurrence.daysOfWeek.filter(d => d !== day)
+                              : [...customRecurrence.daysOfWeek, day];
+                            setCustomRecurrence(prev => ({ ...prev, daysOfWeek: newDays }));
+                          }}
+                          className={cn(
+                            "w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors",
+                            isSelected
+                              ? "bg-blue-600 text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          )}
+                        >
+                          {day}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* End Date Section */}
+              <div>
+                <div className="text-gray-700 mb-3">Termina</div>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="endType"
+                      value="never"
+                      checked={customRecurrence.endType === 'never'}
+                      onChange={(e) => setCustomRecurrence(prev => ({ ...prev, endType: e.target.value }))}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-gray-700">Nunca</span>
+                  </label>
+                  
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="endType"
+                      value="date"
+                      checked={customRecurrence.endType === 'date'}
+                      onChange={(e) => setCustomRecurrence(prev => ({ ...prev, endType: e.target.value }))}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-gray-700">El</span>
+                    <input
+                      type="date"
+                      value={customRecurrence.endDate}
+                      onChange={(e) => setCustomRecurrence(prev => ({ ...prev, endDate: e.target.value }))}
+                      className="px-3 py-1 border border-gray-300 rounded bg-gray-100 text-gray-500"
+                      placeholder="18 de sept de 2025"
+                    />
+                    <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded">
+                      ▲
+                    </button>
+                  </label>
+                  
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="endType"
+                      value="after"
+                      checked={customRecurrence.endType === 'after'}
+                      onChange={(e) => setCustomRecurrence(prev => ({ ...prev, endType: e.target.value }))}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-gray-700">Después de</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCustomRecurrence(prev => ({ ...prev, repetitions: Math.max(1, prev.repetitions - 1) }))}
+                        className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded"
+                      >
+                        ▼
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        value={customRecurrence.repetitions}
+                        onChange={(e) => setCustomRecurrence(prev => ({ ...prev, repetitions: parseInt(e.target.value) || 1 }))}
+                        className="w-16 px-2 py-1 text-center border border-gray-300 rounded bg-gray-100"
+                      />
+                      <button
+                        onClick={() => setCustomRecurrence(prev => ({ ...prev, repetitions: prev.repetitions + 1 }))}
+                        className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded"
+                      >
+                        ▲
+                      </button>
+                    </div>
+                    <span className="text-gray-700">repeticiones</span>
+                    <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded">
+                      ▼
+                    </button>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 mt-8">
+              <Button
+                variant="ghost"
+                onClick={() => setShowCustomRecurrence(false)}
+                className="text-blue-600 hover:bg-blue-50"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  setRepeatOption('custom');
+                  setShowCustomRecurrence(false);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6"
+              >
+                Hecho
               </Button>
             </div>
           </DialogContent>
