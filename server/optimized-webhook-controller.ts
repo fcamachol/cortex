@@ -76,6 +76,9 @@ export const OptimizedWebhookController = {
                 if (messageForDb) {
                     await storage.createWhatsappMessage(messageForDb);
                     console.log(`✅ Saved message: ${messageForDb.messageId}`);
+                    
+                    // Trigger actions engine for automation
+                    await this.processMessageForActions(messageForDb);
                 }
             } catch (error) {
                 console.error('Message save error:', error);
@@ -157,6 +160,11 @@ export const OptimizedWebhookController = {
     mapApiPayloadToWhatsappMessage(rawMessage: any, instanceId: string): any | null {
         if (!rawMessage.key?.id || !rawMessage.key?.remoteJid) return null;
 
+        // Handle reaction messages separately
+        if (rawMessage.messageType === 'reactionMessage') {
+            return this.handleReactionMessage(rawMessage, instanceId);
+        }
+
         return {
             messageId: rawMessage.key.id,
             instanceId: instanceId,
@@ -173,6 +181,67 @@ export const OptimizedWebhookController = {
             sourcePlatform: rawMessage.source,
             rawApiPayload: rawMessage
         };
+    },
+
+    async handleReactionMessage(rawMessage: any, instanceId: string): Promise<any | null> {
+        try {
+            const reactionData = rawMessage.message?.reactionMessage;
+            if (!reactionData) return null;
+
+            const targetMessageId = reactionData.key?.id;
+            const reactionEmoji = reactionData.text;
+            const reactorJid = rawMessage.key?.participant || rawMessage.key?.remoteJid;
+
+            if (!targetMessageId || !reactionEmoji || !reactorJid) {
+                console.log('⚠️ Missing reaction data, skipping');
+                return null;
+            }
+
+            // Check if target message exists before saving reaction
+            const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+            const targetMessage = await storage.getWhatsappMessage(userId, instanceId, targetMessageId);
+            
+            if (!targetMessage) {
+                console.log(`⚠️ Target message ${targetMessageId} not found, skipping reaction save`);
+                return null;
+            }
+
+            // Save the reaction
+            const reactionMessageData = {
+                messageId: targetMessageId,
+                instanceId: instanceId,
+                reactorJid: reactorJid,
+                reactionEmoji: reactionEmoji,
+                fromMe: rawMessage.key.fromMe || false,
+                timestamp: new Date(rawMessage.messageTimestamp * 1000)
+            };
+
+            await storage.createWhatsappMessageReaction(reactionMessageData);
+            console.log(`✅ Saved reaction ${reactionEmoji} from ${reactorJid} on message ${targetMessageId}`);
+
+            // Trigger actions engine for reaction
+            const triggerContext = {
+                messageId: targetMessageId,
+                instanceId: instanceId,
+                chatId: rawMessage.key.remoteJid,
+                senderJid: reactorJid,
+                content: targetMessage.content || '',
+                hashtags: ActionsEngine.extractHashtagsAndKeywords(targetMessage.content || '').hashtags,
+                keywords: ActionsEngine.extractHashtagsAndKeywords(targetMessage.content || '').keywords,
+                timestamp: new Date(rawMessage.messageTimestamp * 1000),
+                fromMe: rawMessage.key.fromMe || false,
+                reaction: reactionEmoji,
+                originalSenderJid: targetMessage.senderJid
+            };
+
+            await ActionsEngine.processMessageForActions(triggerContext);
+            console.log(`✅ Processed reaction trigger for ${reactionEmoji} on message: ${targetMessage.content?.substring(0, 50) || 'No content'}`);
+
+            return null; // Don't save reaction as regular message
+        } catch (error) {
+            console.error('Error handling reaction message:', error);
+            return null;
+        }
     },
 
     mapApiPayloadToWhatsappContact(rawContact: any, instanceId: string): any | null {
@@ -319,6 +388,29 @@ export const OptimizedWebhookController = {
         } catch (error) {
             console.error(`Error ensuring chat exists for ${chatId}:`, error);
             throw error; // Re-throw to prevent message save without chat
+        }
+    },
+
+    async processMessageForActions(message: any) {
+        try {
+            const { hashtags, keywords } = ActionsEngine.extractHashtagsAndKeywords(message.content || '');
+            
+            const triggerContext = {
+                messageId: message.messageId,
+                instanceId: message.instanceId,
+                chatId: message.chatId,
+                senderJid: message.senderJid,
+                content: message.content || '',
+                hashtags,
+                keywords,
+                timestamp: new Date(message.timestamp),
+                fromMe: message.fromMe || false
+            };
+
+            await ActionsEngine.processMessageForActions(triggerContext);
+            console.log(`🔍 Processed message for automated actions`);
+        } catch (error) {
+            console.error('Error processing message for actions:', error);
         }
     }
 };

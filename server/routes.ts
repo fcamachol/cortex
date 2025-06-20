@@ -467,6 +467,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             console.log(`🔍 Using webhook fromMe value for ${reactorJid}: fromMe=${isInternalUser}`);
 
+            // Check if target message exists before saving reaction
+            const targetMessage = await storage.getWhatsappMessage('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', correctedInstanceId, targetMessageId);
+            
+            if (!targetMessage) {
+              console.log(`⚠️ Target message ${targetMessageId} not found, skipping reaction save`);
+              return; // Skip saving reaction if target message doesn't exist
+            }
+
             // Add or update reaction
             const reactionMessageData = {
               messageId: targetMessageId,
