@@ -261,11 +261,11 @@ export class ActionsEngine {
 
     console.log('📝 Intelligent task data prepared:', taskData);
 
-    // Save task to database using SQL directly
+    // Save task to database using correct CRM schema
     try {
       const result = await db.execute(sql`
-        INSERT INTO tasks (title, description, priority, status, due_date, user_id)
-        VALUES (${taskData.title}, ${taskData.description}, ${taskData.priority}, ${taskData.taskStatus}, ${taskData.dueDate}, ${taskData.userId})
+        INSERT INTO crm.tasks (title, description, priority, status, due_date, instance_id)
+        VALUES (${taskData.title}, ${taskData.description}, ${taskData.priority}, ${taskData.taskStatus}, ${taskData.dueDate}, ${context.instanceId})
         RETURNING task_id, title, description, status
       `);
       

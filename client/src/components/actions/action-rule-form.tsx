@@ -108,6 +108,9 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
       performerFilters: {
         allowedPerformers: [values.performerFilter]
       },
+      instanceFilters: values.selectedInstances.length > 0 ? {
+        include: values.selectedInstances
+      } : null
     };
 
     if (rule) {
@@ -550,6 +553,69 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
                     )}
                   />
                   {renderActionConfig()}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Active WhatsApp Instances</CardTitle>
+                  <CardDescription>
+                    Select which WhatsApp instances this automation rule should be active on
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="selectedInstances"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Enable Rule On These Instances</FormLabel>
+                        <div className="grid grid-cols-1 gap-3">
+                          {whatsappInstances.map((instance: any) => (
+                            <div key={instance.instanceId} className="flex items-center space-x-3 p-3 border rounded-lg">
+                              <input
+                                type="checkbox"
+                                id={instance.instanceId}
+                                checked={field.value?.includes(instance.instanceId) || false}
+                                onChange={(e) => {
+                                  const currentValue = field.value || [];
+                                  if (e.target.checked) {
+                                    field.onChange([...currentValue, instance.instanceId]);
+                                  } else {
+                                    field.onChange(currentValue.filter((id: string) => id !== instance.instanceId));
+                                  }
+                                }}
+                                className="w-4 h-4 rounded border-gray-300"
+                              />
+                              <div className="flex-1">
+                                <label htmlFor={instance.instanceId} className="text-sm font-medium cursor-pointer">
+                                  {instance.displayName || instance.instanceId}
+                                </label>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                                    instance.isConnected 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-red-100 text-red-800'
+                                  }`}>
+                                    {instance.isConnected ? "Connected" : "Disconnected"}
+                                  </span>
+                                  {instance.ownerJid && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {instance.ownerJid.replace('@s.whatsapp.net', '')}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <FormDescription>
+                          If no instances are selected, the rule will be active on all instances
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </CardContent>
               </Card>
 
