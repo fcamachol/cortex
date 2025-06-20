@@ -1647,29 +1647,68 @@ export default function CalendarModule() {
 
               {activeTab === 'task' && (
                 <>
-                  {/* Task Date and Time */}
+                  {/* Task Date and Time - Full Scheduling Interface */}
                   <div className="flex items-start space-x-4">
                     <Clock className="h-5 w-5 text-gray-500 mt-2" />
                     <div className="flex-1 space-y-3">
-                      {/* Due Date Selection */}
-                      <div className="flex items-center space-x-4">
+                      {/* Date and Time Row */}
+                      <div className="flex items-center space-x-3">
                         <Input
                           type="date"
-                          value={newTask.dueDate}
+                          value={newTask.dueDate || format(selectedDate || new Date(), 'yyyy-MM-dd')}
                           onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
                           className="bg-gray-100 border-0 rounded-lg px-4 py-2 text-gray-700"
                         />
-                        <span className="text-gray-500">No se repite</span>
+                        <TimeDropdown
+                          value={newTask.dueTime || newEvent.startTime}
+                          onChange={(time: string) => setNewTask({ ...newTask, dueTime: time })}
+                          className="bg-gray-100 border-0 rounded-lg px-3 py-2 text-gray-700"
+                        />
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={newEvent.isAllDay}
+                            onChange={(e) => setNewEvent({ ...newEvent, isAllDay: e.target.checked })}
+                            className="rounded border-gray-300"
+                          />
+                          <span className="text-sm text-gray-700">Todo el día</span>
+                        </label>
                       </div>
                       
-                      {/* Due Time Selection */}
-                      <div className="flex items-center space-x-2">
-                        <TimeDropdown
-                          value={newTask.dueTime}
-                          onChange={(time: string) => setNewTask({ ...newTask, dueTime: time })}
-                          className="bg-blue-50 border border-blue-200 text-blue-700"
-                        />
-                        <span className="text-gray-500">Fecha límite</span>
+                      {/* Recurrence Section */}
+                      <div className="flex items-center space-x-3">
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setShowRepeatDropdown(!showRepeatDropdown)}
+                            className="bg-gray-100 border-0 rounded-lg px-4 py-2 text-gray-700 flex items-center space-x-2"
+                          >
+                            <Repeat className="h-4 w-4" />
+                            <span>{repeatOptions.find(opt => opt.value === newEvent.recurrence)?.label || 'No se repite'}</span>
+                            <ChevronDown className="h-4 w-4" />
+                          </button>
+                          
+                          {showRepeatDropdown && (
+                            <div ref={repeatDropdownRef} className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                              {repeatOptions.map((option) => (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  onClick={() => {
+                                    setNewEvent({ ...newEvent, recurrence: option.value });
+                                    setShowRepeatDropdown(false);
+                                    if (option.value === 'custom') {
+                                      setShowCustomRecurrence(true);
+                                    }
+                                  }}
+                                  className="w-full text-left px-4 py-2 hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg"
+                                >
+                                  {option.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
