@@ -1938,7 +1938,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const statuses = instances.map(instance => ({
         instanceId: instance.instanceId,
         instanceName: instance.displayName,
-        phoneNumber: instance.phoneNumber || '',
+        phoneNumber: instance.ownerJid || '',
         status: instance.isConnected ? 'connected' : 'disconnected',
         webhookConfigured: !!instance.webhookUrl,
         lastConnected: instance.lastConnectionAt,
@@ -3345,7 +3345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       switch (rule.triggerType) {
         case 'hashtag':
-          wouldTrigger = mockContext.hashtags?.some(tag => 
+          wouldTrigger = mockContext.hashtags?.some((tag: string) => 
             conditions.hashtags?.includes(tag)
           ) || false;
           break;

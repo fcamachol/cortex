@@ -497,15 +497,17 @@ export function WhatsAppInstanceManager() {
               <AlertTriangle className="w-5 h-5" />
               Delete WhatsApp Instance
             </DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete "{instanceToDelete?.displayName}"? This action will:
-              <ul className="mt-2 ml-4 list-disc space-y-1 text-sm">
-                <li>Remove the instance from your dashboard</li>
-                <li>Delete it from the Evolution API</li>
-                <li>Disconnect any active WhatsApp session</li>
-                <li>Remove all associated data</li>
-              </ul>
-              <p className="mt-2 font-medium text-red-600">This action cannot be undone.</p>
+            <DialogDescription asChild>
+              <div>
+                <p>Are you sure you want to delete "{instanceToDelete?.displayName}"? This action will:</p>
+                <ul className="mt-2 ml-4 list-disc space-y-1 text-sm">
+                  <li>Remove the instance from your dashboard</li>
+                  <li>Delete it from the Evolution API</li>
+                  <li>Disconnect any active WhatsApp session</li>
+                  <li>Remove all associated data</li>
+                </ul>
+                <p className="mt-2 font-medium text-red-600">This action cannot be undone.</p>
+              </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
