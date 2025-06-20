@@ -9,6 +9,25 @@ import { eq } from 'drizzle-orm';
 import { appUsers } from '../shared/schema';
 import { nanoid } from 'nanoid';
 
+// Store SSE connections
+const sseConnections = new Map<string, Response>();
+
+function notifyClientsOfNewMessage(messageRecord: any) {
+  console.log(`📡 Notifying ${sseConnections.size} connected clients of new message`);
+  
+  for (const [clientId, res] of sseConnections.entries()) {
+    try {
+      res.write(`data: ${JSON.stringify({
+        type: 'new_message',
+        message: messageRecord
+      })}\n\n`);
+    } catch (error) {
+      console.log(`❌ Error sending SSE to client ${clientId}:`, error);
+      sseConnections.delete(clientId);
+    }
+  }
+}
+
 // Helper function to format phone numbers to E.164 format
 function formatToE164(phoneNumber: string): string {
   // Remove all non-digit characters
@@ -75,6 +94,37 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Basic test route
   app.get('/api/test', (req: Request, res: Response) => {
     res.json({ message: 'API is working' });
+  });
+
+  // Server-Sent Events endpoint for real-time updates
+  app.get('/api/events/messages', (req: Request, res: Response) => {
+    const clientId = nanoid();
+    
+    // Set SSE headers
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+
+    // Send initial connection message
+    res.write(`data: ${JSON.stringify({ type: 'connected', clientId })}\n\n`);
+
+    // Store connection
+    sseConnections.set(clientId, res);
+    console.log(`📡 New SSE client connected: ${clientId} (${sseConnections.size} total)`);
+
+    // Handle client disconnect
+    req.on('close', () => {
+      sseConnections.delete(clientId);
+      console.log(`📡 SSE client disconnected: ${clientId} (${sseConnections.size} remaining)`);
+    });
+
+    req.on('error', () => {
+      sseConnections.delete(clientId);
+    });
   });
 
   // Authentication routes
@@ -606,117 +656,122 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       // Extract messages from webhook payload - Evolution API structure
-      let messages = [];
-      if (data.data && Array.isArray(data.data)) {
-        messages = data.data;
-      } else if (Array.isArray(data)) {
-        messages = data;
+      let messageData;
+      
+      // The webhook sends a single message in data object
+      if (data.data && data.data.key) {
+        messageData = data.data;
+      } else if (data.key) {
+        messageData = data;
       } else {
-        messages = [data];
+        console.log('⚠️ No valid message data found in webhook payload');
+        return;
       }
       
-      console.log(`📝 Processing ${messages.length} messages from webhook`);
+      console.log(`📝 Processing webhook message from ${messageData.pushName || 'Unknown'}`);
       
-      for (const messageData of messages) {
-        console.log(`🔍 Processing message data:`, JSON.stringify(messageData, null, 2));
+      // Evolution API webhook structure: messageData has key and message properties
+      const key = messageData.key;
+      const message = messageData.message;
+      
+      if (!key || !key.id) {
+        console.log('⚠️ Skipping message without valid key');
+        return;
+      }
+
+      const messageId = key.id;
+      const chatId = key.remoteJid;
+      const fromMe = key.fromMe || false;
+      const senderJid = fromMe ? instance.instanceId : (key.participant || key.remoteJid);
+
+      // Extract message content based on type
+      let content = '';
+      let messageType: 'text' | 'image' | 'video' | 'audio' | 'document' | 'sticker' | 'location' | 'contact_card' | 'contact_card_multi' | 'order' | 'revoked' | 'unsupported' | 'reaction' | 'call_log' | 'edited_message' = 'text';
+
+      if (message.conversation) {
+        content = message.conversation;
+        messageType = 'text';
+      } else if (message.extendedTextMessage?.text) {
+        content = message.extendedTextMessage.text;
+        messageType = 'text';
+      } else if (message.imageMessage) {
+        content = message.imageMessage.caption || '[Image]';
+        messageType = 'image';
+      } else if (message.videoMessage) {
+        content = message.videoMessage.caption || '[Video]';
+        messageType = 'video';
+      } else if (message.audioMessage) {
+        content = '[Audio]';
+        messageType = 'audio';
+      } else if (message.documentMessage) {
+        content = `[Document: ${message.documentMessage.title || 'file'}]`;
+        messageType = 'document';
+      } else if (message.stickerMessage) {
+        content = '[Sticker]';
+        messageType = 'sticker';
+      } else if (message.locationMessage) {
+        content = '[Location]';
+        messageType = 'location';
+      } else if (message.contactMessage) {
+        content = '[Contact]';
+        messageType = 'contact_card';
+      } else if (message.reactionMessage) {
+        content = `[Reaction: ${message.reactionMessage.text}]`;
+        messageType = 'reaction';
+      } else {
+        content = '[Unsupported message type]';
+        messageType = 'unsupported';
+      }
+
+      // Create message record
+      const messageRecord = {
+        messageId: messageId,
+        instanceId: instance.instanceId,
+        chatId: chatId,
+        senderJid: senderJid,
+        fromMe: fromMe,
+        messageType: messageType,
+        content: content,
+        timestamp: messageData.messageTimestamp ? new Date(messageData.messageTimestamp * 1000) : new Date(),
+        quotedMessageId: message.extendedTextMessage?.contextInfo?.quotedMessage ? 
+          message.extendedTextMessage.contextInfo.stanzaId : null,
+        isForwarded: message.extendedTextMessage?.contextInfo?.isForwarded || false,
+        forwardingScore: message.extendedTextMessage?.contextInfo?.forwardingScore || 0,
+        isStarred: false,
+        isEdited: false,
+        lastEditedAt: null,
+        sourcePlatform: messageData.source || 'android',
+        rawApiPayload: messageData
+      };
+
+      console.log(`💬 Storing webhook message ${messageId} from ${chatId}: "${content.substring(0, 50)}..."`);
+      
+      try {
+        await storage.createWhatsappMessage(messageRecord);
+        console.log(`✅ Webhook message stored successfully: ${messageId}`);
         
-        // Evolution API webhook structure: messageData has key and message properties
-        const key = messageData.key;
-        const message = messageData.message;
+        // Notify connected clients about new message
+        notifyClientsOfNewMessage(messageRecord);
         
-        // If no key/message structure, this might be a different event type
-        if (!key && !message) {
-          console.log('⚠️ No key/message structure found, checking for alternative formats...');
-          
-          // Check if this is a direct message format
-          if (messageData.messageId || messageData.id) {
-            console.log('📦 Found alternative message format, processing...');
-            // This seems to be an already processed message, skip it
-            continue;
-          }
-          
-          console.log('⚠️ Skipping unknown message format:', JSON.stringify(messageData, null, 2));
-          continue;
-        }
-        
-        if (!key || !key.id) {
-          console.log('⚠️ Skipping message without valid key:', JSON.stringify(messageData, null, 2));
-          continue;
-        }
-
-        const messageId = key.id;
-        const chatId = key.remoteJid;
-        const fromMe = key.fromMe || false;
-        const senderJid = fromMe ? instance.instanceId : (messageData.pushName ? key.remoteJid : key.participant || key.remoteJid);
-
-        // Extract message content based on type
-        let content = '';
-        let messageType: 'text' | 'image' | 'video' | 'audio' | 'document' | 'sticker' | 'location' | 'contact_card' | 'contact_card_multi' | 'order' | 'revoked' | 'unsupported' | 'reaction' | 'call_log' | 'edited_message' = 'text';
-
-        if (message.conversation) {
-          content = message.conversation;
-          messageType = 'text';
-        } else if (message.extendedTextMessage?.text) {
-          content = message.extendedTextMessage.text;
-          messageType = 'text';
-        } else if (message.imageMessage) {
-          content = message.imageMessage.caption || '[Image]';
-          messageType = 'image';
-        } else if (message.videoMessage) {
-          content = message.videoMessage.caption || '[Video]';
-          messageType = 'video';
-        } else if (message.audioMessage) {
-          content = '[Audio]';
-          messageType = 'audio';
-        } else if (message.documentMessage) {
-          content = `[Document: ${message.documentMessage.title || 'file'}]`;
-          messageType = 'document';
-        } else if (message.stickerMessage) {
-          content = '[Sticker]';
-          messageType = 'sticker';
-        } else if (message.locationMessage) {
-          content = '[Location]';
-          messageType = 'location';
-        } else if (message.contactMessage) {
-          content = '[Contact]';
-          messageType = 'contact_card';
-        } else if (message.reactionMessage) {
-          content = `[Reaction: ${message.reactionMessage.text}]`;
-          messageType = 'reaction';
-        } else {
-          content = '[Unsupported message type]';
-          messageType = 'unsupported';
-        }
-
-        // Create message record
-        const messageRecord = {
+        // Process actions for this message
+        const triggerContext = {
           messageId: messageId,
           instanceId: instance.instanceId,
           chatId: chatId,
           senderJid: senderJid,
-          fromMe: fromMe,
-          messageType: messageType,
           content: content,
-          timestamp: messageData.messageTimestamp ? new Date(messageData.messageTimestamp * 1000) : new Date(),
-          quotedMessageId: message.extendedTextMessage?.contextInfo?.quotedMessage ? 
-            message.extendedTextMessage.contextInfo.stanzaId : null,
-          isForwarded: message.extendedTextMessage?.contextInfo?.isForwarded || false,
-          forwardingScore: message.extendedTextMessage?.contextInfo?.forwardingScore || 0,
-          isStarred: false,
-          isEdited: false,
-          lastEditedAt: null,
-          sourcePlatform: messageData.source || 'android',
-          rawApiPayload: messageData
+          hashtags: [],
+          keywords: [],
+          timestamp: new Date(messageData.messageTimestamp * 1000),
+          fromMe: fromMe
         };
-
-        console.log(`💬 Storing message ${messageId} from ${chatId}: "${content.substring(0, 50)}..."`);
         
-        try {
-          await storage.createWhatsappMessage(messageRecord);
-          console.log(`✅ Message stored successfully: ${messageId}`);
-        } catch (dbError) {
-          console.error(`❌ Error storing message ${messageId}:`, dbError);
-        }
+        // Import and call the actions engine
+        const { ActionsEngine } = await import('./actions-engine');
+        await ActionsEngine.processMessageForActions(triggerContext);
+        
+      } catch (dbError) {
+        console.error(`❌ Error storing webhook message ${messageId}:`, dbError);
       }
     } catch (error) {
       console.error('Error in handleWebhookMessagesUpsert:', error);
