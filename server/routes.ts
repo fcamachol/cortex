@@ -2249,34 +2249,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Skip instances that don't exist in Evolution API (like "prueba 7")
         if (instance.isConnected && instance.apiKey && instance.instanceId !== 'prueba 7') {
           try {
-            // Fetch chats from Evolution API
-            const evolutionApi = getInstanceEvolutionApi(instance.apiKey);
-            const chats = await evolutionApi.fetchChats(instance.instanceId);
+            // Load conversations directly from database (populated via webhooks)
+            console.log(`📋 Loading conversations from database for instance: ${instance.instanceId}`);
+            const dbChats = await storage.getWhatsappChats(userId, instance.instanceId);
             
-            if (chats && Array.isArray(chats)) {
-              for (const chat of chats) {
-                // Create or update conversation in database
-                const conversationData = {
-                  instanceId: instance.instanceId,
-                  chatId: chat.id,
-                  type: chat.id.includes('@g.us') ? 'group' as const : 'individual' as const,
-                  unreadCount: chat.unreadCount || 0,
-                  lastMessageTimestamp: chat.lastMessage?.messageTimestamp ? new Date(chat.lastMessage.messageTimestamp * 1000) : null
-                };
-                
-                // Check if conversation exists
-                const existingConversations = await storage.getWhatsappChats(userId, instance.instanceId);
-                const existing = existingConversations.find(c => c.chatId === chat.id);
-                
-                let conversation;
-                if (existing) {
-                  conversation = await storage.updateWhatsappChat(userId, instance.instanceId, chat.id, conversationData);
-                } else {
-                  conversation = await storage.createWhatsappChat(conversationData);
-                }
-                
-                allConversations.push(conversation);
-              }
+            for (const chat of dbChats) {
+              allConversations.push(chat);
             }
           } catch (apiError) {
             console.error(`Failed to fetch chats for instance ${instance.instanceId}:`, apiError);
