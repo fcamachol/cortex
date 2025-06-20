@@ -1622,11 +1622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Instance not found" });
       }
       
-      // HTTP polling mode - disable bridge status since WebSocket is disabled
-      const bridgeStatus = {
-        connected: false,
-        bridgeExists: false
-      };
+      // Direct HTTP polling mode - no bridge needed
       
       // Get real-time status and QR code using HTTP polling
       try {

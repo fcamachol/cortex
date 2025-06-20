@@ -7,7 +7,6 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Dashboard from "@/pages/dashboard";
 import ActionsPage from "@/pages/actions";
 import QRTestPage from "@/pages/qr-test";
-import DebugPage from "@/pages/debug";
 import { TasksPage } from "@/pages/TasksPage";
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
@@ -22,7 +21,6 @@ function AuthenticatedRoutes() {
       <Route path="/actions" component={ActionsPage} />
       <Route path="/tasks" component={TasksPage} />
       <Route path="/qr-test" component={QRTestPage} />
-      <Route path="/debug" component={DebugPage} />
       <Route component={NotFound} />
     </Switch>
   );
