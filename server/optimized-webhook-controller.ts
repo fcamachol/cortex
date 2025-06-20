@@ -64,6 +64,13 @@ export const OptimizedWebhookController = {
 
         for (const rawMessage of messages) {
             try {
+                // First ensure required contacts exist
+                await this.ensureContactsExist(rawMessage, instanceId);
+                
+                // Then ensure chat exists
+                await this.ensureChatExists(rawMessage, instanceId);
+                
+                // Finally save the message
                 const messageForDb = this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
                 if (messageForDb) {
                     await storage.createWhatsappMessage(messageForDb);
@@ -239,5 +246,78 @@ export const OptimizedWebhookController = {
         };
         
         return statusMap[evolutionStatus] || 'pending';
+    },
+
+    // Helper methods to ensure database consistency
+    async ensureContactsExist(rawMessage: any, instanceId: string) {
+        const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+        
+        // Extract contact JIDs from message
+        const chatId = rawMessage.key?.remoteJid;
+        const senderJid = rawMessage.key?.participant || rawMessage.key?.remoteJid;
+        
+        if (!chatId || !senderJid) return;
+
+        // Ensure chat contact exists
+        const chatContact = await storage.getWhatsappContact(userId, instanceId, chatId);
+        if (!chatContact) {
+            const contactData = {
+                jid: chatId,
+                instanceId: instanceId,
+                pushName: rawMessage.pushName || chatId.split('@')[0],
+                profilePictureUrl: null,
+                isBusiness: false,
+                isMe: false,
+                isBlocked: false,
+                lastUpdatedAt: new Date()
+            };
+            await storage.createWhatsappContact(contactData);
+        }
+
+        // For group chats, ensure sender contact exists if different
+        if (chatId.includes('@g.us') && senderJid !== chatId) {
+            const senderContact = await storage.getWhatsappContact(userId, instanceId, senderJid);
+            if (!senderContact) {
+                const senderContactData = {
+                    jid: senderJid,
+                    instanceId: instanceId,
+                    pushName: rawMessage.pushName || senderJid.split('@')[0],
+                    profilePictureUrl: null,
+                    isBusiness: false,
+                    isMe: false,
+                    isBlocked: false,
+                    lastUpdatedAt: new Date()
+                };
+                await storage.createWhatsappContact(senderContactData);
+            }
+        }
+    },
+
+    async ensureChatExists(rawMessage: any, instanceId: string) {
+        const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+        const chatId = rawMessage.key?.remoteJid;
+        
+        if (!chatId) return;
+
+        try {
+            const existingChat = await storage.getWhatsappChat(userId, instanceId, chatId);
+            if (!existingChat) {
+                const chatData = {
+                    chatId: chatId,
+                    instanceId: instanceId,
+                    type: chatId.includes('@g.us') ? 'group' as const : 'individual' as const,
+                    unreadCount: 0,
+                    isArchived: false,
+                    isPinned: false,
+                    isMuted: false,
+                    lastMessageTimestamp: new Date((rawMessage.messageTimestamp || Math.floor(Date.now() / 1000)) * 1000)
+                };
+                await storage.createWhatsappChat(chatData);
+                console.log(`✅ Created chat: ${chatId}`);
+            }
+        } catch (error) {
+            console.error(`Error ensuring chat exists for ${chatId}:`, error);
+            throw error; // Re-throw to prevent message save without chat
+        }
     }
 };
