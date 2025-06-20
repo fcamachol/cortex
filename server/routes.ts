@@ -153,17 +153,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Additional webhook endpoints for alternative URL patterns
+  app.post('/api/evolution/webhook/:instanceName/messages-upsert', async (req, res) => {
+    try {
+      const { instanceName } = req.params;
+      console.log(`📨 Messages upsert webhook for ${instanceName}:`, JSON.stringify(req.body, null, 2));
+      await handleWebhookMessagesUpsert(instanceName, req.body);
+      res.status(200).json({ status: 'received' });
+    } catch (error) {
+      console.error('Messages upsert webhook error:', error);
+      res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  });
+
+  app.post('/api/evolution/webhook/:instanceName/chats-update', async (req, res) => {
+    try {
+      const { instanceName } = req.params;
+      console.log(`📨 Chats update webhook for ${instanceName}:`, JSON.stringify(req.body, null, 2));
+      await handleWebhookChatsUpsert(instanceName, req.body);
+      res.status(200).json({ status: 'received' });
+    } catch (error) {
+      console.error('Chats update webhook error:', error);
+      res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  });
+
+  app.post('/api/evolution/webhook/:instanceName/contacts-update', async (req, res) => {
+    try {
+      const { instanceName } = req.params;
+      console.log(`📨 Contacts update webhook for ${instanceName}:`, JSON.stringify(req.body, null, 2));
+      await handleWebhookContactsUpsert(instanceName, req.body);
+      res.status(200).json({ status: 'received' });
+    } catch (error) {
+      console.error('Contacts update webhook error:', error);
+      res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  });
+
   // Webhook handler functions for Evolution API events
   async function handleWebhookMessagesUpsert(instanceName: string, data: any) {
     console.log(`📩 Processing messages.upsert for ${instanceName}:`, JSON.stringify(data, null, 2));
     
     try {
-      // Find the instance in our database using instanceName as instanceId
-      const instance = await storage.getWhatsappInstanceByName('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instanceName);
+      // Find the instance in our database using instanceName
+      // First try to get all instances for the user and find the matching one
+      const allInstances = await storage.getWhatsappInstances('7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
+      const instance = allInstances.find(inst => inst.instanceName === instanceName);
+      
       if (!instance) {
-        console.error(`Instance ${instanceName} not found in database`);
+        console.error(`Instance ${instanceName} not found in database. Available instances: ${allInstances.map(i => i.instanceName).join(', ')}`);
         return;
       }
+      
+      console.log(`✅ Found instance: ${instanceName} (${instance.displayName})`);
+      console.log(`📱 Phone: ${instance.phoneNumber}`);
+      console.log(`🔗 Webhook URL: ${instance.webhookUrl}`);
 
       // Handle messages array from Evolution API webhook format
       const messages = data.messages || [data]; // Support both array and single message
