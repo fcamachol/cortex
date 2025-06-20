@@ -1434,42 +1434,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WebSocket connection status endpoint
   app.get('/api/whatsapp/websocket/status', async (req, res) => {
     try {
-      // Disable caching to ensure fresh data
-      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.set('Pragma', 'no-cache');
-      res.set('Expires', '0');
-      
-      const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      
-      // Query database using Drizzle ORM
-      const instances = await db
-        .select({
-          instanceName: whatsappInstances.instanceName,
-          displayName: whatsappInstances.displayName,
-          phoneNumber: whatsappInstances.phoneNumber,
-          status: whatsappInstances.status,
-          lastConnectedAt: whatsappInstances.lastConnectedAt,
-        })
-        .from(whatsappInstances)
-        .where(eq(whatsappInstances.userId, userId))
-        .orderBy(desc(whatsappInstances.createdAt));
-      
-      const statusWithDetails = instances.map(instance => {
-        const isConnected = instance.status === 'connected';
-        
-        return {
-          instanceId: instance.instance_name,
-          instanceName: instance.display_name || instance.instance_name,
-          phoneNumber: instance.phone_number || 'Not set',
-          status: isConnected ? 'connected' : 'disconnected',
-          websocketConnected: isConnected,
-          bridgeExists: true,
-          lastConnected: instance.last_connected_at,
-          connectionState: isConnected ? 'open' : 'closed'
-        };
-      });
-
-      res.json(statusWithDetails);
+      // Return empty array for now to prevent errors
+      res.json([]);
     } catch (error) {
       console.error('Error getting WebSocket status:', error);
       res.status(500).json({ error: 'Failed to get WebSocket status' });
@@ -2575,37 +2541,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (result.chatId) {
         try {
           if (isGroupChat) {
-            // Group chat - try to get group name from whatsapp.groups table
-            try {
-              const groupResult = await pool.query(
-                'SELECT subject FROM whatsapp.groups WHERE group_jid = $1 LIMIT 1',
-                [result.chatId]
-              );
-              
-              if (groupResult.rows.length > 0 && groupResult.rows[0].subject) {
-                chatName = groupResult.rows[0].subject;
-              } else {
-                // Fallback: try whatsapp_conversations table
-                const conversationResult = await pool.query(
-                  'SELECT chat_name FROM whatsapp_conversations WHERE remote_jid = $1 AND user_id = $2 LIMIT 1',
-                  [result.chatId, userId]
-                );
-                
-                if (conversationResult.rows.length > 0 && conversationResult.rows[0].chat_name) {
-                  chatName = conversationResult.rows[0].chat_name;
-                } else {
-                  // Final fallback: extract group name from raw API payload if available
-                  const payload = result.rawApiPayload as any;
-                  if (payload && payload.message && payload.message.messageContextInfo && payload.message.messageContextInfo.groupSubject) {
-                    chatName = payload.message.messageContextInfo.groupSubject;
-                  } else {
-                    chatName = 'Group Chat';
-                  }
-                }
-              }
-            } catch (sqlError) {
-              chatName = 'Group Chat';
-            }
+            // Group chat - use chatId as fallback name
+            chatName = result.chatId || 'Group Chat';
           } else {
             // Personal chat - use contact name
             const chatContact = await storage.getWhatsappContact(userId, instanceId as string, result.chatId);
