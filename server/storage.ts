@@ -1062,71 +1062,88 @@ export class DatabaseStorage implements IStorage {
     return deletion || undefined;
   }
 
-  // Additional API method implementations
+  // Additional API methods implementation
   async getAppSpaces(userId: string): Promise<any[]> {
-    try {
-      // Return empty array for now - implement with actual app spaces schema
-      return [];
-    } catch (error) {
-      console.error('Error fetching app spaces:', error);
-      return [];
-    }
+    // Return empty array for now - can be implemented based on your app schema
+    return [];
   }
 
   async getCrmTasks(): Promise<any[]> {
-    try {
-      // Return empty array for now - implement with actual CRM schema
-      return [];
-    } catch (error) {
-      console.error('Error fetching CRM tasks:', error);
-      return [];
-    }
+    // Return empty array for now - can be implemented based on your CRM schema
+    return [];
   }
 
   async getCrmProjects(): Promise<any[]> {
-    try {
-      // Return empty array for now - implement with actual CRM schema
-      return [];
-    } catch (error) {
-      console.error('Error fetching CRM projects:', error);
-      return [];
-    }
+    // Return empty array for now - can be implemented based on your CRM schema
+    return [];
   }
 
   async getCrmChecklistItems(): Promise<any[]> {
-    try {
-      // Return empty array for now - implement with actual CRM schema
-      return [];
-    } catch (error) {
-      console.error('Error fetching CRM checklist items:', error);
-      return [];
-    }
+    // Return empty array for now - can be implemented based on your CRM schema
+    return [];
   }
 
   async getCalendarTasks(): Promise<any[]> {
-    try {
-      // Return empty array for now - implement with actual calendar schema
-      return [];
-    } catch (error) {
-      console.error('Error fetching calendar tasks:', error);
-      return [];
-    }
+    // Return empty array for now - can be implemented based on your calendar schema
+    return [];
   }
 
-  async getCalendars(): Promise<any[]> {
+  async getCalendarCalendars(userId: string): Promise<any[]> {
     try {
-      const calendars = await db.select().from(calendarCalendars);
-      return calendars;
+      const results = await db
+        .select()
+        .from(calendarCalendars)
+        .innerJoin(calendarAccounts, eq(calendarCalendars.accountId, calendarAccounts.accountId))
+        .where(eq(calendarAccounts.userId, userId))
+        .orderBy(calendarCalendars.summary);
+      return results.map(result => result.calendars);
     } catch (error) {
       console.error('Error fetching calendars:', error);
       return [];
     }
   }
 
+  async createCalendarCalendar(calendar: any): Promise<any> {
+    try {
+      const [newCalendar] = await db
+        .insert(calendarCalendars)
+        .values(calendar)
+        .returning();
+      return newCalendar;
+    } catch (error) {
+      console.error('Error creating calendar:', error);
+      throw error;
+    }
+  }
+
+  async updateCalendarCalendar(id: number, updates: any): Promise<any> {
+    try {
+      const [updatedCalendar] = await db
+        .update(calendarCalendars)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(calendarCalendars.calendarId, id))
+        .returning();
+      return updatedCalendar;
+    } catch (error) {
+      console.error('Error updating calendar:', error);
+      throw error;
+    }
+  }
+
+  async deleteCalendarCalendar(id: number): Promise<void> {
+    try {
+      await db
+        .delete(calendarCalendars)
+        .where(eq(calendarCalendars.calendarId, id));
+    } catch (error) {
+      console.error('Error deleting calendar:', error);
+      throw error;
+    }
+  }
+
   async getCalendarProviders(): Promise<any[]> {
     try {
-      // Return empty array for now - implement with actual provider schema
-      return [];
+      return await db.select().from(calendarAccounts);
     } catch (error) {
       console.error('Error fetching calendar providers:', error);
       return [];
@@ -1134,14 +1151,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActionsInstances(): Promise<any[]> {
-    try {
-      // Return WhatsApp instances for actions
-      const instances = await db.select().from(whatsappInstances);
-      return instances;
-    } catch (error) {
-      console.error('Error fetching action instances:', error);
-      return [];
-    }
+    // Return empty array for now - can be implemented based on your actions schema
+    return [];
   }
 }
 
