@@ -3354,9 +3354,11 @@ Message ID: ${messageId}`;
         await handleWebhookContactsUpsert(instanceId, eventData.data);
       } else if (eventData.event === 'chats.upsert') {
         await handleWebhookChatsUpsert(instanceId, eventData.data);
-      } else if (eventData.event === 'group-participants.update') {
+      } else if (eventData.event === 'group-participants.update' || eventData.event === 'GROUP_PARTICIPANTS_UPDATE') {
         await handleWebhookGroupParticipantsUpdate(instanceId, eventData.data);
-      } else if (eventData.event === 'groups.upsert') {
+      } else if (eventData.event === 'groups.upsert' || eventData.event === 'GROUPS_UPSERT') {
+        await handleWebhookGroupsUpsert(instanceId, eventData.data);
+      } else if (eventData.event === 'groups.update' || eventData.event === 'GROUP_UPDATE') {
         await handleWebhookGroupsUpsert(instanceId, eventData.data);
       } else if (eventData.event === 'message.reaction') {
         await handleWebhookMessageReaction(instanceId, eventData.data);
