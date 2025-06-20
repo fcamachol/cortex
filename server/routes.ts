@@ -124,6 +124,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     await OptimizedWebhookController.handleIncomingEvent(req, res);
   });
 
+  app.post('/api/evolution/webhook/:instanceName/messages-delete', async (req, res) => {
+    await OptimizedWebhookController.handleIncomingEvent(req, res);
+  });
+
   // Webhook handler functions for Evolution API events
   async function handleWebhookMessagesUpsert(instanceName: string, data: any) {
     // Override Evolution API's internal instance IDs IMMEDIATELY before any processing

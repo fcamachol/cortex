@@ -13,6 +13,7 @@ import {
   whatsappLabels,
   whatsappChatLabels,
   whatsappCallLogs,
+  whatsappMessageDeletions,
   calendarAccounts,
   calendarCalendars,
   calendarEvents,
@@ -1023,6 +1024,30 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCalendarAttendee(attendeeId: number): Promise<void> {
     await db.delete(calendarAttendees).where(eq(calendarAttendees.attendeeId, attendeeId));
+  }
+
+  // WhatsApp Message Deletion Tracking
+  async createWhatsappMessageDeletion(deletion: InsertWhatsappMessageDeletion): Promise<WhatsappMessageDeletion> {
+    const [newDeletion] = await db.insert(whatsappMessageDeletions).values(deletion).returning();
+    return newDeletion;
+  }
+
+  async getWhatsappMessageDeletions(userId: string, instanceId: string, chatId?: string, limit: number = 50): Promise<WhatsappMessageDeletion[]> {
+    let query = db.select().from(whatsappMessageDeletions)
+      .where(eq(whatsappMessageDeletions.instanceId, instanceId))
+      .orderBy(desc(whatsappMessageDeletions.deletedAt))
+      .limit(limit);
+
+    if (chatId) {
+      query = query.where(eq(whatsappMessageDeletions.chatId, chatId));
+    }
+
+    return await query;
+  }
+
+  async getWhatsappMessageDeletion(deletionId: string): Promise<WhatsappMessageDeletion | undefined> {
+    const [deletion] = await db.select().from(whatsappMessageDeletions).where(eq(whatsappMessageDeletions.deletionId, deletionId));
+    return deletion || undefined;
   }
 }
 

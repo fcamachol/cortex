@@ -50,6 +50,9 @@ export const OptimizedWebhookController = {
                 case 'connection.update':
                     await this.handleConnectionUpdate(instanceId, data);
                     break;
+                case 'messages.delete':
+                    await this.handleMessageDelete(instanceId, data);
+                    break;
                 default:
                     console.log(`Unhandled event: ${eventType}`);
             }
@@ -429,6 +432,74 @@ export const OptimizedWebhookController = {
             console.log(`🔍 Processed message for automated actions`);
         } catch (error) {
             console.error('Error processing message for actions:', error);
+        }
+    },
+
+    async handleMessageDelete(instanceId: string, data: any) {
+        try {
+            console.log(`🗑️ Processing message deletion for ${instanceId}:`, JSON.stringify(data, null, 2));
+            
+            // Handle both array and single deletion formats
+            const deletions = Array.isArray(data) ? data : [data];
+            
+            for (const deletion of deletions) {
+                try {
+                    // Extract deletion information from the webhook payload
+                    const messageId = deletion.key?.id || deletion.messageId || deletion.id;
+                    const chatId = deletion.key?.remoteJid || deletion.chatId || deletion.remoteJid;
+                    const deletedBy = deletion.key?.participant || deletion.participant || deletion.key?.remoteJid || deletion.remoteJid;
+                    
+                    if (!messageId || !chatId) {
+                        console.log('Missing messageId or chatId in deletion payload, skipping');
+                        continue;
+                    }
+
+                    // Try to get the original message content before deletion
+                    let originalContent = null;
+                    let originalTimestamp = null;
+                    try {
+                        const originalMessage = await storage.getWhatsappMessage('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instanceId, messageId);
+                        if (originalMessage) {
+                            originalContent = originalMessage.content;
+                            originalTimestamp = originalMessage.timestamp;
+                        }
+                    } catch (error) {
+                        console.log(`Could not retrieve original message ${messageId} before deletion`);
+                    }
+
+                    // Determine deletion type
+                    let deletionType = 'sender'; // Default
+                    if (deletion.deleteType) {
+                        deletionType = deletion.deleteType;
+                    } else if (deletion.key?.fromMe) {
+                        deletionType = 'sender';
+                    } else {
+                        deletionType = 'everyone';
+                    }
+
+                    // Create deletion record
+                    const deletionData = {
+                        deletionId: `${messageId}_${instanceId}_${Date.now()}`,
+                        messageId,
+                        instanceId,
+                        chatId,
+                        deletedBy,
+                        deletionType,
+                        originalContent,
+                        originalTimestamp,
+                        rawApiPayload: deletion
+                    };
+
+                    // Save deletion record to database
+                    await storage.createWhatsappMessageDeletion(deletionData);
+                    console.log(`🗑️ Tracked message deletion: ${messageId} by ${deletedBy}`);
+
+                } catch (error) {
+                    console.error('Error tracking individual message deletion:', error);
+                }
+            }
+        } catch (error) {
+            console.error('Error in handleMessageDelete:', error);
         }
     }
 };
