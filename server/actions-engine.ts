@@ -61,31 +61,38 @@ export class ActionsEngine {
     console.log('🔍 Processing message for automated actions');
     
     try {
-      // Get all active action rules using SQL query to handle schema properly
+      // Get all active action rules with multi-instance support
       const rules = await db.execute(sql`
-        SELECT * FROM action_rules 
+        SELECT * FROM actions.action_rules 
         WHERE is_active = true
         ORDER BY created_at DESC
       `);
 
       for (const rule of rules.rows) {
-        if (ActionsEngine.shouldTriggerRule(rule, messageContext)) {
-          console.log(`🎯 Triggering rule: ${rule.rule_name}`);
+        // Check if rule applies to this instance
+        if (ActionsEngine.shouldTriggerRule(rule, messageContext) && 
+            ActionsEngine.matchesInstanceFilter(rule, messageContext.instanceId)) {
+          console.log(`🎯 Triggering rule: ${rule.rule_name} for instance: ${messageContext.instanceId}`);
           
           const result = await ActionsEngine.executeAction(
-            rule.actionType,
-            rule.actionConfig,
+            rule.action_type,
+            rule.action_config,
             messageContext
           );
 
-          // Log execution
-          await db.insert(actionExecutions).values({
-            ruleId: rule.ruleId,
-            triggeredBy: messageContext.messageId,
-            executionResult: result,
-            status: result.success ? 'completed' : 'failed',
-            executedAt: new Date()
-          });
+          // Log execution with proper schema
+          await db.execute(sql`
+            INSERT INTO actions.action_executions (
+              rule_id, triggered_by, trigger_data, status, result, executed_at
+            ) VALUES (
+              ${rule.rule_id}, 
+              ${messageContext.messageId}, 
+              ${JSON.stringify(messageContext)}, 
+              ${result.success ? 'success' : 'failed'}, 
+              ${JSON.stringify(result)}, 
+              NOW()
+            )
+          `);
         }
       }
     } catch (error) {
@@ -93,8 +100,29 @@ export class ActionsEngine {
     }
   }
 
+  private static matchesInstanceFilter(rule: any, instanceId: string): boolean {
+    const instanceFilters = rule.instance_filters;
+    
+    // If no instance filters are set, rule applies to all instances
+    if (!instanceFilters || (!instanceFilters.include && !instanceFilters.exclude)) {
+      return true;
+    }
+    
+    // Check include filter
+    if (instanceFilters.include && Array.isArray(instanceFilters.include)) {
+      return instanceFilters.include.includes(instanceId);
+    }
+    
+    // Check exclude filter
+    if (instanceFilters.exclude && Array.isArray(instanceFilters.exclude)) {
+      return !instanceFilters.exclude.includes(instanceId);
+    }
+    
+    return true;
+  }
+
   private static shouldTriggerRule(rule: any, context: TriggerContext): boolean {
-    const trigger = rule.triggerConditions;
+    const trigger = rule.trigger_conditions;
     
     if (!trigger) return false;
     

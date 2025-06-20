@@ -25,6 +25,8 @@ const actionRuleSchema = z.object({
   cooldownMinutes: z.number().min(0).default(0),
   maxExecutionsPerDay: z.number().min(1).default(100),
   performerFilter: z.enum(["user_only", "contacts_only", "both"]).default("both"),
+  instanceFilterType: z.enum(["all", "include", "exclude"]).default("all"),
+  selectedInstances: z.array(z.string()).default([]),
 });
 
 interface ActionRuleFormProps {
@@ -37,6 +39,11 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   const [triggerConditions, setTriggerConditions] = useState(rule?.triggerConditions || {});
   const [actionConfig, setActionConfig] = useState(rule?.actionConfig || {});
   const { toast } = useToast();
+
+  // Fetch available WhatsApp instances for multi-instance support
+  const { data: whatsappInstances = [] } = useQuery({
+    queryKey: ['/api/whatsapp/instances'],
+  });
 
   const form = useForm<z.infer<typeof actionRuleSchema>>({
     resolver: zodResolver(actionRuleSchema),

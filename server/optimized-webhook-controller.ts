@@ -74,11 +74,24 @@ export const OptimizedWebhookController = {
                 // Finally save the message
                 const messageForDb = this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
                 if (messageForDb) {
-                    await storage.createWhatsappMessage(messageForDb);
-                    console.log(`✅ Saved message: ${messageForDb.messageId}`);
+                    let savedMessage;
+                    try {
+                        savedMessage = await storage.createWhatsappMessage(messageForDb);
+                        console.log(`✅ Saved message: ${messageForDb.messageId}`);
+                    } catch (error: any) {
+                        if (error.message?.includes('No values to set')) {
+                            // Message already exists, fetch it for actions processing
+                            savedMessage = await storage.getWhatsappMessage('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instanceId, messageForDb.messageId);
+                            console.log(`📝 Message already exists: ${messageForDb.messageId}`);
+                        } else {
+                            throw error;
+                        }
+                    }
                     
-                    // Trigger actions engine for automation
-                    await this.processMessageForActions(messageForDb);
+                    // Always trigger actions engine for automation, even for existing messages
+                    if (savedMessage) {
+                        await this.processMessageForActions(savedMessage, instanceId);
+                    }
                 }
             } catch (error) {
                 console.error('Message save error:', error);
@@ -391,13 +404,13 @@ export const OptimizedWebhookController = {
         }
     },
 
-    async processMessageForActions(message: any) {
+    async processMessageForActions(message: any, instanceId?: string) {
         try {
             const { hashtags, keywords } = ActionsEngine.extractHashtagsAndKeywords(message.content || '');
             
             const triggerContext = {
                 messageId: message.messageId,
-                instanceId: message.instanceId,
+                instanceId: instanceId || message.instanceId,
                 chatId: message.chatId,
                 senderJid: message.senderJid,
                 content: message.content || '',
