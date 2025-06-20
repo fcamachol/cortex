@@ -190,26 +190,8 @@ export class EvolutionApi {
         return cachedChats;
       }
       
-      // Try different endpoint structures for Evolution API v2.2.3
-      const endpoints = [
-        `/chat/findAll/${instanceName}`,
-        `/chat/find/${instanceName}`,
-        `/${instanceName}/chat/findAll`,
-        `/instance/${instanceName}/chat/findAll`
-      ];
-      
-      for (const endpoint of endpoints) {
-        try {
-          const result = await this.makeRequest(endpoint);
-          if (result && Array.isArray(result)) {
-            return result;
-          }
-        } catch (endpointError) {
-          // Continue to next endpoint
-        }
-      }
-      
-      throw new Error('No valid chat endpoint found');
+      // Use the correct Evolution API endpoint pattern
+      return await this.makeRequest(`/chat/findChats/${instanceName}`);
     } catch (error) {
       console.log('Chat data will be populated via webhook events');
       return [];
