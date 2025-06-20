@@ -136,7 +136,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
   // Fetch message thread when task changes
   useEffect(() => {
     const fetchMessageThread = async () => {
-      if (!task?.related_chat_jid || !task?.instance_id) {
+      if (!task?.triggering_message_id || !task?.instance_id) {
         setMessageThread([]);
         return;
       }
@@ -144,8 +144,8 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
       setThreadLoading(true);
 
       try {
-        // Fetch all messages from the chat related to this task
-        const response = await fetch(`/api/whatsapp/chat-messages?chatId=${encodeURIComponent(task.related_chat_jid)}&instanceId=${task.instance_id}&limit=50`, {
+        // Use the new API endpoint to get only actual replies to the specific message
+        const response = await fetch(`/api/whatsapp/message-replies?originalMessageId=${task.triggering_message_id}&instanceId=${task.instance_id}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42`, {
           method: 'GET',
           headers: {
             'Cache-Control': 'no-cache',
@@ -157,33 +157,8 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
           throw new Error(`Failed to fetch thread: ${response.status}`);
         }
 
-        const messages = await response.json();
-        
-        // Filter messages related to the original message or task context
-        const relevantMessages = messages.filter((msg: any) => {
-          // Always include the original triggering message
-          if (msg.messageId === task.triggering_message_id) return true;
-          
-          // Include messages that quote the original message (direct replies)
-          if (msg.quotedMessageId === task.triggering_message_id) return true;
-          
-          // Include ALL messages from this chat after the task creation date
-          // This ensures we capture your replies and any conversation continuation
-          if (msg.timestamp && new Date(msg.timestamp) >= new Date(task.created_at)) {
-            return true;
-          }
-          
-          // Include messages sent by you (fromMe: true) in this chat regardless of timing
-          // This ensures your replies are always visible
-          if (msg.fromMe === true) return true;
-          
-          return false;
-        });
-
-        // Sort by timestamp
-        relevantMessages.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-        
-        setMessageThread(relevantMessages);
+        const messageThread = await response.json();
+        setMessageThread(messageThread);
       } catch (error: any) {
         console.error('Error fetching message thread:', error);
         setMessageThread([]);

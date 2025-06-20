@@ -2805,6 +2805,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get message replies - only messages that directly quote a specific message
+  app.get("/api/whatsapp/message-replies", async (req, res) => {
+    try {
+      const { originalMessageId, instanceId } = req.query;
+      const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      
+      if (!originalMessageId || !instanceId) {
+        return res.status(400).json({ error: "Missing originalMessageId or instanceId" });
+      }
+
+      // Query replies using direct pool query
+      const queryResult = await pool.query(`
+        SELECT 
+          message_id as "messageId",
+          instance_id as "instanceId", 
+          chat_id as "chatId",
+          sender_jid as "senderJid",
+          from_me as "fromMe",
+          message_type as "messageType",
+          content,
+          timestamp,
+          quoted_message_id as "quotedMessageId"
+        FROM whatsapp.messages 
+        WHERE instance_id = $1 
+        AND (message_id = $2 OR quoted_message_id = $2)
+        ORDER BY timestamp ASC
+      `, [instanceId, originalMessageId]);
+      
+      res.json(queryResult.rows);
+    } catch (error) {
+      console.error('Error fetching message replies:', error);
+      res.status(500).json({ error: "Failed to fetch message replies" });
+    }
+  });
+
   // Send WhatsApp message
   app.post("/api/whatsapp/send-message", async (req, res) => {
     try {
