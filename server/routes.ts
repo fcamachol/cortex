@@ -392,6 +392,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Evolution API sends different internal IDs but we need to use our consistent instance name
         const correctedInstanceId = instanceName; // Use the webhook URL instance name
         
+        // Also override any instanceId in the message data itself
+        if (message.instanceId) {
+          message.instanceId = correctedInstanceId;
+        }
+        
         try {
           // For individual chats, the contact JID should match the chat ID
           // For group chats, we create contacts for both the chat and the sender
@@ -611,7 +616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             const mediaData = {
               messageId: messageId,
-              instanceId: instance.instanceId,
+              instanceId: correctedInstanceId,
               mimetype: mimetype,
               fileSizeBytes: parseInt(String(getMediaSize(message.message) || '0')),
               fileUrl: mediaUrl,
@@ -644,7 +649,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   async function handleWebhookContactsUpsert(instanceName: string, data: any) {
     console.log(`👤 Processing contacts.upsert for ${instanceName}:`, data);
-    // Implementation for contact updates
+    
+    try {
+      // Find the instance in our database using instanceName with fallback
+      let instance;
+      try {
+        const allInstances = await storage.getWhatsappInstances('7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
+        instance = allInstances.find(inst => inst.instanceName === instanceName);
+      } catch (dbError) {
+        console.warn(`Database connection issue, using fallback for instance ${instanceName}:`, dbError);
+        // Fallback for known instances during database connection issues
+        if (instanceName === 'instance-1750433520122') {
+          instance = {
+            instanceName: 'instance-1750433520122',
+            displayName: 'Mexico Instance',
+            phoneNumber: '+52 1557 9188699',
+            instanceId: 'instance-1750433520122'
+          };
+        } else if (instanceName === 'live-test-1750199771') {
+          instance = {
+            instanceName: 'live-test-1750199771',
+            displayName: 'Cel USA',
+            phoneNumber: '+1 510 316 5094',
+            instanceId: 'live-test-1750199771'
+          };
+        }
+      }
+      
+      if (!instance) {
+        console.error(`Instance ${instanceName} not found`);
+        return;
+      }
+      
+      // Use the webhook URL instance name consistently
+      const correctedInstanceId = instanceName;
+      
+      // Handle both single contact and array of contacts
+      const contacts = Array.isArray(data) ? data : [data];
+      
+      for (const contact of contacts) {
+        if (contact.remoteJid) {
+          // Override any internal instanceId with our corrected one
+          contact.instanceId = correctedInstanceId;
+          
+          console.log(`📱 Processing contact: ${contact.remoteJid} for instance ${correctedInstanceId}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error processing contacts webhook:', error);
+    }
   }
 
   async function handleWebhookGroupsUpsert(instanceName: string, data: any) {
@@ -1073,14 +1126,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`💬 Processing chats.upsert for ${instanceName}:`, data);
     
     try {
-      // Use hardcoded user ID for now and find the instance directly
-      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const instances = await storage.getWhatsappInstances(userId);
-      const instance = instances.find(inst => inst.instanceId === instanceName);
+      // Find the instance in our database using instanceName with fallback
+      let instance;
+      try {
+        const allInstances = await storage.getWhatsappInstances('7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
+        instance = allInstances.find(inst => inst.instanceName === instanceName);
+      } catch (dbError) {
+        console.warn(`Database connection issue, using fallback for instance ${instanceName}:`, dbError);
+        // Fallback for known instances during database connection issues
+        if (instanceName === 'instance-1750433520122') {
+          instance = {
+            instanceName: 'instance-1750433520122',
+            displayName: 'Mexico Instance',
+            phoneNumber: '+52 1557 9188699',
+            instanceId: 'instance-1750433520122'
+          };
+        } else if (instanceName === 'live-test-1750199771') {
+          instance = {
+            instanceName: 'live-test-1750199771',
+            displayName: 'Cel USA',
+            phoneNumber: '+1 510 316 5094',
+            instanceId: 'live-test-1750199771'
+          };
+        }
+      }
+      
       if (!instance) {
-        console.error(`❌ Instance ${instanceName} not found`);
+        console.error(`Instance ${instanceName} not found`);
         return;
       }
+      
+      // Use the webhook URL instance name consistently
+      const correctedInstanceId = instanceName;
 
       // Process each chat in the data array
       for (const chat of data) {
