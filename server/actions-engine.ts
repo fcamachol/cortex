@@ -357,7 +357,7 @@ export class ActionsEngine {
     // If this task is created from a reaction, include context and NLP insights
     if (context.reaction) {
       if (conversationContext) {
-        enhancedDescription = `Task created from reaction ${context.reaction}\n\nConversation context:\n${conversationContext}\n\n${enhancedDescription}`;
+        enhancedDescription = `Task created from reaction ${context.reaction}\n\n${conversationContext}\n\n${enhancedDescription}`;
       } else {
         enhancedDescription = `Task created from reaction ${context.reaction}\n\nMessage: "${context.content}"\n\n${enhancedDescription}`;
       }
@@ -527,7 +527,7 @@ export class ActionsEngine {
     let description = this.interpolateTemplate(config.description || '', context);
     if (context.reaction) {
       if (conversationContext) {
-        description = `Calendar event created from reaction ${context.reaction}\n\nConversation context:\n${conversationContext}\n\n${description}`;
+        description = `Calendar event created from reaction ${context.reaction}\n\n${conversationContext}\n\n${description}`;
       } else {
         description = `Calendar event created from reaction ${context.reaction}\n\nMessage: "${context.content}"\n\n${description}`;
       }
