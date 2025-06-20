@@ -117,7 +117,7 @@ export function TasksPage() {
 
   // Fetch WhatsApp instances
   const { data: instances } = useQuery({
-    queryKey: ['/api/whatsapp/instances'],
+    queryKey: ['/api/actions/whatsapp-instances'],
     select: (data: any) => data || []
   });
 
