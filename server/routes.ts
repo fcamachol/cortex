@@ -594,7 +594,93 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Helper functions for webhook handlers
   async function handleWebhookMessagesUpsert(instanceName: string, data: any) {
     console.log(`📨 Processing: messages.upsert for ${instanceName}`);
-    // Implementation would go here
+    
+    try {
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const instances = await storage.getWhatsappInstances(userId);
+      const instance = instances.find(inst => inst.instanceId === instanceName);
+      if (!instance) {
+        console.error(`❌ Instance ${instanceName} not found`);
+        return;
+      }
+
+      // Process messages array
+      const messages = Array.isArray(data) ? data : [data];
+      
+      for (const messageData of messages) {
+        const key = messageData.key;
+        const message = messageData.message;
+        
+        if (!key || !key.id) {
+          console.log('⚠️ Skipping message without valid key');
+          continue;
+        }
+
+        const messageId = key.id;
+        const chatId = key.remoteJid;
+        const fromMe = key.fromMe || false;
+        const senderJid = fromMe ? instance.instanceId : (messageData.pushName ? key.remoteJid : key.participant || key.remoteJid);
+
+        // Extract message content based on type
+        let content = '';
+        let messageType = 'text';
+
+        if (message.conversation) {
+          content = message.conversation;
+          messageType = 'text';
+        } else if (message.extendedTextMessage?.text) {
+          content = message.extendedTextMessage.text;
+          messageType = 'text';
+        } else if (message.imageMessage?.caption) {
+          content = message.imageMessage.caption || '[Image]';
+          messageType = 'image';
+        } else if (message.videoMessage?.caption) {
+          content = message.videoMessage.caption || '[Video]';
+          messageType = 'video';
+        } else if (message.audioMessage) {
+          content = '[Audio]';
+          messageType = 'audio';
+        } else if (message.documentMessage) {
+          content = `[Document: ${message.documentMessage.title || 'file'}]`;
+          messageType = 'document';
+        } else {
+          content = '[Unsupported message type]';
+          messageType = 'unknown';
+        }
+
+        // Create message record
+        const messageRecord = {
+          messageId: messageId,
+          instanceId: instance.instanceId,
+          chatId: chatId,
+          senderJid: senderJid,
+          fromMe: fromMe,
+          messageType: messageType,
+          content: content,
+          timestamp: messageData.messageTimestamp ? new Date(messageData.messageTimestamp * 1000) : new Date(),
+          quotedMessageId: message.extendedTextMessage?.contextInfo?.quotedMessage ? 
+            message.extendedTextMessage.contextInfo.stanzaId : null,
+          isForwarded: message.extendedTextMessage?.contextInfo?.isForwarded || false,
+          forwardingScore: message.extendedTextMessage?.contextInfo?.forwardingScore || 0,
+          isStarred: false,
+          isEdited: false,
+          lastEditedAt: null,
+          sourcePlatform: messageData.source || 'android',
+          rawApiPayload: messageData
+        };
+
+        console.log(`💬 Storing message ${messageId} from ${chatId}: "${content.substring(0, 50)}..."`);
+        
+        try {
+          await storage.createWhatsappMessage(messageRecord);
+          console.log(`✅ Message stored successfully: ${messageId}`);
+        } catch (dbError) {
+          console.error(`❌ Error storing message ${messageId}:`, dbError);
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleWebhookMessagesUpsert:', error);
+    }
   }
 
   async function handleWebhookGroupsUpsert(instanceName: string, data: any) {
