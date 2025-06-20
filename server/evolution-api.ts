@@ -191,7 +191,7 @@ export class EvolutionApi {
       }
       
       // Use the correct Evolution API endpoint pattern
-      return await this.makeRequest(`/chat/findChats/${instanceName}`);
+      return await this.makeRequest(`/chat/findAll/${instanceName}`);
     } catch (error) {
       console.log('Chat data will be populated via webhook events');
       return [];
