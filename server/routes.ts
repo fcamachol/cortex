@@ -225,6 +225,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`✅ Found instance: ${instanceName} (${instance.displayName})`);
       console.log(`📱 Owner JID: ${instance.ownerJid}`);
 
+      // Handle messages array from Evolution API webhook format
+      const messages = data.messages || [data]; // Support both array and single message
+      
       if (!Array.isArray(messages)) {
         console.log('Invalid messages format received');
         return;
@@ -671,6 +674,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`Instance ${instanceName} not found in whatsapp.instances table`);
         return;
       }
+      
+      // Handle both single contact and array of contacts
+      const contacts = Array.isArray(data) ? data : [data];
       
       for (const contact of contacts) {
         if (contact.remoteJid) {
