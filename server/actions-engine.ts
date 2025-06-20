@@ -36,31 +36,31 @@ export class ActionsEngine {
       if (context.reaction && context.reactionId) {
         console.log('🔍 Processing reaction-based trigger:', context.reactionId);
         console.log('✅ Reaction triggers bypass authorization check - proceeding with action processing');
+      }
         
-        // STEP 3: Context Gathering (What was the original context?)
-        if (context.messageId) {
-          console.log('🔍 Gathering context for original message:', context.messageId);
-          
-          const [originalMessage] = await db
-            .select()
-            .from(whatsappMessages)
-            .where(
-              and(
-                eq(whatsappMessages.messageId, context.messageId),
-                eq(whatsappMessages.instanceId, context.instanceId)
-              )
-            );
+      // STEP 3: Context Gathering (What was the original context?)
+      if (context.messageId) {
+        console.log('🔍 Gathering context for original message:', context.messageId);
+        
+        const [originalMessage] = await db
+          .select()
+          .from(whatsappMessages)
+          .where(
+            and(
+              eq(whatsappMessages.messageId, context.messageId),
+              eq(whatsappMessages.instanceId, context.instanceId)
+            )
+          );
 
-          if (originalMessage) {
-            context.originalSenderJid = originalMessage.senderJid;
-            context.chatId = originalMessage.chatId;
-            console.log('✅ Original message context gathered:', {
-              originalSender: context.originalSenderJid,
-              chatId: context.chatId
-            });
-          } else {
-            console.log('⚠️ Original message not found in database');
-          }
+        if (originalMessage) {
+          context.originalSenderJid = originalMessage.senderJid;
+          context.chatId = originalMessage.chatId;
+          console.log('✅ Original message context gathered:', {
+            originalSender: context.originalSenderJid,
+            chatId: context.chatId
+          });
+        } else {
+          console.log('⚠️ Original message not found in database');
         }
       }
 
