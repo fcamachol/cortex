@@ -8,6 +8,7 @@ import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings, g
 import { db, pool } from "./db";
 import { setRLSContext } from "./rls-context";
 import { actionsEngine, ActionsEngine } from "./actions-engine";
+import { IntelligentWebhookController } from "./intelligent-webhook-controller";
 import { 
   insertUserSchema,
   insertWhatsappInstanceSchema,
