@@ -195,38 +195,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`📩 Processing messages.upsert for ${instanceName}:`, JSON.stringify(data, null, 2));
     
     try {
-      // Find the instance in our database using instanceName
-      let instance;
-      try {
-        const allInstances = await storage.getWhatsappInstances('7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
-        instance = allInstances.find(inst => inst.instanceName === instanceName);
-      } catch (dbError) {
-        console.warn(`Database connection issue, using fallback for instance ${instanceName}:`, dbError);
-        // Fallback for known instances during database connection issues
-        if (instanceName === 'instance-1750433520122') {
-          instance = {
-            instanceName: 'instance-1750433520122',
-            displayName: 'Mexico Instance',
-            phoneNumber: '+52 1557 9188699',
-            instanceId: 'instance-1750433520122'
-          };
-        } else if (instanceName === 'live-test-1750199771') {
-          instance = {
-            instanceName: 'live-test-1750199771',
-            displayName: 'Cel USA',
-            phoneNumber: '+1 510 316 5094',
-            instanceId: 'live-test-1750199771'
-          };
-        }
-      }
+      // Query the WhatsApp instances table directly using the instanceName as instanceId
+      const instance = await storage.getWhatsappInstance('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instanceName);
       
       if (!instance) {
-        console.error(`Instance ${instanceName} not found`);
+        console.error(`Instance ${instanceName} not found in whatsapp.instances table`);
         return;
       }
       
       console.log(`✅ Found instance: ${instanceName} (${instance.displayName})`);
-      console.log(`📱 Phone: ${instance.phoneNumber}`);
+      console.log(`📱 Owner JID: ${instance.ownerJid}`);
 
       // Handle messages array from Evolution API webhook format
       const messages = data.messages || [data]; // Support both array and single message
@@ -660,33 +638,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`👤 Processing contacts.upsert for ${instanceName}:`, data);
     
     try {
-      // Find the instance in our database using instanceName with fallback
-      let instance;
-      try {
-        const allInstances = await storage.getWhatsappInstances('7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
-        instance = allInstances.find(inst => inst.instanceName === instanceName);
-      } catch (dbError) {
-        console.warn(`Database connection issue, using fallback for instance ${instanceName}:`, dbError);
-        // Fallback for known instances during database connection issues
-        if (instanceName === 'instance-1750433520122') {
-          instance = {
-            instanceName: 'instance-1750433520122',
-            displayName: 'Mexico Instance',
-            phoneNumber: '+52 1557 9188699',
-            instanceId: 'instance-1750433520122'
-          };
-        } else if (instanceName === 'live-test-1750199771') {
-          instance = {
-            instanceName: 'live-test-1750199771',
-            displayName: 'Cel USA',
-            phoneNumber: '+1 510 316 5094',
-            instanceId: 'live-test-1750199771'
-          };
-        }
-      }
+      // Query the WhatsApp instances table directly using the instanceName as instanceId
+      const instance = await storage.getWhatsappInstance('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instanceName);
       
       if (!instance) {
-        console.error(`Instance ${instanceName} not found`);
+        console.error(`Instance ${instanceName} not found in whatsapp.instances table`);
         return;
       }
       
@@ -1135,33 +1091,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`💬 Processing chats.upsert for ${instanceName}:`, data);
     
     try {
-      // Find the instance in our database using instanceName with fallback
-      let instance;
-      try {
-        const allInstances = await storage.getWhatsappInstances('7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
-        instance = allInstances.find(inst => inst.instanceName === instanceName);
-      } catch (dbError) {
-        console.warn(`Database connection issue, using fallback for instance ${instanceName}:`, dbError);
-        // Fallback for known instances during database connection issues
-        if (instanceName === 'instance-1750433520122') {
-          instance = {
-            instanceName: 'instance-1750433520122',
-            displayName: 'Mexico Instance',
-            phoneNumber: '+52 1557 9188699',
-            instanceId: 'instance-1750433520122'
-          };
-        } else if (instanceName === 'live-test-1750199771') {
-          instance = {
-            instanceName: 'live-test-1750199771',
-            displayName: 'Cel USA',
-            phoneNumber: '+1 510 316 5094',
-            instanceId: 'live-test-1750199771'
-          };
-        }
-      }
+      // Query the WhatsApp instances table directly using the instanceName as instanceId
+      const instance = await storage.getWhatsappInstance('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instanceName);
       
       if (!instance) {
-        console.error(`Instance ${instanceName} not found`);
+        console.error(`Instance ${instanceName} not found in whatsapp.instances table`);
         return;
       }
       
