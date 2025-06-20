@@ -42,7 +42,6 @@ import {
   AuthRequest 
 } from "./auth";
 import crypto from 'crypto';
-import { eq, and, desc, sql } from "drizzle-orm";
 
 // Format phone number to E.164 International Format
 function formatToE164(phoneNumber: string): string {
@@ -2246,7 +2245,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allConversations = [];
       
       for (const instance of instances) {
-        if (instance.isConnected && instance.apiKey) {
+        // Skip instances that don't exist in Evolution API (like "prueba 7")
+        if (instance.isConnected && instance.apiKey && instance.instanceId !== 'prueba 7') {
           try {
             // Fetch chats from Evolution API
             const evolutionApi = getInstanceEvolutionApi(instance.apiKey);
