@@ -4099,12 +4099,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userSpaces = await db
         .select({
           spaceId: appSpaces.spaceId,
-          name: appSpaces.name,
-          description: appSpaces.description,
+          name: appSpaces.spaceName,
           createdAt: appSpaces.createdAt,
         })
         .from(appSpaces)
-        .where(eq(appSpaces.ownerId, userId))
+        .where(eq(appSpaces.creatorUserId, userId))
         .orderBy(appSpaces.createdAt);
 
       res.json(userSpaces);
@@ -4126,14 +4125,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [newSpace] = await db
         .insert(appSpaces)
         .values({
-          name: name.trim(),
-          description: description?.trim() || null,
-          ownerId: userId,
+          spaceName: name.trim(),
+          creatorUserId: userId,
         })
         .returning({
           spaceId: appSpaces.spaceId,
-          name: appSpaces.name,
-          description: appSpaces.description,
+          name: appSpaces.spaceName,
           createdAt: appSpaces.createdAt,
         });
 
@@ -4147,7 +4144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/spaces/:spaceId', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const { spaceId } = req.params;
-      const { name, description } = req.body;
+      const { name } = req.body;
       const userId = req.user?.userId;
 
       if (!name) {
@@ -4158,24 +4155,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [space] = await db
         .select()
         .from(appSpaces)
-        .where(eq(appSpaces.spaceId, spaceId))
+        .where(eq(appSpaces.spaceId, parseInt(spaceId)))
         .limit(1);
 
-      if (!space || space.ownerId !== userId) {
+      if (!space || space.creatorUserId !== userId) {
         return res.status(404).json({ error: 'Space not found or access denied' });
       }
 
       const [updatedSpace] = await db
         .update(appSpaces)
         .set({
-          name: name.trim(),
-          description: description?.trim() || null,
+          spaceName: name.trim(),
         })
-        .where(eq(appSpaces.spaceId, spaceId))
+        .where(eq(appSpaces.spaceId, parseInt(spaceId)))
         .returning({
           spaceId: appSpaces.spaceId,
-          name: appSpaces.name,
-          description: appSpaces.description,
+          name: appSpaces.spaceName,
           createdAt: appSpaces.createdAt,
         });
 
