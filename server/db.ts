@@ -14,11 +14,44 @@ if (!process.env.DATABASE_URL) {
 
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  // Reduced connection limits to prevent overflow
-  max: 2,
+  // Optimized connection settings for Neon
+  max: 1, // Single connection to prevent Neon limits
   min: 0,
-  idleTimeoutMillis: 10000,
-  connectionTimeoutMillis: 5000,
+  idleTimeoutMillis: 5000,
+  connectionTimeoutMillis: 3000,
 });
 
 export const db = drizzle({ client: pool, schema });
+
+// Connection queue to prevent overwhelming Neon
+class ConnectionQueue {
+  private queue: Array<{ resolve: Function, reject: Function, operation: Function }> = [];
+  private processing = false;
+
+  async add<T>(operation: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.queue.push({ resolve, reject, operation });
+      this.process();
+    });
+  }
+
+  private async process() {
+    if (this.processing || this.queue.length === 0) return;
+    
+    this.processing = true;
+    while (this.queue.length > 0) {
+      const { resolve, reject, operation } = this.queue.shift()!;
+      try {
+        const result = await operation();
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      }
+      // Small delay between operations
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    this.processing = false;
+  }
+}
+
+export const connectionQueue = new ConnectionQueue();

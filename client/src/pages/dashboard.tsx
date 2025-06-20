@@ -7,7 +7,7 @@ import ContactModule from "@/components/contacts/contact-module";
 import CalendarModule from "@/components/calendar/calendar-module";
 import IntegrationModule from "@/components/integrations/integration-module";
 import { ActionsDashboard } from "@/components/actions/actions-dashboard";
-import DatabaseViewer from "@/pages/DatabaseViewer";
+import SimpleDBViewer from "@/pages/SimpleDBViewer";
 
 export default function Dashboard() {
   const [activeModule, setActiveModule] = useState("conversations");
