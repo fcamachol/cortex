@@ -4445,5 +4445,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Database viewer endpoints
+  app.get('/api/database/messages', async (req: Request, res: Response) => {
+    try {
+      const result = await db.execute(sql`
+        SELECT 
+          message_id, instance_id, chat_id, sender_jid, from_me,
+          message_type, content, timestamp, created_at
+        FROM whatsapp.messages 
+        ORDER BY created_at DESC 
+        LIMIT 100
+      `);
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Database messages error:', error);
+      res.status(500).json({ error: 'Failed to fetch messages' });
+    }
+  });
+
+  app.get('/api/database/instances', async (req: Request, res: Response) => {
+    try {
+      const result = await db.execute(sql`
+        SELECT 
+          instance_id, display_name, owner_jid, is_connected, created_at
+        FROM whatsapp.instances 
+        ORDER BY created_at DESC
+      `);
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Database instances error:', error);
+      res.status(500).json({ error: 'Failed to fetch instances' });
+    }
+  });
+
+  app.get('/api/database/contacts', async (req: Request, res: Response) => {
+    try {
+      const result = await db.execute(sql`
+        SELECT 
+          jid, instance_id, push_name, profile_picture_url, 
+          is_business, last_updated_at
+        FROM whatsapp.contacts 
+        ORDER BY last_updated_at DESC 
+        LIMIT 100
+      `);
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Database contacts error:', error);
+      res.status(500).json({ error: 'Failed to fetch contacts' });
+    }
+  });
+
+  app.get('/api/database/chats', async (req: Request, res: Response) => {
+    try {
+      const result = await db.execute(sql`
+        SELECT 
+          chat_id, instance_id, type, unread_count, last_message_timestamp
+        FROM whatsapp.chats 
+        ORDER BY last_message_timestamp DESC 
+        LIMIT 100
+      `);
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Database chats error:', error);
+      res.status(500).json({ error: 'Failed to fetch chats' });
+    }
+  });
+
   return httpServer;
 }

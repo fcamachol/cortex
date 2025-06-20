@@ -8,6 +8,7 @@ import Dashboard from "@/pages/dashboard";
 import ActionsPage from "@/pages/actions";
 import QRTestPage from "@/pages/qr-test";
 import { TasksPage } from "@/pages/TasksPage";
+import DatabaseViewer from "@/pages/DatabaseViewer";
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
