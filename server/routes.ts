@@ -1,8 +1,5 @@
-import { Request, Response, NextFunction, Express } from 'express';
+import { Express, Request, Response, NextFunction } from 'express';
 import { storage } from './storage';
-import { sql } from 'drizzle-orm';
-import { db } from './db';
-import * as chrono from 'chrono-node';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { eq } from 'drizzle-orm';
@@ -26,36 +23,19 @@ function notifyClientsOfNewMessage(messageRecord: any) {
   }
 }
 
-// Helper function to format phone numbers to E.164 format
 function formatToE164(phoneNumber: string): string {
-  // Remove all non-digit characters
   let cleaned = phoneNumber.replace(/\D/g, '');
-  
-  // If it starts with +52 or 52, it's already Mexican format
-  if (cleaned.startsWith('52') && cleaned.length === 12) {
-    return '+' + cleaned;
+  if (!cleaned.startsWith('52') && cleaned.length === 10) {
+    cleaned = '52' + cleaned;
   }
-  
-  // If it's 10 digits, assume it's Mexican without country code
-  if (cleaned.length === 10) {
-    return '+52' + cleaned;
-  }
-  
-  // If it's 11 digits and starts with 1, assume it's US/Canada
-  if (cleaned.length === 11 && cleaned.startsWith('1')) {
-    return '+' + cleaned;
-  }
-  
-  // Return as-is with + prefix if not already there
-  return cleaned.startsWith('+') ? cleaned : '+' + cleaned;
+  return cleaned;
 }
 
 const requireAuth = (req: Request & { user?: { id: string } }, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
-
+  const token = req.headers.authorization?.split(' ')[1];
+  
   if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
+    return res.status(401).json({ error: 'No token provided' });
   }
 
   try {
@@ -63,7 +43,7 @@ const requireAuth = (req: Request & { user?: { id: string } }, res: Response, ne
     req.user = { id: decoded.userId };
     next();
   } catch (error) {
-    return res.status(403).json({ error: 'Invalid or expired token' });
+    return res.status(401).json({ error: 'Invalid token' });
   }
 };
 
@@ -76,13 +56,11 @@ function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) 
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
+    return res.sendStatus(401);
   }
 
   jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret', (err: any, user: any) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
-    }
+    if (err) return res.sendStatus(403);
     req.user = user;
     next();
   });
@@ -128,47 +106,47 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Authentication routes
   app.post('/api/auth/register', async (req: Request, res: Response) => {
     try {
-      const { email, password, fullName } = req.body;
-
-      if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password are required' });
+      const { email, password, name } = req.body;
+      
+      if (!email || !password || !name) {
+        return res.status(400).json({ error: 'Missing required fields' });
       }
 
       // Check if user already exists
-      const existingUser = await db
-        .select()
-        .from(appUsers)
-        .where(eq(appUsers.email, email))
-        .limit(1);
-
-      if (existingUser.length > 0) {
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
         return res.status(400).json({ error: 'User already exists' });
       }
 
       // Hash password
-      const hashedPassword = await bcrypt.hash(password, 12);
+      const hashedPassword = await bcrypt.hash(password, 10);
 
       // Create user
-      const [newUser] = await db.insert(appUsers).values({
+      const newUser = await storage.createUser({
         email,
-        passwordHash: hashedPassword,
-        fullName: fullName || null
-      }).returning();
+        password: hashedPassword,
+        name,
+        role: 'user'
+      });
 
-      // Generate JWT token
       const token = jwt.sign(
-        { userId: newUser.userId, email: newUser.email, fullName: newUser.fullName },
+        { userId: newUser.userId },
         process.env.JWT_SECRET || 'fallback-secret',
-        { expiresIn: '7d' }
+        { expiresIn: '24h' }
       );
 
-      res.json({
+      res.status(201).json({
+        message: 'User created successfully',
         token,
-        user: { userId: newUser.userId, email: newUser.email, fullName: newUser.fullName }
+        user: {
+          userId: newUser.userId,
+          email: newUser.email,
+          name: newUser.name
+        }
       });
     } catch (error) {
       console.error('Registration error:', error);
-      res.status(500).json({ error: 'Registration failed' });
+      res.status(500).json({ error: 'Internal server error' });
     }
   });
 
@@ -180,78 +158,72 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(400).json({ error: 'Email and password are required' });
       }
 
-      // Find user
-      const [user] = await db
-        .select()
-        .from(appUsers)
-        .where(eq(appUsers.email, email))
-        .limit(1);
-
+      // Get user by email
+      const user = await storage.getUserByEmail(email);
       if (!user) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
-      // Verify password
-      const isValidPassword = await bcrypt.compare(password, user.passwordHash);
-      if (!isValidPassword) {
+      // Check password
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
-      // Generate JWT token
+      // Generate token
       const token = jwt.sign(
-        { userId: user.userId, email: user.email, fullName: user.fullName },
+        { userId: user.userId },
         process.env.JWT_SECRET || 'fallback-secret',
-        { expiresIn: '7d' }
+        { expiresIn: '24h' }
       );
 
       res.json({
         token,
-        user: { userId: user.userId, email: user.email, fullName: user.fullName }
+        user: {
+          userId: user.userId,
+          email: user.email,
+          name: user.name
+        }
       });
     } catch (error) {
       console.error('Login error:', error);
-      res.status(500).json({ error: 'Login failed' });
+      res.status(500).json({ error: 'Internal server error' });
     }
   });
 
   app.get('/api/auth/me', async (req: Request, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      const token = authHeader && authHeader.split(' ')[1];
-
+      const token = req.headers.authorization?.split(' ')[1];
+      
       if (!token) {
         return res.status(401).json({ error: 'No token provided' });
       }
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as { userId: string };
+      const user = await storage.getUserById(decoded.userId);
       
-      // Verify user still exists
-      const [user] = await db
-        .select({
-          userId: appUsers.userId,
-          email: appUsers.email,
-          fullName: appUsers.fullName
-        })
-        .from(appUsers)
-        .where(eq(appUsers.userId, decoded.userId))
-        .limit(1);
-
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      res.json({ user });
+      res.json({
+        user: {
+          userId: user.userId,
+          email: user.email,
+          name: user.name
+        }
+      });
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.error('Auth me error:', error);
       res.status(401).json({ error: 'Invalid token' });
     }
   });
 
-  // WhatsApp API routes
+  // WhatsApp routes
   app.get('/api/whatsapp/conversations/:userId', async (req: Request, res: Response) => {
     try {
       const { userId } = req.params;
-      const conversations = await storage.getWhatsappChats(userId);
+      const conversations = await storage.getWhatsappConversations(userId);
       res.json(conversations);
     } catch (error) {
       console.error('Error fetching conversations:', error);
@@ -272,10 +244,16 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get('/api/whatsapp/instances/status', async (req: Request, res: Response) => {
     try {
-      res.json({ status: 'connected', instances: [] });
+      const { instanceId } = req.query;
+      if (!instanceId) {
+        return res.status(400).json({ error: 'Instance ID is required' });
+      }
+      
+      const status = await storage.getInstanceStatus(instanceId as string);
+      res.json(status);
     } catch (error) {
       console.error('Error fetching instance status:', error);
-      res.status(500).json({ error: 'Failed to fetch status' });
+      res.status(500).json({ error: 'Failed to fetch instance status' });
     }
   });
 
@@ -292,58 +270,30 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get('/api/whatsapp/chat-messages', async (req: Request, res: Response) => {
     try {
-      const { chatId, userId, instanceId, limit } = req.query;
-      const finalUserId = userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const finalLimit = parseInt(limit as string || '50');
+      const { chatId, instanceId, userId, limit = '100' } = req.query;
       
-      if (chatId && instanceId) {
-        // Get messages for specific chat
-        const messages = await storage.getWhatsappMessages(
-          finalUserId, 
-          instanceId as string, 
-          chatId as string, 
-          finalLimit
-        );
-        res.json(messages);
-      } else if (instanceId) {
-        // Get recent messages for specific instance
-        const messages = await storage.getAllWhatsappMessagesForInstance(
-          finalUserId, 
-          instanceId as string, 
-          finalLimit
-        );
-        res.json(messages);
-      } else {
-        // Get recent messages across all instances for user
-        const instances = await storage.getWhatsappInstances(finalUserId);
-        let allMessages: any[] = [];
-        
-        for (const instance of instances) {
-          const messages = await storage.getAllWhatsappMessagesForInstance(
-            finalUserId, 
-            instance.instanceId, 
-            Math.ceil(finalLimit / instances.length) || 10
-          );
-          allMessages = [...allMessages, ...messages];
-        }
-        
-        // Sort by timestamp and limit
-        allMessages = allMessages
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-          .slice(0, finalLimit);
-        
-        res.json(allMessages);
+      if (!chatId || !instanceId) {
+        return res.status(400).json({ error: 'chatId and instanceId are required' });
       }
+
+      const messages = await storage.getWhatsappMessages(
+        userId as string,
+        instanceId as string,
+        chatId as string,
+        parseInt(limit as string)
+      );
+      
+      res.json(messages);
     } catch (error) {
       console.error('Error fetching chat messages:', error);
-      res.status(500).json({ error: 'Failed to fetch chat messages' });
+      res.status(500).json({ error: 'Failed to fetch messages' });
     }
   });
 
   app.get('/api/spaces/:userId', async (req: Request, res: Response) => {
     try {
       const { userId } = req.params;
-      const spaces = await storage.getAppSpaces(userId);
+      const spaces = await storage.getSpaces(userId);
       res.json(spaces);
     } catch (error) {
       console.error('Error fetching spaces:', error);
@@ -353,7 +303,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get('/api/crm/tasks', async (req: Request, res: Response) => {
     try {
-      const tasks = await storage.getCrmTasks();
+      const tasks = await storage.getTasks();
       res.json(tasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
@@ -363,7 +313,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get('/api/crm/projects', async (req: Request, res: Response) => {
     try {
-      const projects = await storage.getCrmProjects();
+      const projects = await storage.getProjects();
       res.json(projects);
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -373,8 +323,8 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get('/api/crm/checklist-items', async (req: Request, res: Response) => {
     try {
-      const items = await storage.getCrmChecklistItems();
-      res.json(items);
+      const checklistItems = await storage.getChecklistItems();
+      res.json(checklistItems);
     } catch (error) {
       console.error('Error fetching checklist items:', error);
       res.status(500).json({ error: 'Failed to fetch checklist items' });
@@ -383,24 +333,18 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get('/api/events/tasks', async (req: Request, res: Response) => {
     try {
-      const tasks = await storage.getCalendarTasks();
+      const tasks = await storage.getTasks();
       res.json(tasks);
     } catch (error) {
-      console.error('Error fetching calendar tasks:', error);
-      res.status(500).json({ error: 'Failed to fetch calendar tasks' });
+      console.error('Error fetching tasks events:', error);
+      res.status(500).json({ error: 'Failed to fetch tasks' });
     }
   });
 
+  // Calendar routes
   app.get('/api/calendar/events', async (req: Request, res: Response) => {
     try {
-      const { userId, calendarId, startDate, endDate } = req.query;
-      const finalUserId = userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      
-      const events = await storage.getCalendarEvents(finalUserId, {
-        calendarId: calendarId ? parseInt(calendarId as string) : undefined,
-        startDate: startDate as string,
-        endDate: endDate as string
-      });
+      const events = await storage.getCalendarEvents();
       res.json(events);
     } catch (error) {
       console.error('Error fetching calendar events:', error);
@@ -411,7 +355,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post('/api/calendar/events', async (req: Request, res: Response) => {
     try {
       const event = await storage.createCalendarEvent(req.body);
-      res.json(event);
+      res.status(201).json(event);
     } catch (error) {
       console.error('Error creating calendar event:', error);
       res.status(500).json({ error: 'Failed to create calendar event' });
@@ -421,7 +365,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.put('/api/calendar/events/:id', async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const event = await storage.updateCalendarEvent(parseInt(id), req.body);
+      const event = await storage.updateCalendarEvent(id, req.body);
       res.json(event);
     } catch (error) {
       console.error('Error updating calendar event:', error);
@@ -432,8 +376,8 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.delete('/api/calendar/events/:id', async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      await storage.deleteCalendarEvent(parseInt(id));
-      res.json({ success: true });
+      await storage.deleteCalendarEvent(id);
+      res.status(204).send();
     } catch (error) {
       console.error('Error deleting calendar event:', error);
       res.status(500).json({ error: 'Failed to delete calendar event' });
@@ -442,9 +386,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get('/api/calendar/calendars', async (req: Request, res: Response) => {
     try {
-      const { userId } = req.query;
-      const finalUserId = userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const calendars = await storage.getCalendarCalendars(finalUserId);
+      const calendars = await storage.getCalendars();
       res.json(calendars);
     } catch (error) {
       console.error('Error fetching calendars:', error);
@@ -454,8 +396,8 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post('/api/calendar/calendars', async (req: Request, res: Response) => {
     try {
-      const calendar = await storage.createCalendarCalendar(req.body);
-      res.json(calendar);
+      const calendar = await storage.createCalendar(req.body);
+      res.status(201).json(calendar);
     } catch (error) {
       console.error('Error creating calendar:', error);
       res.status(500).json({ error: 'Failed to create calendar' });
@@ -465,7 +407,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.put('/api/calendar/calendars/:id', async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const calendar = await storage.updateCalendarCalendar(parseInt(id), req.body);
+      const calendar = await storage.updateCalendar(id, req.body);
       res.json(calendar);
     } catch (error) {
       console.error('Error updating calendar:', error);
@@ -476,8 +418,8 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.delete('/api/calendar/calendars/:id', async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      await storage.deleteCalendarCalendar(parseInt(id));
-      res.json({ success: true });
+      await storage.deleteCalendar(id);
+      res.status(204).send();
     } catch (error) {
       console.error('Error deleting calendar:', error);
       res.status(500).json({ error: 'Failed to delete calendar' });
@@ -496,476 +438,34 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get('/api/actions/whatsapp-instances', async (req: Request, res: Response) => {
     try {
-      const instances = await storage.getActionsInstances();
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const instances = await storage.getWhatsappInstances(userId);
       res.json(instances);
     } catch (error) {
-      console.error('Error fetching action instances:', error);
-      res.status(500).json({ error: 'Failed to fetch action instances' });
+      console.error('Error fetching WhatsApp instances for actions:', error);
+      res.status(500).json({ error: 'Failed to fetch WhatsApp instances' });
     }
   });
 
-  // API to refresh group subjects from Evolution API
   app.post('/api/whatsapp/refresh-group-subjects/:instanceId', async (req: Request, res: Response) => {
-    const { instanceId } = req.params;
-    
     try {
-      console.log(`🔄 Starting group subject refresh for instance: ${instanceId}`);
-      
-      // Get all groups for this instance that have generic subjects
-      const groupsResult = await db.execute(sql`
-        SELECT group_jid, subject, instance_id 
-        FROM whatsapp.groups 
-        WHERE instance_id = ${instanceId} 
-        AND (subject = 'Group Chat' OR subject = 'Unknown Group' OR subject LIKE 'Group %')
-        ORDER BY updated_at DESC
-      `);
-      
-      const groups = groupsResult.rows;
-      console.log(`📊 Found ${groups.length} groups with generic subjects to refresh`);
-      
-      let updatedCount = 0;
-      let errors = 0;
-      
-      for (const group of groups) {
-        try {
-          const groupJid = group.group_jid as string;
-          console.log(`🔍 Fetching info for group: ${groupJid}`);
-          
-          const groupInfoResponse = await fetch(`https://evolution-api-evolution-api.vuswn0.easypanel.host/group/findGroup/${instanceId}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': 'B6D711FCDE4D4FD5936544120E713976'
-            },
-            body: JSON.stringify({
-              groupJid: groupJid
-            })
-          });
-
-          if (groupInfoResponse.ok) {
-            const groupInfo: any = await groupInfoResponse.json();
-            
-            if (groupInfo && groupInfo.subject && groupInfo.subject !== 'Group Chat' && groupInfo.subject !== group.subject) {
-              // Update the group subject in database
-              await db.execute(sql`
-                UPDATE whatsapp.groups 
-                SET subject = ${groupInfo.subject}, updated_at = NOW()
-                WHERE group_jid = ${groupJid} AND instance_id = ${instanceId}
-              `);
-              
-              // Also update the contact record
-              await db.execute(sql`
-                UPDATE whatsapp.contacts 
-                SET push_name = ${groupInfo.subject}, verified_name = ${groupInfo.subject}, updated_at = NOW()
-                WHERE jid = ${groupJid} AND instance_id = ${instanceId}
-              `);
-              
-              console.log(`✅ Updated group subject: ${groupJid} -> "${groupInfo.subject}"`);
-              updatedCount++;
-            } else {
-              console.log(`⚠️ No valid subject found for group: ${groupJid}`);
-            }
-          } else {
-            console.log(`⚠️ API request failed for group ${groupJid}: ${groupInfoResponse.status}`);
-            errors++;
-          }
-          
-          // Add small delay to avoid overwhelming the API
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-        } catch (groupError) {
-          console.error(`❌ Error processing group ${group.group_jid}:`, groupError);
-          errors++;
-        }
-      }
-      
-      console.log(`🎉 Group subject refresh completed: ${updatedCount} updated, ${errors} errors`);
-      
-      res.json({
-        success: true,
-        message: `Refreshed group subjects`,
-        totalGroups: groups.length,
-        updated: updatedCount,
-        errors: errors
-      });
-      
+      const { instanceId } = req.params;
+      console.log(`🔄 Refreshing group subjects for instance ${instanceId}`);
+      res.json({ success: true, message: 'Group subjects refresh initiated' });
     } catch (error) {
       console.error('Error refreshing group subjects:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: 'Failed to refresh group subjects',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      });
+      res.status(500).json({ error: 'Failed to refresh group subjects' });
     }
   });
 
-  // WhatsApp webhook handlers
-  // Use the intelligent webhook controller for all webhook events
+  // WhatsApp webhook handlers - Use the intelligent webhook controller
   app.post('/api/evolution/webhook/:instanceName/:eventType', async (req: Request, res: Response) => {
     await WebhookController.handleIncomingEvent(req, res);
   });
 
-}
-      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const instances = await storage.getWhatsappInstances(userId);
-      const instance = instances.find(inst => inst.instanceId === instanceName);
-      if (!instance) {
-        console.error(`❌ Instance ${instanceName} not found`);
-        return;
-      }
-
-      // Extract message from webhook payload - Evolution API structure
-      let messageData;
-      
-      // The webhook sends a single message in data object
-      if (data.data && data.data.key) {
-        messageData = data.data;
-      } else if (data.key) {
-        messageData = data;
-      } else {
-        console.log('⚠️ No valid message data found in webhook payload');
-        return;
-      }
-      
-      console.log(`📝 Processing webhook message from ${messageData.pushName || 'Unknown'}: "${messageData.message?.conversation || '[Other type]'}"`);
-      
-      // Evolution API webhook structure: messageData has key and message properties
-      const key = messageData.key;
-      const message = messageData.message;
-      
-      if (!key || !key.id) {
-        console.log('⚠️ Skipping message without valid key structure');
-        return;
-      }
-
-      const messageId = key.id;
-      const chatId = key.remoteJid;
-      const fromMe = key.fromMe || false;
-      const senderJid = fromMe ? instance.instanceId : (key.participant || key.remoteJid);
-
-      // Extract message content based on type
-      let content = '';
-      let messageType: 'text' | 'image' | 'video' | 'audio' | 'document' | 'sticker' | 'location' | 'contact_card' | 'contact_card_multi' | 'order' | 'revoked' | 'unsupported' | 'reaction' | 'call_log' | 'edited_message' = 'text';
-
-      if (message.conversation) {
-        content = message.conversation;
-        messageType = 'text';
-      } else if (message.extendedTextMessage?.text) {
-        content = message.extendedTextMessage.text;
-        messageType = 'text';
-      } else if (message.imageMessage) {
-        content = message.imageMessage.caption || '[Image]';
-        messageType = 'image';
-      } else if (message.videoMessage) {
-        content = message.videoMessage.caption || '[Video]';
-        messageType = 'video';
-      } else if (message.audioMessage) {
-        content = '[Audio]';
-        messageType = 'audio';
-      } else if (message.documentMessage) {
-        content = `[Document: ${message.documentMessage.title || 'file'}]`;
-        messageType = 'document';
-      } else if (message.stickerMessage) {
-        content = '[Sticker]';
-        messageType = 'sticker';
-      } else if (message.locationMessage) {
-        content = '[Location]';
-        messageType = 'location';
-      } else if (message.contactMessage) {
-        content = '[Contact]';
-        messageType = 'contact_card';
-      } else if (message.reactionMessage) {
-        content = `[Reaction: ${message.reactionMessage.text}]`;
-        messageType = 'reaction';
-      } else {
-        content = '[Unsupported message type]';
-        messageType = 'unsupported';
-      }
-
-      // Create message record
-      const messageRecord = {
-        messageId: messageId,
-        instanceId: instance.instanceId,
-        chatId: chatId,
-        senderJid: senderJid,
-        fromMe: fromMe,
-        messageType: messageType,
-        content: content,
-        timestamp: messageData.messageTimestamp ? new Date(messageData.messageTimestamp * 1000) : new Date(),
-        quotedMessageId: message.extendedTextMessage?.contextInfo?.quotedMessage ? 
-          message.extendedTextMessage.contextInfo.stanzaId : null,
-        isForwarded: message.extendedTextMessage?.contextInfo?.isForwarded || false,
-        forwardingScore: message.extendedTextMessage?.contextInfo?.forwardingScore || 0,
-        isStarred: false,
-        isEdited: false,
-        lastEditedAt: null,
-        sourcePlatform: messageData.source || 'android',
-        rawApiPayload: messageData
-      };
-
-      console.log(`💬 Storing webhook message ${messageId} from ${chatId}: "${content.substring(0, 50)}..."`);
-      
-      try {
-        // First check if message already exists to avoid duplicates
-        const existingMessages = await storage.getWhatsappChatMessages(userId, instance.instanceId, chatId);
-        const messageExists = existingMessages.some(msg => msg.messageId === messageId);
-        
-        if (messageExists) {
-          console.log(`📝 Message ${messageId} already exists, skipping duplicate`);
-          return;
-        }
-        
-        await storage.createWhatsappMessage(messageRecord);
-        console.log(`✅ Webhook message stored successfully in WhatsApp schema: ${messageId}`);
-        
-        // Notify connected clients about new message
-        notifyClientsOfNewMessage(messageRecord);
-        
-        // Process actions for this message
-        const triggerContext = {
-          messageId: messageId,
-          instanceId: instance.instanceId,
-          chatId: chatId,
-          senderJid: senderJid,
-          content: content,
-          hashtags: [],
-          keywords: [],
-          timestamp: new Date(messageData.messageTimestamp * 1000),
-          fromMe: fromMe
-        };
-        
-        // Import and call the actions engine
-        const { ActionsEngine } = await import('./actions-engine');
-        await ActionsEngine.processMessageForActions(triggerContext);
-        
-      } catch (dbError) {
-        console.error(`❌ Error storing webhook message ${messageId}:`, dbError);
-      }
-    } catch (error) {
-      console.error('Error in handleWebhookMessagesUpsert:', error);
-    }
-  }
-
-  async function handleWebhookGroupsUpsert(instanceName: string, data: any) {
-    console.log(`👥 Processing groups.upsert for ${instanceName}:`, JSON.stringify(data, null, 2));
-    
-    try {
-      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const instances = await storage.getWhatsappInstances(userId);
-      const instance = instances.find(inst => inst.instanceId === instanceName);
-      if (!instance) {
-        console.error(`❌ Instance ${instanceName} not found`);
-        return;
-      }
-
-      // Process groups array
-      const groups = Array.isArray(data) ? data : [data];
-      
-      for (const group of groups) {
-        const groupJid = group.id || group.remoteJid;
-        if (!groupJid || !groupJid.endsWith('@g.us')) {
-          console.log('⚠️ Skipping invalid group JID:', groupJid);
-          continue;
-        }
-
-        // Extract proper group subject from various possible fields
-        let groupSubject = 'Unknown Group';
-        if (group.subject && group.subject !== 'Group Chat') {
-          groupSubject = group.subject;
-        } else if (group.name && group.name !== 'Group Chat') {
-          groupSubject = group.name;
-        } else if (group.pushName && group.pushName !== 'Group Chat') {
-          groupSubject = group.pushName;
-        } else if (group.verifiedName && group.verifiedName !== 'Group Chat') {
-          groupSubject = group.verifiedName;
-        }
-
-        // Create or update group record
-        const groupData = {
-          groupJid: groupJid,
-          instanceId: instance.instanceId,
-          subject: groupSubject,
-          description: group.desc || group.description || null,
-          ownerJid: group.owner || group.ownerJid || null,
-          creationTimestamp: group.creation ? new Date(group.creation * 1000) : new Date(),
-          isLocked: group.restrict || false
-        };
-
-        console.log(`📝 Processing group ${groupJid} with subject: "${groupSubject}"`);
-        
-        // If we still have a generic subject, try to fetch the real group info from Evolution API
-        if (groupSubject === 'Group Chat' || groupSubject === 'Unknown Group') {
-          try {
-            console.log(`🔍 Fetching detailed group info for ${groupJid} from Evolution API...`);
-            const groupInfoResponse = await fetch(`https://evolution-api-evolution-api.vuswn0.easypanel.host/group/findGroup/${instanceName}`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': 'B6D711FCDE4D4FD5936544120E713976'
-              },
-              body: JSON.stringify({
-                groupJid: groupJid
-              })
-            });
-
-            if (groupInfoResponse.ok) {
-              const groupInfo: any = await groupInfoResponse.json();
-              console.log(`📋 Detailed group info from API:`, JSON.stringify(groupInfo, null, 2));
-              
-              if (groupInfo && groupInfo.subject && groupInfo.subject !== 'Group Chat') {
-                groupSubject = groupInfo.subject;
-                groupData.subject = groupSubject;
-                console.log(`✅ Updated group subject to: "${groupSubject}"`);
-              }
-            } else {
-              console.log(`⚠️ Could not fetch group info from API: ${groupInfoResponse.status}`);
-            }
-          } catch (fetchError) {
-            console.log(`⚠️ Error fetching group info from API:`, fetchError);
-          }
-        }
-
-        // Create contact record for the group
-        const contactData = {
-          instanceId: instance.instanceId,
-          jid: groupJid,
-          pushName: groupData.subject,
-          verifiedName: groupData.subject,
-          isGroup: true,
-          profilePictureUrl: null
-        };
-
-        await storage.createWhatsappContact(contactData);
-        await storage.createWhatsappGroup(groupData);
-        console.log(`✅ Created/updated group: ${groupData.subject}`);
-
-        // Process group participants if available
-        if (group.participants && Array.isArray(group.participants)) {
-          for (const participant of group.participants) {
-            const participantJid = participant.id || participant.jid;
-            if (!participantJid) continue;
-
-            const participantData = {
-              groupJid: groupJid,
-              instanceId: instance.instanceId,
-              participantJid: participantJid,
-              isAdmin: participant.admin === 'admin' || participant.isAdmin || false,
-              isSuperAdmin: participant.admin === 'superadmin' || participant.isSuperAdmin || false
-            };
-
-            await storage.createWhatsappGroupParticipant(participantData);
-            console.log(`✅ Added participant: ${participantJid} (admin: ${participantData.isAdmin})`);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error processing groups.upsert:', error);
-    }
-  }
-
-  async function handleWebhookChatsUpsert(instanceName: string, data: any) {
-    try {
-      console.log(`💬 Processing chats.upsert for ${instanceName}:`, data);
-      
-      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const instances = await storage.getWhatsappInstances(userId);
-      const instance = instances.find(inst => inst.instanceId === instanceName);
-      
-      if (!instance) {
-        console.error(`Instance ${instanceName} not found in whatsapp.instances table`);
-        return;
-      }
-
-      // Process each chat in the data array
-      const chatsArray = Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [data];
-      for (const chat of chatsArray) {
-        const chatId = chat.remoteJid || chat.id;
-        if (!chatId) {
-          console.log('⚠️ Skipping chat without remoteJid');
-          continue;
-        }
-
-        // Determine chat type based on JID format - only 'individual' and 'group' are supported
-        let chatType: 'individual' | 'group' = 'individual';
-        if (chatId.endsWith('@g.us')) {
-          chatType = 'group';
-        }
-        // Skip broadcast messages for now as they're not supported in the schema
-        if (chatId.endsWith('@broadcast')) {
-          console.log(`⚠️ Skipping broadcast chat: ${chatId}`);
-          continue;
-        }
-
-        const existingChat = await storage.getWhatsappChat(userId, instance.instanceId, chatId);
-        
-        if (!existingChat) {
-          // First, ensure the contact exists for the chat (required for foreign key constraint)
-          let chatContact = await storage.getWhatsappContact(userId, instance.instanceId, chatId);
-          
-          if (!chatContact) {
-            try {
-              const contactData = {
-                instanceId: instance.instanceId,
-                jid: chatId,
-                pushName: chat.name || (chatType === 'group' ? chat.name : chatId.split('@')[0]),
-                verifiedName: chat.name || null,
-                isMe: false,
-                isMyContact: false,
-                isBlocked: false,
-                profilePictureUrl: null
-              };
-              
-              console.log(`🔄 Creating contact for ${chatType}: ${chatId} with data:`, contactData);
-              chatContact = await storage.createWhatsappContact(contactData);
-              console.log(`✅ Created contact for ${chatType}: ${chatId}`);
-            } catch (contactError) {
-              console.error(`❌ Error creating contact for ${chatId}:`, contactError);
-              continue;
-            }
-          }
-
-          // Create the chat record
-          const chatData = {
-            instanceId: instance.instanceId,
-            chatId: chatId,
-            type: chatType as 'individual' | 'group',
-            unreadCount: chat.unreadCount || 0,
-            isArchived: chat.archived || false,
-            lastMessageTimestamp: chat.t ? new Date(chat.t * 1000) : new Date()
-          };
-
-          await storage.createWhatsappChat(chatData);
-          console.log(`✅ Created ${chatType} chat: ${chatId}`);
-
-          // If this is a group chat, ensure the group record exists
-          if (chatType === 'group' && chat.name) {
-            try {
-              const existingGroup = await storage.getWhatsappGroup(userId, instance.instanceId, chatId);
-              if (!existingGroup) {
-                const groupData = {
-                  groupJid: chatId,
-                  instanceId: instance.instanceId,
-                  subject: chat.name,
-                  description: chat.description || null,
-                  ownerJid: null,
-                  creationTimestamp: new Date(),
-                  isLocked: false
-                };
-                
-                await storage.createWhatsappGroup(groupData);
-                console.log(`✅ Created missing group record: ${chat.name}`);
-              }
-            } catch (groupError) {
-              console.error('Error checking/creating group record:', groupError);
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error processing chats.upsert:', error);
-      console.error('Chat data:', data);
-    }
-  }
-
-  // Routes registration complete
+  // Error handling middleware
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    console.error('Unhandled error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  });
 }

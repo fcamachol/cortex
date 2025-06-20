@@ -212,7 +212,7 @@ export const WebhookController = {
 
             console.log(`💬 Storing webhook message ${messageId} from ${chatId}: "${content.substring(0, 50)}..."`);
 
-            // Check if message already exists to avoid duplicates
+            // Check if message already exists to avoid duplicates by querying WhatsApp schema
             const existingMessages = await storage.getWhatsappMessages(userId, instance.instanceId, chatId);
             const messageExists = existingMessages.some(msg => msg.messageId === messageId);
 
