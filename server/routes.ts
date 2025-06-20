@@ -1622,8 +1622,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Instance not found" });
       }
       
-      // Direct HTTP polling mode - no bridge needed
-      
       // Get real-time status and QR code using HTTP polling
       try {
         let qrCodeData = null;
@@ -1677,7 +1675,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             name: instance.instanceId,
             status: connectionState.instance.state
           },
-          bridge: bridgeStatus,
           qrCode: qrCodeData || connectionState.qrcode,
           evolutionStatus: {
             status: connectionState.instance.state,
@@ -1693,7 +1690,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             name: instance.instanceId,
             status: instance.isConnected ? 'open' : 'close'
           },
-          bridge: bridgeStatus,
           qrCode: null,
           evolutionStatus: {
             status: 'error',
