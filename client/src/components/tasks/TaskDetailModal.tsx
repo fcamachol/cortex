@@ -402,7 +402,9 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
       // Refresh message thread to show the new reply
       setTimeout(() => {
         if (task?.related_chat_jid && task?.instance_id) {
-          fetchMessageThread();
+          // Re-trigger the message thread fetch
+          setMessageThread([]);
+          setThreadLoading(true);
         }
       }, 1000);
       

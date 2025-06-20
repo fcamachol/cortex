@@ -2607,20 +2607,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "chatId and instanceId are required" });
       }
       
-      // Fetch messages from the chat
-      const messages = await db
-        .select()
-        .from(whatsappMessages)
-        .where(
-          and(
-            eq(whatsappMessages.chatId, chatId as string),
-            eq(whatsappMessages.instanceId, instanceId as string)
-          )
-        )
-        .orderBy(sql`${whatsappMessages.timestamp} DESC`)
-        .limit(parseInt(limit as string));
+      // Query messages using direct pool query to avoid schema issues
+      const queryResult = await pool.query(`
+        SELECT 
+          message_id as "messageId",
+          instance_id as "instanceId", 
+          chat_id as "chatId",
+          sender_jid as "senderJid",
+          from_me as "fromMe",
+          message_type as "messageType",
+          content,
+          timestamp,
+          quoted_message_id as "quotedMessageId",
+          raw_api_payload as "rawApiPayload"
+        FROM whatsapp.messages 
+        WHERE chat_id = $1 AND instance_id = $2
+        ORDER BY timestamp DESC 
+        LIMIT $3
+      `, [chatId, instanceId, parseInt(limit as string)]);
       
-      res.json(messages);
+      res.json(queryResult.rows);
     } catch (error) {
       console.error('Error fetching chat messages:', error);
       res.status(500).json({ error: "Failed to fetch chat messages" });
