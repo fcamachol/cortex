@@ -59,6 +59,15 @@ app.use((req, res, next) => {
     console.log("⚠️ Evolution API credentials not found in environment");
   }
 
+  // Serve the frontend properly first
+  const server = createServer(app);
+  
+  if (app.get("env") === "development") {
+    await setupVite(app, server);
+  } else {
+    serveStatic(app);
+  }
+
   await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -68,15 +77,6 @@ app.use((req, res, next) => {
     console.error("Server error:", err);
     res.status(status).json({ message });
   });
-
-  // Serve the frontend properly
-  const server = createServer(app);
-  
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
 
   // ALWAYS serve the app on port 5000
   // this serves both the API and the client.

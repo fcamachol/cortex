@@ -5,6 +5,9 @@ import { db } from './db';
 import * as chrono from 'chrono-node';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { eq } from 'drizzle-orm';
+import { appUsers } from '../shared/schema';
+import { nanoid } from 'nanoid';
 
 // Helper function to format phone numbers to E.164 format
 function formatToE164(phoneNumber: string): string {
@@ -72,6 +75,128 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Basic test route
   app.get('/api/test', (req: Request, res: Response) => {
     res.json({ message: 'API is working' });
+  });
+
+  // Authentication routes
+  app.post('/api/auth/register', async (req: Request, res: Response) => {
+    try {
+      const { email, password, fullName } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+      }
+
+      // Check if user already exists
+      const existingUser = await db
+        .select()
+        .from(appUsers)
+        .where(eq(appUsers.email, email))
+        .limit(1);
+
+      if (existingUser.length > 0) {
+        return res.status(400).json({ error: 'User already exists' });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 12);
+
+      // Create user
+      const [newUser] = await db.insert(appUsers).values({
+        email,
+        passwordHash: hashedPassword,
+        fullName: fullName || null
+      }).returning();
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: newUser.userId, email: newUser.email, fullName: newUser.fullName },
+        process.env.JWT_SECRET || 'fallback-secret',
+        { expiresIn: '7d' }
+      );
+
+      res.json({
+        token,
+        user: { userId: newUser.userId, email: newUser.email, fullName: newUser.fullName }
+      });
+    } catch (error) {
+      console.error('Registration error:', error);
+      res.status(500).json({ error: 'Registration failed' });
+    }
+  });
+
+  app.post('/api/auth/login', async (req: Request, res: Response) => {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+      }
+
+      // Find user
+      const [user] = await db
+        .select()
+        .from(appUsers)
+        .where(eq(appUsers.email, email))
+        .limit(1);
+
+      if (!user) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      // Verify password
+      const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+      if (!isValidPassword) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user.userId, email: user.email, fullName: user.fullName },
+        process.env.JWT_SECRET || 'fallback-secret',
+        { expiresIn: '7d' }
+      );
+
+      res.json({
+        token,
+        user: { userId: user.userId, email: user.email, fullName: user.fullName }
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ error: 'Login failed' });
+    }
+  });
+
+  app.get('/api/auth/me', async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      const token = authHeader && authHeader.split(' ')[1];
+
+      if (!token) {
+        return res.status(401).json({ error: 'No token provided' });
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+      
+      // Verify user still exists
+      const [user] = await db
+        .select({
+          userId: appUsers.userId,
+          email: appUsers.email,
+          fullName: appUsers.fullName
+        })
+        .from(appUsers)
+        .where(eq(appUsers.userId, decoded.userId))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      res.json({ user });
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      res.status(401).json({ error: 'Invalid token' });
+    }
   });
 
   // API to refresh group subjects from Evolution API
