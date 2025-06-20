@@ -482,7 +482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             };
             
             // Trigger actions engine for hashtags and keywords
-            await actionsEngine.processMessageTriggers(triggerContext);
+            await ActionsEngine.processMessageForActions(triggerContext);
           }
 
           // Save media information if this is a media message

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as chrono from 'chrono-node';
-import { actionsEngine, TriggerContext } from './actions-engine';
+import { ActionsEngine, TriggerContext } from './actions-engine';
 
 export const IntelligentNLP = {
     /**

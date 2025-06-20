@@ -237,18 +237,21 @@ export class ActionsEngine {
 
     console.log('📝 Intelligent task data prepared:', taskData);
 
-    // Save task to database using CRM schema
+    // Save task to database using storage interface
     try {
-      const result = await db.execute(sql`
-        INSERT INTO crm.tasks (instance_id, title, description, priority, status, related_chat_jid, created_by_user_id)
-        VALUES (${context.instanceId}, ${taskData.title}, ${taskData.description}, ${taskData.priority}, ${taskData.taskStatus}, ${taskData.relatedChatJid}, ${taskData.userId})
-        RETURNING task_id, title, description, status
-      `);
+      const newTask = await storage.createTask({
+        title: taskData.title,
+        description: taskData.description,
+        priority: taskData.priority,
+        status: taskData.taskStatus,
+        dueDate: taskData.dueDate,
+        userId: taskData.userId
+      });
       
-      console.log('✅ Intelligent task saved to database:', result);
+      console.log('✅ Intelligent task saved to database:', newTask);
       return { 
         success: true, 
-        data: result, 
+        data: newTask, 
         nlpEnhanced: true, 
         conversationAware: !!conversationContext,
         analysis: nlpAnalysis 
