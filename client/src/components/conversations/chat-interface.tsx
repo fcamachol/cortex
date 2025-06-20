@@ -125,36 +125,46 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Load reactions for messages
-  useEffect(() => {
-    if (messages.length > 0 && instanceId) {
-      const loadReactions = async () => {
-        const reactionPromises = messages.map(async (message: any) => {
-          const messageId = message.messageId || message.id;
-          try {
-            const response = await fetch(`/api/whatsapp/message-reactions?messageId=${messageId}&instanceId=${instanceId}`);
-            if (response.ok) {
-              const reactions = await response.json();
-              return { messageId, reactions };
-            }
-          } catch (error) {
-            console.error('Error loading reactions for message:', messageId, error);
-          }
-          return { messageId, reactions: [] };
-        });
+  // Temporarily disable reactions loading to fix database errors
+  // useEffect(() => {
+  //   if (messages.length > 0 && instanceId) {
+  //     const loadReactions = async () => {
+  //       const reactionPromises = messages.map(async (message: any) => {
+  //         const messageId = message.messageId || message.id;
+  //         try {
+  //           const response = await fetch(`/api/whatsapp/message-reactions?messageId=${messageId}&instanceId=${instanceId}`);
+  //           if (response.ok) {
+  //             const reactions = await response.json();
+  //             return { messageId, reactions };
+  //           }
+  //         } catch (error) {
+  //           console.error('Error loading reactions for message:', messageId, error);
+  //         }
+  //         return { messageId, reactions: [] };
+  //       });
 
-        const results = await Promise.all(reactionPromises);
-        const reactionsMap = results.reduce((acc, { messageId, reactions }) => {
-          acc[messageId] = reactions;
-          return acc;
-        }, {} as Record<string, any[]>);
+  //       const results = await Promise.all(reactionPromises);
+  //       const reactionsMap = results.reduce((acc, { messageId, reactions }) => {
+  //         acc[messageId] = reactions;
+  //         return acc;
+  //       }, {} as Record<string, any[]>);
 
-        setMessageReactions(reactionsMap);
-      };
+  //       setMessageReactions(reactionsMap);
+  //     };
 
-      loadReactions();
-    }
-  }, [messages, instanceId]);
+  //     loadReactions();
+  //   }
+  // }, [messages, instanceId]);
+
+  const handleOpenTaskModal = (message: any) => {
+    setSelectedMessageForTask(message);
+    setModalOpen(true);
+  };
+
+  const handleCloseTaskModal = () => {
+    setModalOpen(false);
+    setSelectedMessageForTask(null);
+  };
 
   if (!conversationId) {
     return (
@@ -279,18 +289,19 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                     chatId={conversationId!}
                     instanceId={instanceId!}
                     isVisible={hoveredMessageId === (message.messageId || message.id)}
+                    onOpenModal={() => handleOpenTaskModal(message)}
                   />
                 </div>
                 
-                {/* Message Reactions */}
-                <MessageReactions
+                {/* Message Reactions - Temporarily disabled to fix database errors */}
+                {/* <MessageReactions
                   messageId={message.messageId || message.id}
                   reactions={messageReactions[message.messageId || message.id] || []}
                   onAddReaction={(messageId, reaction) => {
                     addReactionMutation.mutate({ messageId, reaction });
                   }}
                   isFromMe={message.isFromMe}
-                />
+                /> */}
               </div>
             ))
           )}
@@ -326,6 +337,19 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
           </Button>
         </div>
       </div>
+
+      {/* Task Creation Modal */}
+      {selectedMessageForTask && (
+        <CreateTaskFromMessageModal
+          isOpen={modalOpen}
+          onClose={handleCloseTaskModal}
+          messageId={selectedMessageForTask.messageId || selectedMessageForTask.id}
+          messageContent={selectedMessageForTask.content}
+          chatId={conversationId!}
+          instanceId={instanceId!}
+          contactName={conversation?.contactName}
+        />
+      )}
     </div>
   );
 }
