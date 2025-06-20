@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Paperclip, Smile, Send, CheckSquare, Plus, MoreVertical } from "lucide-react";
 import { ContactTasksAndEvents } from "@/components/contacts/ContactTasksAndEvents";
+import { MessageReactions } from "@/components/conversations/MessageReactions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 // WebSocket functionality removed - using webhook-based system
 import { apiRequest } from "@/lib/queryClient";
@@ -16,6 +17,7 @@ interface ChatInterfaceProps {
 
 export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [messageInput, setMessageInput] = useState("");
+  const [messageReactions, setMessageReactions] = useState<Record<string, any[]>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -73,6 +75,32 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chat-messages`, conversationId, instanceId] });
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
       setMessageInput("");
+    },
+  });
+
+  const addReactionMutation = useMutation({
+    mutationFn: async ({ messageId, reaction }: { messageId: string; reaction: string }) => {
+      if (!conversationId || !instanceId) throw new Error('Missing conversation or instance ID');
+      
+      const response = await fetch('/api/whatsapp/add-reaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messageId,
+          instanceId,
+          chatId: conversationId,
+          reaction,
+        }),
+      });
+      
+      if (!response.ok) throw new Error('Failed to add reaction');
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      // Refresh message reactions
+      queryClient.invalidateQueries({ 
+        queryKey: [`/api/whatsapp/message-reactions`, variables.messageId, instanceId] 
+      });
     },
   });
 

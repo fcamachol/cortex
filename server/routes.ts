@@ -2931,6 +2931,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get message reactions
+  app.get("/api/whatsapp/message-reactions", async (req, res) => {
+    try {
+      const { messageId, instanceId } = req.query;
+      
+      if (!messageId || !instanceId) {
+        return res.status(400).json({ error: "Missing messageId or instanceId" });
+      }
+
+      const reactionsQuery = await pool.query(`
+        SELECT 
+          reaction_id as "reactionId",
+          message_id as "messageId",
+          sender_jid as "senderJid",
+          reaction,
+          from_me as "fromMe",
+          timestamp
+        FROM whatsapp.message_reactions 
+        WHERE message_id = $1 AND instance_id = $2
+        ORDER BY timestamp ASC
+      `, [messageId, instanceId]);
+
+      res.json(reactionsQuery.rows);
+    } catch (error) {
+      console.error('Error fetching message reactions:', error);
+      res.status(500).json({ error: "Failed to fetch message reactions" });
+    }
+  });
+
+  // Add reaction to message
+  app.post("/api/whatsapp/add-reaction", async (req, res) => {
+    try {
+      const { messageId, instanceId, chatId, reaction } = req.body;
+      
+      if (!messageId || !instanceId || !chatId || !reaction) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // Get instance details to find API key
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Default user for now
+      const instances = await storage.getWhatsappInstances(userId);
+      const instance = instances.find(i => i.instanceId === instanceId);
+
+      if (!instance) {
+        return res.status(404).json({ error: "Instance not found" });
+      }
+
+      // Send reaction via Evolution API
+      const evolutionResponse = await fetch(`${process.env.EVOLUTION_API_URL}/message/reaction`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': instance.apiKey || process.env.EVOLUTION_API_KEY || ''
+        },
+        body: JSON.stringify({
+          remoteJid: chatId,
+          key: {
+            id: messageId,
+            remoteJid: chatId
+          },
+          reaction: reaction
+        })
+      });
+
+      if (!evolutionResponse.ok) {
+        const errorText = await evolutionResponse.text();
+        throw new Error(`Evolution API error: ${errorText}`);
+      }
+
+      const result = await evolutionResponse.json();
+      res.json(result);
+    } catch (error) {
+      console.error('Error adding reaction:', error);
+      res.status(500).json({ error: "Failed to add reaction" });
+    }
+  });
+
   // Send WhatsApp message
   app.post("/api/whatsapp/send-message", async (req, res) => {
     try {
