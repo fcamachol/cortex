@@ -69,16 +69,17 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
 
   // Fetch messages for selected chat
   const { data: messages, isLoading: messagesLoading } = useQuery({
-    queryKey: ['whatsapp-messages', selectedChat],
+    queryKey: ['whatsapp-messages', selectedChat, instanceId],
     queryFn: async () => {
       if (!selectedChat || selectedChat === 'undefined') return [];
-      const response = await fetch(`/api/whatsapp/messages/${selectedChat}`);
+      const response = await fetch(`/api/whatsapp/chat-messages?chatId=${encodeURIComponent(selectedChat)}&instanceId=${instanceId}&limit=100`);
       if (!response.ok) throw new Error('Failed to fetch messages');
       const data = await response.json();
-      return data as Message[];
+      // Sort messages by timestamp to show conversation in chronological order
+      return (data as Message[]).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     },
-    enabled: !!selectedChat && selectedChat !== 'undefined',
-    refetchInterval: 10000, // More frequent updates for real-time messaging
+    enabled: !!selectedChat && selectedChat !== 'undefined' && !!instanceId,
+    refetchInterval: 5000, // More frequent updates for real-time messaging
   });
 
   // Send message mutation
@@ -101,8 +102,11 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
     },
     onSuccess: () => {
       setMessageText('');
-      queryClient.invalidateQueries({ queryKey: ['whatsapp-messages', selectedChat] });
+      // Invalidate conversation thread queries
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-messages', selectedChat, instanceId] });
       queryClient.invalidateQueries({ queryKey: ['whatsapp-chats', instanceId] });
+      // Invalidate chat messages for task threads
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chat-messages'] });
     },
   });
 

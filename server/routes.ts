@@ -2678,6 +2678,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const evolutionApi = getInstanceEvolutionApi(instance.apiKey);
       const result = await evolutionApi.sendTextMessage(instanceId, messageRequest);
       
+      // Save the sent message to database with fromMe: true
+      if (result.key?.id) {
+        try {
+          const messageData = {
+            messageId: result.key.id,
+            instanceId: instanceId,
+            chatId: chatId,
+            senderJid: instance.ownerJid || `${instanceId}@s.whatsapp.net`,
+            fromMe: true,
+            messageType: 'text',
+            content: message,
+            timestamp: new Date(),
+            quotedMessageId: quotedMessageId || null,
+            rawApiPayload: result
+          };
+          
+          await storage.createWhatsappMessage(messageData);
+          console.log(`✅ Saved sent message: ${result.key.id}`);
+        } catch (saveError) {
+          console.error('Failed to save sent message:', saveError);
+        }
+      }
+      
       res.json({ success: true, messageId: result.key?.id, result });
     } catch (error: any) {
       console.error('Error sending WhatsApp message:', error);
