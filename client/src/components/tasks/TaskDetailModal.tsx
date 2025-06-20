@@ -161,14 +161,21 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
         
         // Filter messages related to the original message or task context
         const relevantMessages = messages.filter((msg: any) => {
-          // Include the original triggering message
+          // Always include the original triggering message
           if (msg.messageId === task.triggering_message_id) return true;
           
-          // Include messages that quote the original message
+          // Include messages that quote the original message (direct replies)
           if (msg.quotedMessageId === task.triggering_message_id) return true;
           
-          // Include messages after the task creation date from the same chat
-          if (msg.timestamp && new Date(msg.timestamp) >= new Date(task.created_at)) return true;
+          // Include ALL messages from this chat after the task creation date
+          // This ensures we capture your replies and any conversation continuation
+          if (msg.timestamp && new Date(msg.timestamp) >= new Date(task.created_at)) {
+            return true;
+          }
+          
+          // Include messages sent by you (fromMe: true) in this chat regardless of timing
+          // This ensures your replies are always visible
+          if (msg.fromMe === true) return true;
           
           return false;
         });
@@ -400,13 +407,30 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
       }
       
       // Refresh message thread to show the new reply
-      setTimeout(() => {
+      setTimeout(async () => {
         if (task?.related_chat_jid && task?.instance_id) {
-          // Re-trigger the message thread fetch
-          setMessageThread([]);
           setThreadLoading(true);
+          try {
+            const response = await fetch(`/api/whatsapp/chat-messages?chatId=${encodeURIComponent(task.related_chat_jid)}&instanceId=${task.instance_id}&limit=50`);
+            if (response.ok) {
+              const messages = await response.json();
+              const relevantMessages = messages.filter((msg: any) => {
+                if (msg.messageId === task.triggering_message_id) return true;
+                if (msg.quotedMessageId === task.triggering_message_id) return true;
+                if (msg.timestamp && new Date(msg.timestamp) >= new Date(task.created_at)) return true;
+                if (msg.fromMe === true) return true;
+                return false;
+              });
+              relevantMessages.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+              setMessageThread(relevantMessages);
+            }
+          } catch (error) {
+            console.error('Error refreshing message thread:', error);
+          } finally {
+            setThreadLoading(false);
+          }
         }
-      }, 1000);
+      }, 2000);
       
       setReplyMessage("");
       setIsReplying(false);
@@ -869,25 +893,38 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                               key={msg.messageId || index}
                               className={`p-3 rounded-lg ${
                                 msg.fromMe 
-                                  ? 'bg-blue-100 border-l-4 border-blue-500 ml-4' 
-                                  : 'bg-white border-l-4 border-gray-300'
+                                  ? 'bg-blue-50 border-l-4 border-blue-600 ml-6 shadow-sm' 
+                                  : 'bg-white border-l-4 border-gray-300 mr-6 shadow-sm'
                               }`}
                             >
-                              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                                <span className="font-medium">
-                                  {msg.fromMe ? 'You' : (msg.senderName || msg.senderJid?.split('@')[0] || 'Unknown')}
+                              <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                                <span className={`font-medium ${msg.fromMe ? 'text-blue-700' : 'text-gray-700'}`}>
+                                  {msg.fromMe ? 'You' : (
+                                    msg.rawApiPayload?.pushName || 
+                                    msg.senderName || 
+                                    msg.senderJid?.split('@')[0] || 
+                                    'Contact'
+                                  )}
                                 </span>
-                                <span>
+                                <span className="text-xs">
                                   {msg.timestamp ? format(new Date(msg.timestamp), "MMM dd, h:mm a") : 'Unknown time'}
                                 </span>
                               </div>
-                              <div className="text-sm text-gray-800 whitespace-pre-wrap">
+                              <div className={`text-sm whitespace-pre-wrap ${
+                                msg.fromMe ? 'text-blue-900' : 'text-gray-800'
+                              }`}>
                                 {msg.content || 'No content'}
                               </div>
                               {msg.quotedMessageId === task.triggering_message_id && (
-                                <div className="mt-1 text-xs text-purple-600 flex items-center gap-1">
+                                <div className="mt-2 text-xs text-purple-600 flex items-center gap-1">
                                   <Reply className="h-3 w-3" />
                                   Reply to original message
+                                </div>
+                              )}
+                              {msg.fromMe && (
+                                <div className="mt-1 text-xs text-blue-500 flex items-center gap-1">
+                                  <Send className="h-3 w-3" />
+                                  Sent from task
                                 </div>
                               )}
                             </div>
