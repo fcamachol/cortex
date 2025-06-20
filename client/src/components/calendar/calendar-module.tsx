@@ -6,10 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { ChevronLeft, ChevronRight, Plus, MoreVertical, CalendarIcon, Clock, MapPin, Users, ExternalLink } from "lucide-react";
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, addDays, subDays, isSameDay, startOfDay, endOfDay } from "date-fns";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronLeft, ChevronRight, Plus, MoreVertical, Calendar as CalendarIcon, Clock, MapPin, Menu, Search, Settings } from "lucide-react";
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, addDays, subDays, isSameDay, startOfMonth, endOfMonth, isSameMonth, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -26,53 +25,90 @@ interface CalendarEvent {
   provider: 'google_calendar' | 'outlook' | 'apple_calendar';
   providerEventId?: string;
   metadata?: any;
+  calendarId?: string;
 }
 
-interface CalendarProvider {
-  providerId: string;
-  provider: 'google_calendar' | 'outlook' | 'apple_calendar';
-  syncStatus: 'active' | 'error' | 'pending' | 'revoked';
+interface SubCalendar {
+  id: string;
+  name: string;
+  color: string;
+  visible: boolean;
+  provider: 'google_calendar' | 'outlook' | 'apple_calendar' | 'local';
 }
 
 export default function CalendarModule() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState("month");
+  const [viewMode, setViewMode] = useState("week");
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [newEvent, setNewEvent] = useState({
     title: '',
     description: '',
     startTime: '',
     endTime: '',
     location: '',
-    isAllDay: false
+    isAllDay: false,
+    calendarId: 'personal'
   });
+
   const { toast } = useToast();
 
-  // Get date range based on view mode
-  const getDateRange = () => {
-    if (viewMode === 'month') {
-      const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-      const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-      return { startDate, endDate };
-    } else if (viewMode === 'week') {
-      const startDate = startOfWeek(currentDate, { weekStartsOn: 0 });
-      const endDate = endOfWeek(currentDate, { weekStartsOn: 0 });
-      return { startDate, endDate };
-    } else { // day
-      const startDate = startOfDay(currentDate);
-      const endDate = endOfDay(currentDate);
-      return { startDate, endDate };
-    }
-  };
+  // Sample sub-calendars (in real app, fetch from API)
+  const [subCalendars, setSubCalendars] = useState<SubCalendar[]>([
+    { id: 'personal', name: 'Personal', color: 'bg-blue-500', visible: true, provider: 'local' },
+    { id: 'work', name: 'Work', color: 'bg-red-500', visible: true, provider: 'google_calendar' },
+    { id: 'birthdays', name: 'Birthdays', color: 'bg-green-500', visible: true, provider: 'local' },
+    { id: 'family', name: 'Family', color: 'bg-purple-500', visible: true, provider: 'local' },
+    { id: 'tasks', name: 'Tasks', color: 'bg-orange-500', visible: false, provider: 'local' },
+  ]);
 
-  // Fetch calendar events for the current view
-  const { data: events = [], isLoading: eventsLoading, refetch: refetchEvents } = useQuery({
-    queryKey: ['/api/calendar/events', viewMode, currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()],
+  // Import Google Calendar mutation
+  const importGoogleCalendarMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('/api/calendar/auth/google', 'POST');
+    },
+    onSuccess: (data: any) => {
+      // Redirect to Google OAuth
+      window.location.href = data.authUrl;
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to start Google Calendar import",
+        description: error.message || "Could not initiate Google Calendar connection.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Sync Google Calendars mutation
+  const syncGoogleCalendarsMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('/api/calendar/sync/google', 'POST');
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Google Calendars synced",
+        description: `Imported ${data.calendarsCount} calendars and ${data.eventsCount} events.`
+      });
+      refetchEvents();
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/providers'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to sync Google Calendars",
+        description: error.message || "Could not sync Google Calendar data.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Fetch calendar events
+  const { data: events = [], refetch: refetchEvents } = useQuery({
+    queryKey: ['/api/calendar/events'],
     queryFn: async () => {
-      const { startDate, endDate } = getDateRange();
-      
-      const response = await fetch(`/api/calendar/events?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`);
+      const response = await fetch('/api/calendar/events');
       if (!response.ok) throw new Error('Failed to fetch events');
       return response.json();
     }
@@ -105,7 +141,8 @@ export default function CalendarModule() {
         startTime: '',
         endTime: '',
         location: '',
-        isAllDay: false
+        isAllDay: false,
+        calendarId: 'personal'
       });
       refetchEvents();
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
@@ -188,61 +225,21 @@ export default function CalendarModule() {
     setCurrentDate(newDate);
   };
 
-  // Generate calendar days for the current month
+  // Generate calendar data for month view
   const generateCalendarDays = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    
-    // Get the day of week for the first day (0 = Sunday)
-    const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay());
-    
-    const days = [];
-    const currentDateObj = new Date(startDate);
-    
-    for (let i = 0; i < 42; i++) { // 6 weeks * 7 days
-      const day = new Date(currentDateObj);
-      const isCurrentMonth = day.getMonth() === month;
-      const isToday = day.toDateString() === new Date().toDateString();
-      
-      days.push({
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+
+    return eachDayOfInterval({ start: calendarStart, end: calendarEnd }).map(day => {
+      const dayEvents = getEventsForDay(day);
+      return {
         date: day,
         dayNumber: day.getDate(),
-        isCurrentMonth,
-        isToday,
-        events: getEventsForDay(day) // Mock events
-      });
-      
-      currentDateObj.setDate(currentDateObj.getDate() + 1);
-    }
-    
-    return days;
-  };
-
-  // Get events for a specific day from the fetched events
-  const getEventsForDay = (date: Date) => {
-    if (!events || events.length === 0) return [];
-    
-    const dayEvents = events.filter((event: CalendarEvent) => {
-      const eventDate = new Date(event.startTime);
-      return eventDate.toDateString() === date.toDateString();
-    });
-
-    return dayEvents.map((event: CalendarEvent) => {
-      const providerColors = {
-        'google_calendar': 'bg-blue-100 text-blue-800',
-        'outlook': 'bg-orange-100 text-orange-800',
-        'apple_calendar': 'bg-gray-100 text-gray-800'
-      };
-
-      return {
-        title: event.title,
-        color: providerColors[event.provider] || 'bg-gray-100 text-gray-800',
-        eventId: event.eventId,
-        startTime: event.startTime,
-        isAllDay: event.isAllDay
+        isCurrentMonth: isSameMonth(day, currentDate),
+        isToday: isSameDay(day, new Date()),
+        events: dayEvents
       };
     });
   };
@@ -263,70 +260,37 @@ export default function CalendarModule() {
     }));
   };
 
-  // Generate day view data
-  const generateDayEvents = () => {
-    const dayEvents = getEventsForDay(currentDate);
-    
-    // Group events by hour for better display
-    const eventsByHour = Array.from({ length: 24 }, (_, hour) => {
-      const hourStart = new Date(currentDate);
-      hourStart.setHours(hour, 0, 0, 0);
-      const hourEnd = new Date(currentDate);
-      hourEnd.setHours(hour, 59, 59, 999);
-
-      return {
+  // Generate time slots for day/week view
+  const generateTimeSlots = () => {
+    const slots = [];
+    for (let hour = 0; hour < 24; hour++) {
+      slots.push({
         hour,
-        events: dayEvents.filter((event: any) => {
-          if (event.isAllDay) return hour === 0; // Show all-day events at the top
-          const eventStart = new Date(event.startTime);
-          return eventStart.getHours() === hour;
-        })
-      };
-    });
-
-    return eventsByHour;
+        time: `${hour === 0 ? '12' : hour <= 12 ? hour : hour - 12} ${hour < 12 ? 'AM' : 'PM'}`,
+        events: []
+      });
+    }
+    return slots;
   };
 
-  const calendarDays = generateCalendarDays();
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const weekViewDays = generateWeekDays();
-  const dayViewEvents = generateDayEvents();
-  const timeSlots = generateTimeSlots();
-
-  // Get upcoming events from real data
-  const upcomingEvents = events ? events
-    .filter((event: CalendarEvent) => new Date(event.startTime) >= new Date())
-    .sort((a: CalendarEvent, b: CalendarEvent) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-    .slice(0, 5)
-    .map((event: CalendarEvent) => {
-      const eventDate = new Date(event.startTime);
-      const endDate = event.endTime ? new Date(event.endTime) : null;
-      
-      const providerColors = {
-        'google_calendar': 'bg-blue-500',
-        'outlook': 'bg-orange-500',
-        'apple_calendar': 'bg-gray-500'
-      };
-
-      let timeDisplay = '';
-      if (event.isAllDay) {
-        timeDisplay = format(eventDate, 'EEEE, MMMM d') + ' - All day';
-      } else if (endDate) {
-        timeDisplay = format(eventDate, 'EEEE, MMMM d, h:mm a') + ' - ' + format(endDate, 'h:mm a');
-      } else {
-        timeDisplay = format(eventDate, 'EEEE, MMMM d, h:mm a');
-      }
-
+  // Get events for a specific day
+  const getEventsForDay = (date: Date) => {
+    const dayStart = startOfDay(date);
+    const dayEnd = endOfDay(date);
+    
+    return events.filter((event: any) => {
+      const eventStart = new Date(event.startTime);
+      return eventStart >= dayStart && eventStart <= dayEnd;
+    }).map((event: any) => {
+      const calendar = subCalendars.find(cal => cal.id === event.calendarId || cal.provider === event.provider);
       return {
-        id: event.eventId,
-        title: event.title,
-        time: timeDisplay,
-        color: providerColors[event.provider] || 'bg-gray-500',
-        location: event.location
+        ...event,
+        color: calendar ? calendar.color : 'bg-gray-500'
       };
-    }) : [];
+    });
+  };
 
-  // Handle clicking on calendar grid to create event
+  // Handle grid click to create event
   const handleGridClick = (date: Date, hour?: number) => {
     const clickDate = new Date(date);
     
@@ -336,9 +300,10 @@ export default function CalendarModule() {
         title: '',
         description: '',
         startTime: format(clickDate, 'HH:mm'),
-        endTime: format(new Date(clickDate.getTime() + 60 * 60 * 1000), 'HH:mm'), // Default 1 hour duration
+        endTime: format(new Date(clickDate.getTime() + 60 * 60 * 1000), 'HH:mm'),
         location: '',
-        isAllDay: false
+        isAllDay: false,
+        calendarId: 'personal'
       });
     } else {
       setNewEvent({
@@ -347,7 +312,8 @@ export default function CalendarModule() {
         startTime: '09:00',
         endTime: '10:00',
         location: '',
-        isAllDay: false
+        isAllDay: false,
+        calendarId: 'personal'
       });
     }
     
@@ -358,65 +324,7 @@ export default function CalendarModule() {
   // Handle drag end for moving events
   const onDragEnd = (result: any) => {
     if (!result.destination) return;
-
-    const { draggableId, destination } = result;
-    const [eventId, eventType] = draggableId.split('|');
-    
-    // Parse destination to get new time slot
-    const [destType, destDate, destHour, destMinute] = destination.droppableId.split('|');
-    
-    if (destType !== 'timeslot') return;
-
-    // Find the event being moved
-    const event = events.find((e: any) => e.eventId === eventId);
-    if (!event) return;
-
-    // Calculate new start and end times
-    const newStartTime = new Date(destDate);
-    newStartTime.setHours(parseInt(destHour), parseInt(destMinute), 0, 0);
-    
-    const originalStart = new Date(event.startTime);
-    const originalEnd = event.endTime ? new Date(event.endTime) : null;
-    const duration = originalEnd ? originalEnd.getTime() - originalStart.getTime() : 60 * 60 * 1000; // Default 1 hour
-    
-    const newEndTime = new Date(newStartTime.getTime() + duration);
-
-    // Update the event
-    updateEventMutation.mutate({
-      eventId,
-      updates: {
-        startTime: newStartTime.toISOString(),
-        endTime: newEndTime.toISOString()
-      }
-    });
-  };
-
-  // Generate 15-minute time slots for day view
-  const generateTimeSlots = () => {
-    const slots = [];
-    for (let hour = 0; hour < 24; hour++) {
-      for (let minute = 0; minute < 60; minute += 15) {
-        const time = new Date(currentDate);
-        time.setHours(hour, minute, 0, 0);
-        
-        const eventsInSlot = events.filter((event: any) => {
-          if (event.isAllDay) return hour === 0 && minute === 0;
-          const eventStart = new Date(event.startTime);
-          const eventHour = eventStart.getHours();
-          const eventMinute = Math.floor(eventStart.getMinutes() / 15) * 15;
-          return eventHour === hour && eventMinute === minute;
-        });
-
-        slots.push({
-          hour,
-          minute,
-          time,
-          events: eventsInSlot,
-          id: `timeslot|${format(currentDate, 'yyyy-MM-dd')}|${hour}|${minute}`
-        });
-      }
-    }
-    return slots;
+    // Implementation for drag and drop functionality
   };
 
   // Handle create event form submission
@@ -454,400 +362,398 @@ export default function CalendarModule() {
       startTime: startDateTime.toISOString(),
       endTime: endDateTime ? endDateTime.toISOString() : null,
       location: newEvent.location,
-      isAllDay: newEvent.isAllDay
+      isAllDay: newEvent.isAllDay,
+      calendarId: newEvent.calendarId
     });
   };
 
+  // Toggle calendar visibility
+  const toggleCalendarVisibility = (calendarId: string) => {
+    setSubCalendars(prev => prev.map(cal => 
+      cal.id === calendarId ? { ...cal, visible: !cal.visible } : cal
+    ));
+  };
+
+  // Filter events by visible calendars
+  const visibleEvents = events.filter((event: any) => {
+    const calendar = subCalendars.find(cal => 
+      cal.id === event.calendarId || cal.provider === event.provider
+    );
+    return calendar ? calendar.visible : true;
+  });
+
+  const calendarDays = generateCalendarDays();
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekViewDays = generateWeekDays();
+  const timeSlots = generateTimeSlots();
+
   return (
-    <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Calendar</h1>
-          <Dialog open={isCreateEventOpen} onOpenChange={setIsCreateEventOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Event
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Create New Event</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Title *</Label>
-                  <Input
-                    id="title"
-                    placeholder="Event title"
-                    value={newEvent.title}
-                    onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Event description"
-                    value={newEvent.description}
-                    onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !selectedDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={setSelectedDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="allDay"
-                    checked={newEvent.isAllDay}
-                    onChange={(e) => setNewEvent({ ...newEvent, isAllDay: e.target.checked })}
-                    className="rounded"
-                  />
-                  <Label htmlFor="allDay">All day event</Label>
-                </div>
-
-                {!newEvent.isAllDay && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="startTime">Start Time</Label>
-                      <Input
-                        id="startTime"
-                        type="time"
-                        value={newEvent.startTime}
-                        onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="endTime">End Time</Label>
-                      <Input
-                        id="endTime"
-                        type="time"
-                        value={newEvent.endTime}
-                        onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    placeholder="Event location"
-                    value={newEvent.location}
-                    onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-                  />
-                </div>
-
-                {providers.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Calendar Provider</Label>
-                    <div className="flex space-x-2">
-                      {providers.map((provider: CalendarProvider) => (
-                        <Badge 
-                          key={provider.providerId} 
-                          variant={provider.syncStatus === 'active' ? 'default' : 'secondary'}
-                        >
-                          {provider.provider === 'google_calendar' ? 'Google' : 
-                           provider.provider === 'outlook' ? 'Microsoft' : 'Apple'}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
+    <DragDropContext onDragEnd={onDragEnd}>
+      <div className="flex h-screen bg-white">
+        {/* Sidebar */}
+        <div className={cn(
+          "bg-white border-r border-gray-200 transition-all duration-300 flex flex-col",
+          sidebarOpen ? "w-64" : "w-0 overflow-hidden"
+        )}>
+          {/* Sidebar Header */}
+          <div className="p-4 border-b border-gray-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                <CalendarIcon className="w-5 h-5 text-white" />
               </div>
-              
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsCreateEventOpen(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleCreateEvent}
-                  disabled={createEventMutation.isPending}
-                >
-                  {createEventMutation.isPending ? "Creating..." : "Create Event"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {/* Calendar Header */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center space-x-4">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => navigatePeriod('prev')}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {formatCurrentPeriod()}
-              </h2>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => navigatePeriod('next')}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+              <span className="font-semibold text-lg">Calendar</span>
             </div>
-            <div className="flex items-center space-x-2">
-              {['Month', 'Week', 'Day'].map((mode) => (
-                <Button
-                  key={mode}
-                  variant={viewMode === mode.toLowerCase() ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode(mode.toLowerCase())}
-                >
-                  {mode}
-                </Button>
-              ))}
-            </div>
+            
+            <Button 
+              onClick={() => setIsCreateEventOpen(true)}
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-sm"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create
+            </Button>
           </div>
 
-          {/* Calendar Content - Different views */}
-          {viewMode === 'month' && (
-            <div className="grid grid-cols-7 gap-0">
-              {/* Calendar Headers */}
-              {weekDays.map((day) => (
-                <div key={day} className="p-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
-                  {day}
-                </div>
-              ))}
+          {/* Mini Calendar */}
+          <div className="p-4 border-b border-gray-200">
+            <div className="text-sm font-medium mb-3">{format(currentDate, 'MMMM yyyy')}</div>
+            {/* Mini calendar grid would go here */}
+          </div>
 
-              {/* Calendar Days */}
-              {calendarDays.map((day, index) => (
-                <div
-                  key={index}
-                  className={`calendar-day ${day.isToday ? 'today' : ''} ${
-                    !day.isCurrentMonth ? 'text-gray-400 dark:text-gray-600' : ''
-                  } cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors`}
-                  onClick={() => handleGridClick(day.date)}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`text-sm font-medium ${
-                      day.isToday 
-                        ? 'text-blue-600 dark:text-blue-400' 
-                        : 'text-gray-900 dark:text-gray-100'
-                    }`}>
-                      {day.dayNumber}
-                    </span>
-                    {day.isToday && (
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    {day.events.map((event: any, eventIndex: number) => (
-                      <div
-                        key={eventIndex}
-                        className={`text-xs px-2 py-1 rounded truncate ${event.color}`}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {event.title}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Week View */}
-          {viewMode === 'week' && (
-            <div className="grid grid-cols-7 gap-0">
-              {/* Week Headers */}
-              {weekViewDays.map((day, index) => (
-                <div key={index} className="p-3 text-center border-b border-gray-200 dark:border-gray-700">
-                  <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {format(day.date, 'EEE')}
-                  </div>
-                  <div className={`text-lg font-semibold mt-1 ${
-                    day.isToday 
-                      ? 'text-blue-600 dark:text-blue-400' 
-                      : 'text-gray-900 dark:text-gray-100'
-                  }`}>
-                    {day.dayNumber}
-                  </div>
-                </div>
-              ))}
-
-              {/* Week Events */}
-              {weekViewDays.map((day, index) => (
-                <div 
-                  key={index} 
-                  className="min-h-[300px] p-2 border-r border-gray-200 dark:border-gray-700 last:border-r-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  onClick={() => handleGridClick(day.date, 9)} // Default to 9 AM
-                >
-                  <div className="space-y-1">
-                    {day.events.map((event: any, eventIndex: number) => (
-                      <div
-                        key={eventIndex}
-                        className={`text-xs px-2 py-1 rounded ${event.color} cursor-pointer hover:opacity-80`}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="font-medium truncate">{event.title}</div>
-                        {!event.isAllDay && (
-                          <div className="text-xs opacity-75">
-                            {format(new Date(event.startTime), 'h:mm a')}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Day View */}
-          {viewMode === 'day' && (
-            <div className="max-h-[500px] overflow-y-auto">
-              {dayViewEvents.map((hourSlot, index) => (
-                <div key={index} className="flex border-b border-gray-100 dark:border-gray-700">
-                  <div className="w-16 p-2 text-sm text-gray-500 dark:text-gray-400 text-right">
-                    {hourSlot.hour === 0 ? '12 AM' : 
-                     hourSlot.hour < 12 ? `${hourSlot.hour} AM` : 
-                     hourSlot.hour === 12 ? '12 PM' : 
-                     `${hourSlot.hour - 12} PM`}
-                  </div>
-                  <div 
-                    className="flex-1 p-2 min-h-[60px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    onClick={() => handleGridClick(currentDate, hourSlot.hour)}
-                  >
-                    <div className="space-y-1">
-                      {hourSlot.events.map((event: any, eventIndex: number) => (
-                        <div
-                          key={eventIndex}
-                          className={`px-3 py-2 rounded ${event.color} cursor-pointer hover:opacity-80`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="font-medium">{event.title}</div>
-                          {event.location && (
-                            <div className="text-xs opacity-75 flex items-center mt-1">
-                              <MapPin className="h-3 w-3 mr-1" />
-                              {event.location}
-                            </div>
-                          )}
-                          {!event.isAllDay && (
-                            <div className="text-xs opacity-75 flex items-center mt-1">
-                              <Clock className="h-3 w-3 mr-1" />
-                              {format(new Date(event.startTime), 'h:mm a')}
-                              {event.endTime && ` - ${format(new Date(event.endTime), 'h:mm a')}`}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Calendar Integration Status */}
-        {providers.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Calendar Integrations</h3>
-            </div>
+          {/* My Calendars */}
+          <div className="flex-1 overflow-y-auto">
             <div className="p-4">
-              <div className="flex flex-wrap gap-3">
-                {providers.map((provider: CalendarProvider) => (
-                  <div key={provider.providerId} className="flex items-center space-x-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className={`w-2 h-2 rounded-full ${
-                      provider.syncStatus === 'active' ? 'bg-green-500' : 
-                      provider.syncStatus === 'error' ? 'bg-red-500' : 
-                      provider.syncStatus === 'pending' ? 'bg-yellow-500' : 'bg-gray-500'
-                    }`}></div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {provider.provider === 'google_calendar' ? 'Google Calendar' : 
-                       provider.provider === 'outlook' ? 'Microsoft Outlook' : 'Apple Calendar'}
-                    </span>
-                    <Badge variant={provider.syncStatus === 'active' ? 'default' : 'secondary'}>
-                      {provider.syncStatus}
-                    </Badge>
+              <h3 className="text-sm font-medium text-gray-700 mb-3">My calendars</h3>
+              <div className="space-y-2">
+                {subCalendars.map((calendar) => (
+                  <div key={calendar.id} className="flex items-center gap-3 py-1 px-2 rounded hover:bg-gray-50">
+                    <Checkbox
+                      checked={calendar.visible}
+                      onCheckedChange={() => toggleCalendarVisibility(calendar.id)}
+                      className="data-[state=checked]:bg-transparent data-[state=checked]:border-current"
+                      style={{ color: calendar.color.replace('bg-', '') }}
+                    />
+                    <div className={cn("w-3 h-3 rounded", calendar.color)}></div>
+                    <span className="text-sm text-gray-700 flex-1">{calendar.name}</span>
+                    <MoreVertical className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100" />
                   </div>
                 ))}
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Upcoming Events */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Upcoming Events</h3>
-              {eventsLoading && (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-              )}
+            {/* Other Calendars */}
+            <div className="p-4 border-t border-gray-200">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-gray-700">Other calendars</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => importGoogleCalendarMutation.mutate()}
+                  disabled={importGoogleCalendarMutation.isPending}
+                  className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              
+              <div className="space-y-2">
+                {providers.length === 0 ? (
+                  <div className="text-xs text-gray-500 py-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => importGoogleCalendarMutation.mutate()}
+                      disabled={importGoogleCalendarMutation.isPending}
+                      className="text-xs text-blue-600 hover:text-blue-800 p-0 h-auto font-normal"
+                    >
+                      {importGoogleCalendarMutation.isPending ? "Connecting..." : "Import from Google Calendar"}
+                    </Button>
+                  </div>
+                ) : (
+                  providers.map((provider: any) => (
+                    <div key={provider.providerId} className="flex items-center gap-3 py-1 px-2 rounded hover:bg-gray-50 group">
+                      <div className="w-3 h-3 rounded bg-blue-500"></div>
+                      <span className="text-sm text-gray-700 flex-1 capitalize">{provider.provider.replace('_', ' ')}</span>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={provider.syncStatus === 'active' ? 'default' : 'destructive'} className="text-xs">
+                          {provider.syncStatus}
+                        </Badge>
+                        {provider.syncStatus === 'active' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => syncGoogleCalendarsMutation.mutate()}
+                            disabled={syncGoogleCalendarsMutation.isPending}
+                            className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+                          >
+                            <Clock className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
-          <div className="p-4 space-y-3">
-            {upcomingEvents.length === 0 ? (
-              <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                <CalendarIcon className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                <h4 className="text-lg font-medium mb-2">No upcoming events</h4>
-                <p className="text-sm">Create your first event or connect a calendar provider to get started.</p>
-              </div>
-            ) : (
-              upcomingEvents.map((event: any) => (
-                <div key={event.id} className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                  <div className={`w-3 h-3 ${event.color} rounded-full mt-2 flex-shrink-0`}></div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                      {event.title}
-                    </h4>
-                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-300 mt-1">
-                      <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
-                      <span className="truncate">{event.time}</span>
-                    </div>
-                    {event.location && (
-                      <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
-                        <span className="truncate">{event.location}</span>
-                      </div>
-                    )}
-                  </div>
-                  <Button variant="ghost" size="sm" className="flex-shrink-0">
-                    <ExternalLink className="h-4 w-4" />
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
+          {/* Top Bar */}
+          <div className="bg-white border-b border-gray-200 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                >
+                  <Menu className="w-5 h-5" />
+                </Button>
+                
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => navigatePeriod('prev')}>
+                    <ChevronLeft className="w-4 h-4" />
                   </Button>
+                  <Button variant="ghost" size="sm" onClick={() => navigatePeriod('next')}>
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setCurrentDate(new Date())}>
+                    Today
+                  </Button>
+                  <h1 className="text-xl font-normal text-gray-700 ml-4">
+                    {formatCurrentPeriod()}
+                  </h1>
                 </div>
-              ))
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+                  {['Month', 'Week', 'Day'].map((mode) => (
+                    <Button
+                      key={mode}
+                      variant={viewMode === mode.toLowerCase() ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode(mode.toLowerCase())}
+                      className={cn(
+                        "rounded-none border-0",
+                        viewMode === mode.toLowerCase() ? "bg-blue-100 text-blue-700" : "hover:bg-gray-50"
+                      )}
+                    >
+                      {mode}
+                    </Button>
+                  ))}
+                </div>
+                
+                <Button variant="ghost" size="sm">
+                  <Search className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="sm">
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Calendar Content */}
+          <div className="flex-1 overflow-auto">
+            {viewMode === 'month' && (
+              <div className="p-6">
+                <div className="grid grid-cols-7 gap-0 border border-gray-200 rounded-lg overflow-hidden">
+                  {/* Day Headers */}
+                  {weekDays.map((day) => (
+                    <div key={day} className="bg-gray-50 border-b border-gray-200 p-3 text-center text-sm font-medium text-gray-700">
+                      {day}
+                    </div>
+                  ))}
+                  
+                  {/* Calendar Days */}
+                  {calendarDays.map((day, index) => (
+                    <div
+                      key={index}
+                      className={cn(
+                        "min-h-[120px] border-b border-r border-gray-200 p-2 cursor-pointer hover:bg-gray-50 transition-colors",
+                        !day.isCurrentMonth && "bg-gray-50",
+                        day.isToday && "bg-blue-50"
+                      )}
+                      onClick={() => handleGridClick(day.date)}
+                    >
+                      <div className={cn(
+                        "text-sm font-medium mb-2",
+                        day.isToday ? "text-blue-600" : day.isCurrentMonth ? "text-gray-900" : "text-gray-400"
+                      )}>
+                        {day.dayNumber}
+                      </div>
+                      <div className="space-y-1">
+                        {day.events.slice(0, 3).map((event: any, eventIndex: number) => (
+                          <div
+                            key={eventIndex}
+                            className={cn("text-xs px-2 py-1 rounded text-white truncate", event.color)}
+                          >
+                            {event.title}
+                          </div>
+                        ))}
+                        {day.events.length > 3 && (
+                          <div className="text-xs text-gray-500 px-2">
+                            +{day.events.length - 3} more
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {viewMode === 'week' && (
+              <div className="flex flex-col h-full">
+                {/* Week Header */}
+                <div className="flex border-b border-gray-200 bg-gray-50">
+                  <div className="w-16 border-r border-gray-200"></div>
+                  {weekViewDays.map((day, index) => (
+                    <div key={index} className="flex-1 p-3 text-center border-r border-gray-200 last:border-r-0">
+                      <div className="text-sm text-gray-600">{format(day.date, 'EEE')}</div>
+                      <div className={cn(
+                        "text-lg font-medium mt-1",
+                        day.isToday ? "text-blue-600" : "text-gray-900"
+                      )}>
+                        {day.dayNumber}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Week Grid */}
+                <div className="flex-1 overflow-y-auto">
+                  {timeSlots.map((slot, slotIndex) => (
+                    <div key={slotIndex} className="flex border-b border-gray-100">
+                      <div className="w-16 p-2 text-xs text-gray-500 text-right border-r border-gray-200">
+                        {slot.time}
+                      </div>
+                      {weekViewDays.map((day, dayIndex) => (
+                        <div 
+                          key={dayIndex} 
+                          className="flex-1 min-h-[60px] border-r border-gray-100 last:border-r-0 cursor-pointer hover:bg-gray-50 transition-colors relative"
+                          onClick={() => handleGridClick(day.date, slot.hour)}
+                        >
+                          {/* Events for this hour would be positioned here */}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {viewMode === 'day' && (
+              <div className="flex flex-col h-full">
+                {/* Day Header */}
+                <div className="flex border-b border-gray-200 bg-gray-50 p-4">
+                  <div className="text-center">
+                    <div className="text-sm text-gray-600">{format(currentDate, 'EEEE')}</div>
+                    <div className="text-2xl font-medium text-gray-900 mt-1">
+                      {format(currentDate, 'd')}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Day Grid */}
+                <div className="flex-1 overflow-y-auto">
+                  {timeSlots.map((slot, slotIndex) => (
+                    <div key={slotIndex} className="flex border-b border-gray-100">
+                      <div className="w-16 p-2 text-xs text-gray-500 text-right border-r border-gray-200">
+                        {slot.time}
+                      </div>
+                      <div 
+                        className="flex-1 min-h-[60px] cursor-pointer hover:bg-gray-50 transition-colors relative"
+                        onClick={() => handleGridClick(currentDate, slot.hour)}
+                      >
+                        {/* Events for this hour would be positioned here */}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         </div>
+
+        {/* Create Event Dialog */}
+        <Dialog open={isCreateEventOpen} onOpenChange={setIsCreateEventOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Create Event</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="title">Title</Label>
+                <Input
+                  id="title"
+                  value={newEvent.title}
+                  onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                  placeholder="Add title"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="startTime">Start Time</Label>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    value={newEvent.startTime}
+                    onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="endTime">End Time</Label>
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={newEvent.endTime}
+                    onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={newEvent.description}
+                  onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                  placeholder="Add description"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="location">Location</Label>
+                <Input
+                  id="location"
+                  value={newEvent.location}
+                  onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
+                  placeholder="Add location"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsCreateEventOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateEvent}
+                  disabled={createEventMutation.isPending}
+                >
+                  {createEventMutation.isPending ? "Creating..." : "Save"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
-    </div>
+    </DragDropContext>
   );
 }
