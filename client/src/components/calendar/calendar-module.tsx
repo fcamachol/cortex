@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -62,11 +62,28 @@ export default function CalendarModule() {
   });
   const [eventTab, setEventTab] = useState<'event' | 'task' | 'appointment'>('event');
   const [guestEmail, setGuestEmail] = useState('');
+  const [showRepeatDropdown, setShowRepeatDropdown] = useState(false);
+  const [repeatOption, setRepeatOption] = useState('no-repeat');
   const [newCalendar, setNewCalendar] = useState({
     name: '',
     color: 'bg-blue-500',
     description: ''
   });
+
+  const repeatOptions = [
+    { value: 'no-repeat', label: 'No se repite', icon: '👤' },
+    { value: 'daily', label: 'Cada día', icon: '📅' },
+    { value: 'weekly-thursday', label: 'Cada semana el jueves', icon: '📍' },
+    { value: 'monthly-third-thursday', label: 'Cada mes el tercer jueves', icon: '📊' },
+    { value: 'yearly-june-19', label: 'Anualmente el 19 de junio', icon: '📆' },
+    { value: 'weekdays', label: 'Todos los días laborables (de lunes a viernes)', icon: null },
+    { value: 'custom', label: 'Personalizar...', icon: null }
+  ];
+
+  const getRepeatLabel = (value: string) => {
+    const option = repeatOptions.find(opt => opt.value === value);
+    return option ? option.label : 'No se repite';
+  };
 
   const { toast } = useToast();
 
@@ -982,7 +999,11 @@ export default function CalendarModule() {
 
         {/* Create Event Dialog - Google Calendar Style */}
         <Dialog open={isCreateEventOpen} onOpenChange={setIsCreateEventOpen}>
-          <DialogContent className="sm:max-w-[680px] max-h-[90vh] overflow-y-auto p-0">
+          <DialogContent className="sm:max-w-[680px] max-h-[90vh] overflow-y-auto p-0" aria-describedby="event-dialog-description">
+            <DialogTitle className="sr-only">Crear nuevo evento</DialogTitle>
+            <div id="event-dialog-description" className="sr-only">
+              Formulario para crear un nuevo evento en el calendario con opciones de repetición, invitados y configuración avanzada
+            </div>
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b">
               <div className="flex-1">
@@ -1054,8 +1075,40 @@ export default function CalendarModule() {
                       />
                     </div>
                   </div>
-                  <div className="text-sm text-gray-500">
-                    Zona horaria • No se repite
+                  <div className="text-sm text-gray-500 flex items-center gap-2">
+                    <span>Zona horaria</span>
+                    <span>•</span>
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowRepeatDropdown(!showRepeatDropdown)}
+                        className="flex items-center gap-1 text-gray-500 hover:text-blue-600 transition-colors"
+                      >
+                        <span>{getRepeatLabel(repeatOption)}</span>
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      
+                      {showRepeatDropdown && (
+                        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[250px]">
+                          <div className="py-2">
+                            {repeatOptions.map((option) => (
+                              <button
+                                key={option.value}
+                                onClick={() => {
+                                  setRepeatOption(option.value);
+                                  setShowRepeatDropdown(false);
+                                }}
+                                className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-3"
+                              >
+                                {option.icon && <span className="text-gray-400">{option.icon}</span>}
+                                <span className="text-gray-700">{option.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
