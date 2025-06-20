@@ -346,7 +346,8 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       // Process each chat in the data array
-      for (const chat of data) {
+      const chatsArray = Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [data];
+      for (const chat of chatsArray) {
         const chatId = chat.remoteJid || chat.id;
         if (!chatId) {
           console.log('⚠️ Skipping chat without remoteJid');
