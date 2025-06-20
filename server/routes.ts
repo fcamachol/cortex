@@ -804,13 +804,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reactorJid: senderJid, // Who performed the reaction
         originalSenderJid: originalMessage.senderJid || originalMessage.fromMe ? 'me' : senderJid,
         content: originalMessage.content || '',
+        hashtags: ActionsEngine.extractHashtagsAndKeywords(originalMessage.content || '').hashtags,
+        keywords: ActionsEngine.extractHashtagsAndKeywords(originalMessage.content || '').keywords,
         reaction: reactionEmoji,
         timestamp: new Date(),
         fromMe: originalMessage.fromMe,
       };
 
       // Trigger actions engine for reaction
-      await actionsEngine.processMessageTriggers(triggerContext);
+      await ActionsEngine.processMessageForActions(triggerContext);
       console.log(`✅ Processed reaction trigger for ${reactionEmoji} on message: ${originalMessage.content?.substring(0, 50) || 'No content'}`);
 
     } catch (error) {

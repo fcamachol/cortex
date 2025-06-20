@@ -237,16 +237,15 @@ export class ActionsEngine {
 
     console.log('📝 Intelligent task data prepared:', taskData);
 
-    // Save task to database using storage interface
+    // Save task to database using SQL directly
     try {
-      const newTask = await storage.createTask({
-        title: taskData.title,
-        description: taskData.description,
-        priority: taskData.priority,
-        status: taskData.taskStatus,
-        dueDate: taskData.dueDate,
-        userId: taskData.userId
-      });
+      const result = await db.execute(sql`
+        INSERT INTO tasks (title, description, priority, status, due_date, user_id)
+        VALUES (${taskData.title}, ${taskData.description}, ${taskData.priority}, ${taskData.taskStatus}, ${taskData.dueDate}, ${taskData.userId})
+        RETURNING task_id, title, description, status
+      `);
+      
+      const newTask = result.rows[0];
       
       console.log('✅ Intelligent task saved to database:', newTask);
       return { 
