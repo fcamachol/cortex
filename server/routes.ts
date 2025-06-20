@@ -1,13 +1,10 @@
 import { Request, Response, NextFunction, Express } from 'express';
-import { Server } from 'http';
-import { WebSocketServer } from 'ws';
 import { storage } from './storage';
 import { sql } from 'drizzle-orm';
 import { db } from './db';
 import * as chrono from 'chrono-node';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-// ActionsEngine import commented out for now
 
 // Helper function to format phone numbers to E.164 format
 function formatToE164(phoneNumber: string): string {
@@ -71,7 +68,7 @@ function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) 
   });
 }
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express): Promise<void> {
   // Basic test route
   app.get('/api/test', (req: Request, res: Response) => {
     res.json({ message: 'API is working' });
@@ -438,6 +435,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
-  // Return the app for server creation
-  return app as any;
+  // Routes registration complete
 }
