@@ -2308,7 +2308,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           return {
             ...conversation,
+            id: conversation.chatId, // Map chatId to id for frontend compatibility
             displayName,
+            title: displayName, // Add title field for frontend
             contactInfo: contact,
             groupInfo
           };
