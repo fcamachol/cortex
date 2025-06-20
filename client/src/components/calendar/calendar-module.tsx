@@ -760,7 +760,14 @@ export default function CalendarModule() {
       endTime: endDateTime ? endDateTime.toISOString() : null,
       location: newEvent.location,
       isAllDay: newEvent.isAllDay,
-      calendarId: newEvent.calendarId
+      calendarId: newEvent.calendarId,
+      guests: newEvent.guests,
+      hasGoogleMeet: newEvent.hasGoogleMeet,
+      meetLink: newEvent.meetLink,
+      attachments: newEvent.attachments,
+      availability: newEvent.availability,
+      visibility: newEvent.visibility,
+      notifications: newEvent.notifications
     });
   };
 
