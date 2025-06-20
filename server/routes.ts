@@ -7,7 +7,7 @@ import fetch from "node-fetch";
 import { storage } from "./storage";
 import { evolutionManager } from "./evolution-manager";
 import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings, getInstanceEvolutionApi } from "./evolution-api";
-import { db, pool } from "./db";
+import { db } from "./db";
 import { actionsEngine, ActionsEngine } from "./actions-engine";
 // import { bridgeManager } from "./evolution-bridge-manager";
 import { 
@@ -30,6 +30,7 @@ import {
   appSpaces,
   insertAppSpaceSchema
 } from "../shared/schema";
+import { eq, desc, and, or, sql } from "drizzle-orm";
 import { 
   authenticateToken, 
   optionalAuth, 
@@ -1440,13 +1441,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
       
-      // Query database directly to avoid schema mismatch
-      const result = await pool.query(
-        'SELECT instance_name, display_name, phone_number, status, last_connected_at FROM whatsapp_instances WHERE user_id = $1 ORDER BY created_at DESC',
-        [userId]
-      );
+      // Query database using Drizzle ORM
+      const instances = await db
+        .select({
+          instanceName: whatsappInstances.instanceName,
+          displayName: whatsappInstances.displayName,
+          phoneNumber: whatsappInstances.phoneNumber,
+          status: whatsappInstances.status,
+          lastConnectedAt: whatsappInstances.lastConnectedAt,
+        })
+        .from(whatsappInstances)
+        .where(eq(whatsappInstances.userId, userId))
+        .orderBy(desc(whatsappInstances.createdAt));
       
-      const statusWithDetails = result.rows.map(instance => {
+      const statusWithDetails = instances.map(instance => {
         const isConnected = instance.status === 'connected';
         
         return {
