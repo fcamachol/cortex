@@ -7,7 +7,7 @@ import { storage } from "./storage";
 import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings, getInstanceEvolutionApi } from "./evolution-api";
 import { db, pool } from "./db";
 import { setRLSContext } from "./rls-context";
-import { actionsEngine, ActionsEngine } from "./actions-engine";
+import { ActionsEngine } from "./actions-engine";
 import { IntelligentWebhookController } from "./intelligent-webhook-controller";
 import { 
   insertUserSchema,

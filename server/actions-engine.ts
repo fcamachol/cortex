@@ -1,14 +1,14 @@
-import { db } from './storage';
+import { storage } from './storage';
+import { db } from './db';
 import { sql, eq, and } from 'drizzle-orm';
 import { 
   whatsappMessages, 
   whatsappContacts,
-  crmTasks,
   actionRules,
   actionExecutions,
+  tasks,
   type ActionRule,
-  type InsertActionExecution,
-  type InsertTask
+  type InsertActionExecution
 } from '../shared/schema';
 import * as chrono from 'chrono-node';
 import { calendarService } from './calendar-service';
@@ -85,8 +85,9 @@ export class ActionsEngine {
           // Log execution
           await db.insert(actionExecutions).values({
             ruleId: rule.ruleId,
-            triggeredByMessageId: messageContext.messageId,
+            triggeredBy: messageContext.messageId,
             executionResult: result,
+            status: result.success ? 'completed' : 'failed',
             executedAt: new Date()
           });
         }
@@ -161,8 +162,8 @@ export class ActionsEngine {
         .limit(1);
 
       if (quotedMessage[0]) {
-        const originalContent = quotedMessage[0].textContent || '';
-        const replyContent = currentMessage[0].textContent || '';
+        const originalContent = quotedMessage[0].content || '';
+        const replyContent = currentMessage[0].content || '';
         
         conversationContext = `Original: "${originalContent}"\n\nReply: "${replyContent}"`;
         fullContextText = `${originalContent} ${replyContent}`;
