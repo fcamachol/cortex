@@ -21,6 +21,7 @@ function AuthenticatedRoutes() {
       <Route path="/" component={Dashboard} />
       <Route path="/actions" component={ActionsPage} />
       <Route path="/tasks" component={TasksPage} />
+      <Route path="/database" component={DatabaseViewer} />
       <Route path="/qr-test" component={QRTestPage} />
       <Route component={NotFound} />
     </Switch>
