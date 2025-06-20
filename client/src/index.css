@@ -137,20 +137,57 @@
   }
 }
 
-/* Custom scrollbar */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+/* Enhanced scrollbars for conversations and chat */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.4);
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.6);
+}
+
+.scrollbar-thin::-webkit-scrollbar-corner {
   background: transparent;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
-  border-radius: 3px;
+/* Smooth scrolling behavior */
+.scroll-smooth {
+  scroll-behavior: smooth;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+/* Fade in/out effect for scrollbars */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.4) transparent;
+}
+
+/* Custom scrollbar for conversations list */
+.conversations-scroll::-webkit-scrollbar-thumb {
+  background: hsl(147, 57%, 45% / 0.3);
+}
+
+.conversations-scroll::-webkit-scrollbar-thumb:hover {
+  background: hsl(147, 57%, 45% / 0.5);
+}
+
+/* Chat messages scroll with WhatsApp-style scrollbar */
+.chat-messages-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--whatsapp-secondary) / 0.3);
+}
+
+.chat-messages-scroll::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--whatsapp-secondary) / 0.5);
 }

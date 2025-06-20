@@ -157,16 +157,16 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 chat-area custom-scrollbar">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 chat-area max-h-[calc(100vh-200px)] scroll-smooth scrollbar-thin chat-messages-scroll">
         <div className="space-y-4">
           {messages.length === 0 ? (
             <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
               No messages yet. Start the conversation!
             </div>
           ) : (
-            messages.map((message: any) => (
+            messages.map((message: any, index: number) => (
               <div
-                key={message.id}
+                key={message.messageId || message.id || `message-${index}`}
                 className={`flex ${message.isFromMe ? 'justify-end' : 'justify-start'}`}
               >
                 <div
