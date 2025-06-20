@@ -370,18 +370,76 @@ export class ActionsEngine {
   }
 
   private async createCalendarEvent(config: any, context: TriggerContext): Promise<any> {
+    console.log('🗓️ Creating intelligent calendar event from reaction trigger - START');
+    console.log('📋 Config received:', config);
+    console.log('📍 Context received:', context);
+
+    // Intelligent NLP analysis of the message content
+    const nlpAnalysis = this.analyzeMessageIntelligently(context.content || '');
+    
+    // Use intelligent date parsing or fallback to config/defaults
+    let startDate = new Date();
+    let endDate = new Date();
+    
+    if (nlpAnalysis.suggestedDueDate) {
+      startDate = nlpAnalysis.suggestedDueDate;
+      console.log(`🧠 Intelligent date detected: ${startDate.toISOString()}`);
+    } else if (config.startDate) {
+      startDate = new Date(config.startDate);
+    }
+    
+    // Set end date based on duration or default to 1 hour
+    const durationMs = (config.durationMinutes || 60) * 60 * 1000;
+    endDate = new Date(startDate.getTime() + durationMs);
+
+    // Use intelligent location detection
+    let location = config.location;
+    if (nlpAnalysis.extractedLocation) {
+      location = nlpAnalysis.extractedLocation;
+      console.log(`🧠 Intelligent location detected: ${location}`);
+    }
+    
+    // Generate intelligent title
+    let title = this.interpolateTemplate(config.title, context);
+    if (context.content && context.content.length < 60) {
+      // Use the original message as title if it's concise
+      title = context.content;
+    }
+    
+    // Enhanced description with NLP insights
+    let description = this.interpolateTemplate(config.description || '', context);
+    if (context.reaction && context.content) {
+      description = `Calendar event created from reaction ${context.reaction}\n\nOriginal message: "${context.content}"\n\n${description}`;
+      
+      if (nlpAnalysis.needsMeetLink) {
+        description += `\n🔗 Virtual meeting requested`;
+      }
+      if (nlpAnalysis.keywords.length > 0) {
+        description += `\n🏷️ Key topics: ${nlpAnalysis.keywords.slice(0, 3).join(', ')}`;
+      }
+    }
+
     const eventData = {
-      title: this.interpolateTemplate(config.title, context),
-      description: this.interpolateTemplate(config.description, context),
-      startDate: new Date(config.startDate),
-      endDate: new Date(config.endDate),
-      location: config.location,
+      title,
+      description,
+      startDate,
+      endDate,
+      location,
       attendees: config.attendees || [],
       sourceInstanceId: context.instanceId,
       sourceChatId: context.chatId,
+      nlpEnhanced: true,
+      analysis: nlpAnalysis
     };
 
-    console.log('Creating calendar event:', eventData);
+    console.log('📅 Intelligent calendar event data prepared:', eventData);
+    if (nlpAnalysis.suggestedDueDate) {
+      console.log(`🗓️ Using intelligent start time: ${startDate.toISOString()}`);
+    }
+    if (nlpAnalysis.extractedLocation) {
+      console.log(`📍 Using intelligent location: ${location}`);
+    }
+
     return { eventId: 'generated-event-id', ...eventData };
   }
 
