@@ -245,25 +245,46 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/api/whatsapp/chat-messages', async (req: Request, res: Response) => {
     try {
       const { chatId, userId, instanceId, limit } = req.query;
+      const finalUserId = userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const finalLimit = parseInt(limit as string || '50');
       
-      if (chatId && userId && instanceId) {
+      if (chatId && instanceId) {
         // Get messages for specific chat
         const messages = await storage.getWhatsappMessages(
-          userId as string, 
+          finalUserId, 
           instanceId as string, 
           chatId as string, 
-          parseInt(limit as string || '50')
+          finalLimit
+        );
+        res.json(messages);
+      } else if (instanceId) {
+        // Get recent messages for specific instance
+        const messages = await storage.getAllWhatsappMessagesForInstance(
+          finalUserId, 
+          instanceId as string, 
+          finalLimit
         );
         res.json(messages);
       } else {
-        // Get recent messages across all chats
-        const messages = await storage.getWhatsappMessages(
-          userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42', 
-          instanceId as string, 
-          chatId as string, 
-          parseInt(limit as string || '50')
-        );
-        res.json(messages);
+        // Get recent messages across all instances for user
+        const instances = await storage.getWhatsappInstances(finalUserId);
+        let allMessages: any[] = [];
+        
+        for (const instance of instances) {
+          const messages = await storage.getAllWhatsappMessagesForInstance(
+            finalUserId, 
+            instance.instanceId, 
+            Math.ceil(finalLimit / instances.length) || 10
+          );
+          allMessages = [...allMessages, ...messages];
+        }
+        
+        // Sort by timestamp and limit
+        allMessages = allMessages
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+          .slice(0, finalLimit);
+        
+        res.json(allMessages);
       }
     } catch (error) {
       console.error('Error fetching chat messages:', error);

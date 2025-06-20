@@ -172,10 +172,14 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                       {getConversationDisplayName(conversation)}
                     </h3>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {conversation.latestMessage?.createdAt ? new Date(conversation.latestMessage.createdAt).toLocaleTimeString([], { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      }) : ''}
+                      {(() => {
+                        const latestMessage = getLatestMessage(conversation.chatId);
+                        const timestamp = latestMessage?.timestamp || latestMessage?.createdAt || conversation.lastMessageTimestamp;
+                        return timestamp ? new Date(timestamp).toLocaleTimeString([], { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        }) : '';
+                      })()}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-300 truncate mt-1">
