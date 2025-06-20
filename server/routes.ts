@@ -8,6 +8,7 @@ import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings, g
 import { db, pool } from "./db";
 import { setRLSContext } from "./rls-context";
 import { ActionsEngine } from "./actions-engine";
+import { sql } from "drizzle-orm";
 import { IntelligentWebhookController } from "./intelligent-webhook-controller";
 import { 
   insertUserSchema,
