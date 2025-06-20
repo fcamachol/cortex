@@ -91,12 +91,60 @@ export class CalendarService {
   }
 
   /**
+   * Create a default local calendar account for users without Google integration
+   */
+  private async createDefaultCalendarAccount(userId: string): Promise<CalendarAccount> {
+    const defaultAccountData: InsertCalendarAccount = {
+      userId,
+      providerId: `local_${userId}`,
+      providerType: 'google', // Keep as google for compatibility
+      email: `local_${userId}@system.local`,
+      displayName: 'General Calendar',
+      accessToken: 'local_access_token', // Placeholder for local-only
+      refreshToken: 'local_refresh_token', // Placeholder for local-only
+      scope: 'local',
+      syncStatus: 'active'
+    };
+
+    const account = await storage.createCalendarAccount(defaultAccountData);
+    
+    // Create a default general calendar
+    await this.createDefaultGeneralCalendar(account.accountId);
+    
+    return account;
+  }
+
+  /**
+   * Create a default general calendar for local events
+   */
+  private async createDefaultGeneralCalendar(accountId: number): Promise<CalendarCalendar> {
+    const defaultCalendarData: InsertCalendarCalendar = {
+      accountId,
+      providerId: `general_calendar_${accountId}`,
+      name: 'General Calendar',
+      description: 'Default calendar for all appointments and events',
+      timeZone: 'America/Mexico_City',
+      color: '#1976D2',
+      isDefault: true,
+      syncStatus: 'active'
+    };
+
+    return await storage.createCalendarCalendar(defaultCalendarData);
+  }
+
+  /**
    * Get authenticated Google Calendar client for user
    */
   private async getAuthenticatedClient(userId: string) {
-    const account = await storage.getCalendarAccount(userId);
+    let account = await storage.getCalendarAccount(userId);
     if (!account) {
-      throw new Error('No calendar account found for user');
+      // Create a default calendar account for local-only events
+      account = await this.createDefaultCalendarAccount(userId);
+    }
+
+    // For local accounts, return null to indicate local-only mode
+    if (account.accessToken === 'local_access_token') {
+      return null;
     }
 
     const oauth2Client = new google.auth.OAuth2(
@@ -189,12 +237,11 @@ export class CalendarService {
    * Create event in Google Calendar and sync to local database
    */
   async createEvent(userId: string, eventData: CalendarEventData, calendarId?: string): Promise<CalendarEvent> {
-    const { oauth2Client, account } = await this.getAuthenticatedClient(userId);
-    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-
+    const oauth2Client = await this.getAuthenticatedClient(userId);
+    
     // Get user's calendars to find target calendar
     const userCalendars = await storage.getCalendarCalendars(userId);
-    let targetCalendar = userCalendars.find(c => c.isPrimary);
+    let targetCalendar = userCalendars.find(c => c.isDefault) || userCalendars[0];
     
     if (calendarId) {
       const specified = userCalendars.find(c => c.calendarId.toString() === calendarId);
@@ -205,66 +252,73 @@ export class CalendarService {
       throw new Error('No suitable calendar found for event creation');
     }
 
-    // Create event in Google Calendar
-    const googleEvent = {
-      summary: eventData.title,
-      description: eventData.description,
-      location: eventData.location,
-      start: eventData.isAllDay ? 
-        { date: eventData.startTime.toISOString().split('T')[0] } :
-        { dateTime: eventData.startTime.toISOString(), timeZone: targetCalendar.timezone || 'UTC' },
-      end: eventData.isAllDay ?
-        { date: (eventData.endTime || new Date(eventData.startTime.getTime() + 24*60*60*1000)).toISOString().split('T')[0] } :
-        { dateTime: (eventData.endTime || new Date(eventData.startTime.getTime() + 60*60*1000)).toISOString(), timeZone: targetCalendar.timezone || 'UTC' },
-      attendees: eventData.attendees?.map(email => ({ email }))
-    };
+    let googleEventId = null;
 
-    try {
-      const response = await calendar.events.insert({
-        calendarId: targetCalendar.providerCalendarId,
-        requestBody: googleEvent
-      });
+    // Only attempt Google Calendar creation if we have OAuth client
+    if (oauth2Client) {
+      const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
-      if (!response.data.id) {
-        throw new Error('Failed to create event in Google Calendar');
-      }
-
-      // Create local calendar event record
-      const localEventData: InsertCalendarEvent = {
-        calendarId: targetCalendar.calendarId,
-        providerEventId: response.data.id,
-        title: eventData.title,
-        description: eventData.description || null,
-        startTime: eventData.startTime,
-        endTime: eventData.endTime || new Date(eventData.startTime.getTime() + 60*60*1000),
-        isAllDay: eventData.isAllDay || false,
-        location: eventData.location || null,
-        meetLink: response.data.hangoutLink || null,
-        providerHtmlLink: response.data.htmlLink || null,
-        status: response.data.status || 'confirmed'
+      // Create event in Google Calendar
+      const googleEvent = {
+        summary: eventData.title,
+        description: eventData.description,
+        location: eventData.location,
+        start: eventData.isAllDay ? 
+          { date: eventData.startTime.toISOString().split('T')[0] } :
+          { dateTime: eventData.startTime.toISOString(), timeZone: targetCalendar.timeZone || 'UTC' },
+        end: eventData.isAllDay ?
+          { date: (eventData.endTime || new Date(eventData.startTime.getTime() + 24*60*60*1000)).toISOString().split('T')[0] } :
+          { dateTime: (eventData.endTime || new Date(eventData.startTime.getTime() + 60*60*1000)).toISOString(), timeZone: targetCalendar.timeZone || 'UTC' },
+        attendees: eventData.attendees?.map(email => ({ email }))
       };
 
-      const localEvent = await storage.createCalendarEvent(localEventData);
+      try {
+        const response = await calendar.events.insert({
+          calendarId: targetCalendar.providerId,
+          requestBody: googleEvent
+        });
 
-      // Add attendees if any
-      if (eventData.attendees?.length) {
-        for (const email of eventData.attendees) {
-          await storage.createCalendarAttendee({
-            eventId: localEvent.eventId,
-            email,
-            displayName: email,
-            responseStatus: 'needsAction',
-            isOrganizer: false
-          });
+        if (response.data.id) {
+          googleEventId = response.data.id;
         }
+      } catch (googleError) {
+        console.log('Google Calendar creation failed, creating local event only:', googleError);
+        // Continue to create local event even if Google fails
       }
-
-      console.log(`✅ Calendar event created: ${eventData.title} at ${eventData.startTime.toISOString()}`);
-      return localEvent;
-    } catch (error) {
-      console.error('Error creating calendar event:', error);
-      throw error;
     }
+
+    // Create local calendar event record
+    const localEventData: InsertCalendarEvent = {
+      calendarId: targetCalendar.calendarId,
+      providerEventId: googleEventId || `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      title: eventData.title,
+      description: eventData.description || null,
+      startTime: eventData.startTime,
+      endTime: eventData.endTime || new Date(eventData.startTime.getTime() + 60*60*1000),
+      isAllDay: eventData.isAllDay || false,
+      location: eventData.location || null,
+      meetLink: null,
+      providerHtmlLink: null,
+      status: 'confirmed'
+    };
+
+    const localEvent = await storage.createCalendarEvent(localEventData);
+
+    // Add attendees if any
+    if (eventData.attendees?.length) {
+      for (const email of eventData.attendees) {
+        await storage.createCalendarAttendee({
+          eventId: localEvent.eventId,
+          email,
+          displayName: email,
+          responseStatus: 'needsAction',
+          isOrganizer: false
+        });
+      }
+    }
+
+    console.log(`✅ Calendar event created: ${eventData.title} at ${eventData.startTime.toISOString()}`);
+    return localEvent;
   }
 
   /**
