@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { updateEvolutionApiSettings, getEvolutionApi } from "./evolution-api";
 import { createServer } from "http";
+import { Server as SocketIOServer } from "socket.io";
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));

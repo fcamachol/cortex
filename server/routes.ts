@@ -615,10 +615,29 @@ export async function registerRoutes(app: Express): Promise<void> {
         messages = [data];
       }
       
+      console.log(`📝 Processing ${messages.length} messages from webhook`);
+      
       for (const messageData of messages) {
+        console.log(`🔍 Processing message data:`, JSON.stringify(messageData, null, 2));
+        
         // Evolution API webhook structure: messageData has key and message properties
         const key = messageData.key;
         const message = messageData.message;
+        
+        // If no key/message structure, this might be a different event type
+        if (!key && !message) {
+          console.log('⚠️ No key/message structure found, checking for alternative formats...');
+          
+          // Check if this is a direct message format
+          if (messageData.messageId || messageData.id) {
+            console.log('📦 Found alternative message format, processing...');
+            // This seems to be an already processed message, skip it
+            continue;
+          }
+          
+          console.log('⚠️ Skipping unknown message format:', JSON.stringify(messageData, null, 2));
+          continue;
+        }
         
         if (!key || !key.id) {
           console.log('⚠️ Skipping message without valid key:', JSON.stringify(messageData, null, 2));
