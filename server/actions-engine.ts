@@ -2,6 +2,7 @@ import { db } from "./db";
 import { actionRules, actionExecutions, tasks, whatsappInstances, whatsappContacts, whatsappMessages, whatsappMessageReactions, ActionRule, InsertActionExecution } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { EvolutionApi } from "./evolution-api";
+import * as chrono from 'chrono-node';
 
 export interface TriggerContext {
   messageId?: string;
@@ -295,32 +296,62 @@ export class ActionsEngine {
   }
 
   private async createTask(config: any, context: TriggerContext): Promise<any> {
-    console.log('🚀 Creating task from reaction trigger - START');
+    console.log('🚀 Creating intelligent task from reaction trigger - START');
     console.log('📋 Config received:', config);
     console.log('📍 Context received:', context);
 
-    // Enhanced description for reaction-based tasks
+    // Intelligent NLP analysis of the message content
+    const nlpAnalysis = this.analyzeMessageIntelligently(context.content || '');
+    
+    // Enhanced description with intelligent insights
     let enhancedDescription = this.interpolateTemplate(config.description, context);
     
-    // If this task is created from a reaction, include the original message
+    // If this task is created from a reaction, include the original message and NLP insights
     if (context.reaction && context.content) {
       enhancedDescription = `Task created from reaction ${context.reaction}\n\nOriginal message: "${context.content}"\n\n${enhancedDescription}`;
+      
+      // Add intelligent insights to description
+      if (nlpAnalysis.isUrgent) {
+        enhancedDescription = `🚨 URGENT TASK DETECTED\n\n${enhancedDescription}`;
+      }
+      if (nlpAnalysis.suggestedDueDate) {
+        enhancedDescription += `\n\n📅 Intelligent due date suggestion: ${nlpAnalysis.suggestedDueDate.toLocaleDateString()}`;
+      }
+      if (nlpAnalysis.extractedLocation) {
+        enhancedDescription += `\n📍 Location context: ${nlpAnalysis.extractedLocation}`;
+      }
+      if (nlpAnalysis.keywords.length > 0) {
+        enhancedDescription += `\n🏷️ Key topics: ${nlpAnalysis.keywords.slice(0, 3).join(', ')}`;
+      }
     }
 
-    // Simple task creation without complex database queries for now
+    // Use intelligent priority detection
+    const intelligentPriority = nlpAnalysis.isUrgent ? 'high' : (config.priority || nlpAnalysis.suggestedPriority || 'medium');
+
+    // Use intelligent due date if detected
+    let dueDate = null;
+    if (config.dueDate) {
+      dueDate = new Date(config.dueDate);
+    } else if (nlpAnalysis.suggestedDueDate) {
+      dueDate = nlpAnalysis.suggestedDueDate;
+    }
+
     const taskData = {
       userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42', // Use default user ID
-      title: this.interpolateTemplate(config.title, context),
+      title: this.createIntelligentTitle(config.title, context, nlpAnalysis),
       description: enhancedDescription,
-      priority: config.priority || 'medium',
+      priority: intelligentPriority,
       taskStatus: 'to_do',
-      dueDate: config.dueDate ? new Date(config.dueDate) : null,
-      relatedChatJid: context.chatId, // This should be the chat/group ID, not the sender
-      originalSenderJid: context.originalSenderJid || context.senderJid, // The person who sent the original message
+      dueDate,
+      relatedChatJid: context.chatId,
+      originalSenderJid: context.originalSenderJid || context.senderJid,
     };
 
-    console.log('📝 Task data prepared:', taskData);
+    console.log('📝 Intelligent task data prepared:', taskData);
     console.log(`🎯 Task will be related to chat: ${taskData.relatedChatJid}, original sender: ${taskData.originalSenderJid}`);
+    if (nlpAnalysis.suggestedDueDate) {
+      console.log(`🧠 Intelligent due date applied: ${nlpAnalysis.suggestedDueDate.toISOString()}`);
+    }
 
     // Save task to database using CRM schema
     try {
@@ -330,10 +361,10 @@ export class ActionsEngine {
         RETURNING task_id, title, description, status
       `);
       
-      console.log('✅ Task saved to database:', result);
-      return { success: true, data: result };
+      console.log('✅ Intelligent task saved to database:', result);
+      return { success: true, data: result, nlpEnhanced: true, analysis: nlpAnalysis };
     } catch (error) {
-      console.error('❌ Error saving task to database:', error);
+      console.error('❌ Error saving intelligent task to database:', error);
       return { success: false, error: String(error) };
     }
   }
@@ -396,6 +427,128 @@ export class ActionsEngine {
       .replace(/\{\{hashtags\}\}/g, context.hashtags?.join(', ') || '')
       .replace(/\{\{timestamp\}\}/g, context.timestamp.toISOString())
       .replace(/\{\{chatId\}\}/g, context.chatId);
+  }
+
+  private analyzeMessageIntelligently(content: string): {
+    isUrgent: boolean;
+    suggestedDueDate: Date | null;
+    extractedLocation: string | null;
+    keywords: string[];
+    suggestedPriority: 'low' | 'medium' | 'high';
+    needsMeetLink: boolean;
+  } {
+    if (!content) {
+      return {
+        isUrgent: false,
+        suggestedDueDate: null,
+        extractedLocation: null,
+        keywords: [],
+        suggestedPriority: 'medium',
+        needsMeetLink: false
+      };
+    }
+
+    const lowerContent = content.toLowerCase();
+
+    // Intelligent urgency detection
+    const urgentKeywords = ['urgent', 'asap', 'immediately', 'emergency', 'critical', '!!', 'urgente', 'inmediatamente'];
+    const isUrgent = urgentKeywords.some(keyword => lowerContent.includes(keyword));
+
+    // Intelligent date parsing using chrono-node
+    const parsedDates = chrono.parse(content, new Date(), { forwardDate: true });
+    const suggestedDueDate = parsedDates.length > 0 ? parsedDates[0].start.date() : null;
+
+    // Priority detection based on context
+    const highPriorityKeywords = ['important', 'priority', 'critical', 'urgent', 'importante', 'prioridad'];
+    const lowPriorityKeywords = ['later', 'sometime', 'eventually', 'cuando puedas', 'mas tarde'];
+    
+    let suggestedPriority: 'low' | 'medium' | 'high' = 'medium';
+    if (isUrgent || highPriorityKeywords.some(keyword => lowerContent.includes(keyword))) {
+      suggestedPriority = 'high';
+    } else if (lowPriorityKeywords.some(keyword => lowerContent.includes(keyword))) {
+      suggestedPriority = 'low';
+    }
+
+    // Meeting detection
+    const meetKeywords = ['meet', 'meeting', 'call', 'videocall', 'conference', 'zoom', 'teams', 'reunion', 'llamada'];
+    const needsMeetLink = meetKeywords.some(keyword => lowerContent.includes(keyword));
+
+    // Location extraction
+    let extractedLocation = null;
+    if (needsMeetLink) {
+      extractedLocation = "Virtual Meeting";
+    } else {
+      const locationPatterns = [
+        /(at|en|in)\s+(the\s+)?(.*?)(?=\s+at|\s+el|\s+a\s+las|$)/i,
+        /location:\s*(.*?)(?=\s|$)/i,
+        /venue:\s*(.*?)(?=\s|$)/i,
+        /lugar:\s*(.*?)(?=\s|$)/i
+      ];
+      
+      for (const pattern of locationPatterns) {
+        const match = content.match(pattern);
+        if (match && match[3] && match[3].trim().length > 2) {
+          // Avoid matching dates as locations
+          if (!chrono.parseDate(match[3].trim())) {
+            extractedLocation = match[3].trim();
+            break;
+          }
+        }
+      }
+    }
+
+    // Extract meaningful keywords
+    const keywords = content.toLowerCase()
+      .split(/\s+/)
+      .filter(word => 
+        word.length > 3 && 
+        !['the', 'and', 'for', 'with', 'this', 'that', 'para', 'con', 'que', 'una', 'del', 'por', 'but', 'not'].includes(word) &&
+        !word.match(/^\d+$/) // exclude pure numbers
+      )
+      .slice(0, 5);
+
+    const analysis = {
+      isUrgent,
+      suggestedDueDate,
+      extractedLocation,
+      keywords,
+      suggestedPriority,
+      needsMeetLink
+    };
+
+    if (isUrgent || suggestedDueDate || extractedLocation || keywords.length > 0) {
+      console.log('🧠 Intelligent message analysis:', {
+        isUrgent,
+        dueDate: suggestedDueDate?.toISOString(),
+        location: extractedLocation,
+        priority: suggestedPriority,
+        keywordCount: keywords.length
+      });
+    }
+
+    return analysis;
+  }
+
+  private createIntelligentTitle(templateTitle: string, context: TriggerContext, nlpAnalysis: any): string {
+    let title = this.interpolateTemplate(templateTitle, context);
+    
+    // Enhance title with intelligent context
+    if (nlpAnalysis.isUrgent && !title.toLowerCase().includes('urgent')) {
+      title = `[URGENT] ${title}`;
+    }
+    
+    // If the original content is short and meaningful, use it as title
+    if (context.content && context.content.length < 50 && context.content.length > 5) {
+      const cleanContent = context.content.replace(/[^\w\s]/gi, '').trim();
+      if (cleanContent.length > 0) {
+        title = cleanContent;
+        if (nlpAnalysis.isUrgent) {
+          title = `[URGENT] ${title}`;
+        }
+      }
+    }
+
+    return title;
   }
 
   // Method to extract hashtags and keywords from message content
