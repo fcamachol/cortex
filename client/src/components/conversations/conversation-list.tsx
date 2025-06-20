@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -13,13 +13,29 @@ interface ConversationListProps {
 
 export default function ConversationList({ selectedConversation, onSelectConversation }: ConversationListProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const queryClient = useQueryClient();
 
   // Mock user ID - in real app this would come from auth context
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
 
   const { data: conversations = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/whatsapp/conversations/${userId}`],
+    refetchInterval: 3000, // Refresh every 3 seconds
   });
+
+  // Auto-refresh when new messages arrive or conversations change
+  useEffect(() => {
+    const refreshConversations = () => {
+      queryClient.invalidateQueries({
+        queryKey: [`/api/whatsapp/conversations/${userId}`]
+      });
+    };
+
+    // Listen for WebSocket events or set up periodic refresh
+    const interval = setInterval(refreshConversations, 5000);
+    
+    return () => clearInterval(interval);
+  }, [queryClient, userId]);
 
   const filteredConversations = conversations
     .filter((conv: any) => {

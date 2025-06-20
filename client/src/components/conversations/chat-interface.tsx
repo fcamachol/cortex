@@ -49,8 +49,28 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       return data.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     },
     enabled: !!conversationId && conversationId !== 'undefined' && !!instanceId,
-    refetchInterval: 5000,
+    refetchInterval: 2000, // Faster refresh for active chat
   });
+
+  // Auto-refresh messages and conversations when new messages arrive
+  useEffect(() => {
+    const refreshMessages = () => {
+      if (conversationId && instanceId) {
+        queryClient.invalidateQueries({
+          queryKey: [`/api/whatsapp/chat-messages`, conversationId, instanceId]
+        });
+        // Also refresh conversation list to update latest message preview
+        queryClient.invalidateQueries({
+          queryKey: [`/api/whatsapp/conversations/${userId}`]
+        });
+      }
+    };
+
+    // Set up aggressive refresh for active conversation
+    const interval = setInterval(refreshMessages, 3000);
+    
+    return () => clearInterval(interval);
+  }, [conversationId, instanceId, queryClient, userId]);
 
   // Transform messages to match frontend expectations
   const messages = rawMessages.map((msg: any) => ({
