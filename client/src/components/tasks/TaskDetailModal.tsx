@@ -75,6 +75,10 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
   const [messageLoading, setMessageLoading] = useState(false);
   const [messageError, setMessageError] = useState<any>(null);
 
+  // State for chat information
+  const [chatInfo, setChatInfo] = useState<any>(null);
+  const [chatLoading, setChatLoading] = useState(false);
+
   // Fetch checklist items for the task
   const { data: checklistItems, refetch: refetchChecklist } = useQuery({
     queryKey: ['/api/crm/checklist-items', task?.task_id],
@@ -124,6 +128,70 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
 
     fetchMessageData();
   }, [task?.triggering_message_id, task?.instance_id]);
+
+  // Fetch chat information when task changes
+  useEffect(() => {
+    const fetchChatInfo = async () => {
+      if (!task?.related_chat_jid || !task?.instance_id) {
+        setChatInfo(null);
+        return;
+      }
+
+      setChatLoading(true);
+
+      try {
+        // Check if it's a group (ends with @g.us) or individual chat (ends with @s.whatsapp.net)
+        if (task.related_chat_jid.includes('@g.us')) {
+          // Fetch group information
+          const response = await fetch(`/api/whatsapp/groups/${task.instance_id}/${encodeURIComponent(task.related_chat_jid)}`, {
+            method: 'GET',
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          });
+
+          if (response.ok) {
+            const groupData = await response.json();
+            setChatInfo({
+              type: 'group',
+              name: groupData.subject || 'Unknown Group',
+              jid: task.related_chat_jid
+            });
+          }
+        } else {
+          // Fetch contact information
+          const response = await fetch(`/api/whatsapp/conversations/7804247f-3ae8-4eb2-8c6d-2c44f967ad42?instanceId=${task.instance_id}`, {
+            method: 'GET',
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          });
+
+          if (response.ok) {
+            const conversations = await response.json();
+            const conversation = conversations.find((conv: any) => conv.chatJid === task.related_chat_jid);
+            
+            if (conversation) {
+              setChatInfo({
+                type: 'contact',
+                name: conversation.contactName || conversation.pushName || 'Unknown Contact',
+                jid: task.related_chat_jid
+              });
+            }
+          }
+        }
+      } catch (error: any) {
+        console.error('Error fetching chat info:', error);
+        setChatInfo(null);
+      } finally {
+        setChatLoading(false);
+      }
+    };
+
+    fetchChatInfo();
+  }, [task?.related_chat_jid, task?.instance_id]);
 
   // Create checklist item mutation
   const createChecklistItemMutation = useMutation({
@@ -424,6 +492,30 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                 <DialogTitle className="text-xl font-semibold text-left">
                   {task.title}
                 </DialogTitle>
+              )}
+              {/* Chat/Group Information */}
+              {chatInfo && (
+                <div className="flex items-center gap-2 mt-1 text-sm text-gray-600">
+                  {chatInfo.type === 'group' ? (
+                    <>
+                      <Hash className="h-4 w-4" />
+                      <span className="font-medium">{chatInfo.name}</span>
+                      <Badge variant="outline" className="text-xs">Group</Badge>
+                    </>
+                  ) : (
+                    <>
+                      <User className="h-4 w-4" />
+                      <span className="font-medium">{chatInfo.name}</span>
+                      <Badge variant="outline" className="text-xs">Contact</Badge>
+                    </>
+                  )}
+                </div>
+              )}
+              {chatLoading && (
+                <div className="flex items-center gap-2 mt-1 text-sm text-gray-400">
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-400"></div>
+                  <span>Loading chat info...</span>
+                </div>
               )}
               {task.triggering_message_id && (
                 <div className="flex items-center gap-2 mt-2 text-sm text-purple-600">
