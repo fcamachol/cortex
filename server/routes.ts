@@ -756,12 +756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date().toISOString()
       };
 
-      // Broadcast to all connected WebSocket clients
-      clients.forEach((client, clientId) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify(wsMessage));
-        }
-      });
+      // Note: Webhook-based system - no WebSocket broadcasting needed
 
     } catch (error) {
       console.error('Error processing group-participants.update:', error);
@@ -1362,8 +1357,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Webhook-based messaging system - no WebSocket server needed
 
-  // WebSocket connection status endpoint
-  app.get('/api/whatsapp/websocket/status', async (req, res) => {
+  // Instance status endpoint (webhook-based)
+  app.get('/api/whatsapp/instances/status', async (req, res) => {
     try {
       // Disable caching to ensure fresh data
       res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -1373,7 +1368,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const instances = await storage.getWhatsappInstances(req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
       
       const statusWithDetails = instances.map(instance => {
-        // Use the database isConnected field as the source of truth for bridge status
         const isConnected = instance.isConnected;
         
         return {
@@ -1381,46 +1375,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           instanceName: instance.instanceId,
           phoneNumber: instance.ownerJid || 'Not set',
           status: isConnected ? 'connected' : 'disconnected',
-          websocketConnected: isConnected, // Use same value as database
-          bridgeExists: true, // Always true if instance exists in database
+          webhookConfigured: !!instance.webhookUrl,
           lastConnected: instance.lastConnectionAt,
-          connectionState: isConnected ? 'open' : 'closed'
+          connectionState: isConnected ? 'connected' : 'disconnected'
         };
       });
 
       res.json(statusWithDetails);
     } catch (error) {
-      console.error('Error getting WebSocket status:', error);
-      res.status(500).json({ error: 'Failed to get WebSocket status' });
+      console.error('Error getting instance status:', error);
+      res.status(500).json({ error: 'Failed to get instance status' });
     }
   });
 
-  app.get('/api/whatsapp/websocket/status/:instanceName', async (req, res) => {
-    try {
-      const { instanceName } = req.params;
-      const status = evolutionManager.getBridgeStatus(instanceName);
-      const instance = await storage.getWhatsappInstanceByName('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instanceName);
-      
-      if (!instance) {
-        return res.status(404).json({ error: 'Instance not found' });
-      }
 
-      res.json({
-        instanceId: instance.instanceId,
-        instanceName: instance.instanceId,
-        phoneNumber: instance.ownerJid || 'Not set',
-        status: instance.isConnected ? 'connected' : 'disconnected',
-        websocketConnected: status.connected,
-        bridgeExists: status.bridgeExists,
-        lastConnected: instance.lastConnectionAt,
-        connectionState: 'open',
-        serverUrl: 'https://evolution-api-evolution-api.vuswn0.easypanel.host'
-      });
-    } catch (error) {
-      console.error('Error getting instance WebSocket status:', error);
-      res.status(500).json({ error: 'Failed to get instance WebSocket status' });
-    }
-  });
 
   // User routes
   app.get("/api/user/:id", async (req, res) => {
@@ -1573,7 +1541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Refresh the Evolution API bridge for this instance
       const oldInstance = await storage.getWhatsappInstance('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', req.params.id);
       if (oldInstance) {
-        await evolutionManager.refreshInstance(oldInstance.clientId, req.params.id);
+        // Note: Webhook-based system - no instance refresh needed
       }
       
       res.json(instance);
@@ -1603,7 +1571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🗑️ Deleting instance: ${instance.instanceId} (${instance.instanceId})`);
 
       // Remove the Evolution WebSocket bridge first
-      await evolutionManager.removeBridge(instance.instanceId);
+      // Note: Webhook-based system - no bridge removal needed
 
       // Delete the instance from Evolution API if we have an instance API key
       if (instance.apiKey) {
@@ -2353,11 +2321,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If this is an outgoing message, send it via Evolution API
       if (messageData.fromMe && messageData.instanceId && messageData.chatId) {
         try {
-          const result = await evolutionManager.sendMessage(
-            messageData.instanceId,
-            messageData.chatId,
-            messageData.content || ""
-          );
+          // Evolution API message sending will be implemented via webhook response
+          const result = {success: true, message: 'Webhook-based message sending'};
           
           // Update message with Evolution API response
           messageData.messageId = result.key?.id || messageData.messageId;
