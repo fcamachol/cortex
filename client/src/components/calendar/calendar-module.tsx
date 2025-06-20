@@ -13,6 +13,7 @@ import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, 
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 interface CalendarEvent {
   eventId: string;
@@ -113,6 +114,28 @@ export default function CalendarModule() {
       toast({
         title: "Failed to create event",
         description: error.message || "An error occurred while creating the event.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Update event mutation for drag-and-drop
+  const updateEventMutation = useMutation({
+    mutationFn: async ({ eventId, updates }: { eventId: string; updates: any }) => {
+      return apiRequest(`/api/calendar/events/${eventId}`, 'PUT', updates);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Event updated",
+        description: "Event time has been updated successfully."
+      });
+      refetchEvents();
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update event",
+        description: error.message || "Could not move the event.",
         variant: "destructive"
       });
     }
@@ -268,6 +291,7 @@ export default function CalendarModule() {
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const weekViewDays = generateWeekDays();
   const dayViewEvents = generateDayEvents();
+  const timeSlots = generateTimeSlots();
 
   // Get upcoming events from real data
   const upcomingEvents = events ? events
@@ -329,6 +353,70 @@ export default function CalendarModule() {
     
     setSelectedDate(clickDate);
     setIsCreateEventOpen(true);
+  };
+
+  // Handle drag end for moving events
+  const onDragEnd = (result: any) => {
+    if (!result.destination) return;
+
+    const { draggableId, destination } = result;
+    const [eventId, eventType] = draggableId.split('|');
+    
+    // Parse destination to get new time slot
+    const [destType, destDate, destHour, destMinute] = destination.droppableId.split('|');
+    
+    if (destType !== 'timeslot') return;
+
+    // Find the event being moved
+    const event = events.find((e: any) => e.eventId === eventId);
+    if (!event) return;
+
+    // Calculate new start and end times
+    const newStartTime = new Date(destDate);
+    newStartTime.setHours(parseInt(destHour), parseInt(destMinute), 0, 0);
+    
+    const originalStart = new Date(event.startTime);
+    const originalEnd = event.endTime ? new Date(event.endTime) : null;
+    const duration = originalEnd ? originalEnd.getTime() - originalStart.getTime() : 60 * 60 * 1000; // Default 1 hour
+    
+    const newEndTime = new Date(newStartTime.getTime() + duration);
+
+    // Update the event
+    updateEventMutation.mutate({
+      eventId,
+      updates: {
+        startTime: newStartTime.toISOString(),
+        endTime: newEndTime.toISOString()
+      }
+    });
+  };
+
+  // Generate 15-minute time slots for day view
+  const generateTimeSlots = () => {
+    const slots = [];
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const time = new Date(currentDate);
+        time.setHours(hour, minute, 0, 0);
+        
+        const eventsInSlot = events.filter((event: any) => {
+          if (event.isAllDay) return hour === 0 && minute === 0;
+          const eventStart = new Date(event.startTime);
+          const eventHour = eventStart.getHours();
+          const eventMinute = Math.floor(eventStart.getMinutes() / 15) * 15;
+          return eventHour === hour && eventMinute === minute;
+        });
+
+        slots.push({
+          hour,
+          minute,
+          time,
+          events: eventsInSlot,
+          id: `timeslot|${format(currentDate, 'yyyy-MM-dd')}|${hour}|${minute}`
+        });
+      }
+    }
+    return slots;
   };
 
   // Handle create event form submission
