@@ -44,50 +44,10 @@ export function GroupParticipantManager({ instanceId, groupJid }: GroupParticipa
     refetchInterval: 5000, // Poll every 5 seconds for real-time updates
   });
 
-  // WebSocket connection for real-time participant updates
+  // Webhook-based system - real-time updates handled via polling
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}`;
-    
-    const ws = new WebSocket(wsUrl);
-    
-    ws.onopen = () => {
-      setIsConnected(true);
-      console.log('Group participant WebSocket connected');
-    };
-    
-    ws.onclose = () => {
-      setIsConnected(false);
-      console.log('Group participant WebSocket disconnected');
-    };
-    
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        // Handle group participant updates
-        if (data.type === 'group-participants-update' && data.groupJid === groupJid) {
-          queryClient.invalidateQueries({
-            queryKey: ['/api/whatsapp/groups', instanceId, groupJid]
-          });
-          
-          toast({
-            title: "Group Updated",
-            description: `Participant ${data.action}: ${data.participantJid}`,
-            duration: 3000,
-          });
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    };
-    
-    return () => {
-      ws.close();
-    };
-  }, [instanceId, groupJid, queryClient, toast]);
+    setIsConnected(true); // Always show as connected in webhook mode
+  }, []);
 
   // Sync participants mutation
   const syncParticipantsMutation = useMutation({

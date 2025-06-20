@@ -748,17 +748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`✅ Completed processing ${participants.length} participants for group ${groupJid}`);
 
-      // Send WebSocket notification to connected clients
-      const wsMessage = {
-        type: 'group-participants-update',
-        groupJid: groupJid,
-        instanceId: instance.instanceId,
-        action: action,
-        participants: participants,
-        timestamp: new Date().toISOString()
-      };
-
-      // Note: Webhook-based system - no WebSocket broadcasting needed
+      // Note: Webhook-based system handles real-time updates via polling - no WebSocket broadcasting needed
 
     } catch (error) {
       console.error('Error processing group-participants.update:', error);
@@ -2354,8 +2344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const message = await storage.createWhatsappMessage(messageData);
       
-      // Broadcast to connected clients via WebSocket
-      // TODO: Implement WebSocket broadcasting for real-time message updates
+      // Real-time updates handled via webhook polling system
       
       res.status(201).json(message);
     } catch (error) {

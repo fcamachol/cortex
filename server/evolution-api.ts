@@ -191,9 +191,9 @@ export class EvolutionApi {
       }
       
       // Try REST endpoint for initial sync
-      return await this.makeRequest(`/chat/whatsapp/findMany/${instanceName}`);
+      return await this.makeRequest(`/chat/findAll/${instanceName}`);
     } catch (error) {
-      console.log('Chat data will be populated via WebSocket events');
+      console.log('Chat data will be populated via webhook events');
       return [];
     }
   }
