@@ -302,6 +302,35 @@ export default function CalendarModule() {
       };
     }) : [];
 
+  // Handle clicking on calendar grid to create event
+  const handleGridClick = (date: Date, hour?: number) => {
+    const clickDate = new Date(date);
+    
+    if (hour !== undefined) {
+      clickDate.setHours(hour, 0, 0, 0);
+      setNewEvent({
+        title: '',
+        description: '',
+        startTime: format(clickDate, 'HH:mm'),
+        endTime: format(new Date(clickDate.getTime() + 60 * 60 * 1000), 'HH:mm'), // Default 1 hour duration
+        location: '',
+        isAllDay: false
+      });
+    } else {
+      setNewEvent({
+        title: '',
+        description: '',
+        startTime: '09:00',
+        endTime: '10:00',
+        location: '',
+        isAllDay: false
+      });
+    }
+    
+    setSelectedDate(clickDate);
+    setIsCreateEventOpen(true);
+  };
+
   // Handle create event form submission
   const handleCreateEvent = () => {
     if (!newEvent.title) {
@@ -533,7 +562,8 @@ export default function CalendarModule() {
                   key={index}
                   className={`calendar-day ${day.isToday ? 'today' : ''} ${
                     !day.isCurrentMonth ? 'text-gray-400 dark:text-gray-600' : ''
-                  }`}
+                  } cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors`}
+                  onClick={() => handleGridClick(day.date)}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className={`text-sm font-medium ${
@@ -552,6 +582,7 @@ export default function CalendarModule() {
                       <div
                         key={eventIndex}
                         className={`text-xs px-2 py-1 rounded truncate ${event.color}`}
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {event.title}
                       </div>
@@ -583,12 +614,17 @@ export default function CalendarModule() {
 
               {/* Week Events */}
               {weekViewDays.map((day, index) => (
-                <div key={index} className="min-h-[300px] p-2 border-r border-gray-200 dark:border-gray-700 last:border-r-0">
+                <div 
+                  key={index} 
+                  className="min-h-[300px] p-2 border-r border-gray-200 dark:border-gray-700 last:border-r-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  onClick={() => handleGridClick(day.date, 9)} // Default to 9 AM
+                >
                   <div className="space-y-1">
                     {day.events.map((event: any, eventIndex: number) => (
                       <div
                         key={eventIndex}
                         className={`text-xs px-2 py-1 rounded ${event.color} cursor-pointer hover:opacity-80`}
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <div className="font-medium truncate">{event.title}</div>
                         {!event.isAllDay && (
@@ -615,12 +651,16 @@ export default function CalendarModule() {
                      hourSlot.hour === 12 ? '12 PM' : 
                      `${hourSlot.hour - 12} PM`}
                   </div>
-                  <div className="flex-1 p-2 min-h-[60px]">
+                  <div 
+                    className="flex-1 p-2 min-h-[60px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    onClick={() => handleGridClick(currentDate, hourSlot.hour)}
+                  >
                     <div className="space-y-1">
                       {hourSlot.events.map((event: any, eventIndex: number) => (
                         <div
                           key={eventIndex}
                           className={`px-3 py-2 rounded ${event.color} cursor-pointer hover:opacity-80`}
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <div className="font-medium">{event.title}</div>
                           {event.location && (
