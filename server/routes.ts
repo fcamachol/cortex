@@ -9,7 +9,7 @@ import { eq } from 'drizzle-orm';
 import { appUsers } from '../shared/schema';
 import { nanoid } from 'nanoid';
 
-// Store SSE connections
+// Store Server-Sent Events connections
 const sseConnections = new Map<string, Response>();
 
 function notifyClientsOfNewMessage(messageRecord: any) {
@@ -644,7 +644,6 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Helper functions for webhook handlers
   async function handleWebhookMessagesUpsert(instanceName: string, data: any) {
     console.log(`📨 Processing: messages.upsert for ${instanceName}`);
-    console.log(`📨 Webhook payload structure:`, JSON.stringify(data, null, 2));
     
     try {
       const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
@@ -655,7 +654,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         return;
       }
 
-      // Extract messages from webhook payload - Evolution API structure
+      // Extract message from webhook payload - Evolution API structure
       let messageData;
       
       // The webhook sends a single message in data object
@@ -668,14 +667,14 @@ export async function registerRoutes(app: Express): Promise<void> {
         return;
       }
       
-      console.log(`📝 Processing webhook message from ${messageData.pushName || 'Unknown'}`);
+      console.log(`📝 Processing webhook message from ${messageData.pushName || 'Unknown'}: "${messageData.message?.conversation || '[Other type]'}"`);
       
       // Evolution API webhook structure: messageData has key and message properties
       const key = messageData.key;
       const message = messageData.message;
       
       if (!key || !key.id) {
-        console.log('⚠️ Skipping message without valid key');
+        console.log('⚠️ Skipping message without valid key structure');
         return;
       }
 
@@ -747,8 +746,17 @@ export async function registerRoutes(app: Express): Promise<void> {
       console.log(`💬 Storing webhook message ${messageId} from ${chatId}: "${content.substring(0, 50)}..."`);
       
       try {
+        // First check if message already exists to avoid duplicates
+        const existingMessages = await storage.getWhatsappChatMessages(userId, instance.instanceId, chatId);
+        const messageExists = existingMessages.some(msg => msg.messageId === messageId);
+        
+        if (messageExists) {
+          console.log(`📝 Message ${messageId} already exists, skipping duplicate`);
+          return;
+        }
+        
         await storage.createWhatsappMessage(messageRecord);
-        console.log(`✅ Webhook message stored successfully: ${messageId}`);
+        console.log(`✅ Webhook message stored successfully in WhatsApp schema: ${messageId}`);
         
         // Notify connected clients about new message
         notifyClientsOfNewMessage(messageRecord);

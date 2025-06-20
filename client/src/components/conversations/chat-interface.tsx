@@ -51,10 +51,64 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       return data.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     },
     enabled: !!conversationId && conversationId !== 'undefined' && !!instanceId,
-    refetchInterval: 2000,
-    staleTime: 0, // Always refetch
-    gcTime: 0, // Don't cache
+    refetchInterval: 30000, // Reduced polling frequency - real-time updates come via SSE
+    staleTime: 5000,
   });
+
+  // Set up Server-Sent Events for real-time message updates
+  useEffect(() => {
+    if (!conversationId || !instanceId) return;
+
+    console.log('Setting up SSE connection for real-time messages');
+    const eventSource = new EventSource('/api/events/messages');
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'new_message') {
+          const newMessage = data.message;
+          
+          // Only process messages for the current conversation
+          if (newMessage.chatId === conversationId && newMessage.instanceId === instanceId) {
+            console.log('Received real-time message update:', newMessage);
+            
+            // Update the query cache with the new message
+            queryClient.setQueryData(
+              [`/api/whatsapp/chat-messages`, conversationId, instanceId],
+              (oldMessages: any[] = []) => {
+                // Check if message already exists to avoid duplicates
+                const messageExists = oldMessages.some(msg => msg.messageId === newMessage.messageId);
+                if (messageExists) return oldMessages;
+                
+                // Add new message and sort by timestamp
+                const updatedMessages = [...oldMessages, newMessage];
+                return updatedMessages.sort((a: any, b: any) => 
+                  new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+                );
+              }
+            );
+
+            // Also refresh conversation list to update latest message preview
+            queryClient.invalidateQueries({
+              queryKey: [`/api/whatsapp/conversations/${userId}`]
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error processing SSE message:', error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE connection error:', error);
+    };
+
+    return () => {
+      console.log('Closing SSE connection');
+      eventSource.close();
+    };
+  }, [conversationId, instanceId, queryClient, userId]);
 
   // Force invalidation when conversation changes
   useEffect(() => {
@@ -66,25 +120,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     }
   }, [conversationId, instanceId, queryClient]);
 
-  // Auto-refresh messages and conversations when new messages arrive
-  useEffect(() => {
-    const refreshMessages = () => {
-      if (conversationId && instanceId) {
-        queryClient.invalidateQueries({
-          queryKey: [`/api/whatsapp/chat-messages`, conversationId, instanceId]
-        });
-        // Also refresh conversation list to update latest message preview
-        queryClient.invalidateQueries({
-          queryKey: [`/api/whatsapp/conversations/${userId}`]
-        });
-      }
-    };
-
-    // Set up aggressive refresh for active conversation
-    const interval = setInterval(refreshMessages, 3000);
-    
-    return () => clearInterval(interval);
-  }, [conversationId, instanceId, queryClient, userId]);
+  // Remove the aggressive polling interval since we now use SSE for real-time updates
 
   // Transform messages to match frontend expectations
   const messages = rawMessages.map((msg: any) => ({
