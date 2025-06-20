@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronLeft, ChevronRight, Plus, MoreVertical, Calendar as CalendarIcon, Clock, MapPin, Menu, Search, Settings } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, MoreVertical, Calendar as CalendarIcon, Clock, MapPin, Menu, Search, Settings, Trash2, Edit3, Palette } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, addDays, subDays, isSameDay, startOfMonth, endOfMonth, isSameMonth, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -42,6 +42,8 @@ export default function CalendarModule() {
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isCreateCalendarOpen, setIsCreateCalendarOpen] = useState(false);
+  const [selectedCalendarForMenu, setSelectedCalendarForMenu] = useState<string | null>(null);
   const [newEvent, setNewEvent] = useState({
     title: '',
     description: '',
@@ -51,17 +53,49 @@ export default function CalendarModule() {
     isAllDay: false,
     calendarId: 'personal'
   });
+  const [newCalendar, setNewCalendar] = useState({
+    name: '',
+    color: 'bg-blue-500',
+    description: ''
+  });
 
   const { toast } = useToast();
 
-  // Sample sub-calendars (in real app, fetch from API)
-  const [subCalendars, setSubCalendars] = useState<SubCalendar[]>([
-    { id: 'personal', name: 'Personal', color: 'bg-blue-500', visible: true, provider: 'local' },
-    { id: 'work', name: 'Work', color: 'bg-red-500', visible: true, provider: 'google_calendar' },
-    { id: 'birthdays', name: 'Birthdays', color: 'bg-green-500', visible: true, provider: 'local' },
-    { id: 'family', name: 'Family', color: 'bg-purple-500', visible: true, provider: 'local' },
-    { id: 'tasks', name: 'Tasks', color: 'bg-orange-500', visible: false, provider: 'local' },
-  ]);
+  // Fetch Google Calendar sub-calendars
+  const { data: subCalendars = [], refetch: refetchCalendars } = useQuery({
+    queryKey: ['/api/calendar/calendars'],
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/calendar/calendars');
+        if (!response.ok) throw new Error('Failed to fetch calendars');
+        const data = await response.json();
+        
+        // If no calendars exist, return default local calendars
+        if (data.length === 0) {
+          return [
+            { id: 'personal', name: 'Personal', color: 'bg-blue-500', visible: true, provider: 'local' },
+            { id: 'work', name: 'Work', color: 'bg-red-500', visible: true, provider: 'local' },
+            { id: 'family', name: 'Family', color: 'bg-purple-500', visible: true, provider: 'local' },
+          ];
+        }
+        
+        return data.map((cal: any) => ({
+          id: cal.calendarId || cal.id,
+          name: cal.name || cal.summary,
+          color: cal.color || 'bg-blue-500',
+          visible: cal.visible !== false,
+          provider: cal.provider || 'google_calendar'
+        }));
+      } catch (error) {
+        // Return default calendars if API fails
+        return [
+          { id: 'personal', name: 'Personal', color: 'bg-blue-500', visible: true, provider: 'local' },
+          { id: 'work', name: 'Work', color: 'bg-red-500', visible: true, provider: 'local' },
+          { id: 'family', name: 'Family', color: 'bg-purple-500', visible: true, provider: 'local' },
+        ];
+      }
+    }
+  });
 
   // Import Google Calendar mutation
   const importGoogleCalendarMutation = useMutation({
@@ -177,6 +211,55 @@ export default function CalendarModule() {
       const response = await fetch('/api/calendar/providers');
       if (!response.ok) throw new Error('Failed to fetch providers');
       return response.json();
+    }
+  });
+
+  // Calendar management mutations
+  const createCalendarMutation = useMutation({
+    mutationFn: async (calendarData: { name: string; color: string; description?: string }) => {
+      return apiRequest('/api/calendar/calendars', {
+        method: 'POST',
+        body: JSON.stringify(calendarData)
+      });
+    },
+    onSuccess: () => {
+      refetchCalendars();
+      setIsCreateCalendarOpen(false);
+      setNewCalendar({ name: '', color: 'bg-blue-500', description: '' });
+      toast({
+        title: "Calendar created",
+        description: "New Google Calendar has been created successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create calendar. Please check your Google Calendar connection.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const deleteCalendarMutation = useMutation({
+    mutationFn: async (calendarId: string) => {
+      return apiRequest(`/api/calendar/calendars/${calendarId}`, {
+        method: 'DELETE'
+      });
+    },
+    onSuccess: () => {
+      refetchCalendars();
+      setSelectedCalendarForMenu(null);
+      toast({
+        title: "Calendar deleted",
+        description: "Google Calendar has been deleted successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete calendar. Please try again.",
+        variant: "destructive"
+      });
     }
   });
 
@@ -516,7 +599,17 @@ export default function CalendarModule() {
           {/* My Calendars */}
           <div className="flex-1 overflow-y-auto">
             <div className="p-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">My calendars</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-gray-700">My calendars</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsCreateCalendarOpen(true)}
+                  className="h-6 w-6 p-0"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
               <div className="space-y-1">
                 {subCalendars.map((calendar) => {
                   const calendarEventCount = events.filter((event: any) => 
