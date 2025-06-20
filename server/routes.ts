@@ -1,11 +1,9 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { WebSocketServer, WebSocket } from "ws";
 import fs from "fs";
 import path from "path";
 import fetch from "node-fetch";
 import { storage } from "./storage";
-import { evolutionManager } from "./evolution-manager";
 import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings, getInstanceEvolutionApi } from "./evolution-api";
 import { db, pool } from "./db";
 import { actionsEngine, ActionsEngine } from "./actions-engine";
@@ -1362,52 +1360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return newConversation.chatId;
   }
 
-  // WebSocket server for real-time messaging
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-
-  // Store active WebSocket connections
-  const clients = new Map<string, WebSocket>();
-
-  wss.on('connection', (ws, req) => {
-    console.log('WebSocket client connected');
-
-    ws.on('message', async (data) => {
-      try {
-        const message = JSON.parse(data.toString());
-        
-        if (message.type === 'auth') {
-          // Store authenticated connection
-          clients.set(message.userId, ws);
-        }
-
-        if (message.type === 'send_message') {
-          // Handle sending messages through Evolution API
-          // This would integrate with Evolution API to send WhatsApp messages
-          console.log('Sending message:', message.data);
-        }
-      } catch (error) {
-        console.error('WebSocket message error:', error);
-      }
-    });
-
-    ws.on('close', () => {
-      // Remove client from active connections
-      clients.forEach((client, userId) => {
-        if (client === ws) {
-          clients.delete(userId);
-        }
-      });
-      console.log('WebSocket client disconnected');
-    });
-  });
-
-  // Broadcast function for real-time updates
-  const broadcast = (userId: string, data: any) => {
-    const client = clients.get(userId);
-    if (client && client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(data));
-    }
-  };
+  // Webhook-based messaging system - no WebSocket server needed
 
   // WebSocket connection status endpoint
   app.get('/api/whatsapp/websocket/status', async (req, res) => {
