@@ -433,7 +433,20 @@ export class DatabaseStorage implements IStorage {
   async getConversationsWithLatestMessages(userId: string): Promise<any[]> {
     // Single optimized query to get conversations with their latest message and contact info
     const result = await db.execute(sql`
-      SELECT DISTINCT ON (c.chat_id, c.instance_id)
+      WITH latest_messages AS (
+        SELECT DISTINCT ON (chat_id, instance_id)
+          chat_id,
+          instance_id,
+          message_id,
+          content,
+          message_type,
+          from_me,
+          timestamp,
+          sender_jid
+        FROM whatsapp.messages
+        ORDER BY chat_id, instance_id, timestamp DESC
+      )
+      SELECT 
         c.chat_id,
         c.instance_id,
         c.type,
@@ -445,12 +458,12 @@ export class DatabaseStorage implements IStorage {
         c.created_at,
         c.updated_at,
         -- Latest message info
-        m.message_id as latest_message_id,
-        m.content as latest_message_content,
-        m.message_type as latest_message_type,
-        m.from_me as latest_message_from_me,
-        m.timestamp as latest_message_timestamp,
-        m.sender_jid as latest_message_sender,
+        lm.message_id as latest_message_id,
+        lm.content as latest_message_content,
+        lm.message_type as latest_message_type,
+        lm.from_me as latest_message_from_me,
+        lm.timestamp as latest_message_timestamp,
+        lm.sender_jid as latest_message_sender,
         -- Contact info
         ct.push_name,
         ct.verified_name,
@@ -462,17 +475,11 @@ export class DatabaseStorage implements IStorage {
         i.display_name as instance_name
       FROM whatsapp.chats c
       INNER JOIN whatsapp.instances i ON c.instance_id = i.instance_id
-      LEFT JOIN whatsapp.messages m ON c.chat_id = m.chat_id 
-        AND c.instance_id = m.instance_id
-        AND m.timestamp = (
-          SELECT MAX(m2.timestamp) 
-          FROM whatsapp.messages m2 
-          WHERE m2.chat_id = c.chat_id AND m2.instance_id = c.instance_id
-        )
+      LEFT JOIN latest_messages lm ON c.chat_id = lm.chat_id AND c.instance_id = lm.instance_id
       LEFT JOIN whatsapp.contacts ct ON c.chat_id = ct.jid AND c.instance_id = ct.instance_id
       LEFT JOIN whatsapp.groups g ON c.chat_id = g.group_jid AND c.instance_id = g.instance_id
       WHERE i.client_id = ${userId}
-      ORDER BY c.chat_id, c.instance_id, c.last_message_timestamp DESC NULLS LAST
+      ORDER BY COALESCE(lm.timestamp, c.last_message_timestamp, c.created_at) DESC NULLS LAST
     `);
 
     return result.rows.map((row: any) => {

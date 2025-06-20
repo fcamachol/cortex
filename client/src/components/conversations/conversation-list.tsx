@@ -68,12 +68,12 @@ export default function ConversationList({ selectedConversation, onSelectConvers
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {filteredConversations.length === 0 ? (
           <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-            {conversationsWithMessages.length === 0 ? "No conversations yet" : "No conversations match your search"}
+            {conversations.length === 0 ? "No conversations yet" : "No conversations match your search"}
           </div>
         ) : (
           filteredConversations.map((conversation: any) => (
             <div
-              key={conversation.chatId || conversation.id}
+              key={`${conversation.instanceId}-${conversation.chatId}`}
               className={`whatsapp-conversation-item ${
                 selectedConversation === (conversation.chatId || conversation.id) ? 'active' : ''
               }`}
