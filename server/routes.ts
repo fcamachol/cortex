@@ -501,7 +501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 console.log(`🎯 Triggering actions engine for reaction: ${reactionEmoji}`);
                 // Trigger actions engine for reaction
-                await actionsEngine.processMessageTriggers(triggerContext);
+                await ActionsEngine.processMessageForActions(triggerContext);
                 console.log(`✅ Processed reaction trigger for ${reactionEmoji} on message: ${originalMessage.content?.substring(0, 50) || 'No content'}`);
               } else {
                 console.log(`⚠️ Original message not found for reaction: ${targetMessageId}`);
@@ -3532,7 +3532,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Test if rule would trigger
-      const engine = ActionsEngine.getInstance();
       const conditions = rule.triggerConditions as any;
       let wouldTrigger = false;
 
