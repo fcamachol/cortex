@@ -51,8 +51,20 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       return data.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     },
     enabled: !!conversationId && conversationId !== 'undefined' && !!instanceId,
-    refetchInterval: 2000, // Faster refresh for active chat
+    refetchInterval: 2000,
+    staleTime: 0, // Always refetch
+    gcTime: 0, // Don't cache
   });
+
+  // Force invalidation when conversation changes
+  useEffect(() => {
+    if (conversationId && instanceId) {
+      // Force invalidate all message queries when switching conversations
+      queryClient.invalidateQueries({
+        queryKey: [`/api/whatsapp/chat-messages`]
+      });
+    }
+  }, [conversationId, instanceId, queryClient]);
 
   // Auto-refresh messages and conversations when new messages arrive
   useEffect(() => {
@@ -80,6 +92,12 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     content: msg.textContent || msg.content,
     isFromMe: msg.fromMe || msg.isFromMe
   }));
+
+  // Debug logging
+  console.log('Raw messages received:', rawMessages.length, rawMessages.slice(0, 2));
+  console.log('Transformed messages:', messages.length, messages.slice(0, 2));
+  console.log('Current conversationId:', conversationId);
+  console.log('Current instanceId:', instanceId);
 
   const sendMessageMutation = useMutation({
     mutationFn: async (text: string) => {
@@ -270,7 +288,12 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 chat-area max-h-[calc(100vh-200px)] scroll-smooth scrollbar-thin chat-messages-scroll">
         <div className="space-y-4">
-          {messages.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
+              <div className="animate-spin w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+              Loading messages...
+            </div>
+          ) : messages.length === 0 ? (
             <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
               No messages yet. Start the conversation!
             </div>

@@ -83,6 +83,16 @@ export default function ConversationList({ selectedConversation, onSelectConvers
         return false;
       }
       
+      // Skip internal CMC conversation IDs that don't have actual messages
+      if (conv.chatId && conv.chatId.startsWith('cmc')) {
+        return false;
+      }
+      
+      // Only show conversations with actual WhatsApp JIDs (phone numbers or groups)
+      if (conv.chatId && !conv.chatId.includes('@')) {
+        return false;
+      }
+      
       // Apply search filter if there's a search query
       if (searchQuery.trim() === '') {
         return true; // Show all conversations when no search
