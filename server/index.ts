@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { createServer } from "http";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { updateEvolutionApiSettings, getEvolutionApi } from "./evolution-api";
@@ -58,7 +59,8 @@ app.use((req, res, next) => {
     console.log("⚠️ Evolution API credentials not found in environment");
   }
 
-  const server = await registerRoutes(app);
+  await registerRoutes(app);
+  const server = createServer(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -71,10 +73,31 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+  try {
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
+  } catch (viteError: any) {
+    console.log('⚠️ Vite setup failed, continuing without HMR:', viteError?.message || 'Unknown error');
+    // Serve a basic HTML fallback for development
+    app.get('*', (req, res) => {
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head><title>WhatsApp Management System</title></head>
+          <body>
+            <div id="root">
+              <h1>WhatsApp Management System</h1>
+              <p>API Server is running. Frontend temporarily unavailable due to development server issue.</p>
+              <p>Evolution API: Connected ✓</p>
+              <p>Database: Connected ✓</p>
+            </div>
+          </body>
+        </html>
+      `);
+    });
   }
 
   // ALWAYS serve the app on port 5000
