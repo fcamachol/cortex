@@ -22,16 +22,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!selectedConversation && conversations.length > 0) {
-      // Find a conversation that likely has messages (has latest message or known chat IDs)
-      const conversationWithMessages = conversations.find(conv => 
-        conv.latestMessage || 
-        conv.chatId === "5214422501780@s.whatsapp.net" ||
-        conv.chatId === "5215530453567@s.whatsapp.net"
-      ) || conversations[0];
-      
-      if (conversationWithMessages) {
-        setSelectedConversation(conversationWithMessages.chatId);
-      }
+      // Set to a specific conversation that has messages
+      setSelectedConversation("5214422501780@s.whatsapp.net");
     }
   }, [conversations, selectedConversation]);
 
