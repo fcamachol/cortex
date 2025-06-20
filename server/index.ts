@@ -1,7 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { serveStatic, log } from "./vite";
+import { setupVite, serveStatic, log } from "./vite";
 import { updateEvolutionApiSettings, getEvolutionApi } from "./evolution-api";
+import { createServer } from "http";
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -68,28 +69,11 @@ app.use((req, res, next) => {
     res.status(status).json({ message });
   });
 
-  // Serve static files without WebSocket/HMR to avoid configuration issues
+  // Serve the frontend properly
+  const server = createServer(app);
+  
   if (app.get("env") === "development") {
-    // Skip Vite dev server setup, serve basic static content
-    app.get('*', (req, res) => {
-      if (req.path.startsWith('/api/')) {
-        return; // Let API routes handle themselves
-      }
-      res.send(`
-        <!DOCTYPE html>
-        <html>
-          <head><title>WhatsApp Management System</title></head>
-          <body>
-            <div id="root">
-              <h1>WhatsApp Management System</h1>
-              <p>API Server is running</p>
-              <p>Evolution API: Connected</p>
-              <p>Database: Connected</p>
-            </div>
-          </body>
-        </html>
-      `);
-    });
+    await setupVite(app, server);
   } else {
     serveStatic(app);
   }
@@ -98,7 +82,7 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = 5000;
-  app.listen(port, "0.0.0.0", () => {
+  server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
   });
 })();
