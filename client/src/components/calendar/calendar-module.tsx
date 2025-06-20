@@ -137,6 +137,7 @@ export default function CalendarModule() {
   const [showRepeatDropdown, setShowRepeatDropdown] = useState(false);
   const [repeatOption, setRepeatOption] = useState('no-repeat');
   const [showCustomRecurrence, setShowCustomRecurrence] = useState(false);
+  const [showAvailabilityDropdown, setShowAvailabilityDropdown] = useState(false);
   const [customRecurrence, setCustomRecurrence] = useState({
     frequency: 'weekly',
     interval: 1,
@@ -146,6 +147,7 @@ export default function CalendarModule() {
     repetitions: 13
   });
   const repeatDropdownRef = useRef<HTMLDivElement>(null);
+  const availabilityDropdownRef = useRef<HTMLDivElement>(null);
   const [newCalendar, setNewCalendar] = useState({
     name: '',
     color: 'bg-blue-500',
@@ -172,6 +174,9 @@ export default function CalendarModule() {
     const handleClickOutside = (event: MouseEvent) => {
       if (repeatDropdownRef.current && !repeatDropdownRef.current.contains(event.target as Node)) {
         setShowRepeatDropdown(false);
+      }
+      if (availabilityDropdownRef.current && !availabilityDropdownRef.current.contains(event.target as Node)) {
+        setShowAvailabilityDropdown(false);
       }
     };
 
@@ -1353,8 +1358,53 @@ export default function CalendarModule() {
                       ))}
                     </select>
                   </div>
-                  <div className="text-sm text-gray-500 mt-1">
-                    No disponible • Visibilidad predeterminada • Notificar 10 minutos antes
+                  <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
+                    <div className="relative" ref={availabilityDropdownRef}>
+                      <button
+                        onClick={() => setShowAvailabilityDropdown(!showAvailabilityDropdown)}
+                        className="flex items-center gap-1 hover:text-blue-600 transition-colors"
+                      >
+                        <span>{newEvent.availability === 'busy' ? 'No disponible' : 'Disponible'}</span>
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      
+                      {showAvailabilityDropdown && (
+                        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[180px]">
+                          <div className="py-2">
+                            <button
+                              onClick={() => {
+                                setNewEvent({ ...newEvent, availability: 'busy' });
+                                setShowAvailabilityDropdown(false);
+                              }}
+                              className={cn(
+                                "w-full px-4 py-2 text-left hover:bg-gray-50 text-sm",
+                                newEvent.availability === 'busy' && "bg-blue-50 text-blue-700"
+                              )}
+                            >
+                              No disponible
+                            </button>
+                            <button
+                              onClick={() => {
+                                setNewEvent({ ...newEvent, availability: 'free' });
+                                setShowAvailabilityDropdown(false);
+                              }}
+                              className={cn(
+                                "w-full px-4 py-2 text-left hover:bg-gray-50 text-sm",
+                                newEvent.availability === 'free' && "bg-blue-50 text-blue-700"
+                              )}
+                            >
+                              Disponible
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <span>•</span>
+                    <span>Visibilidad predeterminada</span>
+                    <span>•</span>
+                    <span>Notificar 10 minutos antes</span>
                   </div>
                 </div>
               </div>
