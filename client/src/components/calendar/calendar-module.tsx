@@ -345,6 +345,48 @@ export default function CalendarModule() {
             isAllDay: false,
             provider: 'local',
             calendarId: 'family'
+          },
+          {
+            eventId: 'task-1',
+            title: 'Review budget proposal',
+            description: 'Complete review of Q1 budget proposal',
+            startTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0).toISOString(),
+            endTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 30).toISOString(),
+            location: '',
+            isAllDay: false,
+            isTask: true,
+            provider: 'local',
+            calendarId: 'work',
+            priority: 'high',
+            estimatedTime: 90
+          },
+          {
+            eventId: 'task-2',
+            title: 'Call dentist',
+            description: 'Schedule annual checkup appointment',
+            startTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 15, 30).toISOString(),
+            endTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 16, 0).toISOString(),
+            location: '',
+            isAllDay: false,
+            isTask: true,
+            provider: 'local',
+            calendarId: 'personal',
+            priority: 'medium',
+            estimatedTime: 30
+          },
+          {
+            eventId: 'task-3',
+            title: 'Prepare presentation slides',
+            description: 'Create slides for client presentation',
+            startTime: new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 10, 0).toISOString(),
+            endTime: new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 12, 0).toISOString(),
+            location: '',
+            isAllDay: false,
+            isTask: true,
+            provider: 'local',
+            calendarId: 'work',
+            priority: 'high',
+            estimatedTime: 120
           }
         ];
       }
@@ -737,7 +779,8 @@ export default function CalendarModule() {
       }
     }
 
-    createTaskMutation.mutate({
+    // Create both task and calendar event
+    const taskData = {
       title: newTask.title,
       description: newTask.description,
       dueDate: dueDateTime ? dueDateTime.toISOString() : null,
@@ -747,7 +790,32 @@ export default function CalendarModule() {
       completed: newTask.completed,
       instanceId: 'calendar',
       spaceId: 1
-    });
+    };
+
+    // Create task
+    createTaskMutation.mutate(taskData);
+
+    // Also create calendar event representation
+    if (dueDateTime) {
+      const endTime = new Date(dueDateTime.getTime() + (newTask.estimatedTime * 60 * 1000));
+      
+      createEventMutation.mutate({
+        title: newTask.title,
+        description: newTask.description,
+        startTime: dueDateTime.toISOString(),
+        endTime: endTime.toISOString(),
+        location: '',
+        isAllDay: false,
+        calendarId: 'personal',
+        metadata: {
+          isTask: true,
+          isTaskEvent: true,
+          estimatedTime: newTask.estimatedTime,
+          priority: newTask.priority,
+          taskList: newTask.taskList
+        }
+      });
+    }
   };
 
   // Create calendar event from task
@@ -1098,8 +1166,16 @@ export default function CalendarModule() {
                         {day.events.slice(0, 3).map((event: any, eventIndex: number) => (
                           <div
                             key={eventIndex}
-                            className={cn("text-xs px-2 py-1 rounded text-white truncate", event.color)}
+                            className={cn(
+                              "text-xs px-2 py-1 rounded truncate flex items-center gap-1",
+                              event.isTask 
+                                ? "bg-blue-100 text-blue-800 border border-blue-200" 
+                                : `text-white ${event.color}`
+                            )}
                           >
+                            {event.isTask && (
+                              <div className="w-3 h-3 rounded-full border-2 border-blue-600 bg-white flex-shrink-0"></div>
+                            )}
                             {event.title}
                           </div>
                         ))}
@@ -1163,12 +1239,17 @@ export default function CalendarModule() {
                                           {...provided.draggableProps}
                                           {...provided.dragHandleProps}
                                           className={cn(
-                                            "text-xs px-2 py-1 rounded-sm text-white cursor-pointer mb-1 truncate",
-                                            event.color,
+                                            "text-xs px-2 py-1 rounded-sm cursor-pointer mb-1 truncate flex items-center gap-1",
+                                            event.isTask 
+                                              ? "bg-blue-100 text-blue-800 border border-blue-200" 
+                                              : `text-white ${event.color}`,
                                             snapshot.isDragging && "opacity-50"
                                           )}
                                           style={provided.draggableProps.style}
                                         >
+                                          {event.isTask && (
+                                            <div className="w-3 h-3 rounded-full border-2 border-blue-600 bg-white flex-shrink-0"></div>
+                                          )}
                                           {event.title}
                                         </div>
                                       )}
