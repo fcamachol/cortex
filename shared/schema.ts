@@ -1,4 +1,4 @@
-import { pgTable, pgSchema, text, boolean, timestamp, uuid, integer, jsonb, bigint, varchar, serial, numeric } from "drizzle-orm/pg-core";
+import { pgTable, pgSchema, text, boolean, timestamp, uuid, integer, jsonb, bigint, varchar, serial, numeric, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -223,6 +223,23 @@ export const whatsappCallLogs = whatsappSchema.table("call_logs", {
   }
 }));
 
+export const whatsappMessageDeletions = whatsappSchema.table("message_deletions", {
+  deletionId: varchar("deletion_id", { length: 255 }).primaryKey(),
+  messageId: varchar("message_id", { length: 255 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  chatId: varchar("chat_id", { length: 100 }).notNull(),
+  deletedBy: varchar("deleted_by", { length: 100 }).notNull(), // JID of who deleted the message
+  deletionType: varchar("deletion_type", { length: 50 }).notNull(), // 'sender', 'admin', 'everyone'
+  originalContent: text("original_content"), // Content of deleted message if available
+  originalTimestamp: timestamp("original_timestamp", { withTimezone: true }), // When message was originally sent
+  deletedAt: timestamp("deleted_at", { withTimezone: true }).defaultNow().notNull(),
+  rawApiPayload: jsonb("raw_api_payload"), // Full webhook payload for debugging
+}, (table) => ({
+  messageIndex: index("message_deletions_message_idx").on(table.messageId, table.instanceId),
+  chatIndex: index("message_deletions_chat_idx").on(table.chatId, table.instanceId),
+  deletedAtIndex: index("message_deletions_deleted_at_idx").on(table.deletedAt),
+}));
+
 // Relations
 export const whatsappInstancesRelations = relations(whatsappInstances, ({ many }) => ({
   contacts: many(whatsappContacts),
@@ -272,6 +289,22 @@ export const whatsappMessagesRelations = relations(whatsappMessages, ({ one, man
   media: many(whatsappMessageMedia),
   reactions: many(whatsappMessageReactions),
   updates: many(whatsappMessageUpdates),
+  deletions: many(whatsappMessageDeletions),
+}));
+
+export const whatsappMessageDeletionsRelations = relations(whatsappMessageDeletions, ({ one }) => ({
+  message: one(whatsappMessages, {
+    fields: [whatsappMessageDeletions.messageId, whatsappMessageDeletions.instanceId],
+    references: [whatsappMessages.messageId, whatsappMessages.instanceId],
+  }),
+  instance: one(whatsappInstances, {
+    fields: [whatsappMessageDeletions.instanceId],
+    references: [whatsappInstances.instanceId],
+  }),
+  chat: one(whatsappChats, {
+    fields: [whatsappMessageDeletions.chatId, whatsappMessageDeletions.instanceId],
+    references: [whatsappChats.chatId, whatsappChats.instanceId],
+  }),
 }));
 
 // Insert and Select schemas
@@ -333,6 +366,10 @@ export const insertWhatsappChatLabelSchema = createInsertSchema(whatsappChatLabe
 
 export const insertWhatsappCallLogSchema = createInsertSchema(whatsappCallLogs);
 
+export const insertWhatsappMessageDeletionSchema = createInsertSchema(whatsappMessageDeletions).omit({
+  deletedAt: true,
+});
+
 // Types
 export type WhatsappInstance = typeof whatsappInstances.$inferSelect;
 export type InsertWhatsappInstance = z.infer<typeof insertWhatsappInstanceSchema>;
@@ -372,6 +409,9 @@ export type InsertWhatsappChatLabel = z.infer<typeof insertWhatsappChatLabelSche
 
 export type WhatsappCallLog = typeof whatsappCallLogs.$inferSelect;
 export type InsertWhatsappCallLog = z.infer<typeof insertWhatsappCallLogSchema>;
+
+export type WhatsappMessageDeletion = typeof whatsappMessageDeletions.$inferSelect;
+export type InsertWhatsappMessageDeletion = z.infer<typeof insertWhatsappMessageDeletionSchema>;
 
 // Legacy types for backward compatibility (to be removed after migration)
 export interface WhatsappInstanceLegacy {
