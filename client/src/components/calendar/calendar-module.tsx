@@ -1343,15 +1343,6 @@ export default function CalendarModule() {
               >
                 Tarea
               </button>
-              <button
-                onClick={() => setActiveTab('appointment')}
-                className={cn(
-                  "px-4 py-2 text-sm font-medium rounded-t-lg ml-2",
-                  activeTab === 'appointment' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"
-                )}
-              >
-                Agenda de citas
-              </button>
             </div>
 
             {/* Form Content */}
