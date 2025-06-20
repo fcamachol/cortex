@@ -22,10 +22,27 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   });
 
   const filteredConversations = conversations
-    .filter((conv: any) =>
-      conv.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.latestMessage?.content?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    .filter((conv: any) => {
+      // Filter out conversations without any latest message
+      if (!conv.latestMessage) {
+        return false;
+      }
+      
+      // Show conversations with text content or non-text message types (stickers, images, etc.)
+      const hasTextContent = conv.latestMessage.content && conv.latestMessage.content.trim() !== '';
+      const hasNonTextMessage = conv.latestMessage.messageType && conv.latestMessage.messageType !== 'text';
+      const hasMessages = hasTextContent || hasNonTextMessage;
+      
+      // Apply search filter if there's a search query
+      if (searchQuery.trim() === '') {
+        return hasMessages;
+      }
+      
+      return hasMessages && (
+        conv.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (conv.latestMessage?.content && conv.latestMessage.content.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+    })
     .sort((a: any, b: any) => {
       // Sort by most recent message timestamp (newest first)
       const aTime = a.latestMessage?.timestamp || a.lastMessageAt || a.updatedAt || 0;
