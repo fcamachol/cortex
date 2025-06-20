@@ -40,8 +40,9 @@ export class EvolutionAPIWebSocket {
 
   private async connect() {
     try {
-      // Convert HTTP URL to WSS for WebSocket connection
-      const wsUrl = this.config.apiUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+      // Convert HTTP URL to WSS for WebSocket connection with correct path
+      const baseWsUrl = this.config.apiUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+      const wsUrl = `${baseWsUrl}/ws/${this.config.instanceName}`;
       console.log(`🔗 Connecting instance-specific WebSocket: ${wsUrl}`);
       console.log(`📱 Instance: ${this.config.instanceName}`);
       console.log(`🔑 Using API key: ${this.config.apiKey.substring(0, 8)}...`);
