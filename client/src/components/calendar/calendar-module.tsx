@@ -414,13 +414,13 @@ export default function CalendarModule() {
         location: '',
         isAllDay: false,
         calendarId: 'personal',
-        guests: [],
+        guests: [] as string[],
         hasGoogleMeet: false,
         meetLink: '',
-        attachments: [],
-        availability: 'busy',
-        visibility: 'default',
-        notifications: ['10']
+        attachments: [] as string[],
+        availability: 'busy' as 'busy' | 'free',
+        visibility: 'default' as 'default' | 'public' | 'private',
+        notifications: [10] as number[]
       });
       refetchEvents();
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
@@ -596,9 +596,9 @@ export default function CalendarModule() {
         hasGoogleMeet: false,
         meetLink: '',
         attachments: [],
-        availability: 'busy',
-        visibility: 'default',
-        notifications: ['10']
+        availability: 'busy' as 'busy' | 'free',
+        visibility: 'default' as 'default' | 'public' | 'private',
+        notifications: [10] as number[]
       });
       
       setSelectedDate(clickDate);
@@ -611,13 +611,13 @@ export default function CalendarModule() {
         location: '',
         isAllDay: false,
         calendarId: 'personal',
-        guests: [],
+        guests: [] as string[],
         hasGoogleMeet: false,
         meetLink: '',
-        attachments: [],
-        availability: 'busy',
-        visibility: 'default',
-        notifications: ['10']
+        attachments: [] as string[],
+        availability: 'busy' as 'busy' | 'free',
+        visibility: 'default' as 'default' | 'public' | 'private',
+        notifications: [10] as number[]
       });
       
       setSelectedDate(clickDate);
