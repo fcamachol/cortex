@@ -74,6 +74,10 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
   const [messageData, setMessageData] = useState<any>(null);
   const [messageLoading, setMessageLoading] = useState(false);
   const [messageError, setMessageError] = useState<any>(null);
+  
+  // State for message thread
+  const [messageThread, setMessageThread] = useState<any[]>([]);
+  const [threadLoading, setThreadLoading] = useState(false);
 
   // State for chat information
   const [chatInfo, setChatInfo] = useState<any>(null);
@@ -128,6 +132,61 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
 
     fetchMessageData();
   }, [task?.triggering_message_id, task?.instance_id]);
+
+  // Fetch message thread when task changes
+  useEffect(() => {
+    const fetchMessageThread = async () => {
+      if (!task?.related_chat_jid || !task?.instance_id) {
+        setMessageThread([]);
+        return;
+      }
+
+      setThreadLoading(true);
+
+      try {
+        // Fetch all messages from the chat related to this task
+        const response = await fetch(`/api/whatsapp/chat-messages?chatId=${encodeURIComponent(task.related_chat_jid)}&instanceId=${task.instance_id}&limit=50`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch thread: ${response.status}`);
+        }
+
+        const messages = await response.json();
+        
+        // Filter messages related to the original message or task context
+        const relevantMessages = messages.filter((msg: any) => {
+          // Include the original triggering message
+          if (msg.messageId === task.triggering_message_id) return true;
+          
+          // Include messages that quote the original message
+          if (msg.quotedMessageId === task.triggering_message_id) return true;
+          
+          // Include messages after the task creation date from the same chat
+          if (msg.timestamp && new Date(msg.timestamp) >= new Date(task.created_at)) return true;
+          
+          return false;
+        });
+
+        // Sort by timestamp
+        relevantMessages.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        
+        setMessageThread(relevantMessages);
+      } catch (error: any) {
+        console.error('Error fetching message thread:', error);
+        setMessageThread([]);
+      } finally {
+        setThreadLoading(false);
+      }
+    };
+
+    fetchMessageThread();
+  }, [task?.related_chat_jid, task?.instance_id, task?.triggering_message_id, task?.created_at]);
 
   // Fetch chat information when task changes
   useEffect(() => {
@@ -339,6 +398,13 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
         };
         onUpdate(task.task_id, updates);
       }
+      
+      // Refresh message thread to show the new reply
+      setTimeout(() => {
+        if (task?.related_chat_jid && task?.instance_id) {
+          fetchMessageThread();
+        }
+      }, 1000);
       
       setReplyMessage("");
       setIsReplying(false);
@@ -782,6 +848,52 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                       )}
                     </div>
                   ) : null}
+
+                  {/* Message Thread */}
+                  {messageThread.length > 0 && (
+                    <div className="mt-4 space-y-3">
+                      <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4" />
+                        Message Thread ({messageThread.length})
+                      </h4>
+                      <div className="max-h-60 overflow-y-auto space-y-2 border rounded-lg p-3 bg-gray-50">
+                        {threadLoading ? (
+                          <div className="text-center text-sm text-gray-500 py-4">
+                            Loading message thread...
+                          </div>
+                        ) : (
+                          messageThread.map((msg, index) => (
+                            <div
+                              key={msg.messageId || index}
+                              className={`p-3 rounded-lg ${
+                                msg.fromMe 
+                                  ? 'bg-blue-100 border-l-4 border-blue-500 ml-4' 
+                                  : 'bg-white border-l-4 border-gray-300'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                                <span className="font-medium">
+                                  {msg.fromMe ? 'You' : (msg.senderName || msg.senderJid?.split('@')[0] || 'Unknown')}
+                                </span>
+                                <span>
+                                  {msg.timestamp ? format(new Date(msg.timestamp), "MMM dd, h:mm a") : 'Unknown time'}
+                                </span>
+                              </div>
+                              <div className="text-sm text-gray-800 whitespace-pre-wrap">
+                                {msg.content || 'No content'}
+                              </div>
+                              {msg.quotedMessageId === task.triggering_message_id && (
+                                <div className="mt-1 text-xs text-purple-600 flex items-center gap-1">
+                                  <Reply className="h-3 w-3" />
+                                  Reply to original message
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Reply Interface */}
                   <div className="mt-3 space-y-2">

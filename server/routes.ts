@@ -2597,6 +2597,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get chat messages for message thread
+  app.get("/api/whatsapp/chat-messages", async (req, res) => {
+    try {
+      const { chatId, instanceId, limit = 50 } = req.query;
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      
+      if (!chatId || !instanceId) {
+        return res.status(400).json({ error: "chatId and instanceId are required" });
+      }
+      
+      // Fetch messages from the chat
+      const messages = await db
+        .select()
+        .from(whatsappMessages)
+        .where(
+          and(
+            eq(whatsappMessages.chatId, chatId as string),
+            eq(whatsappMessages.instanceId, instanceId as string)
+          )
+        )
+        .orderBy(sql`${whatsappMessages.timestamp} DESC`)
+        .limit(parseInt(limit as string));
+      
+      res.json(messages);
+    } catch (error) {
+      console.error('Error fetching chat messages:', error);
+      res.status(500).json({ error: "Failed to fetch chat messages" });
+    }
+  });
+
   // Send WhatsApp message
   app.post("/api/whatsapp/send-message", async (req, res) => {
     try {
