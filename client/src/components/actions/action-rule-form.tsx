@@ -56,6 +56,8 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
       cooldownMinutes: rule?.cooldownMinutes || 0,
       maxExecutionsPerDay: rule?.maxExecutionsPerDay || 100,
       performerFilter: rule?.performerFilters?.allowedPerformers?.[0] || "both",
+      instanceFilterType: rule?.instanceFilters?.type || "all",
+      selectedInstances: rule?.instanceFilters?.instances || [],
     },
   });
 

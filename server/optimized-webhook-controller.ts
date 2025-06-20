@@ -65,36 +65,41 @@ export const OptimizedWebhookController = {
 
         for (const rawMessage of messages) {
             try {
-                // First ensure required contacts exist
+                // Step 1: Ensure contacts exist first (required for foreign key integrity)
                 await this.ensureContactsExist(rawMessage, instanceId);
                 
-                // Then ensure chat exists
+                // Step 2: Ensure chat exists (depends on contact)
                 await this.ensureChatExists(rawMessage, instanceId);
                 
-                // Finally save the message
+                // Step 3: Save message (depends on both contact and chat existing)
                 const messageForDb = this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
                 if (messageForDb) {
                     let savedMessage;
                     try {
                         savedMessage = await storage.createWhatsappMessage(messageForDb);
                         console.log(`✅ Saved message: ${messageForDb.messageId}`);
+                        
+                        // Step 4: Process automation triggers for new messages
+                        await this.processMessageForActions(savedMessage, instanceId);
                     } catch (error: any) {
                         if (error.message?.includes('No values to set')) {
-                            // Message already exists, fetch it for actions processing
+                            // Message already exists - fetch for automation processing
                             savedMessage = await storage.getWhatsappMessage('7804247f-3ae8-4eb2-8c6d-2c44f967ad42', instanceId, messageForDb.messageId);
-                            console.log(`📝 Message already exists: ${messageForDb.messageId}`);
+                            console.log(`📝 Message exists: ${messageForDb.messageId}`);
+                            
+                            // Still process automations for existing messages that may need re-evaluation
+                            if (savedMessage) {
+                                await this.processMessageForActions(savedMessage, instanceId);
+                            }
                         } else {
-                            throw error;
+                            console.error(`Failed to save message ${messageForDb.messageId}:`, error.message);
+                            // Don't continue processing if message save fails
                         }
-                    }
-                    
-                    // Always trigger actions engine for automation, even for existing messages
-                    if (savedMessage) {
-                        await this.processMessageForActions(savedMessage, instanceId);
                     }
                 }
             } catch (error) {
-                console.error('Message save error:', error);
+                console.error('Webhook processing error:', error);
+                // Continue with next message even if this one fails
             }
         }
     },
