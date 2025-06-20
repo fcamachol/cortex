@@ -46,6 +46,8 @@ import {
   type InsertWhatsappChatLabel,
   type WhatsappCallLog,
   type InsertWhatsappCallLog,
+  type WhatsappMessageDeletion,
+  type InsertWhatsappMessageDeletion,
   type CalendarAccount,
   type InsertCalendarAccount,
   type CalendarCalendar,

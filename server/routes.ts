@@ -128,6 +128,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     await OptimizedWebhookController.handleIncomingEvent(req, res);
   });
 
+  // API endpoint to view deleted messages
+  app.get('/api/whatsapp/deleted-messages/:instanceId', async (req, res) => {
+    try {
+      const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const { instanceId } = req.params;
+      const { chatId, limit = '50' } = req.query;
+      const limitNum = parseInt(limit as string, 10);
+      
+      const deletions = await storage.getWhatsappMessageDeletions(userId, instanceId, chatId as string, limitNum);
+      res.json(deletions);
+    } catch (error) {
+      console.error('Error fetching deleted messages:', error);
+      res.status(500).json({ error: "Failed to get deleted messages" });
+    }
+  });
+
   // Webhook handler functions for Evolution API events
   async function handleWebhookMessagesUpsert(instanceName: string, data: any) {
     // Override Evolution API's internal instance IDs IMMEDIATELY before any processing
