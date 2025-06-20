@@ -242,56 +242,6 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.get('/api/whatsapp/chat-messages', async (req: Request, res: Response) => {
-    try {
-      const { chatId, userId, instanceId, limit } = req.query;
-      const finalUserId = userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const finalLimit = parseInt(limit as string || '50');
-      
-      if (chatId && instanceId) {
-        // Get messages for specific chat
-        const messages = await storage.getWhatsappMessages(
-          finalUserId, 
-          instanceId as string, 
-          chatId as string, 
-          finalLimit
-        );
-        res.json(messages);
-      } else if (instanceId) {
-        // Get recent messages for specific instance
-        const messages = await storage.getAllWhatsappMessagesForInstance(
-          finalUserId, 
-          instanceId as string, 
-          finalLimit
-        );
-        res.json(messages);
-      } else {
-        // Get recent messages across all instances for user
-        const instances = await storage.getWhatsappInstances(finalUserId);
-        let allMessages: any[] = [];
-        
-        for (const instance of instances) {
-          const messages = await storage.getAllWhatsappMessagesForInstance(
-            finalUserId, 
-            instance.instanceId, 
-            Math.ceil(finalLimit / instances.length) || 10
-          );
-          allMessages = [...allMessages, ...messages];
-        }
-        
-        // Sort by timestamp and limit
-        allMessages = allMessages
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-          .slice(0, finalLimit);
-        
-        res.json(allMessages);
-      }
-    } catch (error) {
-      console.error('Error fetching chat messages:', error);
-      res.status(500).json({ error: 'Failed to fetch chat messages' });
-    }
-  });
-
   app.get('/api/spaces/:userId', async (req: Request, res: Response) => {
     try {
       const { userId } = req.params;
@@ -345,14 +295,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get('/api/calendar/events', async (req: Request, res: Response) => {
     try {
-      const { userId, calendarId, startDate, endDate } = req.query;
-      const finalUserId = userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      
-      const events = await storage.getCalendarEvents(finalUserId, {
-        calendarId: calendarId ? parseInt(calendarId as string) : undefined,
-        startDate: startDate as string,
-        endDate: endDate as string
-      });
+      const events = await storage.getCalendarEvents();
       res.json(events);
     } catch (error) {
       console.error('Error fetching calendar events:', error);
@@ -360,79 +303,13 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.post('/api/calendar/events', async (req: Request, res: Response) => {
-    try {
-      const event = await storage.createCalendarEvent(req.body);
-      res.json(event);
-    } catch (error) {
-      console.error('Error creating calendar event:', error);
-      res.status(500).json({ error: 'Failed to create calendar event' });
-    }
-  });
-
-  app.put('/api/calendar/events/:id', async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      const event = await storage.updateCalendarEvent(parseInt(id), req.body);
-      res.json(event);
-    } catch (error) {
-      console.error('Error updating calendar event:', error);
-      res.status(500).json({ error: 'Failed to update calendar event' });
-    }
-  });
-
-  app.delete('/api/calendar/events/:id', async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      await storage.deleteCalendarEvent(parseInt(id));
-      res.json({ success: true });
-    } catch (error) {
-      console.error('Error deleting calendar event:', error);
-      res.status(500).json({ error: 'Failed to delete calendar event' });
-    }
-  });
-
   app.get('/api/calendar/calendars', async (req: Request, res: Response) => {
     try {
-      const { userId } = req.query;
-      const finalUserId = userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const calendars = await storage.getCalendarCalendars(finalUserId);
+      const calendars = await storage.getCalendars();
       res.json(calendars);
     } catch (error) {
       console.error('Error fetching calendars:', error);
       res.status(500).json({ error: 'Failed to fetch calendars' });
-    }
-  });
-
-  app.post('/api/calendar/calendars', async (req: Request, res: Response) => {
-    try {
-      const calendar = await storage.createCalendarCalendar(req.body);
-      res.json(calendar);
-    } catch (error) {
-      console.error('Error creating calendar:', error);
-      res.status(500).json({ error: 'Failed to create calendar' });
-    }
-  });
-
-  app.put('/api/calendar/calendars/:id', async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      const calendar = await storage.updateCalendarCalendar(parseInt(id), req.body);
-      res.json(calendar);
-    } catch (error) {
-      console.error('Error updating calendar:', error);
-      res.status(500).json({ error: 'Failed to update calendar' });
-    }
-  });
-
-  app.delete('/api/calendar/calendars/:id', async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      await storage.deleteCalendarCalendar(parseInt(id));
-      res.json({ success: true });
-    } catch (error) {
-      console.error('Error deleting calendar:', error);
-      res.status(500).json({ error: 'Failed to delete calendar' });
     }
   });
 
@@ -594,93 +471,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Helper functions for webhook handlers
   async function handleWebhookMessagesUpsert(instanceName: string, data: any) {
     console.log(`📨 Processing: messages.upsert for ${instanceName}`);
-    
-    try {
-      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const instances = await storage.getWhatsappInstances(userId);
-      const instance = instances.find(inst => inst.instanceId === instanceName);
-      if (!instance) {
-        console.error(`❌ Instance ${instanceName} not found`);
-        return;
-      }
-
-      // Process messages array
-      const messages = Array.isArray(data) ? data : [data];
-      
-      for (const messageData of messages) {
-        const key = messageData.key;
-        const message = messageData.message;
-        
-        if (!key || !key.id) {
-          console.log('⚠️ Skipping message without valid key');
-          continue;
-        }
-
-        const messageId = key.id;
-        const chatId = key.remoteJid;
-        const fromMe = key.fromMe || false;
-        const senderJid = fromMe ? instance.instanceId : (messageData.pushName ? key.remoteJid : key.participant || key.remoteJid);
-
-        // Extract message content based on type
-        let content = '';
-        let messageType = 'text';
-
-        if (message.conversation) {
-          content = message.conversation;
-          messageType = 'text';
-        } else if (message.extendedTextMessage?.text) {
-          content = message.extendedTextMessage.text;
-          messageType = 'text';
-        } else if (message.imageMessage?.caption) {
-          content = message.imageMessage.caption || '[Image]';
-          messageType = 'image';
-        } else if (message.videoMessage?.caption) {
-          content = message.videoMessage.caption || '[Video]';
-          messageType = 'video';
-        } else if (message.audioMessage) {
-          content = '[Audio]';
-          messageType = 'audio';
-        } else if (message.documentMessage) {
-          content = `[Document: ${message.documentMessage.title || 'file'}]`;
-          messageType = 'document';
-        } else {
-          content = '[Unsupported message type]';
-          messageType = 'unknown';
-        }
-
-        // Create message record
-        const messageRecord = {
-          messageId: messageId,
-          instanceId: instance.instanceId,
-          chatId: chatId,
-          senderJid: senderJid,
-          fromMe: fromMe,
-          messageType: messageType,
-          content: content,
-          timestamp: messageData.messageTimestamp ? new Date(messageData.messageTimestamp * 1000) : new Date(),
-          quotedMessageId: message.extendedTextMessage?.contextInfo?.quotedMessage ? 
-            message.extendedTextMessage.contextInfo.stanzaId : null,
-          isForwarded: message.extendedTextMessage?.contextInfo?.isForwarded || false,
-          forwardingScore: message.extendedTextMessage?.contextInfo?.forwardingScore || 0,
-          isStarred: false,
-          isEdited: false,
-          lastEditedAt: null,
-          sourcePlatform: messageData.source || 'android',
-          rawApiPayload: messageData
-        };
-
-        console.log(`💬 Storing message ${messageId} from ${chatId}: "${content.substring(0, 50)}..."`);
-        
-        try {
-          await storage.createWhatsappMessage(messageRecord);
-          console.log(`✅ Message stored successfully: ${messageId}`);
-        } catch (dbError) {
-          console.error(`❌ Error storing message ${messageId}:`, dbError);
-        }
-      }
-    } catch (error) {
-      console.error('Error in handleWebhookMessagesUpsert:', error);
-    }
+    // Implementation would go here
   }
 
   async function handleWebhookGroupsUpsert(instanceName: string, data: any) {

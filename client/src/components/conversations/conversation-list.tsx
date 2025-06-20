@@ -18,49 +18,10 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   // Mock user ID - in real app this would come from auth context
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
 
-  // Helper function to get display name for conversation
-  const getConversationDisplayName = (conv: any) => {
-    // Try to find matching contact first
-    const contact = contacts.find((c: any) => c.jid === conv.chatId);
-    
-    if (contact) {
-      return contact.pushName || contact.verifiedName || 'Unknown Contact';
-    }
-    
-    if (conv.type === 'group') {
-      // For groups, try to get the group name from the chatId
-      return conv.chatId.includes('@g.us') ? 'Group Chat' : conv.chatId;
-    } else {
-      // For individuals, format the phone number
-      const phoneNumber = conv.chatId.replace('@s.whatsapp.net', '');
-      return formatPhoneNumber(phoneNumber);
-    }
-  };
-
   const { data: conversations = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/whatsapp/conversations/${userId}`],
     refetchInterval: 3000, // Refresh every 3 seconds
   });
-
-  // Also fetch contacts for display names
-  const { data: contacts = [] } = useQuery<any[]>({
-    queryKey: [`/api/contacts/${userId}`],
-    refetchInterval: 5000,
-  });
-
-  // Fetch recent messages to show latest message per conversation
-  const { data: messages = [] } = useQuery<any[]>({
-    queryKey: [`/api/whatsapp/chat-messages`],
-    queryFn: () => fetch(`/api/whatsapp/chat-messages?userId=${userId}&limit=100`).then(res => res.json()),
-    refetchInterval: 3000,
-  });
-
-  // Helper function to get latest message for a conversation
-  const getLatestMessage = (chatId: string) => {
-    return messages
-      .filter((msg: any) => msg.chatId === chatId)
-      .sort((a: any, b: any) => new Date(b.timestamp || b.createdAt).getTime() - new Date(a.timestamp || a.createdAt).getTime())[0];
-  };
 
   // Auto-refresh when new messages arrive or conversations change
   useEffect(() => {
@@ -78,32 +39,25 @@ export default function ConversationList({ selectedConversation, onSelectConvers
 
   const filteredConversations = conversations
     .filter((conv: any) => {
-      // Skip status broadcasts
-      if (conv.chatId === 'status@broadcast') {
+      // Filter out conversations without any latest message
+      if (!conv.latestMessage) {
         return false;
       }
       
-      // Skip internal CMC conversation IDs that don't have actual messages
-      if (conv.chatId && conv.chatId.startsWith('cmc')) {
-        return false;
-      }
-      
-      // Only show conversations with actual WhatsApp JIDs (phone numbers or groups)
-      if (conv.chatId && !conv.chatId.includes('@')) {
-        return false;
-      }
+      // Show conversations with text content or non-text message types (stickers, images, etc.)
+      const hasTextContent = conv.latestMessage.content && conv.latestMessage.content.trim() !== '';
+      const hasNonTextMessage = conv.latestMessage.messageType && conv.latestMessage.messageType !== 'text';
+      const hasMessages = hasTextContent || hasNonTextMessage;
       
       // Apply search filter if there's a search query
       if (searchQuery.trim() === '') {
-        return true; // Show all conversations when no search
+        return hasMessages;
       }
       
-      // Search by chat ID (phone number for individuals) or group name
-      const searchTerm = searchQuery.toLowerCase();
-      const chatId = conv.chatId?.toLowerCase() || '';
-      const displayName = getConversationDisplayName(conv).toLowerCase();
-      
-      return chatId.includes(searchTerm) || displayName.includes(searchTerm);
+      return hasMessages && (
+        conv.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (conv.latestMessage?.content && conv.latestMessage.content.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
     })
     .sort((a: any, b: any) => {
       // Sort by most recent message timestamp (newest first)
@@ -179,38 +133,32 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                      {getConversationDisplayName(conversation)}
+                      {conversation.type === 'group' ? 
+                        (conversation.chatId || 'Unknown Group') :
+                        (conversation.title && conversation.title.includes('@') ? 
+                          formatPhoneNumber(conversation.title) : 
+                          (conversation.title || formatPhoneNumber(conversation.chatId || 'Unknown Contact')))}
                     </h3>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {(() => {
-                        const latestMessage = getLatestMessage(conversation.chatId);
-                        const timestamp = latestMessage?.timestamp || latestMessage?.createdAt || conversation.lastMessageTimestamp;
-                        return timestamp ? new Date(timestamp).toLocaleTimeString([], { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        }) : '';
-                      })()}
+                      {conversation.latestMessage?.createdAt ? new Date(conversation.latestMessage.createdAt).toLocaleTimeString([], { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      }) : ''}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-300 truncate mt-1">
-                    {(() => {
-                      const latestMessage = getLatestMessage(conversation.chatId);
-                      if (latestMessage) {
-                        return (
-                          <span className="flex items-center">
-                            {latestMessage.fromMe && (
-                              <span className="mr-1 text-gray-500">You: </span>
-                            )}
-                            {latestMessage.messageType === 'image' ? '📷 Photo' :
-                             latestMessage.messageType === 'audio' ? '🎵 Audio' :
-                             latestMessage.messageType === 'video' ? '🎥 Video' :
-                             latestMessage.messageType === 'document' ? '📄 Document' :
-                             latestMessage.content || 'Message'}
-                          </span>
-                        );
-                      }
-                      return conversation.lastMessageTimestamp ? 'Tap to view messages' : 'No messages yet';
-                    })()}
+                    {conversation.latestMessage ? (
+                      <span className="flex items-center">
+                        {conversation.latestMessage.fromMe && (
+                          <span className="mr-1 text-gray-500">You: </span>
+                        )}
+                        {conversation.latestMessage.messageType === 'image' ? '📷 Photo' :
+                         conversation.latestMessage.messageType === 'audio' ? '🎵 Audio' :
+                         conversation.latestMessage.messageType === 'video' ? '🎥 Video' :
+                         conversation.latestMessage.messageType === 'document' ? '📄 Document' :
+                         conversation.latestMessage.content || 'Message'}
+                      </span>
+                    ) : 'No messages yet'}
                   </p>
                   <div className="flex items-center justify-between mt-2">
                     <div className="flex items-center space-x-2">
