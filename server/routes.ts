@@ -199,6 +199,140 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // WhatsApp API routes
+  app.get('/api/whatsapp/conversations/:userId', async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const conversations = await storage.getWhatsappChats(userId);
+      res.json(conversations);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      res.status(500).json({ error: 'Failed to fetch conversations' });
+    }
+  });
+
+  app.get('/api/whatsapp/instances/:userId', async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const instances = await storage.getWhatsappInstances(userId);
+      res.json(instances);
+    } catch (error) {
+      console.error('Error fetching instances:', error);
+      res.status(500).json({ error: 'Failed to fetch instances' });
+    }
+  });
+
+  app.get('/api/whatsapp/instances/status', async (req: Request, res: Response) => {
+    try {
+      res.json({ status: 'connected', instances: [] });
+    } catch (error) {
+      console.error('Error fetching instance status:', error);
+      res.status(500).json({ error: 'Failed to fetch status' });
+    }
+  });
+
+  app.get('/api/contacts/:userId', async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const contacts = await storage.getWhatsappContacts(userId);
+      res.json(contacts);
+    } catch (error) {
+      console.error('Error fetching contacts:', error);
+      res.status(500).json({ error: 'Failed to fetch contacts' });
+    }
+  });
+
+  app.get('/api/spaces/:userId', async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const spaces = await storage.getAppSpaces(userId);
+      res.json(spaces);
+    } catch (error) {
+      console.error('Error fetching spaces:', error);
+      res.status(500).json({ error: 'Failed to fetch spaces' });
+    }
+  });
+
+  app.get('/api/crm/tasks', async (req: Request, res: Response) => {
+    try {
+      const tasks = await storage.getCrmTasks();
+      res.json(tasks);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      res.status(500).json({ error: 'Failed to fetch tasks' });
+    }
+  });
+
+  app.get('/api/crm/projects', async (req: Request, res: Response) => {
+    try {
+      const projects = await storage.getCrmProjects();
+      res.json(projects);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      res.status(500).json({ error: 'Failed to fetch projects' });
+    }
+  });
+
+  app.get('/api/crm/checklist-items', async (req: Request, res: Response) => {
+    try {
+      const items = await storage.getCrmChecklistItems();
+      res.json(items);
+    } catch (error) {
+      console.error('Error fetching checklist items:', error);
+      res.status(500).json({ error: 'Failed to fetch checklist items' });
+    }
+  });
+
+  app.get('/api/events/tasks', async (req: Request, res: Response) => {
+    try {
+      const tasks = await storage.getCalendarTasks();
+      res.json(tasks);
+    } catch (error) {
+      console.error('Error fetching calendar tasks:', error);
+      res.status(500).json({ error: 'Failed to fetch calendar tasks' });
+    }
+  });
+
+  app.get('/api/calendar/events', async (req: Request, res: Response) => {
+    try {
+      const events = await storage.getCalendarEvents();
+      res.json(events);
+    } catch (error) {
+      console.error('Error fetching calendar events:', error);
+      res.status(500).json({ error: 'Failed to fetch calendar events' });
+    }
+  });
+
+  app.get('/api/calendar/calendars', async (req: Request, res: Response) => {
+    try {
+      const calendars = await storage.getCalendars();
+      res.json(calendars);
+    } catch (error) {
+      console.error('Error fetching calendars:', error);
+      res.status(500).json({ error: 'Failed to fetch calendars' });
+    }
+  });
+
+  app.get('/api/calendar/providers', async (req: Request, res: Response) => {
+    try {
+      const providers = await storage.getCalendarProviders();
+      res.json(providers);
+    } catch (error) {
+      console.error('Error fetching calendar providers:', error);
+      res.status(500).json({ error: 'Failed to fetch calendar providers' });
+    }
+  });
+
+  app.get('/api/actions/whatsapp-instances', async (req: Request, res: Response) => {
+    try {
+      const instances = await storage.getActionsInstances();
+      res.json(instances);
+    } catch (error) {
+      console.error('Error fetching action instances:', error);
+      res.status(500).json({ error: 'Failed to fetch action instances' });
+    }
+  });
+
   // API to refresh group subjects from Evolution API
   app.post('/api/whatsapp/refresh-group-subjects/:instanceId', async (req: Request, res: Response) => {
     const { instanceId } = req.params;

@@ -155,6 +155,16 @@ export interface IStorage {
   saveWhatsappConversation(chat: InsertWhatsappChat): Promise<WhatsappChat>;
   getWhatsappInstanceByName(userId: string, instanceName: string): Promise<WhatsappInstance | undefined>;
   createEvolutionMessage(message: InsertWhatsappMessage): Promise<WhatsappMessage>;
+
+  // Additional API methods
+  getAppSpaces(userId: string): Promise<any[]>;
+  getCrmTasks(): Promise<any[]>;
+  getCrmProjects(): Promise<any[]>;
+  getCrmChecklistItems(): Promise<any[]>;
+  getCalendarTasks(): Promise<any[]>;
+  getCalendars(): Promise<any[]>;
+  getCalendarProviders(): Promise<any[]>;
+  getActionsInstances(): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
