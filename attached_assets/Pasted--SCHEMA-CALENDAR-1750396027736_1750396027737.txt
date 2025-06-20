@@ -1,0 +1,129 @@
+-- =============================================================================
+-- SCHEMA: CALENDAR
+-- PURPOSE: Manages integration with external calendar providers like Google
+--          Calendar. It handles authentication, calendar synchronization,
+--          and event data mirroring.
+-- =============================================================================
+
+CREATE SCHEMA IF NOT EXISTS calendar;
+
+-- =============================================================================
+-- ENUMERATED TYPES
+-- =============================================================================
+CREATE TYPE calendar.provider_type AS ENUM ('google', 'outlook', 'apple');
+COMMENT ON TYPE calendar.provider_type IS 'Defines the supported external calendar providers.';
+
+CREATE TYPE calendar.sync_status_type AS ENUM ('active', 'revoked', 'error', 'pending');
+COMMENT ON TYPE calendar.sync_status_type IS 'Tracks the synchronization status of a user''s calendar account.';
+
+CREATE TYPE calendar.attendee_response_status AS ENUM ('needsAction', 'declined', 'tentative', 'accepted');
+COMMENT ON TYPE calendar.attendee_response_status IS 'Mirrors the response status for event attendees from providers like Google Calendar.';
+
+
+-- =============================================================================
+-- CORE TABLE STRUCTURES
+-- =============================================================================
+
+---
+--- TABLE: calendar.accounts
+--- PURPOSE: Securely stores the connection and authentication details for each
+---          user's external calendar account (e.g., their Google account).
+---
+CREATE TABLE calendar.accounts (
+    account_id SERIAL PRIMARY KEY,
+    user_id UUID NOT NULL UNIQUE, -- One calendar account per app user
+    workspace_id UUID NOT NULL,
+    provider calendar.provider_type NOT NULL DEFAULT 'google',
+    provider_account_id VARCHAR(255) NOT NULL, -- Typically the user's email address
+    access_token TEXT NOT NULL, -- Should be encrypted in a real application
+    refresh_token TEXT, -- Should be encrypted in a real application
+    token_expiry_date TIMESTAMPTZ,
+    scopes JSONB, -- Stores the permissions granted during OAuth (e.g., ["calendar.events", "calendar.readonly"])
+    sync_status calendar.sync_status_type NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES app.users(user_id) ON DELETE CASCADE,
+    CONSTRAINT fk_workspace FOREIGN KEY(workspace_id) REFERENCES app.workspaces(workspace_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE calendar.accounts IS 'Stores OAuth credentials and connection details for external calendar providers.';
+
+---
+--- TABLE: calendar.calendars
+--- PURPOSE: Stores a list of the individual calendars (e.g., "Work", "Personal")
+---          that a user has made visible to the application.
+---
+CREATE TABLE calendar.calendars (
+    calendar_id SERIAL PRIMARY KEY,
+    account_id INTEGER NOT NULL,
+    provider_calendar_id VARCHAR(255) NOT NULL, -- The unique ID from the provider (e.g., Google Calendar ID)
+    summary VARCHAR(255) NOT NULL,
+    description TEXT,
+    timezone VARCHAR(100),
+    is_primary BOOLEAN DEFAULT FALSE,
+    is_enabled_for_sync BOOLEAN DEFAULT TRUE NOT NULL,
+    last_sync_token VARCHAR(255), -- For incremental synchronization
+    last_synced_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    UNIQUE (account_id, provider_calendar_id),
+    CONSTRAINT fk_account FOREIGN KEY(account_id) REFERENCES calendar.accounts(account_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE calendar.calendars IS 'Stores the individual calendars a user has chosen to sync.';
+COMMENT ON COLUMN calendar.calendars.provider_calendar_id IS 'The unique calendar identifier from the external provider.';
+
+---
+--- TABLE: calendar.events
+--- PURPOSE: The core table storing a synchronized copy of events from the
+---          external provider, including the all-important provider_event_id.
+---
+CREATE TABLE calendar.events (
+    event_id SERIAL PRIMARY KEY,
+    calendar_id INTEGER NOT NULL,
+    provider_event_id VARCHAR(255) NOT NULL, -- The unique ID from Google Calendar
+    crm_event_id INTEGER UNIQUE, -- The link back to our internal CRM event
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    start_time TIMESTAMPTZ,
+    end_time TIMESTAMPTZ,
+    is_all_day BOOLEAN NOT NULL DEFAULT FALSE,
+    location VARCHAR(512),
+    meet_link VARCHAR(512),
+    provider_html_link VARCHAR(512), -- Link to view the event on Google Calendar, etc.
+    status VARCHAR(50), -- e.g., 'confirmed', 'tentative', 'cancelled'
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    UNIQUE (calendar_id, provider_event_id),
+    CONSTRAINT fk_calendar FOREIGN KEY(calendar_id) REFERENCES calendar.calendars(calendar_id) ON DELETE CASCADE,
+    CONSTRAINT fk_crm_event FOREIGN KEY(crm_event_id) REFERENCES crm.calendar_events(event_id) ON DELETE SET NULL
+);
+COMMENT ON TABLE calendar.events IS 'A synchronized mirror of events from an external calendar.';
+COMMENT ON COLUMN calendar.events.provider_event_id IS 'The unique event identifier from the external provider, used for updates.';
+COMMENT ON COLUMN calendar.events.crm_event_id IS 'A link back to the corresponding event in the CRM schema.';
+
+---
+--- TABLE: calendar.attendees
+--- PURPOSE: Stores the attendees for a synchronized calendar event.
+---
+CREATE TABLE calendar.attendees (
+    attendee_id SERIAL PRIMARY KEY,
+    event_id INTEGER NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    display_name VARCHAR(255),
+    response_status calendar.attendee_response_status NOT NULL DEFAULT 'needsAction',
+    is_organizer BOOLEAN DEFAULT FALSE,
+
+    UNIQUE (event_id, email),
+    CONSTRAINT fk_event FOREIGN KEY(event_id) REFERENCES calendar.events(event_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE calendar.attendees IS 'Stores attendee information for a synchronized calendar event.';
+
+-- =============================================================================
+-- INDEXES FOR PERFORMANCE
+-- =============================================================================
+CREATE INDEX idx_calendars_account_id ON calendar.calendars(account_id);
+CREATE INDEX idx_events_calendar_id ON calendar.events(calendar_id);
+CREATE INDEX idx_events_crm_event_id ON calendar.events(crm_event_id);
+CREATE INDEX idx_attendees_event_id ON calendar.attendees(event_id);
