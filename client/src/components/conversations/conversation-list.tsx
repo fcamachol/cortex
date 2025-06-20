@@ -48,6 +48,20 @@ export default function ConversationList({ selectedConversation, onSelectConvers
     refetchInterval: 5000,
   });
 
+  // Fetch recent messages to show latest message per conversation
+  const { data: messages = [] } = useQuery<any[]>({
+    queryKey: [`/api/whatsapp/chat-messages`],
+    queryFn: () => fetch(`/api/whatsapp/chat-messages?userId=${userId}&limit=100`).then(res => res.json()),
+    refetchInterval: 3000,
+  });
+
+  // Helper function to get latest message for a conversation
+  const getLatestMessage = (chatId: string) => {
+    return messages
+      .filter((msg: any) => msg.chatId === chatId)
+      .sort((a: any, b: any) => new Date(b.timestamp || b.createdAt).getTime() - new Date(a.timestamp || a.createdAt).getTime())[0];
+  };
+
   // Auto-refresh when new messages arrive or conversations change
   useEffect(() => {
     const refreshConversations = () => {
@@ -165,18 +179,24 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-300 truncate mt-1">
-                    {conversation.latestMessage ? (
-                      <span className="flex items-center">
-                        {conversation.latestMessage.fromMe && (
-                          <span className="mr-1 text-gray-500">You: </span>
-                        )}
-                        {conversation.latestMessage.messageType === 'image' ? '📷 Photo' :
-                         conversation.latestMessage.messageType === 'audio' ? '🎵 Audio' :
-                         conversation.latestMessage.messageType === 'video' ? '🎥 Video' :
-                         conversation.latestMessage.messageType === 'document' ? '📄 Document' :
-                         conversation.latestMessage.content || 'Message'}
-                      </span>
-                    ) : 'No messages yet'}
+                    {(() => {
+                      const latestMessage = getLatestMessage(conversation.chatId);
+                      if (latestMessage) {
+                        return (
+                          <span className="flex items-center">
+                            {latestMessage.fromMe && (
+                              <span className="mr-1 text-gray-500">You: </span>
+                            )}
+                            {latestMessage.messageType === 'image' ? '📷 Photo' :
+                             latestMessage.messageType === 'audio' ? '🎵 Audio' :
+                             latestMessage.messageType === 'video' ? '🎥 Video' :
+                             latestMessage.messageType === 'document' ? '📄 Document' :
+                             latestMessage.content || 'Message'}
+                          </span>
+                        );
+                      }
+                      return conversation.lastMessageTimestamp ? 'Tap to view messages' : 'No messages yet';
+                    })()}
                   </p>
                   <div className="flex items-center justify-between mt-2">
                     <div className="flex items-center space-x-2">
