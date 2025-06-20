@@ -61,20 +61,16 @@ export class ActionsEngine {
     console.log('🔍 Processing message for automated actions');
     
     try {
-      // Get all active action rules
-      const rules = await db
-        .select()
-        .from(actionRules)
-        .where(
-          and(
-            eq(actionRules.isActive, true),
-            eq(actionRules.instanceId, messageContext.instanceId)
-          )
-        );
+      // Get all active action rules using SQL query to handle schema properly
+      const rules = await db.execute(sql`
+        SELECT * FROM action_rules 
+        WHERE is_active = true
+        ORDER BY created_at DESC
+      `);
 
-      for (const rule of rules) {
+      for (const rule of rules.rows) {
         if (ActionsEngine.shouldTriggerRule(rule, messageContext)) {
-          console.log(`🎯 Triggering rule: ${rule.ruleName}`);
+          console.log(`🎯 Triggering rule: ${rule.rule_name}`);
           
           const result = await ActionsEngine.executeAction(
             rule.actionType,

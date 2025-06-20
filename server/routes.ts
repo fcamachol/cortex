@@ -133,6 +133,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case 'messages.reaction':
           await handleWebhookMessageReaction(instanceName, data);
           break;
+        case 'messages.reaction.update':
+          await handleWebhookMessageReaction(instanceName, data);
+          break;
         case 'presence.update':
           console.log(`👁️ Presence update for ${instanceName}:`, data);
           break;
