@@ -26,6 +26,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
   const [isCreateSpaceOpen, setIsCreateSpaceOpen] = useState(false);
   const [spaceForm, setSpaceForm] = useState({
     name: '',
+    description: '',
   });
   
   // Use authenticated user data with fallback for demo
@@ -48,14 +49,14 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
 
   // Create space mutation
   const createSpaceMutation = useMutation({
-    mutationFn: async (spaceData: { name: string }) => {
+    mutationFn: async (spaceData: { name: string; description?: string }) => {
       const response = await apiRequest('POST', '/api/spaces', spaceData);
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/spaces/${currentUser.id}`] });
       setIsCreateSpaceOpen(false);
-      setSpaceForm({ name: '' });
+      setSpaceForm({ name: '', description: '' });
       toast({
         title: "Space created",
         description: "Your new space has been created successfully.",
@@ -200,15 +201,21 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
                         required
                       />
                     </div>
-
+                    <div className="space-y-2">
+                      <Label htmlFor="space-description">Description (Optional)</Label>
+                      <Textarea
+                        id="space-description"
+                        placeholder="Describe what this space is for..."
+                        value={spaceForm.description}
+                        onChange={(e) => setSpaceForm(prev => ({ ...prev, description: e.target.value }))}
+                        rows={3}
+                      />
+                    </div>
                     <div className="flex justify-end space-x-2">
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => {
-                          setIsCreateSpaceOpen(false);
-                          setSpaceForm({ name: '' });
-                        }}
+                        onClick={() => setIsCreateSpaceOpen(false)}
                       >
                         Cancel
                       </Button>
@@ -242,10 +249,10 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
                     <Hash className="w-3 h-3 text-blue-500 mr-3" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {space.spaceName}
+                        {space.name}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        Created {new Date(space.createdAt).toLocaleDateString()}
+                        {space.description || 'No description'}
                       </p>
                     </div>
                   </div>

@@ -4097,9 +4097,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const userSpaces = await db
-        .select()
+        .select({
+          spaceId: appSpaces.spaceId,
+          name: appSpaces.name,
+          description: appSpaces.description,
+          createdAt: appSpaces.createdAt,
+        })
         .from(appSpaces)
-        .where(eq(appSpaces.creatorUserId, userId));
+        .where(eq(appSpaces.ownerId, userId))
+        .orderBy(appSpaces.createdAt);
 
       res.json(userSpaces);
     } catch (error) {
@@ -4110,7 +4116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/spaces', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const { name } = req.body;
+      const { name, description } = req.body;
       const userId = req.user?.userId;
 
       if (!name || !userId) {
@@ -4120,10 +4126,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [newSpace] = await db
         .insert(appSpaces)
         .values({
-          spaceName: name.trim(),
-          creatorUserId: userId,
+          name: name.trim(),
+          description: description?.trim() || null,
+          ownerId: userId,
         })
-        .returning();
+        .returning({
+          spaceId: appSpaces.spaceId,
+          name: appSpaces.name,
+          description: appSpaces.description,
+          createdAt: appSpaces.createdAt,
+        });
 
       res.status(201).json(newSpace);
     } catch (error) {
@@ -4135,7 +4147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/spaces/:spaceId', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const { spaceId } = req.params;
-      const { name } = req.body;
+      const { name, description } = req.body;
       const userId = req.user?.userId;
 
       if (!name) {
@@ -4146,20 +4158,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [space] = await db
         .select()
         .from(appSpaces)
-        .where(eq(appSpaces.spaceId, parseInt(spaceId)))
+        .where(eq(appSpaces.spaceId, spaceId))
         .limit(1);
 
-      if (!space || space.creatorUserId !== userId) {
+      if (!space || space.ownerId !== userId) {
         return res.status(404).json({ error: 'Space not found or access denied' });
       }
 
       const [updatedSpace] = await db
         .update(appSpaces)
         .set({
-          spaceName: name.trim(),
+          name: name.trim(),
+          description: description?.trim() || null,
         })
-        .where(eq(appSpaces.spaceId, parseInt(spaceId)))
-        .returning();
+        .where(eq(appSpaces.spaceId, spaceId))
+        .returning({
+          spaceId: appSpaces.spaceId,
+          name: appSpaces.name,
+          description: appSpaces.description,
+          createdAt: appSpaces.createdAt,
+        });
 
       res.json(updatedSpace);
     } catch (error) {
@@ -4177,16 +4195,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [space] = await db
         .select()
         .from(appSpaces)
-        .where(eq(appSpaces.spaceId, parseInt(spaceId)))
+        .where(eq(appSpaces.spaceId, spaceId))
         .limit(1);
 
-      if (!space || space.creatorUserId !== userId) {
+      if (!space || space.ownerId !== userId) {
         return res.status(404).json({ error: 'Space not found or access denied' });
       }
 
       await db
         .delete(appSpaces)
-        .where(eq(appSpaces.spaceId, parseInt(spaceId)));
+        .where(eq(appSpaces.spaceId, spaceId));
 
       res.json({ message: 'Space deleted successfully' });
     } catch (error) {
