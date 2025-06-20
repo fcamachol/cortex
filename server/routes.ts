@@ -594,6 +594,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Helper functions for webhook handlers
   async function handleWebhookMessagesUpsert(instanceName: string, data: any) {
     console.log(`📨 Processing: messages.upsert for ${instanceName}`);
+    console.log(`📨 Webhook payload structure:`, JSON.stringify(data, null, 2));
     
     try {
       const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
@@ -604,15 +605,23 @@ export async function registerRoutes(app: Express): Promise<void> {
         return;
       }
 
-      // Process messages array
-      const messages = Array.isArray(data) ? data : [data];
+      // Extract messages from webhook payload - Evolution API structure
+      let messages = [];
+      if (data.data && Array.isArray(data.data)) {
+        messages = data.data;
+      } else if (Array.isArray(data)) {
+        messages = data;
+      } else {
+        messages = [data];
+      }
       
       for (const messageData of messages) {
+        // Evolution API webhook structure: messageData has key and message properties
         const key = messageData.key;
         const message = messageData.message;
         
         if (!key || !key.id) {
-          console.log('⚠️ Skipping message without valid key');
+          console.log('⚠️ Skipping message without valid key:', JSON.stringify(messageData, null, 2));
           continue;
         }
 
@@ -623,7 +632,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
         // Extract message content based on type
         let content = '';
-        let messageType = 'text';
+        let messageType: 'text' | 'image' | 'video' | 'audio' | 'document' | 'sticker' | 'location' | 'contact_card' | 'contact_card_multi' | 'order' | 'revoked' | 'unsupported' | 'reaction' | 'call_log' | 'edited_message' = 'text';
 
         if (message.conversation) {
           content = message.conversation;
@@ -631,10 +640,10 @@ export async function registerRoutes(app: Express): Promise<void> {
         } else if (message.extendedTextMessage?.text) {
           content = message.extendedTextMessage.text;
           messageType = 'text';
-        } else if (message.imageMessage?.caption) {
+        } else if (message.imageMessage) {
           content = message.imageMessage.caption || '[Image]';
           messageType = 'image';
-        } else if (message.videoMessage?.caption) {
+        } else if (message.videoMessage) {
           content = message.videoMessage.caption || '[Video]';
           messageType = 'video';
         } else if (message.audioMessage) {
@@ -643,9 +652,21 @@ export async function registerRoutes(app: Express): Promise<void> {
         } else if (message.documentMessage) {
           content = `[Document: ${message.documentMessage.title || 'file'}]`;
           messageType = 'document';
+        } else if (message.stickerMessage) {
+          content = '[Sticker]';
+          messageType = 'sticker';
+        } else if (message.locationMessage) {
+          content = '[Location]';
+          messageType = 'location';
+        } else if (message.contactMessage) {
+          content = '[Contact]';
+          messageType = 'contact_card';
+        } else if (message.reactionMessage) {
+          content = `[Reaction: ${message.reactionMessage.text}]`;
+          messageType = 'reaction';
         } else {
           content = '[Unsupported message type]';
-          messageType = 'unknown';
+          messageType = 'unsupported';
         }
 
         // Create message record
