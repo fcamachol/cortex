@@ -345,11 +345,50 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get('/api/calendar/events', async (req: Request, res: Response) => {
     try {
-      const events = await storage.getCalendarEvents();
+      const { userId, calendarId, startDate, endDate } = req.query;
+      const finalUserId = userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      
+      const events = await storage.getCalendarEvents(finalUserId, {
+        calendarId: calendarId ? parseInt(calendarId as string) : undefined,
+        startDate: startDate as string,
+        endDate: endDate as string
+      });
       res.json(events);
     } catch (error) {
       console.error('Error fetching calendar events:', error);
       res.status(500).json({ error: 'Failed to fetch calendar events' });
+    }
+  });
+
+  app.post('/api/calendar/events', async (req: Request, res: Response) => {
+    try {
+      const event = await storage.createCalendarEvent(req.body);
+      res.json(event);
+    } catch (error) {
+      console.error('Error creating calendar event:', error);
+      res.status(500).json({ error: 'Failed to create calendar event' });
+    }
+  });
+
+  app.put('/api/calendar/events/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const event = await storage.updateCalendarEvent(parseInt(id), req.body);
+      res.json(event);
+    } catch (error) {
+      console.error('Error updating calendar event:', error);
+      res.status(500).json({ error: 'Failed to update calendar event' });
+    }
+  });
+
+  app.delete('/api/calendar/events/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteCalendarEvent(parseInt(id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting calendar event:', error);
+      res.status(500).json({ error: 'Failed to delete calendar event' });
     }
   });
 
