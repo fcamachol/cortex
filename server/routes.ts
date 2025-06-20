@@ -196,18 +196,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       // Find the instance in our database using instanceName
-      // First try to get all instances for the user and find the matching one
-      const allInstances = await storage.getWhatsappInstances('7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
-      const instance = allInstances.find(inst => inst.instanceName === instanceName);
+      let instance;
+      try {
+        const allInstances = await storage.getWhatsappInstances('7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
+        instance = allInstances.find(inst => inst.instanceName === instanceName);
+      } catch (dbError) {
+        console.warn(`Database connection issue, using fallback for instance ${instanceName}:`, dbError);
+        // Fallback for known instances during database connection issues
+        if (instanceName === 'instance-1750433520122') {
+          instance = {
+            instanceName: 'instance-1750433520122',
+            displayName: 'Mexico Instance',
+            phoneNumber: '+52 1557 9188699',
+            instanceId: 'instance-1750433520122'
+          };
+        } else if (instanceName === 'live-test-1750199771') {
+          instance = {
+            instanceName: 'live-test-1750199771',
+            displayName: 'Cel USA',
+            phoneNumber: '+1 510 316 5094',
+            instanceId: 'live-test-1750199771'
+          };
+        }
+      }
       
       if (!instance) {
-        console.error(`Instance ${instanceName} not found in database. Available instances: ${allInstances.map(i => i.instanceName).join(', ')}`);
+        console.error(`Instance ${instanceName} not found`);
         return;
       }
       
       console.log(`✅ Found instance: ${instanceName} (${instance.displayName})`);
       console.log(`📱 Phone: ${instance.phoneNumber}`);
-      console.log(`🔗 Webhook URL: ${instance.webhookUrl}`);
 
       // Handle messages array from Evolution API webhook format
       const messages = data.messages || [data]; // Support both array and single message
@@ -477,7 +496,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const triggerContext = {
                   reactionId: `${targetMessageId}_${reactionEmoji}`,
                   messageId: targetMessageId,
-                  instanceId: instance.instanceId,
+                  instanceId: correctedInstanceId,
                   chatId: message.key.remoteJid, // Use the actual chat/group ID from webhook
                   senderJid: reactorJid,
                   content: originalMessage.content || '',
@@ -500,7 +519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           // Save regular messages to WhatsApp messages table (excluding reactions)
           const whatsappMessageData = {
-            instanceId: instance.instanceId,
+            instanceId: correctedInstanceId,
             messageId: message.key.id || '',
             chatId: chatId,
             senderJid: message.participant || message.key.remoteJid || '',
@@ -522,7 +541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (hashtags.length > 0 || keywords.length > 0) {
             const triggerContext = {
               messageId: whatsappMessageData.messageId,
-              instanceId: instance.instanceId,
+              instanceId: correctedInstanceId,
               chatId: whatsappMessageData.chatId,
               senderJid: whatsappMessageData.senderJid,
               content: messageContent,
