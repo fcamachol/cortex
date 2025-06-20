@@ -3212,7 +3212,7 @@ Message ID: ${messageId}`;
         // First, fetch all chats to get groups
         const chatsResponse = await fetch(`https://evolution-api-evolution-api.vuswn0.easypanel.host/chat/findAll/${instanceId}`, {
           method: 'GET',
-          headers
+          headers: { 'apikey': instance.apiKey }
         });
 
         if (!chatsResponse.ok) {
@@ -3364,6 +3364,118 @@ Message ID: ${messageId}`;
       });
     } catch (error) {
       console.error('Error syncing participants:', error);
+      res.status(500).json({ error: 'Failed to sync participants' });
+    }
+  });
+
+  // Direct sync for existing group participants
+  app.post('/api/whatsapp/instances/:instanceId/sync-existing-group-participants', async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const { instanceId } = req.params;
+      const userId = req.user?.id || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+
+      const instance = await storage.getWhatsappInstance(userId, instanceId);
+      if (!instance || !instance.apiKey) {
+        return res.status(404).json({ error: 'Instance not found or missing API key' });
+      }
+
+      console.log(`🔄 Starting participants sync for existing groups: ${instanceId}`);
+
+      // Get existing groups from database
+      const existingGroups = await storage.db
+        .select()
+        .from(storage.schema.whatsappGroups)
+        .where(storage.eq(storage.schema.whatsappGroups.instanceId, instanceId));
+
+      console.log(`📱 Found ${existingGroups.length} existing groups`);
+
+      let totalParticipants = 0;
+      let syncedGroups = 0;
+
+      for (const group of existingGroups) {
+        const groupJid = group.groupJid;
+        
+        try {
+          // Try different Evolution API endpoints for fetching participants
+          const endpoints = [
+            `https://evolution-api-evolution-api.vuswn0.easypanel.host/group/participants/${instanceId}?groupJid=${encodeURIComponent(groupJid)}`,
+            `https://evolution-api-evolution-api.vuswn0.easypanel.host/group/findParticipants/${instanceId}?groupJid=${encodeURIComponent(groupJid)}`,
+            `https://evolution-api-evolution-api.vuswn0.easypanel.host/group/${instanceId}/participants?groupJid=${encodeURIComponent(groupJid)}`
+          ];
+
+          let participantsData = null;
+          let successful = false;
+
+          for (const endpoint of endpoints) {
+            try {
+              const response = await fetch(endpoint, {
+                method: 'GET',
+                headers: { 'apikey': instance.apiKey }
+              });
+
+              if (response.ok) {
+                participantsData = await response.json();
+                console.log(`✅ Successfully fetched from endpoint: ${endpoint}`);
+                successful = true;
+                break;
+              } else {
+                console.log(`❌ Failed endpoint: ${endpoint} (Status: ${response.status})`);
+              }
+            } catch (endpointError) {
+              console.log(`❌ Error with endpoint: ${endpoint}`, endpointError);
+            }
+          }
+
+          if (successful && participantsData) {
+            // Handle different response formats
+            let participants = [];
+            if (Array.isArray(participantsData)) {
+              participants = participantsData;
+            } else if (participantsData.participants && Array.isArray(participantsData.participants)) {
+              participants = participantsData.participants;
+            } else if (participantsData.data && Array.isArray(participantsData.data)) {
+              participants = participantsData.data;
+            }
+
+            console.log(`📥 Processing ${participants.length} participants for group: ${group.subject}`);
+
+            for (const participant of participants) {
+              const participantJid = participant.id || participant.jid || participant.participantJid;
+              if (!participantJid) continue;
+
+              const participantData = {
+                groupJid: groupJid,
+                instanceId: instanceId,
+                participantJid: participantJid,
+                isAdmin: participant.admin === 'admin' || participant.isAdmin || false,
+                isSuperAdmin: participant.admin === 'superadmin' || participant.isSuperAdmin || false
+              };
+
+              await storage.createWhatsappGroupParticipant(participantData);
+              totalParticipants++;
+            }
+
+            console.log(`✅ Synced ${participants.length} participants for group: ${group.subject}`);
+            syncedGroups++;
+          } else {
+            console.log(`⚠️ Could not fetch participants for group: ${group.subject}`);
+          }
+
+        } catch (groupError) {
+          console.error(`❌ Error syncing participants for group ${groupJid}:`, groupError);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Synchronized ${totalParticipants} participants across ${syncedGroups} of ${existingGroups.length} groups`,
+        totalParticipants,
+        syncedGroups,
+        totalGroups: existingGroups.length
+      });
+
+    } catch (error) {
+      console.error('❌ Error in participants sync:', error);
       res.status(500).json({ error: 'Failed to sync participants' });
     }
   });
