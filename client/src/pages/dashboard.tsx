@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "@/components/layout/sidebar";
 import ConversationList from "@/components/conversations/conversation-list";
 import ChatInterface from "@/components/conversations/chat-interface";
@@ -8,10 +8,32 @@ import CalendarModule from "@/components/calendar/calendar-module";
 import IntegrationModule from "@/components/integrations/integration-module";
 import { ActionsDashboard } from "@/components/actions/actions-dashboard";
 import SimpleDBViewer from "@/pages/SimpleDBViewer";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Dashboard() {
   const [activeModule, setActiveModule] = useState("conversations");
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+
+  // Auto-select the first conversation with messages when none is selected
+  const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
+  const { data: conversations = [] } = useQuery<any[]>({
+    queryKey: [`/api/whatsapp/conversations/${userId}`],
+  });
+
+  useEffect(() => {
+    if (!selectedConversation && conversations.length > 0) {
+      // Find a conversation that likely has messages (has latest message or known chat IDs)
+      const conversationWithMessages = conversations.find(conv => 
+        conv.latestMessage || 
+        conv.chatId === "5214422501780@s.whatsapp.net" ||
+        conv.chatId === "5215530453567@s.whatsapp.net"
+      ) || conversations[0];
+      
+      if (conversationWithMessages) {
+        setSelectedConversation(conversationWithMessages.chatId);
+      }
+    }
+  }, [conversations, selectedConversation]);
 
   const renderModule = () => {
     switch (activeModule) {
