@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { ChevronLeft, ChevronRight, Plus, MoreVertical, CalendarIcon, Clock, MapPin, Users, ExternalLink } from "lucide-react";
-import { format } from "date-fns";
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, addDays, subDays, isSameDay, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -48,12 +48,28 @@ export default function CalendarModule() {
   });
   const { toast } = useToast();
 
-  // Fetch calendar events for the current month
-  const { data: events = [], isLoading: eventsLoading, refetch: refetchEvents } = useQuery({
-    queryKey: ['/api/calendar/events', currentDate.getFullYear(), currentDate.getMonth()],
-    queryFn: async () => {
+  // Get date range based on view mode
+  const getDateRange = () => {
+    if (viewMode === 'month') {
       const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      return { startDate, endDate };
+    } else if (viewMode === 'week') {
+      const startDate = startOfWeek(currentDate, { weekStartsOn: 0 });
+      const endDate = endOfWeek(currentDate, { weekStartsOn: 0 });
+      return { startDate, endDate };
+    } else { // day
+      const startDate = startOfDay(currentDate);
+      const endDate = endOfDay(currentDate);
+      return { startDate, endDate };
+    }
+  };
+
+  // Fetch calendar events for the current view
+  const { data: events = [], isLoading: eventsLoading, refetch: refetchEvents } = useQuery({
+    queryKey: ['/api/calendar/events', viewMode, currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()],
+    queryFn: async () => {
+      const { startDate, endDate } = getDateRange();
       
       const response = await fetch(`/api/calendar/events?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`);
       if (!response.ok) throw new Error('Failed to fetch events');
@@ -102,22 +118,50 @@ export default function CalendarModule() {
     }
   });
 
-  // Format current month/year for display
-  const formatCurrentMonth = () => {
-    return currentDate.toLocaleDateString('en-US', { 
-      month: 'long', 
-      year: 'numeric' 
-    });
+  // Format current period for display based on view mode
+  const formatCurrentPeriod = () => {
+    if (viewMode === 'month') {
+      return currentDate.toLocaleDateString('en-US', { 
+        month: 'long', 
+        year: 'numeric' 
+      });
+    } else if (viewMode === 'week') {
+      const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
+      const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 });
+      return `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`;
+    } else { // day
+      return format(currentDate, 'EEEE, MMMM d, yyyy');
+    }
   };
 
-  // Navigate to previous/next month
-  const navigateMonth = (direction: 'prev' | 'next') => {
+  // Navigate to previous/next period based on view mode
+  const navigatePeriod = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
-    if (direction === 'prev') {
-      newDate.setMonth(newDate.getMonth() - 1);
-    } else {
-      newDate.setMonth(newDate.getMonth() + 1);
+    
+    if (viewMode === 'month') {
+      if (direction === 'prev') {
+        newDate.setMonth(newDate.getMonth() - 1);
+      } else {
+        newDate.setMonth(newDate.getMonth() + 1);
+      }
+    } else if (viewMode === 'week') {
+      if (direction === 'prev') {
+        setCurrentDate(subWeeks(currentDate, 1));
+        return;
+      } else {
+        setCurrentDate(addWeeks(currentDate, 1));
+        return;
+      }
+    } else { // day
+      if (direction === 'prev') {
+        setCurrentDate(subDays(currentDate, 1));
+        return;
+      } else {
+        setCurrentDate(addDays(currentDate, 1));
+        return;
+      }
     }
+    
     setCurrentDate(newDate);
   };
 
@@ -180,8 +224,50 @@ export default function CalendarModule() {
     });
   };
 
+  // Generate week view data
+  const generateWeekDays = () => {
+    const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
+    const weekDays = eachDayOfInterval({
+      start: weekStart,
+      end: endOfWeek(currentDate, { weekStartsOn: 0 })
+    });
+
+    return weekDays.map(day => ({
+      date: day,
+      dayNumber: day.getDate(),
+      isToday: isSameDay(day, new Date()),
+      events: getEventsForDay(day)
+    }));
+  };
+
+  // Generate day view data
+  const generateDayEvents = () => {
+    const dayEvents = getEventsForDay(currentDate);
+    
+    // Group events by hour for better display
+    const eventsByHour = Array.from({ length: 24 }, (_, hour) => {
+      const hourStart = new Date(currentDate);
+      hourStart.setHours(hour, 0, 0, 0);
+      const hourEnd = new Date(currentDate);
+      hourEnd.setHours(hour, 59, 59, 999);
+
+      return {
+        hour,
+        events: dayEvents.filter((event: any) => {
+          if (event.isAllDay) return hour === 0; // Show all-day events at the top
+          const eventStart = new Date(event.startTime);
+          return eventStart.getHours() === hour;
+        })
+      };
+    });
+
+    return eventsByHour;
+  };
+
   const calendarDays = generateCalendarDays();
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekViewDays = generateWeekDays();
+  const dayViewEvents = generateDayEvents();
 
   // Get upcoming events from real data
   const upcomingEvents = events ? events
@@ -402,17 +488,17 @@ export default function CalendarModule() {
               <Button 
                 variant="ghost" 
                 size="sm"
-                onClick={() => navigateMonth('prev')}
+                onClick={() => navigatePeriod('prev')}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {formatCurrentMonth()}
+                {formatCurrentPeriod()}
               </h2>
               <Button 
                 variant="ghost" 
                 size="sm"
-                onClick={() => navigateMonth('next')}
+                onClick={() => navigatePeriod('next')}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -431,48 +517,133 @@ export default function CalendarModule() {
             </div>
           </div>
 
-          {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-0">
-            {/* Calendar Headers */}
-            {weekDays.map((day) => (
-              <div key={day} className="p-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
-                {day}
-              </div>
-            ))}
+          {/* Calendar Content - Different views */}
+          {viewMode === 'month' && (
+            <div className="grid grid-cols-7 gap-0">
+              {/* Calendar Headers */}
+              {weekDays.map((day) => (
+                <div key={day} className="p-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                  {day}
+                </div>
+              ))}
 
-            {/* Calendar Days */}
-            {calendarDays.map((day, index) => (
-              <div
-                key={index}
-                className={`calendar-day ${day.isToday ? 'today' : ''} ${
-                  !day.isCurrentMonth ? 'text-gray-400 dark:text-gray-600' : ''
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-sm font-medium ${
+              {/* Calendar Days */}
+              {calendarDays.map((day, index) => (
+                <div
+                  key={index}
+                  className={`calendar-day ${day.isToday ? 'today' : ''} ${
+                    !day.isCurrentMonth ? 'text-gray-400 dark:text-gray-600' : ''
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`text-sm font-medium ${
+                      day.isToday 
+                        ? 'text-blue-600 dark:text-blue-400' 
+                        : 'text-gray-900 dark:text-gray-100'
+                    }`}>
+                      {day.dayNumber}
+                    </span>
+                    {day.isToday && (
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    {day.events.map((event: any, eventIndex: number) => (
+                      <div
+                        key={eventIndex}
+                        className={`text-xs px-2 py-1 rounded truncate ${event.color}`}
+                      >
+                        {event.title}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Week View */}
+          {viewMode === 'week' && (
+            <div className="grid grid-cols-7 gap-0">
+              {/* Week Headers */}
+              {weekViewDays.map((day, index) => (
+                <div key={index} className="p-3 text-center border-b border-gray-200 dark:border-gray-700">
+                  <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {format(day.date, 'EEE')}
+                  </div>
+                  <div className={`text-lg font-semibold mt-1 ${
                     day.isToday 
                       ? 'text-blue-600 dark:text-blue-400' 
                       : 'text-gray-900 dark:text-gray-100'
                   }`}>
                     {day.dayNumber}
-                  </span>
-                  {day.isToday && (
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  )}
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  {day.events.map((event, eventIndex) => (
-                    <div
-                      key={eventIndex}
-                      className={`text-xs px-2 py-1 rounded truncate ${event.color}`}
-                    >
-                      {event.title}
+              ))}
+
+              {/* Week Events */}
+              {weekViewDays.map((day, index) => (
+                <div key={index} className="min-h-[300px] p-2 border-r border-gray-200 dark:border-gray-700 last:border-r-0">
+                  <div className="space-y-1">
+                    {day.events.map((event: any, eventIndex: number) => (
+                      <div
+                        key={eventIndex}
+                        className={`text-xs px-2 py-1 rounded ${event.color} cursor-pointer hover:opacity-80`}
+                      >
+                        <div className="font-medium truncate">{event.title}</div>
+                        {!event.isAllDay && (
+                          <div className="text-xs opacity-75">
+                            {format(new Date(event.startTime), 'h:mm a')}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Day View */}
+          {viewMode === 'day' && (
+            <div className="max-h-[500px] overflow-y-auto">
+              {dayViewEvents.map((hourSlot, index) => (
+                <div key={index} className="flex border-b border-gray-100 dark:border-gray-700">
+                  <div className="w-16 p-2 text-sm text-gray-500 dark:text-gray-400 text-right">
+                    {hourSlot.hour === 0 ? '12 AM' : 
+                     hourSlot.hour < 12 ? `${hourSlot.hour} AM` : 
+                     hourSlot.hour === 12 ? '12 PM' : 
+                     `${hourSlot.hour - 12} PM`}
+                  </div>
+                  <div className="flex-1 p-2 min-h-[60px]">
+                    <div className="space-y-1">
+                      {hourSlot.events.map((event: any, eventIndex: number) => (
+                        <div
+                          key={eventIndex}
+                          className={`px-3 py-2 rounded ${event.color} cursor-pointer hover:opacity-80`}
+                        >
+                          <div className="font-medium">{event.title}</div>
+                          {event.location && (
+                            <div className="text-xs opacity-75 flex items-center mt-1">
+                              <MapPin className="h-3 w-3 mr-1" />
+                              {event.location}
+                            </div>
+                          )}
+                          {!event.isAllDay && (
+                            <div className="text-xs opacity-75 flex items-center mt-1">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {format(new Date(event.startTime), 'h:mm a')}
+                              {event.endTime && ` - ${format(new Date(event.endTime), 'h:mm a')}`}
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Calendar Integration Status */}
