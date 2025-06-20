@@ -1075,7 +1075,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   async function handleWebhookMessagesUpdate(instanceName: string, data: any) {
-    console.log(`🔄 Processing messages.update for ${instanceName}:`, JSON.stringify(data, null, 2));
+    console.log(`🔄 Processing messages.update for ${instanceName}`);
     
     try {
       const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
@@ -1086,6 +1086,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
+      // Log the full data structure for debugging
+      console.log(`📊 Message update data structure:`, JSON.stringify(data, null, 2));
+
+      // Check for different types of updates in the data
+      if (Array.isArray(data)) {
+        // Handle array of updates
+        for (const update of data) {
+          await processMessageUpdate(instanceName, instance, userId, update);
+        }
+      } else {
+        // Handle single update
+        await processMessageUpdate(instanceName, instance, userId, data);
+      }
+
+    } catch (error) {
+      console.error('Error processing messages.update:', error);
+    }
+  }
+
+  async function processMessageUpdate(instanceName: string, instance: any, userId: string, data: any) {
+    try {
       // Handle message edits first - check if this is an edit event
       if (data.message && data.message.editedMessage) {
         const editedMessage = data.message.editedMessage;
@@ -1104,20 +1125,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         console.log(`🔄 Processing edit for message ${targetMessageId}`);
-        console.log(`🔍 Protocol message key ID: ${editedMessage.message?.protocolMessage?.key?.id}`);
-        console.log(`🔍 Webhook key ID: ${data.key?.id}`);
 
-        try {
-          // Get the existing message to store as old content
-          const existingMessage = await storage.getWhatsappMessage(userId, instance.instanceId, targetMessageId);
-          if (existingMessage) {
-            const oldContent = existingMessage.content;
-            
-            // Extract new content from edited message - handle multiple formats
-            let newContent = '[Edited message]';
-            
-            const protocolMessage = editedMessage.message?.protocolMessage;
-            if (protocolMessage?.editedMessage) {
+        // Get the existing message to store as old content
+        const existingMessage = await storage.getWhatsappMessage(userId, instance.instanceId, targetMessageId);
+        if (existingMessage) {
+          const oldContent = existingMessage.content;
+          
+          // Extract new content from edited message - handle multiple formats
+          let newContent = '[Edited message]';
+          
+          const protocolMessage = editedMessage.message?.protocolMessage;
+          if (protocolMessage?.editedMessage) {
               const editContent = protocolMessage.editedMessage;
               
               // Text message edit
@@ -1182,6 +1200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (editError) {
           console.error(`Error processing message edit for ${targetMessageId}:`, editError);
         }
+        return;
       }
 
       // Handle status updates if not an edit
@@ -1239,17 +1258,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             console.log(`✅ Updated message ${messageId} last edited timestamp`);
           }
-        } catch (updateError) {
-          console.log(`⚠️ Could not update main message record for ${messageId}:`, updateError);
+          } catch (updateError) {
+            console.log(`⚠️ Could not update main message record for ${messageId}:`, updateError);
+          }
+          
+        } catch (error) {
+          console.error(`Error saving message status update for ${messageId}:`, error);
         }
-        
-      } catch (error) {
-        console.error(`Error saving message status update for ${messageId}:`, error);
+        return;
       }
+
+      // Handle message status updates (read receipts, delivery confirmations, etc.)
+      const messageId = data.key?.id || data.messageId || data.id;
+      const status = data.status || data.ack;
       
+      if (messageId && status) {
+        console.log(`📱 Status update for message ${messageId}: ${status}`);
+        
+        // Map Evolution API status to our schema enum
+        let mappedStatus: "error" | "pending" | "sent" | "delivered" | "read" | "played" = 'pending';
+        switch (status) {
+          case 'DELIVERY_ACK':
+          case 'delivered':
+          case 2:
+            mappedStatus = 'delivered';
+            break;
+          case 'READ':
+          case 'read':
+          case 3:
+            mappedStatus = 'read';
+            break;
+          case 'PLAYED':
+          case 'played':
+          case 4:
+            mappedStatus = 'played';
+            break;
+          case 'SENT':
+          case 'sent':
+          case 1:
+            mappedStatus = 'sent';
+            break;
+          case 'ERROR':
+          case 'error':
+          case -1:
+            mappedStatus = 'error';
+            break;
+          default:
+            mappedStatus = 'pending';
+        }
+
+        // Create message status update record
+        const messageUpdateData = {
+          messageId: messageId,
+          instanceId: instance.instanceId,
+          status: mappedStatus,
+          timestamp: new Date()
+        };
+        
+        try {
+          await storage.createWhatsappMessageUpdate(messageUpdateData);
+          console.log(`✅ Saved message status update: ${messageId} -> ${status} (mapped to ${mappedStatus})`);
+        } catch (error) {
+          console.error(`Error saving message status update for ${messageId}:`, error);
+        }
+      } else {
+        console.log(`⚠️ Insufficient data for message update: messageId=${messageId}, status=${status}`);
+      }
+
     } catch (error) {
-      console.error('Error processing messages.update:', error);
-      console.error('Message update data:', data);
+      console.error('Error processing message update:', error);
     }
   }
 
