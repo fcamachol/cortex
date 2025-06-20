@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Paperclip, Smile, Send, CheckSquare, Plus, MoreVertical } from "lucide-react";
 import { ContactTasksAndEvents } from "@/components/contacts/ContactTasksAndEvents";
 import { MessageReactions } from "@/components/conversations/MessageReactions";
+import { MessageHoverActions } from "@/components/conversations/MessageHoverActions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 // WebSocket functionality removed - using webhook-based system
 import { apiRequest } from "@/lib/queryClient";
@@ -18,6 +19,7 @@ interface ChatInterfaceProps {
 export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [messageInput, setMessageInput] = useState("");
   const [messageReactions, setMessageReactions] = useState<Record<string, any[]>>({});
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -120,6 +122,37 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Load reactions for messages
+  useEffect(() => {
+    if (messages.length > 0 && instanceId) {
+      const loadReactions = async () => {
+        const reactionPromises = messages.map(async (message: any) => {
+          const messageId = message.messageId || message.id;
+          try {
+            const response = await fetch(`/api/whatsapp/message-reactions?messageId=${messageId}&instanceId=${instanceId}`);
+            if (response.ok) {
+              const reactions = await response.json();
+              return { messageId, reactions };
+            }
+          } catch (error) {
+            console.error('Error loading reactions for message:', messageId, error);
+          }
+          return { messageId, reactions: [] };
+        });
+
+        const results = await Promise.all(reactionPromises);
+        const reactionsMap = results.reduce((acc, { messageId, reactions }) => {
+          acc[messageId] = reactions;
+          return acc;
+        }, {} as Record<string, any[]>);
+
+        setMessageReactions(reactionsMap);
+      };
+
+      loadReactions();
+    }
+  }, [messages, instanceId]);
+
   if (!conversationId) {
     return (
       <div className="flex-1 flex items-center justify-center chat-area">
@@ -208,10 +241,12 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
             messages.map((message: any, index: number) => (
               <div
                 key={message.messageId || message.id || `message-${index}`}
-                className={`flex ${message.isFromMe ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${message.isFromMe ? 'justify-end' : 'justify-start'} relative group`}
+                onMouseEnter={() => setHoveredMessageId(message.messageId || message.id)}
+                onMouseLeave={() => setHoveredMessageId(null)}
               >
                 <div
-                  className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                  className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg relative ${
                     message.isFromMe
                       ? 'whatsapp-message-sent'
                       : 'whatsapp-message-received'
@@ -233,7 +268,26 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                       </div>
                     )}
                   </div>
+                  
+                  {/* Message Hover Actions */}
+                  <MessageHoverActions
+                    messageId={message.messageId || message.id}
+                    messageContent={message.content}
+                    chatId={conversationId!}
+                    instanceId={instanceId!}
+                    isVisible={hoveredMessageId === (message.messageId || message.id)}
+                  />
                 </div>
+                
+                {/* Message Reactions */}
+                <MessageReactions
+                  messageId={message.messageId || message.id}
+                  reactions={messageReactions[message.messageId || message.id] || []}
+                  onAddReaction={(messageId, reaction) => {
+                    addReactionMutation.mutate({ messageId, reaction });
+                  }}
+                  isFromMe={message.isFromMe}
+                />
               </div>
             ))
           )}

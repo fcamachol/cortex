@@ -3008,6 +3008,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create task from message
+  app.post("/api/whatsapp/create-task-from-message", async (req, res) => {
+    try {
+      const { messageId, messageContent, chatId, instanceId } = req.body;
+      
+      if (!messageId || !messageContent || !chatId || !instanceId) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Default user for now
+
+      // Get contact name from the chat
+      const contactQuery = await pool.query(`
+        SELECT name, phone FROM whatsapp.contacts 
+        WHERE chat_jid = $1 AND instance_id = $2
+        LIMIT 1
+      `, [chatId, instanceId]);
+
+      const contactName = contactQuery.rows[0]?.name || chatId.split('@')[0];
+
+      // Create intelligent task from message content
+      const taskTitle = messageContent.length > 50 
+        ? messageContent.substring(0, 47) + '...' 
+        : messageContent;
+
+      const taskDescription = `Task created from WhatsApp message:
+"${messageContent}"
+
+Contact: ${contactName}
+Message ID: ${messageId}`;
+
+      // Insert task into database
+      const taskQuery = await pool.query(`
+        INSERT INTO tasks (
+          id,
+          user_id,
+          title,
+          description,
+          status,
+          priority,
+          metadata,
+          created_at,
+          updated_at
+        ) VALUES (
+          gen_random_uuid(),
+          $1::uuid,
+          $2,
+          $3,
+          'pending',
+          'medium',
+          $4::jsonb,
+          NOW(),
+          NOW()
+        ) RETURNING *
+      `, [
+        userId,
+        taskTitle,
+        taskDescription,
+        JSON.stringify({
+          source: 'whatsapp_message',
+          message_id: messageId,
+          chat_id: chatId,
+          instance_id: instanceId,
+          related_chat_jid: chatId,
+          contact_name: contactName
+        })
+      ]);
+
+      const task = taskQuery.rows[0];
+      res.json({ 
+        success: true, 
+        task,
+        message: `Task created: ${taskTitle}`
+      });
+    } catch (error) {
+      console.error('Error creating task from message:', error);
+      res.status(500).json({ error: "Failed to create task from message" });
+    }
+  });
+
   // Send WhatsApp message
   app.post("/api/whatsapp/send-message", async (req, res) => {
     try {
