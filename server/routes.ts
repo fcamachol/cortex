@@ -407,8 +407,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const newContactData = {
               instanceId: correctedInstanceId,
               jid: contactJid,
-              name: message.pushName || contactJid.split('@')[0],
-              isMyContact: false,
+              pushName: message.pushName || contactJid.split('@')[0],
+              verifiedName: null,
+              profilePictureUrl: null,
+              isBusiness: false,
+              isMe: false,
               isBlocked: false
             };
             
@@ -424,8 +427,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const senderContactData = {
                 instanceId: correctedInstanceId,
                 jid: senderJid,
-                name: message.pushName || senderJid.split('@')[0],
-                isMyContact: false,
+                pushName: message.pushName || senderJid.split('@')[0],
+                verifiedName: null,
+                profilePictureUrl: null,
+                isBusiness: false,
+                isMe: false,
                 isBlocked: false
               };
               
@@ -448,6 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               isArchived: false,
               isPinned: false,
               isMuted: false,
+              muteEndTimestamp: null,
               lastMessageTimestamp: new Date((message.messageTimestamp || Math.floor(Date.now() / 1000)) * 1000)
             };
             
@@ -529,8 +536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             messageType: messageType,
             content: extractMessageContent(message),
             timestamp: new Date((message.messageTimestamp || Math.floor(Date.now() / 1000)) * 1000),
-            quotedMessageId: extractQuotedMessageId(message),
-            rawApiPayload: message
+            quotedMessageId: extractQuotedMessageId(message)
           };
 
           const savedMessage = await storage.createWhatsappMessage(whatsappMessageData);
