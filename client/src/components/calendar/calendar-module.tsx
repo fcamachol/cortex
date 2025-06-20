@@ -461,7 +461,14 @@ export default function CalendarModule() {
         endTime: format(new Date(clickDate.getTime() + 60 * 60 * 1000), 'HH:mm'),
         location: '',
         isAllDay: false,
-        calendarId: 'personal'
+        calendarId: 'personal',
+        guests: [],
+        hasGoogleMeet: false,
+        meetLink: '',
+        attachments: [],
+        availability: 'busy',
+        visibility: 'default',
+        notifications: ['10']
       });
     } else {
       setNewEvent({
@@ -471,7 +478,14 @@ export default function CalendarModule() {
         endTime: '10:00',
         location: '',
         isAllDay: false,
-        calendarId: 'personal'
+        calendarId: 'personal',
+        guests: [],
+        hasGoogleMeet: false,
+        meetLink: '',
+        attachments: [],
+        availability: 'busy',
+        visibility: 'default',
+        notifications: ['10']
       });
     }
     
