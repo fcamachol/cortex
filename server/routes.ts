@@ -1198,9 +1198,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`⚠️ Original message ${targetMessageId} not found for edit`);
           }
         } catch (editError) {
-          console.error(`Error processing message edit for ${targetMessageId}:`, editError);
+          console.error(`Error processing message edit:`, editError);
         }
-        return;
       }
 
       // Handle status updates if not an edit
