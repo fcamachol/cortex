@@ -30,7 +30,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
       const conversationsWithLatestMessages = await Promise.all(
         conversations.map(async (conversation: any) => {
           try {
-            const response = await fetch(`/api/whatsapp/messages/${conversation.id}?limit=1`);
+            const response = await fetch(`/api/whatsapp/messages/${conversation.chatId || conversation.id}?limit=1`);
             if (response.ok) {
               const messages = await response.json();
               const latestMessage = messages[0];
@@ -45,7 +45,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
               };
             }
           } catch (error) {
-            console.error('Error fetching messages for conversation:', conversation.id, error);
+            console.error('Error fetching messages for conversation:', conversation.chatId || conversation.id, error);
           }
           return conversation;
         })
