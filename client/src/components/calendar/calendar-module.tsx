@@ -112,6 +112,7 @@ export default function CalendarModule() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState("week");
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'event' | 'task' | 'appointment'>('event');
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isCreateCalendarOpen, setIsCreateCalendarOpen] = useState(false);
@@ -131,6 +132,17 @@ export default function CalendarModule() {
     availability: 'busy' as 'busy' | 'free',
     visibility: 'default' as 'default' | 'public' | 'private',
     notifications: [10] as number[]
+  });
+  
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    dueDate: '',
+    dueTime: '',
+    estimatedTime: 30, // in minutes
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    taskList: 'My Tasks',
+    completed: false
   });
   const [eventTab, setEventTab] = useState<'event' | 'task' | 'appointment'>('event');
   const [guestEmail, setGuestEmail] = useState('');
@@ -434,6 +446,39 @@ export default function CalendarModule() {
     }
   });
 
+  // Create task mutation
+  const createTaskMutation = useMutation({
+    mutationFn: async (taskData: any) => {
+      return apiRequest('/api/crm/tasks', 'POST', taskData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Task created",
+        description: "Your task has been created successfully."
+      });
+      setIsCreateEventOpen(false);
+      setNewTask({
+        title: '',
+        description: '',
+        dueDate: '',
+        dueTime: '',
+        estimatedTime: 30,
+        priority: 'medium',
+        taskList: 'My Tasks',
+        completed: false
+      });
+      refetchEvents();
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to create task",
+        description: error.message || "An error occurred while creating the task.",
+        variant: "destructive"
+      });
+    }
+  });
+
   // Update event mutation for drag-and-drop
   const updateEventMutation = useMutation({
     mutationFn: async ({ eventId, updates }: { eventId: string; updates: any }) => {
@@ -669,6 +714,68 @@ export default function CalendarModule() {
       location: newEvent.location,
       isAllDay: newEvent.isAllDay,
       calendarId: newEvent.calendarId
+    });
+  };
+
+  // Handle create task form submission
+  const handleCreateTask = () => {
+    if (!newTask.title) {
+      toast({
+        title: "Title required",
+        description: "Please enter a title for the task.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    let dueDateTime = null;
+    if (newTask.dueDate) {
+      dueDateTime = new Date(newTask.dueDate);
+      if (newTask.dueTime) {
+        const [hours, minutes] = newTask.dueTime.split(':');
+        dueDateTime.setHours(parseInt(hours), parseInt(minutes));
+      }
+    }
+
+    createTaskMutation.mutate({
+      title: newTask.title,
+      description: newTask.description,
+      dueDate: dueDateTime ? dueDateTime.toISOString() : null,
+      estimatedTimeMinutes: newTask.estimatedTime,
+      priority: newTask.priority,
+      taskList: newTask.taskList,
+      completed: newTask.completed,
+      instanceId: 'calendar',
+      spaceId: 1
+    });
+  };
+
+  // Create calendar event from task
+  const createEventFromTask = (task: any) => {
+    if (!task.dueDate) {
+      toast({
+        title: "Due date required",
+        description: "Task must have a due date to create calendar event.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const taskDueDate = new Date(task.dueDate);
+    const endTime = new Date(taskDueDate.getTime() + (task.estimatedTimeMinutes * 60 * 1000));
+
+    createEventMutation.mutate({
+      title: `Task: ${task.title}`,
+      description: task.description || `Complete task: ${task.title}`,
+      startTime: taskDueDate.toISOString(),
+      endTime: endTime.toISOString(),
+      location: '',
+      isAllDay: false,
+      calendarId: 'personal',
+      metadata: {
+        linkedTaskId: task.taskId,
+        isTaskEvent: true
+      }
     });
   };
 
@@ -1138,28 +1245,28 @@ export default function CalendarModule() {
             {/* Tab Navigation */}
             <div className="flex px-6 pt-4">
               <button
-                onClick={() => setEventTab('event')}
+                onClick={() => setActiveTab('event')}
                 className={cn(
                   "px-4 py-2 text-sm font-medium rounded-t-lg",
-                  eventTab === 'event' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"
+                  activeTab === 'event' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"
                 )}
               >
                 Evento
               </button>
               <button
-                onClick={() => setEventTab('task')}
+                onClick={() => setActiveTab('task')}
                 className={cn(
                   "px-4 py-2 text-sm font-medium rounded-t-lg ml-2",
-                  eventTab === 'task' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"
+                  activeTab === 'task' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"
                 )}
               >
                 Tarea
               </button>
               <button
-                onClick={() => setEventTab('appointment')}
+                onClick={() => setActiveTab('appointment')}
                 className={cn(
                   "px-4 py-2 text-sm font-medium rounded-t-lg ml-2",
-                  eventTab === 'appointment' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"
+                  activeTab === 'appointment' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"
                 )}
               >
                 Agenda de citas
@@ -1168,12 +1275,14 @@ export default function CalendarModule() {
 
             {/* Form Content */}
             <div className="px-6 pb-6 space-y-4">
-              {/* Date and Time */}
-              <div className="flex items-start space-x-4">
-                <Clock className="h-5 w-5 text-gray-500 mt-2" />
-                <div className="flex-1 space-y-3">
-                  {/* Date Selection */}
-                  <div className="flex items-center space-x-4">
+              {activeTab === 'event' && (
+                <>
+                  {/* Date and Time */}
+                  <div className="flex items-start space-x-4">
+                    <Clock className="h-5 w-5 text-gray-500 mt-2" />
+                    <div className="flex-1 space-y-3">
+                      {/* Date Selection */}
+                      <div className="flex items-center space-x-4">
                     <Input
                       type="date"
                       value={selectedDate ? format(selectedDate, 'yyyy-MM-dd') : ''}
@@ -1461,6 +1570,8 @@ export default function CalendarModule() {
                   </div>
                 </div>
               </div>
+                </>
+              )}
             </div>
 
             {/* Footer */}
