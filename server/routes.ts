@@ -8,9 +8,7 @@ import jwt from 'jsonwebtoken';
 import { eq } from 'drizzle-orm';
 import { appUsers } from '../shared/schema';
 import { nanoid } from 'nanoid';
-
-// Store Server-Sent Events connections
-const sseConnections = new Map<string, Response>();
+import { WebhookController, sseConnections } from './intelligent-webhook-controller';
 
 function notifyClientsOfNewMessage(messageRecord: any) {
   console.log(`📡 Notifying ${sseConnections.size} connected clients of new message`);
@@ -602,50 +600,12 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // WhatsApp webhook handlers
-  app.post('/api/evolution/webhook/:instanceName/messages-upsert', async (req: Request, res: Response) => {
-    const { instanceName } = req.params;
-    const data = req.body;
-    
-    try {
-      await handleWebhookMessagesUpsert(instanceName, data);
-      res.status(200).json({ success: true });
-    } catch (error) {
-      console.error('Error processing messages.upsert webhook:', error);
-      res.status(500).json({ error: 'Failed to process webhook' });
-    }
+  // Use the intelligent webhook controller for all webhook events
+  app.post('/api/evolution/webhook/:instanceName/:eventType', async (req: Request, res: Response) => {
+    await WebhookController.handleIncomingEvent(req, res);
   });
 
-  app.post('/api/evolution/webhook/:instanceName/groups-upsert', async (req: Request, res: Response) => {
-    const { instanceName } = req.params;
-    const data = req.body;
-    
-    try {
-      await handleWebhookGroupsUpsert(instanceName, data);
-      res.status(200).json({ success: true });
-    } catch (error) {
-      console.error('Error processing groups.upsert webhook:', error);
-      res.status(500).json({ error: 'Failed to process webhook' });
-    }
-  });
-
-  app.post('/api/evolution/webhook/:instanceName/chats-upsert', async (req: Request, res: Response) => {
-    const { instanceName } = req.params;
-    const data = req.body;
-    
-    try {
-      await handleWebhookChatsUpsert(instanceName, data);
-      res.status(200).json({ success: true });
-    } catch (error) {
-      console.error('Error processing chats.upsert webhook:', error);
-      res.status(500).json({ error: 'Failed to process webhook' });
-    }
-  });
-
-  // Helper functions for webhook handlers
-  async function handleWebhookMessagesUpsert(instanceName: string, data: any) {
-    console.log(`📨 Processing: messages.upsert for ${instanceName}`);
-    
-    try {
+}
       const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
       const instances = await storage.getWhatsappInstances(userId);
       const instance = instances.find(inst => inst.instanceId === instanceName);

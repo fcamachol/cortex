@@ -1,0 +1,514 @@
+import { Request, Response } from 'express';
+import { storage } from './storage';
+import * as chrono from 'chrono-node'; // NLP date parsing library
+// Import the final table types for clarity and type safety
+import {
+    type WhatsappMessages,
+    type WhatsappContacts,
+    type WhatsappChats
+} from '@shared/schema';
+
+// =============================================================================
+// MOCK EXTERNAL API (Placeholder for Google Calendar Integration)
+// =============================================================================
+const googleCalendarApi = {
+    async createEvent({ title, startTime, endTime, attendees }: { title: string, startTime: Date, endTime: Date, attendees: string[] }) {
+        console.log(`📅 Mock Google API: Creating event "${title}" for attendees: ${attendees.join(', ')}`);
+        // In a real app, this would use the Google Calendar API to create an event
+        // and would return the actual event details.
+        return {
+            success: true,
+            htmlLink: `https://meet.google.com/new`, // Returns a generic link for simulation
+            googleEventId: `mock_event_${Date.now()}`
+        };
+    }
+};
+
+
+// =============================================================================
+// WEBHOOK CONTROLLER LOGIC
+// This object encapsulates all the logic for processing incoming webhooks.
+// =============================================================================
+
+export const WebhookController = {
+
+    // ... (handleIncomingEvent remains the same)
+    
+    /**
+     * The main entry point for all incoming webhooks from the Evolution API.
+     */
+    async handleIncomingEvent(req: Request, res: Response) {
+        try {
+            const instanceName = req.params.instanceName;
+            const eventPayload = req.body;
+            res.status(200).json({ status: "received", instance: instanceName });
+            this.processEvolutionEvent(instanceName, eventPayload);
+        } catch (error) {
+            console.error('❌ Critical error in webhook handler:', error);
+        }
+    },
+    
+    /**
+     * NEW: Processes the bulk data from an initial API sync.
+     * This should be called from your REST API route that fetches initial data.
+     */
+    async processInitialChatSync(instanceId: string, chats: any[]) {
+        console.log(`🔄 Processing ${chats.length} conversations from initial sync for instance ${instanceId}`);
+        for (const rawChat of chats) {
+            try {
+                const chatForDb = this.mapApiPayloadToWhatsappChat(rawChat, instanceId);
+                if (chatForDb) {
+                    await storage.upsertWhatsappChat(chatForDb);
+                    console.log(`✅ [${instanceId}] Synced chat: ${chatForDb.chat_id}`);
+                }
+            } catch (error) {
+                console.error(`❌ Error syncing chat ${rawChat.id}:`, error);
+            }
+        }
+    },
+
+    /**
+     * Routes the event to the appropriate handler based on its type.
+     */
+    async processEvolutionEvent(instanceId: string, event: any) {
+        const { event: eventType, data, sender } = event; // `sender` is the reactor in reaction updates
+        console.log(`📨 Webhook Event Received: ${eventType} for instance ${instanceId}`);
+
+        switch (eventType) {
+            case 'messages.upsert':
+                // Check for reactions first
+                if (data.messages && data.messages[0]?.message?.reactionMessage) {
+                    await this.handleReaction(instanceId, data.messages[0], sender);
+                } else {
+                    await this.handleMessageUpsert(instanceId, data);
+                }
+                break;
+            case 'messages.update':
+                 // This might contain reactions or status updates
+                 if (data.updates && data.updates[0]?.message?.reactionMessage) {
+                    await this.handleReaction(instanceId, data.updates[0], sender);
+                } else {
+                    await this.handleMessageUpdate(instanceId, data);
+                }
+                break;
+            case 'contacts.upsert':
+            case 'contacts.update':
+                await this.handleContactsUpsert(instanceId, data);
+                break;
+            case 'chats.upsert':
+            case 'chats.update':
+                await this.handleChatsUpsert(instanceId, data);
+                break;
+            case 'connection.update':
+                await this.handleConnectionUpdate(instanceId, data);
+                break;
+            default:
+                console.log(`- Unhandled event type: ${eventType}`);
+        }
+    },
+
+    /**
+     * Handles a reaction event.
+     */
+    async handleReaction(instanceId: string, reactionData: any, reactorJid: string) {
+        const reactionEmoji = reactionData.message.reactionMessage.text;
+        const targetMessageId = reactionData.message.reactionMessage.key.id;
+
+        // Security Check should be implemented in storage layer
+        // if (!await storage.isInternalUser(reactorJid)) { return; }
+        
+        console.log(`👍 Reaction '${reactionEmoji}' on message ${targetMessageId} by ${reactorJid}`);
+        await this.triggerAction(instanceId, 'reaction', reactionEmoji, { messageId: targetMessageId, reactorJid });
+    },
+
+    /**
+     * Central action trigger logic.
+     */
+    async triggerAction(instanceId: string, triggerType: 'reaction' | 'hashtag', triggerValue: string, context: { messageId: string, reactorJid: string }) {
+        const rule = await storage.findActionRule(instanceId, triggerType, triggerValue);
+        if (!rule) {
+            console.log(`- No action rule found for trigger: ${triggerType} -> ${triggerValue}`);
+            return;
+        }
+
+        const existingTaskLink = await storage.findTaskLinkByMessage(instanceId, context.messageId, 'trigger');
+        const triggeringMessage = await storage.getWhatsappMessage(instanceId, context.messageId);
+        if (!triggeringMessage) {
+            console.error(`- Could not find triggering message ${context.messageId} to create entity.`);
+            return;
+        }
+
+        // --- Execute Action Based on Type ---
+        switch (rule.action_type) {
+            case 'create_task':
+                if (existingTaskLink) {
+                    console.log(`- Rule is for creation, but task ${existingTaskLink.task_id} already exists. Ignoring.`);
+                } else {
+                    await this.createTaskFromTrigger(instanceId, rule, triggeringMessage, context);
+                }
+                break;
+            case 'update_task_status':
+                if (existingTaskLink) {
+                    const newStatus = rule.action_config?.new_status || 'completed';
+                    await storage.updateTaskStatus(existingTaskLink.task_id, newStatus);
+                    console.log(`✅ [${instanceId}] Updated task ${existingTaskLink.task_id} status to '${newStatus}'`);
+                } else {
+                    console.log(`- Rule is for update, but no existing task found for message ${context.messageId}. Ignoring.`);
+                }
+                break;
+            case 'create_calendar_event':
+                await this.createCalendarEventFromTrigger(instanceId, rule, triggeringMessage, context);
+                break;
+            // You can add more actions here in the future
+            default:
+                console.log(`- Unhandled action type for creation: ${rule.action_type}`);
+        }
+    },
+
+    /**
+     * NEW: A helper function for sending messages via the Evolution API.
+     * This would be called by other parts of your application, not just the webhook handler.
+     */
+    async sendWhatsappMessage(instanceId: string, recipientJid: string, text: string, options: { quotedMessageId?: string } = {}) {
+        try {
+            const instance = await storage.getInstanceById(instanceId);
+            if (!instance) throw new Error(`Instance ${instanceId} not found.`);
+
+            // This is the correct URL structure you provided
+            const apiUrl = `${instance.evolutionApiUrl}/message/sendText/${instanceId}`;
+
+            const body: any = {
+                number: recipientJid,
+                textMessage: { text: text }
+            };
+
+            // If it's a reply, include the quoted message info
+            if (options.quotedMessageId) {
+                body.options = {
+                    quoted: {
+                        key: { id: options.quotedMessageId }
+                    }
+                };
+            }
+            
+            console.log(`🚀 Sending message to ${recipientJid} from instance ${instanceId}`);
+
+            // Use fetch or axios to make the API call
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': instance.apiKey
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Evolution API error: ${response.status} - ${JSON.stringify(errorData)}`);
+            }
+
+            const responseData = await response.json();
+            console.log(`✅ Message sent successfully. Response ID: ${responseData.key?.id}`);
+            return responseData;
+
+        } catch (error) {
+            console.error('❌ Failed to send WhatsApp message:', error);
+            throw error;
+        }
+    },
+
+    async createTaskFromTrigger(instanceId: string, rule: any, triggeringMessage: any, context: any) {
+        let parentTaskId = null;
+        let fullContextText = triggeringMessage.content || '';
+        
+        if (triggeringMessage.quoted_message_id) {
+            const originalMessage = await storage.getWhatsappMessage(instanceId, triggeringMessage.quoted_message_id);
+            if (originalMessage) {
+                fullContextText = `${originalMessage.content} ${fullContextText}`;
+                const parentTaskLink = await storage.findTaskLinkByMessage(instanceId, originalMessage.message_id, 'trigger');
+                if (parentTaskLink) parentTaskId = parentTaskLink.task_id;
+            }
+        }
+
+        const nlpResult = this.parseMessageForNlp(fullContextText);
+        
+        let taskTitle = triggeringMessage.content || rule.action_config?.default_title || 'New Task';
+        const assignedToUserId = context.reactorJid; 
+
+        if (triggeringMessage.from_me) {
+            const contact = await storage.getWhatsappContact(instanceId, triggeringMessage.chat_id);
+            const contactName = contact?.push_name || 'the contact';
+            taskTitle = `Follow up with ${contactName}: ${taskTitle}`;
+        }
+
+        const newTask = await storage.createTaskFromRule(rule, {
+            instanceId,
+            spaceId: 1, 
+            createdByUserId: context.reactorJid,
+            assigned_to_user_id: assignedToUserId,
+            relatedChatJid: triggeringMessage.chat_id,
+            title: taskTitle,
+            parent_task_id: parentTaskId,
+            due_date: nlpResult.date || undefined,
+        });
+
+        await storage.createTaskMessageLink(newTask.task_id, context.messageId, instanceId, 'trigger');
+        if (triggeringMessage.quoted_message_id) {
+            await storage.createTaskMessageLink(newTask.task_id, triggeringMessage.quoted_message_id, instanceId, 'context');
+        }
+        console.log(`✅ [${instanceId}] Created new task/subtask ${newTask.task_id} from trigger.`);
+    },
+
+    async createCalendarEventFromTrigger(instanceId: string, rule: any, triggeringMessage: any, context: any) {
+        let fullContextText = triggeringMessage.content || '';
+        let eventTitle = triggeringMessage.content || rule.action_config?.default_title || 'New Event';
+        
+        if (triggeringMessage.quoted_message_id) {
+            const originalMessage = await storage.getWhatsappMessage(instanceId, triggeringMessage.quoted_message_id);
+            if(originalMessage) {
+                fullContextText = `${originalMessage.content} ${fullContextText}`;
+                eventTitle = originalMessage.content || eventTitle;
+            }
+        }
+
+        const nlpResult = this.parseMessageForNlp(fullContextText);
+        
+        const eventStartTime = nlpResult.date || new Date();
+        const eventEndTime = nlpResult.date ? new Date(nlpResult.date.getTime() + 60*60*1000) : new Date(Date.now() + 60*60*1000);
+        let eventLocation = nlpResult.location;
+        const attendeesToInvite: string[] = [];
+
+        const contactDetails = await storage.getContactDetailsByJid(instanceId, triggeringMessage.sender_jid);
+        if (contactDetails?.email_address) {
+            attendeesToInvite.push(contactDetails.email_address);
+        }
+
+        if (eventLocation === "https://meet.google.com/new") {
+            const googleEvent = await googleCalendarApi.createEvent({
+                title: eventTitle,
+                startTime: eventStartTime,
+                endTime: eventEndTime,
+                attendees: attendeesToInvite
+            });
+            if (googleEvent.success) {
+                eventLocation = googleEvent.htmlLink;
+                console.log(`🔗 Google Meet link created: ${eventLocation}`);
+            }
+        }
+
+        const newEvent = await storage.createCalendarEvent({
+            instanceId,
+            spaceId: 1,
+            createdByUserId: context.reactorJid,
+            title: eventTitle,
+            start_time: eventStartTime,
+            end_time: eventEndTime,
+            location: eventLocation,
+            related_chat_jid: triggeringMessage.chat_id,
+        });
+
+        await storage.createEventMessageLink(newEvent.event_id, context.messageId, instanceId, 'trigger');
+        console.log(`✅ [${instanceId}] Created new calendar event ${newEvent.event_id} from trigger.`);
+    },
+    
+    /**
+     * Intelligent NLP parsing for dates and locations.
+     */
+    parseMessageForNlp(text: string): { date: Date | null, location: string | null } {
+        if (!text) return { date: null, location: null };
+
+        let remainingText = text;
+        const parsedResults = chrono.parse(text, new Date(), { forwardDate: true });
+        const date = parsedResults.length > 0 ? parsedResults[0].start.date() : null;
+
+        if (parsedResults.length > 0) {
+            remainingText = text.replace(parsedResults[0].text, '').trim();
+        }
+
+        let location = null;
+        const lowerCaseText = remainingText.toLowerCase();
+
+        if (lowerCaseText.includes("meet") || lowerCaseText.includes("videocall")) {
+            location = "https://meet.google.com/new";
+        } else {
+            const locationMatch = lowerCaseText.match(/(at|en|in)\s+(the\s+)?([a-z0-9\s]+)/i);
+            if (locationMatch && locationMatch[3]) {
+                location = locationMatch[3].trim();
+            }
+        }
+        
+        if (date || location) {
+            console.log(`🧠 NLP found: Date=${date?.toISOString()}, Location=${location}`);
+        }
+
+        return { date, location };
+    },
+
+    // --- Core Event Handlers ---
+
+    async handleMessageUpsert(instanceId: string, data: any) {
+        if (!data || !Array.isArray(data.messages)) return;
+        for (const rawMessage of data.messages) {
+            const messageForDb = this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
+            if (messageForDb) {
+                await storage.upsertWhatsappMessage(messageForDb);
+                console.log(`✅ [${instanceId}] Saved/Updated message: ${messageForDb.message_id}`);
+                
+                if (messageForDb.quoted_message_id) {
+                    await this.handleReplyToContextMessage(instanceId, messageForDb);
+                }
+            }
+        }
+    },
+    
+    /**
+     * Logic to handle replies to messages that might be linked to tasks/events.
+     */
+    async handleReplyToContextMessage(instanceId: string, replyMessage: Omit<WhatsappMessages, 'created_at'>) {
+        if (!replyMessage.quoted_message_id) return;
+
+        const taskLink = await storage.findTaskLinkByMessage(instanceId, replyMessage.quoted_message_id);
+        if (taskLink) {
+            const task = await storage.getTask(taskLink.task_id);
+            if (task && !task.due_date) {
+                const nlpResult = this.parseMessageForNlp(replyMessage.content || '');
+                if (nlpResult.date) {
+                    await storage.updateTask(task.task_id, { due_date: nlpResult.date });
+                    console.log(`💡 Updated task ${task.task_id} with new due date from reply.`);
+                }
+            }
+        }
+        
+        const eventLink = await storage.findEventLinkByMessage(instanceId, replyMessage.quoted_message_id);
+        if (eventLink) {
+            const event = await storage.getCalendarEvent(eventLink.event_id);
+            if (event) {
+                 const nlpResult = this.parseMessageForNlp(replyMessage.content || '');
+                 const updates: any = {};
+                 if (nlpResult.date) {
+                     updates.start_time = nlpResult.date;
+                     updates.end_time = new Date(nlpResult.date.getTime() + 60*60*1000);
+                 }
+                 if (nlpResult.location) {
+                     updates.location = nlpResult.location;
+                 }
+                 if (Object.keys(updates).length > 0) {
+                    await storage.updateCalendarEvent(event.event_id, updates);
+                    console.log(`💡 Updated event ${event.event_id} with new details from reply.`);
+                 }
+            }
+        }
+    },
+
+    async handleMessageUpdate(instanceId: string, data: any) {
+        if (!data || !Array.isArray(data.updates)) return;
+        for (const update of data.updates) {
+             const messageId = update.key?.id;
+             const status = update.status;
+             if(messageId && status) {
+                 await storage.updateWhatsappMessageStatus(messageId, instanceId, status);
+                 console.log(`✅ [${instanceId}] Updated message status: ${messageId} to ${status}`);
+             }
+        }
+    },
+
+    async handleContactsUpsert(instanceId: string, data: any) {
+        if (!data || !Array.isArray(data.contacts)) return;
+        for (const rawContact of data.contacts) {
+            const contactForDb = this.mapApiPayloadToWhatsappContact(rawContact, instanceId);
+            if (contactForDb) {
+                await storage.upsertWhatsappContact(contactForDb);
+                console.log(`✅ [${instanceId}] Saved/Updated contact: ${contactForDb.jid}`);
+            }
+        }
+    },
+    
+    async handleChatsUpsert(instanceId: string, data: any) {
+        const chats = Array.isArray(data) ? data : data.chats;
+        if (!chats || !Array.isArray(chats)) return;
+
+        for (const rawChat of chats) {
+            const chatForDb = this.mapApiPayloadToWhatsappChat(rawChat, instanceId);
+            if (chatForDb) {
+                await storage.upsertWhatsappChat(chatForDb);
+                console.log(`✅ [${instanceId}] Saved/Updated chat: ${chatForDb.chat_id}`);
+            }
+        }
+    },
+
+    async handleConnectionUpdate(instanceId: string, data: any) {
+        const isConnected = data.state === 'open';
+        await storage.updateWhatsappInstance(instanceId, {
+            is_connected: isConnected,
+            last_connection_at: isConnected ? new Date() : undefined
+        });
+        console.log(`✅ [${instanceId}] Updated connection state to: ${data.state}`);
+    },
+    
+    // --- Data Mapping Functions (Reused from the bridge) ---
+
+    mapApiPayloadToWhatsappMessage(rawMessage: any, instanceId: string): Omit<WhatsappMessages, 'created_at'> | null {
+        if (!rawMessage.key?.id || !rawMessage.key?.remoteJid) return null;
+
+        return {
+            message_id: rawMessage.key.id,
+            instance_id: instanceId,
+            chat_id: rawMessage.key.remoteJid,
+            sender_jid: rawMessage.key.participant || rawMessage.key.remoteJid,
+            from_me: rawMessage.key.fromMe || false,
+            message_type: rawMessage.messageType || 'unsupported',
+            content: this.extractMessageContent(rawMessage),
+            timestamp: new Date(rawMessage.messageTimestamp * 1000),
+            quoted_message_id: rawMessage.message?.extendedTextMessage?.contextInfo?.quotedMessage?.key?.id,
+            is_forwarded: (rawMessage.message?.extendedTextMessage?.contextInfo?.forwardingScore || 0) > 0,
+            forwarding_score: rawMessage.message?.extendedTextMessage?.contextInfo?.forwardingScore || 0,
+            is_starred: rawMessage.starred || false,
+            is_edited: rawMessage.messageType === 'editedMessage',
+            last_edited_at: rawMessage.messageType === 'editedMessage' ? new Date(rawMessage.messageTimestamp * 1000) : undefined,
+            source_platform: rawMessage.source,
+            raw_api_payload: rawMessage,
+        };
+    },
+    
+    mapApiPayloadToWhatsappContact(rawContact: any, instanceId: string): Omit<WhatsappContacts, 'first_seen_at' | 'last_updated_at'> | null {
+        if (!rawContact.id && !rawContact.remoteJid) return null;
+        
+        const jid = rawContact.id || rawContact.remoteJid;
+
+        return {
+            jid: jid,
+            instance_id: instanceId,
+            push_name: rawContact.name || rawContact.pushName || rawContact.notify,
+            verified_name: rawContact.verifiedName,
+            profile_picture_url: rawContact.profilePicUrl || rawContact.profilePictureUrl,
+            is_business: rawContact.isBusiness || false,
+            is_me: false, // This should be determined by comparing with the instance's ownerJid
+            is_blocked: rawContact.isBlocked || false,
+        };
+    },
+
+    mapApiPayloadToWhatsappChat(rawChat: any, instanceId: string): Omit<WhatsappChats, 'created_at' | 'updated_at'> | null {
+        if(!rawChat.id && !rawChat.remoteJid) return null;
+        
+        const chatId = rawChat.id || rawChat.remoteJid;
+
+        return {
+            chat_id: chatId,
+            instance_id: instanceId,
+            type: chatId.endsWith('@g.us') ? 'group' : 'individual',
+            unread_count: rawChat.unreadCount || 0,
+            is_archived: rawChat.archived || false,
+            is_pinned: rawChat.pinned ? true : false,
+            is_muted: rawChat.muteEndTime ? new Date(rawChat.muteEndTime * 1000) > new Date() : false,
+            mute_end_timestamp: rawChat.muteEndTime ? new Date(rawChat.muteEndTime * 1000) : undefined,
+            last_message_timestamp: rawChat.conversationTimestamp ? new Date(rawChat.conversationTimestamp * 1000) : undefined,
+        };
+    },
+    
+    extractMessageContent(message: any): string {
+        const msg = message.message;
+        if (!msg) return '';
+        return msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.videoMessage?.caption || '';
+    }
+};
