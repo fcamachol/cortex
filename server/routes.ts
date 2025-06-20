@@ -2568,15 +2568,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Look up instance display name
       let instanceDisplayName = null;
       try {
-        // Query the instance directly using raw SQL since Drizzle schema might be mismatched
-        const instanceResult = await pool.query(
-          'SELECT display_name FROM whatsapp_instances WHERE user_id = $1 AND instance_name = $2 LIMIT 1',
-          [userId, instanceId]
-        );
-        
-        if (instanceResult.rows.length > 0 && instanceResult.rows[0].display_name) {
-          instanceDisplayName = instanceResult.rows[0].display_name;
-        }
+        // For now, skip instance display name lookup to avoid schema issues
+        instanceDisplayName = instanceId;
       } catch (instanceError) {
         console.log('Could not fetch instance info:', instanceError);
       }
