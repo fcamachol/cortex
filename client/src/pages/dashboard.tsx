@@ -7,6 +7,7 @@ import ContactModule from "@/components/contacts/contact-module";
 import CalendarModule from "@/components/calendar/calendar-module";
 import IntegrationModule from "@/components/integrations/integration-module";
 import { ActionsDashboard } from "@/components/actions/actions-dashboard";
+import DatabaseViewer from "@/pages/DatabaseViewer";
 
 export default function Dashboard() {
   const [activeModule, setActiveModule] = useState("conversations");
@@ -34,6 +35,8 @@ export default function Dashboard() {
         return <ActionsDashboard />;
       case "integrations":
         return <IntegrationModule />;
+      case "database":
+        return <DatabaseViewer />;
       default:
         return (
           <div className="flex-1 flex">
