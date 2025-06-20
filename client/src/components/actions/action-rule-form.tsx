@@ -41,9 +41,14 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   const { toast } = useToast();
 
   // Fetch available WhatsApp instances for multi-instance support
-  const { data: whatsappInstances = [] } = useQuery({
+  const { data: whatsappInstances = [], isLoading: instancesLoading, error: instancesError } = useQuery({
     queryKey: ['/api/actions/whatsapp-instances'],
   });
+
+  // Debug logging
+  console.log('WhatsApp Instances:', whatsappInstances);
+  console.log('Instances Loading:', instancesLoading);
+  console.log('Instances Error:', instancesError);
 
   const form = useForm<z.infer<typeof actionRuleSchema>>({
     resolver: zodResolver(actionRuleSchema),
@@ -570,9 +575,16 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Enable Rule On These Instances</FormLabel>
-                        <div className="grid grid-cols-1 gap-3">
-                          {whatsappInstances.map((instance: any) => (
-                            <div key={instance.instanceId} className="flex items-center space-x-3 p-3 border rounded-lg">
+                        {instancesLoading ? (
+                          <div className="text-sm text-muted-foreground">Loading instances...</div>
+                        ) : instancesError ? (
+                          <div className="text-sm text-red-600">Error loading instances</div>
+                        ) : whatsappInstances.length === 0 ? (
+                          <div className="text-sm text-muted-foreground">No instances found</div>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-3">
+                            {whatsappInstances.map((instance: any) => (
+                              <div key={instance.instanceId} className="flex items-center space-x-3 p-3 border rounded-lg">
                               <input
                                 type="checkbox"
                                 id={instance.instanceId}
@@ -608,7 +620,8 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
                               </div>
                             </div>
                           ))}
-                        </div>
+                          </div>
+                        )}
                         <FormDescription>
                           If no instances are selected, the rule will be active on all instances
                         </FormDescription>
