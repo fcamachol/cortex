@@ -26,13 +26,12 @@ interface WhatsAppInstance {
   updatedAt: string;
 }
 
-interface WebSocketStatus {
+interface InstanceStatus {
   instanceId: string;
   instanceName: string;
   phoneNumber: string;
   status: string;
-  websocketConnected: boolean;
-  bridgeExists: boolean;
+  webhookConfigured: boolean;
   lastConnected: string | null;
   connectionState: string;
 }
@@ -55,8 +54,8 @@ export function WhatsAppInstanceManager() {
     queryKey: [`/api/whatsapp/instances/${userId}`],
   });
 
-  const { data: websocketStatuses = [] } = useQuery<WebSocketStatus[]>({
-    queryKey: ['/api/whatsapp/websocket/status'],
+  const { data: instanceStatuses = [] } = useQuery<any[]>({
+    queryKey: ['/api/whatsapp/instances/status'],
     refetchInterval: 3000, // Auto refresh every 3 seconds
     refetchIntervalInBackground: true,
   });
@@ -214,31 +213,31 @@ export function WhatsAppInstanceManager() {
     syncStatus.mutate(instanceId);
   };
 
-  const getWebSocketStatus = (instanceId: string) => {
-    return websocketStatuses.find(status => status.instanceId === instanceId);
+  const getInstanceStatus = (instanceId: string) => {
+    return instanceStatuses.find(status => status.instanceId === instanceId);
   };
 
-  const getWebSocketBadge = (instanceId: string) => {
-    const wsStatus = getWebSocketStatus(instanceId);
-    if (wsStatus?.websocketConnected) {
+  const getStatusBadge = (instanceId: string) => {
+    const status = getInstanceStatus(instanceId);
+    if (status?.webhookConfigured && status?.status === 'connected') {
       return (
         <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
           <Wifi className="w-3 h-3 mr-1" />
-          WebSocket Connected
+          Webhook Connected
         </Badge>
       );
-    } else if (wsStatus?.bridgeExists) {
+    } else if (status?.webhookConfigured) {
       return (
-        <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">
+        <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">
           <WifiOff className="w-3 h-3 mr-1" />
-          WebSocket Disconnected
+          Webhook Configured
         </Badge>
       );
     } else {
       return (
         <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100">
           <WifiOff className="w-3 h-3 mr-1" />
-          No Bridge
+          No Webhook
         </Badge>
       );
     }
@@ -260,23 +259,7 @@ export function WhatsAppInstanceManager() {
     });
   };
 
-  const getStatusBadge = (isConnected: boolean) => {
-    if (isConnected) {
-      return (
-        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-          <Wifi className="w-3 h-3 mr-1" />
-          Connected
-        </Badge>
-      );
-    } else {
-      return (
-        <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">
-          <WifiOff className="w-3 h-3 mr-1" />
-          Disconnected
-        </Badge>
-      );
-    }
-  };
+
 
   const selectedInstance = instances.find(instance => instance.instanceId === selectedInstanceForQR);
 
