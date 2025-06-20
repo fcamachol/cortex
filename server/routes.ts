@@ -1201,10 +1201,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`Error processing message edit:`, editError);
         }
       }
-
-      // Handle status updates if not an edit
-      const messageId = data.messageId || data.keyId;
-      const status = data.status;
+    } catch (error) {
+      console.error('Error processing message update:', error);
+    }
+  }
       
       if (!messageId || !status) {
         console.log('Missing messageId or status in update, skipping');
