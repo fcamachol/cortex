@@ -1941,6 +1941,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Manual status sync endpoint
+  // Get all instance statuses for webhook-based system
+  app.get('/api/whatsapp/instances/status', async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const instances = await db.select().from(whatsappInstances);
+      const statuses = instances.map(instance => ({
+        instanceId: instance.instanceId,
+        instanceName: instance.displayName,
+        phoneNumber: instance.phoneNumber || '',
+        status: instance.isConnected ? 'connected' : 'disconnected',
+        webhookConfigured: !!instance.webhookUrl,
+        lastConnected: instance.lastConnectionAt,
+        connectionState: instance.isConnected ? 'connected' : 'disconnected'
+      }));
+      res.json(statuses);
+    } catch (error) {
+      console.error('Error fetching instance statuses:', error);
+      res.status(500).json({ error: 'Failed to fetch instance statuses' });
+    }
+  });
+
   app.post('/api/whatsapp/instances/:instanceId/sync-status', async (req: Request & { user?: { id: string } }, res: Response) => {
     try {
       const { instanceId } = req.params;

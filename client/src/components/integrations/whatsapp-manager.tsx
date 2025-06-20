@@ -374,10 +374,7 @@ export function WhatsAppInstanceManager() {
                   </Button>
                 </div>
                 <div className="flex items-center justify-between">
-                  {getStatusBadge(instance.isConnected)}
-                </div>
-                <div className="mt-2">
-                  {getWebSocketBadge(instance.instanceId)}
+                  {getStatusBadge(instance.instanceId)}
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">

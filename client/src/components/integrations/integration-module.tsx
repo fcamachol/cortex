@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Settings } from "lucide-react";
 import { SiWhatsapp, SiGoogle, SiSlack, SiTrello, SiNotion } from "react-icons/si";
 import { WhatsAppInstanceManager } from "./whatsapp-manager";
-import { WebSocketStatus } from "../websocket-status";
+
 
 export default function IntegrationModule() {
   const [showWhatsAppManager, setShowWhatsAppManager] = useState(false);
