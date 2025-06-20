@@ -1,11 +1,106 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Plus, MoreVertical } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { ChevronLeft, ChevronRight, Plus, MoreVertical, CalendarIcon, Clock, MapPin, Users, ExternalLink } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+interface CalendarEvent {
+  eventId: string;
+  title: string;
+  description?: string;
+  startTime: string;
+  endTime?: string;
+  location?: string;
+  isAllDay: boolean;
+  provider: 'google_calendar' | 'outlook' | 'apple_calendar';
+  providerEventId?: string;
+  metadata?: any;
+}
+
+interface CalendarProvider {
+  providerId: string;
+  provider: 'google_calendar' | 'outlook' | 'apple_calendar';
+  syncStatus: 'active' | 'error' | 'pending' | 'revoked';
+}
 
 export default function CalendarModule() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState("month");
+  const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [newEvent, setNewEvent] = useState({
+    title: '',
+    description: '',
+    startTime: '',
+    endTime: '',
+    location: '',
+    isAllDay: false
+  });
+  const { toast } = useToast();
+
+  // Fetch calendar events for the current month
+  const { data: events = [], isLoading: eventsLoading, refetch: refetchEvents } = useQuery({
+    queryKey: ['/api/calendar/events', currentDate.getFullYear(), currentDate.getMonth()],
+    queryFn: async () => {
+      const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      
+      const response = await fetch(`/api/calendar/events?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`);
+      if (!response.ok) throw new Error('Failed to fetch events');
+      return response.json();
+    }
+  });
+
+  // Fetch calendar providers
+  const { data: providers = [] } = useQuery({
+    queryKey: ['/api/calendar/providers'],
+    queryFn: async () => {
+      const response = await fetch('/api/calendar/providers');
+      if (!response.ok) throw new Error('Failed to fetch providers');
+      return response.json();
+    }
+  });
+
+  // Create event mutation
+  const createEventMutation = useMutation({
+    mutationFn: async (eventData: any) => {
+      return apiRequest('/api/calendar/events', 'POST', eventData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Event created",
+        description: "Your calendar event has been created successfully."
+      });
+      setIsCreateEventOpen(false);
+      setNewEvent({
+        title: '',
+        description: '',
+        startTime: '',
+        endTime: '',
+        location: '',
+        isAllDay: false
+      });
+      refetchEvents();
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to create event",
+        description: error.message || "An error occurred while creating the event.",
+        variant: "destructive"
+      });
+    }
+  });
 
   // Format current month/year for display
   const formatCurrentMonth = () => {
@@ -59,59 +154,245 @@ export default function CalendarModule() {
     return days;
   };
 
-  // Mock function to get events for a specific day
+  // Get events for a specific day from the fetched events
   const getEventsForDay = (date: Date) => {
-    const dayOfMonth = date.getDate();
-    const mockEvents = [];
+    if (!events || events.length === 0) return [];
     
-    // Add some mock events for demonstration
-    if (dayOfMonth === 1) {
-      mockEvents.push({ title: "Team Meeting", color: "bg-blue-100 text-blue-800" });
-    }
-    if (dayOfMonth === 3) {
-      mockEvents.push(
-        { title: "Client Call", color: "bg-green-100 text-green-800" },
-        { title: "Review Session", color: "bg-purple-100 text-purple-800" }
-      );
-    }
-    if (dayOfMonth === 4) {
-      mockEvents.push({ title: "Project Deadline", color: "bg-orange-100 text-orange-800" });
-    }
-    if (dayOfMonth === 6) {
-      mockEvents.push({ title: "Urgent Task", color: "bg-red-100 text-red-800" });
-    }
-    
-    return mockEvents;
+    const dayEvents = events.filter((event: CalendarEvent) => {
+      const eventDate = new Date(event.startTime);
+      return eventDate.toDateString() === date.toDateString();
+    });
+
+    return dayEvents.map((event: CalendarEvent) => {
+      const providerColors = {
+        'google_calendar': 'bg-blue-100 text-blue-800',
+        'outlook': 'bg-orange-100 text-orange-800',
+        'apple_calendar': 'bg-gray-100 text-gray-800'
+      };
+
+      return {
+        title: event.title,
+        color: providerColors[event.provider] || 'bg-gray-100 text-gray-800',
+        eventId: event.eventId,
+        startTime: event.startTime,
+        isAllDay: event.isAllDay
+      };
+    });
   };
 
   const calendarDays = generateCalendarDays();
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  // Mock upcoming events
-  const upcomingEvents = [
-    {
-      id: 1,
-      title: "Team Meeting",
-      time: "Today, 2:00 PM - 3:00 PM",
-      color: "bg-blue-500"
-    },
-    {
-      id: 2,
-      title: "Client Presentation",
-      time: "Tomorrow, 10:00 AM - 11:30 AM",
-      color: "bg-green-500"
+  // Get upcoming events from real data
+  const upcomingEvents = events ? events
+    .filter((event: CalendarEvent) => new Date(event.startTime) >= new Date())
+    .sort((a: CalendarEvent, b: CalendarEvent) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+    .slice(0, 5)
+    .map((event: CalendarEvent) => {
+      const eventDate = new Date(event.startTime);
+      const endDate = event.endTime ? new Date(event.endTime) : null;
+      
+      const providerColors = {
+        'google_calendar': 'bg-blue-500',
+        'outlook': 'bg-orange-500',
+        'apple_calendar': 'bg-gray-500'
+      };
+
+      let timeDisplay = '';
+      if (event.isAllDay) {
+        timeDisplay = format(eventDate, 'EEEE, MMMM d') + ' - All day';
+      } else if (endDate) {
+        timeDisplay = format(eventDate, 'EEEE, MMMM d, h:mm a') + ' - ' + format(endDate, 'h:mm a');
+      } else {
+        timeDisplay = format(eventDate, 'EEEE, MMMM d, h:mm a');
+      }
+
+      return {
+        id: event.eventId,
+        title: event.title,
+        time: timeDisplay,
+        color: providerColors[event.provider] || 'bg-gray-500',
+        location: event.location
+      };
+    }) : [];
+
+  // Handle create event form submission
+  const handleCreateEvent = () => {
+    if (!newEvent.title) {
+      toast({
+        title: "Title required",
+        description: "Please enter a title for the event.",
+        variant: "destructive"
+      });
+      return;
     }
-  ];
+
+    let startDateTime = new Date();
+    let endDateTime = null;
+
+    if (selectedDate) {
+      startDateTime = new Date(selectedDate);
+    }
+
+    if (newEvent.startTime && !newEvent.isAllDay) {
+      const [hours, minutes] = newEvent.startTime.split(':');
+      startDateTime.setHours(parseInt(hours), parseInt(minutes));
+    }
+
+    if (newEvent.endTime && !newEvent.isAllDay) {
+      const [hours, minutes] = newEvent.endTime.split(':');
+      endDateTime = new Date(startDateTime);
+      endDateTime.setHours(parseInt(hours), parseInt(minutes));
+    }
+
+    createEventMutation.mutate({
+      title: newEvent.title,
+      description: newEvent.description,
+      startTime: startDateTime.toISOString(),
+      endTime: endDateTime ? endDateTime.toISOString() : null,
+      location: newEvent.location,
+      isAllDay: newEvent.isAllDay
+    });
+  };
 
   return (
     <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Calendar</h1>
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-            <Plus className="mr-2 h-4 w-4" />
-            Create Event
-          </Button>
+          <Dialog open={isCreateEventOpen} onOpenChange={setIsCreateEventOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Event
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Create New Event</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Title *</Label>
+                  <Input
+                    id="title"
+                    placeholder="Event title"
+                    value={newEvent.title}
+                    onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Event description"
+                    value={newEvent.description}
+                    onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !selectedDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="allDay"
+                    checked={newEvent.isAllDay}
+                    onChange={(e) => setNewEvent({ ...newEvent, isAllDay: e.target.checked })}
+                    className="rounded"
+                  />
+                  <Label htmlFor="allDay">All day event</Label>
+                </div>
+
+                {!newEvent.isAllDay && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="startTime">Start Time</Label>
+                      <Input
+                        id="startTime"
+                        type="time"
+                        value={newEvent.startTime}
+                        onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="endTime">End Time</Label>
+                      <Input
+                        id="endTime"
+                        type="time"
+                        value={newEvent.endTime}
+                        onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    placeholder="Event location"
+                    value={newEvent.location}
+                    onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
+                  />
+                </div>
+
+                {providers.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Calendar Provider</Label>
+                    <div className="flex space-x-2">
+                      {providers.map((provider: CalendarProvider) => (
+                        <Badge 
+                          key={provider.providerId} 
+                          variant={provider.syncStatus === 'active' ? 'default' : 'secondary'}
+                        >
+                          {provider.provider === 'google_calendar' ? 'Google' : 
+                           provider.provider === 'outlook' ? 'Microsoft' : 'Apple'}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsCreateEventOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleCreateEvent}
+                  disabled={createEventMutation.isPending}
+                >
+                  {createEventMutation.isPending ? "Creating..." : "Create Event"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Calendar Header */}
@@ -194,30 +475,73 @@ export default function CalendarModule() {
           </div>
         </div>
 
+        {/* Calendar Integration Status */}
+        {providers.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Calendar Integrations</h3>
+            </div>
+            <div className="p-4">
+              <div className="flex flex-wrap gap-3">
+                {providers.map((provider: CalendarProvider) => (
+                  <div key={provider.providerId} className="flex items-center space-x-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div className={`w-2 h-2 rounded-full ${
+                      provider.syncStatus === 'active' ? 'bg-green-500' : 
+                      provider.syncStatus === 'error' ? 'bg-red-500' : 
+                      provider.syncStatus === 'pending' ? 'bg-yellow-500' : 'bg-gray-500'
+                    }`}></div>
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {provider.provider === 'google_calendar' ? 'Google Calendar' : 
+                       provider.provider === 'outlook' ? 'Microsoft Outlook' : 'Apple Calendar'}
+                    </span>
+                    <Badge variant={provider.syncStatus === 'active' ? 'default' : 'secondary'}>
+                      {provider.syncStatus}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Upcoming Events */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Upcoming Events</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Upcoming Events</h3>
+              {eventsLoading && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+              )}
+            </div>
           </div>
           <div className="p-4 space-y-3">
             {upcomingEvents.length === 0 ? (
-              <div className="text-center text-gray-500 dark:text-gray-400 py-4">
-                No upcoming events
+              <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                <CalendarIcon className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                <h4 className="text-lg font-medium mb-2">No upcoming events</h4>
+                <p className="text-sm">Create your first event or connect a calendar provider to get started.</p>
               </div>
             ) : (
-              upcomingEvents.map((event) => (
-                <div key={event.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className={`w-3 h-3 ${event.color} rounded-full`}></div>
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100">
+              upcomingEvents.map((event: any) => (
+                <div key={event.id} className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                  <div className={`w-3 h-3 ${event.color} rounded-full mt-2 flex-shrink-0`}></div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100 truncate">
                       {event.title}
                     </h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      {event.time}
-                    </p>
+                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-300 mt-1">
+                      <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
+                      <span className="truncate">{event.time}</span>
+                    </div>
+                    {event.location && (
+                      <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
+                        <span className="truncate">{event.location}</span>
+                      </div>
+                    )}
                   </div>
-                  <Button variant="ghost" size="sm">
-                    <MoreVertical className="h-4 w-4" />
+                  <Button variant="ghost" size="sm" className="flex-shrink-0">
+                    <ExternalLink className="h-4 w-4" />
                   </Button>
                 </div>
               ))
