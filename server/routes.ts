@@ -361,20 +361,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
-        // Determine message type from the message content - use Evolution API message types
-        let messageType = 'conversation'; // Default to conversation
+        // Determine message type from the message content - map to WhatsApp schema enum values
+        let messageType = 'text'; // Default to text
         if (message.message) {
           const messageContent = message.message;
-          if (messageContent.reactionMessage) messageType = 'reactionMessage';
-          else if (messageContent.conversation) messageType = 'conversation';
-          else if (messageContent.extendedTextMessage) messageType = 'extendedTextMessage';
-          else if (messageContent.imageMessage) messageType = 'imageMessage';
-          else if (messageContent.videoMessage) messageType = 'videoMessage';
-          else if (messageContent.audioMessage) messageType = 'audioMessage';
-          else if (messageContent.documentMessage) messageType = 'documentMessage';
-          else if (messageContent.stickerMessage) messageType = 'stickerMessage';
-          else if (messageContent.locationMessage) messageType = 'locationMessage';
-          else if (messageContent.contactMessage) messageType = 'contactMessage';
+          if (messageContent.reactionMessage) messageType = 'reaction';
+          else if (messageContent.conversation || messageContent.extendedTextMessage) messageType = 'text';
+          else if (messageContent.imageMessage) messageType = 'image';
+          else if (messageContent.videoMessage) messageType = 'video';
+          else if (messageContent.audioMessage) messageType = 'audio';
+          else if (messageContent.documentMessage) messageType = 'document';
+          else if (messageContent.stickerMessage) messageType = 'sticker';
+          else if (messageContent.locationMessage) messageType = 'location';
+          else if (messageContent.contactMessage) messageType = 'contact_card';
         }
         
         // Also check the messageType field from Evolution API
@@ -540,8 +539,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
             quotedMessageId: extractQuotedMessageId(message)
           };
 
-          const savedMessage = await storage.createWhatsappMessage(whatsappMessageData);
-          console.log(`✅ Saved WhatsApp message from ${message.pushName || 'Unknown'}: "${whatsappMessageData.content?.substring(0, 50) || 'No content'}"`);
+          // Save message to WhatsApp schema message table
+          try {
+            await db.execute(sql`
+              INSERT INTO whatsapp.messages (
+                message_id, instance_id, chat_id, sender_jid, from_me, 
+                message_type, content, timestamp, quoted_message_id
+              ) VALUES (
+                ${whatsappMessageData.messageId},
+                ${correctedInstanceId},
+                ${whatsappMessageData.chatId},
+                ${whatsappMessageData.senderJid},
+                ${whatsappMessageData.fromMe},
+                ${messageType}::whatsapp.message_type,
+                ${whatsappMessageData.content || ''},
+                ${whatsappMessageData.timestamp},
+                ${whatsappMessageData.quotedMessageId}
+              ) ON CONFLICT (message_id, instance_id) DO UPDATE SET
+                content = EXCLUDED.content,
+                message_type = EXCLUDED.message_type,
+                timestamp = EXCLUDED.timestamp
+            `);
+            console.log(`✅ Saved WhatsApp message from ${message.pushName || 'Unknown'}: "${whatsappMessageData.content?.substring(0, 50) || 'No content'}"`);
+          } catch (saveError) {
+            console.error('Error saving message to WhatsApp schema:', saveError);
+          }
 
           // Process actions triggers for this message
           const messageContent = whatsappMessageData.content || '';
