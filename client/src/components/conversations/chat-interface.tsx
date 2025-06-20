@@ -317,6 +317,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                     chatId={conversationId!}
                     instanceId={instanceId!}
                     isVisible={hoveredMessageId === (message.messageId || message.id)}
+                    isFromMe={message.isFromMe}
                     onOpenModal={() => handleOpenTaskModal(message)}
                   />
                 </div>
