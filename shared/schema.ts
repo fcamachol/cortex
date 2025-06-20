@@ -1042,10 +1042,7 @@ export const calendarEventsRelations = relations(calendarEvents, ({ one, many })
     fields: [calendarEvents.calendarId],
     references: [calendarCalendars.calendarId],
   }),
-  crmEvent: one(crmCalendarEvents, {
-    fields: [calendarEvents.crmEventId],
-    references: [crmCalendarEvents.eventId],
-  }),
+  // Note: CRM calendar events relation will be added when CRM schema is updated
   attendees: many(calendarAttendees),
 }));
 

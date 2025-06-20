@@ -13,6 +13,10 @@ import {
   whatsappLabels,
   whatsappChatLabels,
   whatsappCallLogs,
+  calendarAccounts,
+  calendarCalendars,
+  calendarEvents,
+  calendarAttendees,
   type User,
   type InsertUser,
   type WhatsappInstance,
@@ -40,7 +44,15 @@ import {
   type WhatsappChatLabel,
   type InsertWhatsappChatLabel,
   type WhatsappCallLog,
-  type InsertWhatsappCallLog
+  type InsertWhatsappCallLog,
+  type CalendarAccount,
+  type InsertCalendarAccount,
+  type CalendarCalendar,
+  type InsertCalendarCalendar,
+  type CalendarEvent,
+  type InsertCalendarEvent,
+  type CalendarAttendee,
+  type InsertCalendarAttendee
 } from "../shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, ilike, sql } from "drizzle-orm";
@@ -110,6 +122,28 @@ export interface IStorage {
   getWhatsappGroupParticipants(userId: string, instanceId: string, groupJid: string): Promise<WhatsappGroupParticipant[]>;
   deleteWhatsappGroupParticipant(userId: string, instanceId: string, groupJid: string, participantJid: string): Promise<void>;
   clearWhatsappGroupParticipants(userId: string, instanceId: string, groupJid: string): Promise<void>;
+
+  // Calendar integration
+  getCalendarAccount(userId: string): Promise<CalendarAccount | undefined>;
+  createCalendarAccount(account: InsertCalendarAccount): Promise<CalendarAccount>;
+  updateCalendarAccount(userId: string, account: Partial<InsertCalendarAccount>): Promise<CalendarAccount>;
+  deleteCalendarAccount(userId: string): Promise<void>;
+  
+  getCalendarCalendars(userId: string): Promise<CalendarCalendar[]>;
+  createCalendarCalendar(calendar: InsertCalendarCalendar): Promise<CalendarCalendar>;
+  updateCalendarCalendar(calendarId: number, calendar: Partial<InsertCalendarCalendar>): Promise<CalendarCalendar>;
+  deleteCalendarCalendar(calendarId: number): Promise<void>;
+  
+  getCalendarEvents(userId: string, calendarId?: number): Promise<CalendarEvent[]>;
+  getCalendarEvent(eventId: number): Promise<CalendarEvent | undefined>;
+  createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
+  updateCalendarEvent(eventId: number, event: Partial<InsertCalendarEvent>): Promise<CalendarEvent>;
+  deleteCalendarEvent(eventId: number): Promise<void>;
+  
+  getCalendarAttendees(eventId: number): Promise<CalendarAttendee[]>;
+  createCalendarAttendee(attendee: InsertCalendarAttendee): Promise<CalendarAttendee>;
+  updateCalendarAttendee(attendeeId: number, attendee: Partial<InsertCalendarAttendee>): Promise<CalendarAttendee>;
+  deleteCalendarAttendee(attendeeId: number): Promise<void>;
 
   // Legacy compatibility methods
   getWhatsappConversations(userId: string, instanceId?: string): Promise<WhatsappChat[]>;
