@@ -1,0 +1,335 @@
+import WebSocket from 'ws';
+import { storage } from './storage';
+// It's better to import the final table types for clarity
+import {
+    type WhatsappMessages,
+    type WhatsappContacts,
+    type WhatsappChats
+} from '@shared/schema';
+
+// --- Configuration and Helper Interfaces ---
+
+interface BridgeConfig {
+    evolutionApiUrl: string;
+    instanceName: string;
+    apiKey: string;
+    maxReconnectAttempts?: number;
+    reconnectDelay?: number;
+}
+
+interface QueuedOperation {
+    eventType: string;
+    data: any;
+    timestamp: number;
+}
+
+export class EvolutionWebSocketBridge {
+    private ws: WebSocket | null = null;
+    private reconnectAttempts = 0;
+    private readonly maxReconnectAttempts: number;
+    private readonly reconnectDelay: number;
+    private isConnected = false;
+    private messageQueue: QueuedOperation[] = [];
+    private healthCheckInterval: NodeJS.Timeout | null = null;
+    private readonly userId: string;
+    private readonly instanceId: string;
+
+    constructor(private config: BridgeConfig, userId: string) {
+        this.maxReconnectAttempts = config.maxReconnectAttempts ?? Infinity;
+        this.reconnectDelay = config.reconnectDelay ?? 1000;
+        this.userId = userId;
+        this.instanceId = config.instanceName; // instanceId is the same as instanceName
+
+        this.init();
+    }
+
+    private async init() {
+        try {
+            await this.connectWebSocket();
+            this.startHealthCheck();
+            console.log(`✅ Evolution API Bridge initialized for instance: ${this.config.instanceName}`);
+        } catch (error) {
+            console.error(`❌ Failed to initialize bridge for ${this.config.instanceName}:`, error);
+            this.scheduleReconnect();
+        }
+    }
+
+    private connectWebSocket() {
+        const { evolutionApiUrl, instanceName, apiKey } = this.config;
+        // Correctly replace http/https with ws/wss
+        const wsUrl = evolutionApiUrl.replace(/^http/, 'ws');
+        const finalWsUrl = `${wsUrl}/ws/${instanceName}`;
+
+        console.log(`🔗 Connecting to Evolution API WebSocket: ${finalWsUrl}`);
+
+        this.ws = new WebSocket(finalWsUrl, {
+            headers: { 'apikey': apiKey }
+        });
+
+        this.setupWebSocketEvents();
+    }
+
+    private setupWebSocketEvents() {
+        if (!this.ws) return;
+
+        this.ws.on('open', () => {
+            console.log(`🔗 Connected to Evolution API WebSocket for ${this.config.instanceName}`);
+            this.isConnected = true;
+            this.reconnectAttempts = 0;
+            this.processQueuedMessages();
+        });
+
+        this.ws.on('close', (code: number, reason: Buffer) => {
+            console.log(`🔌 Disconnected from Evolution API (${this.config.instanceName}): Code ${code}, Reason: ${reason.toString()}`);
+            this.isConnected = false;
+            this.scheduleReconnect();
+        });
+
+        this.ws.on('error', (error: Error) => {
+            console.error(`❌ WebSocket connection error (${this.config.instanceName}):`, error.message);
+            // 'close' event will be called next, which triggers reconnect.
+        });
+
+        this.ws.on('message', (data: Buffer) => {
+            try {
+                const event = JSON.parse(data.toString());
+                this.processEvolutionEvent(event);
+            } catch (error) {
+                console.error('Error parsing WebSocket message:', error);
+            }
+        });
+        
+        // Handle pong frames for health checks
+        this.ws.on('pong', () => {
+             console.log(`❤️ Pong received, connection healthy for ${this.config.instanceName}`);
+        });
+    }
+
+    private async processEvolutionEvent(event: any) {
+        const { event: eventType, data } = event;
+        console.log(`📨 Received Evolution API Event: ${eventType} for instance ${this.instanceId}`);
+
+        switch (eventType) {
+            case 'messages.upsert':
+                await this.handleMessageUpsert(data);
+                break;
+            case 'messages.update':
+                await this.handleMessageUpdate(data);
+                break;
+            case 'contacts.upsert':
+            case 'contacts.update':
+                await this.handleContactsUpsert(data);
+                break;
+            case 'chats.upsert':
+            case 'chats.update':
+                await this.handleChatsUpsert(data);
+                break;
+            case 'connection.update':
+                await this.handleConnectionUpdate(event.data);
+                break;
+            // Add other event handlers as needed
+            default:
+                console.log(`- Unhandled event type: ${eventType}`);
+        }
+    }
+
+    private async handleMessageUpsert(data: any) {
+        // The API sends an array even for a single message
+        if (!data || !Array.isArray(data.messages)) return;
+
+        for (const rawMessage of data.messages) {
+            try {
+                const messageForDb = this.mapApiPayloadToWhatsappMessage(rawMessage);
+                if (messageForDb) {
+                    // This logic should exist in your storage layer to prevent duplicates
+                    await storage.upsertWhatsappMessage(messageForDb);
+                    console.log(`✅ Saved/Updated message: ${messageForDb.message_id}`);
+                }
+            } catch (error) {
+                console.error('Error handling message upsert:', error);
+                this.queueOperation('messages.upsert', rawMessage);
+            }
+        }
+    }
+    
+    private async handleMessageUpdate(data: any) {
+        // Logic to update message status (e.g., delivered, read)
+        if (!data || !Array.isArray(data.messages)) return;
+        
+        for (const update of data.messages) {
+             const messageId = update.key?.id;
+             const status = update.status;
+             if(messageId && status) {
+                 await storage.updateWhatsappMessageStatus(messageId, this.instanceId, status);
+                 console.log(`✅ Updated message status: ${messageId} to ${status}`);
+             }
+        }
+    }
+
+    private async handleContactsUpsert(data: any) {
+        if (!data || !Array.isArray(data.contacts)) return;
+
+        for (const rawContact of data.contacts) {
+            try {
+                const contactForDb = this.mapApiPayloadToWhatsappContact(rawContact);
+                if (contactForDb) {
+                    await storage.upsertWhatsappContact(contactForDb);
+                    console.log(`✅ Saved/Updated contact: ${contactForDb.jid}`);
+                }
+            } catch (error) {
+                console.error('Error handling contact upsert:', error);
+                this.queueOperation('contacts.upsert', rawContact);
+            }
+        }
+    }
+    
+    private async handleChatsUpsert(data: any) {
+        if (!data || !Array.isArray(data.chats)) return;
+
+        for (const rawChat of data.chats) {
+            try {
+                const chatForDb = this.mapApiPayloadToWhatsappChat(rawChat);
+                if (chatForDb) {
+                    await storage.upsertWhatsappChat(chatForDb);
+                     console.log(`✅ Saved/Updated chat: ${chatForDb.chat_id}`);
+                }
+            } catch (error) {
+                console.error('Error handling chat upsert:', error);
+                this.queueOperation('chats.upsert', rawChat);
+            }
+        }
+    }
+
+    private async handleConnectionUpdate(data: any) {
+        try {
+            const isConnected = data.state === 'open';
+            await storage.updateWhatsappInstance(this.instanceId, {
+                is_connected: isConnected,
+                last_connection_at: isConnected ? new Date() : undefined
+            });
+            console.log(`✅ Updated instance ${this.instanceId} connection state to: ${data.state}`);
+        } catch (error) {
+            console.error('Error handling connection update:', error);
+        }
+    }
+
+    // --- Data Mapping Functions ---
+    // These now map directly to our final schema.
+
+    private mapApiPayloadToWhatsappMessage(rawMessage: any): Omit<WhatsappMessages, 'created_at'> | null {
+        if (!rawMessage.key?.id || !rawMessage.key?.remoteJid) return null;
+
+        return {
+            message_id: rawMessage.key.id,
+            instance_id: this.instanceId,
+            chat_id: rawMessage.key.remoteJid,
+            sender_jid: rawMessage.key.participant || rawMessage.key.remoteJid,
+            from_me: rawMessage.key.fromMe || false,
+            message_type: rawMessage.messageType || 'unsupported',
+            content: this.extractMessageContent(rawMessage),
+            timestamp: new Date(rawMessage.messageTimestamp * 1000),
+            quoted_message_id: rawMessage.message?.extendedTextMessage?.contextInfo?.quotedMessage?.key?.id,
+            is_forwarded: (rawMessage.message?.extendedTextMessage?.contextInfo?.forwardingScore || 0) > 0,
+            forwarding_score: rawMessage.message?.extendedTextMessage?.contextInfo?.forwardingScore || 0,
+            is_starred: rawMessage.starred || false,
+            is_edited: rawMessage.messageType === 'editedMessage',
+            last_edited_at: rawMessage.messageType === 'editedMessage' ? new Date(rawMessage.messageTimestamp * 1000) : undefined,
+            source_platform: rawMessage.source,
+            raw_api_payload: rawMessage,
+        };
+    }
+    
+    private mapApiPayloadToWhatsappContact(rawContact: any): Omit<WhatsappContacts, 'first_seen_at' | 'last_updated_at'> | null {
+        if (!rawContact.id) return null;
+        
+        return {
+            jid: rawContact.id,
+            instance_id: this.instanceId,
+            push_name: rawContact.name || rawContact.pushName || rawContact.notify,
+            verified_name: rawContact.verifiedName,
+            profile_picture_url: rawContact.profilePictureUrl,
+            is_business: rawContact.isBusiness || false,
+            is_me: rawContact.id === this.userId, // A more robust check might be needed
+            is_blocked: rawContact.isBlocked || false,
+        };
+    }
+
+    private mapApiPayloadToWhatsappChat(rawChat: any): Omit<WhatsappChats, 'created_at' | 'updated_at'> | null {
+        if(!rawChat.id) return null;
+        
+        return {
+            chat_id: rawChat.id,
+            instance_id: this.instanceId,
+            type: rawChat.id.endsWith('@g.us') ? 'group' : 'individual',
+            unread_count: rawChat.unreadCount || 0,
+            is_archived: rawChat.archived || false,
+            is_pinned: rawChat.pinned ? true : false,
+            is_muted: rawChat.muteEndTime ? new Date(rawChat.muteEndTime * 1000) > new Date() : false,
+            mute_end_timestamp: rawChat.muteEndTime ? new Date(rawChat.muteEndTime * 1000) : undefined,
+            last_message_timestamp: rawChat.conversationTimestamp ? new Date(rawChat.conversationTimestamp * 1000) : undefined,
+        };
+    }
+    
+    private extractMessageContent(message: any): string {
+        const msg = message.message;
+        if (!msg) return '';
+        return msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.videoMessage?.caption || '';
+    }
+    
+    // --- Queue and Reconnection Logic ---
+
+    private queueOperation(eventType: string, data: any) {
+        console.warn(`- Queuing operation ${eventType} for ${this.instanceId} due to error.`);
+        this.messageQueue.push({ eventType, data, timestamp: Date.now() });
+    }
+
+    private async processQueuedMessages() {
+        if (this.messageQueue.length === 0) return;
+        
+        console.log(`📤 Processing ${this.messageQueue.length} queued operations for ${this.instanceId}`);
+        const queue = [...this.messageQueue];
+        this.messageQueue = []; // Clear queue immediately
+
+        for (const op of queue) {
+            console.log(`- Retrying ${op.eventType}`);
+            await this.processEvolutionEvent({ event: op.eventType, data: op.data });
+        }
+        console.log('✅ All queued messages processed');
+    }
+
+    private scheduleReconnect() {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            console.error(`❌ Max reconnection attempts reached for ${this.config.instanceName}. Halting.`);
+            this.shutdown();
+            return;
+        }
+
+        this.reconnectAttempts++;
+        const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30000);
+        console.log(`🔄 Scheduling reconnect for ${this.config.instanceName} in ${delay}ms (attempt ${this.reconnectAttempts})`);
+
+        setTimeout(() => this.connectWebSocket(), delay);
+    }
+    
+    private startHealthCheck() {
+        this.healthCheckInterval = setInterval(() => {
+            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                console.log(`🏥 Health check failed for ${this.config.instanceName}, connection is not open.`);
+                this.isConnected = false;
+                // The 'close' event handler will manage the reconnection logic.
+                return;
+            }
+            console.log(`❤️ Health check ping for ${this.config.instanceName}`);
+            this.ws.ping();
+        }, 30000); // Ping every 30 seconds
+    }
+    
+    public shutdown() {
+        console.log(`🛑 Shutting down bridge for ${this.config.instanceName}...`);
+        if (this.healthCheckInterval) {
+            clearInterval(this.healthCheckInterval);
+        }
+        this.reconnectAttempts = this.maxReconnectAttempts; // Prevent further reconnects
+        this.ws?.close();
+    }
+}
