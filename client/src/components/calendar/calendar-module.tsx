@@ -14,6 +14,78 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
+// Time dropdown component with 15-minute intervals
+function TimeDropdown({ value, onChange, className }: { value: string; onChange: (time: string) => void; className?: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const generateTimeOptions = () => {
+    const times = [];
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        const displayTime = hour === 0 && minute === 0 ? '12:00am' :
+                           hour < 12 ? `${hour === 0 ? 12 : hour}:${minute.toString().padStart(2, '0')}am` :
+                           hour === 12 ? `12:${minute.toString().padStart(2, '0')}pm` :
+                           `${hour - 12}:${minute.toString().padStart(2, '0')}pm`;
+        times.push({ value: timeStr, display: displayTime });
+      }
+    }
+    return times;
+  };
+
+  const timeOptions = generateTimeOptions();
+  const selectedTime = timeOptions.find(t => t.value === value);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "px-3 py-2 rounded-lg border text-sm font-medium min-w-[100px] text-left flex items-center justify-between",
+          className
+        )}
+      >
+        <span>{selectedTime?.display || value}</span>
+        <svg className="w-4 h-4 ml-2" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+        </svg>
+      </button>
+      
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto min-w-[120px]">
+          {timeOptions.map((time) => (
+            <button
+              key={time.value}
+              onClick={() => {
+                onChange(time.value);
+                setIsOpen(false);
+              }}
+              className={cn(
+                "w-full px-3 py-2 text-left text-sm hover:bg-gray-100 transition-colors",
+                time.value === value && "bg-blue-50 text-blue-700"
+              )}
+            >
+              {time.display}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface CalendarEvent {
   eventId: string;
   title: string;
@@ -497,12 +569,14 @@ export default function CalendarModule() {
     const clickDate = new Date(date);
     
     if (hour !== undefined) {
-      clickDate.setHours(hour, 0, 0, 0);
+      const startHour = hour < 10 ? `0${hour}` : hour.toString();
+      const endHour = hour + 1 < 10 ? `0${hour + 1}` : (hour + 1).toString();
+      
       setNewEvent({
         title: '',
         description: '',
-        startTime: format(clickDate, 'HH:mm'),
-        endTime: format(new Date(clickDate.getTime() + 60 * 60 * 1000), 'HH:mm'),
+        startTime: `${startHour}:00`,
+        endTime: `${endHour}:00`,
         location: '',
         isAllDay: false,
         calendarId: 'personal',
@@ -514,6 +588,8 @@ export default function CalendarModule() {
         visibility: 'default',
         notifications: ['10']
       });
+      
+      setSelectedDate(clickDate);
     } else {
       setNewEvent({
         title: '',
@@ -531,9 +607,10 @@ export default function CalendarModule() {
         visibility: 'default',
         notifications: ['10']
       });
+      
+      setSelectedDate(clickDate);
     }
     
-    setSelectedDate(clickDate);
     setIsCreateEventOpen(true);
   };
 
@@ -1080,27 +1157,50 @@ export default function CalendarModule() {
             {/* Form Content */}
             <div className="px-6 pb-6 space-y-4">
               {/* Date and Time */}
-              <div className="flex items-center space-x-4">
-                <Clock className="h-5 w-5 text-gray-500" />
-                <div className="flex-1 space-y-2">
-                  <div className="flex space-x-4">
-                    <div className="flex-1">
-                      <Input
-                        type="datetime-local"
+              <div className="flex items-start space-x-4">
+                <Clock className="h-5 w-5 text-gray-500 mt-2" />
+                <div className="flex-1 space-y-3">
+                  {/* Date Selection */}
+                  <div className="flex items-center space-x-4">
+                    <Input
+                      type="date"
+                      value={selectedDate ? format(selectedDate, 'yyyy-MM-dd') : ''}
+                      onChange={(e) => {
+                        const newDate = new Date(e.target.value + 'T00:00:00');
+                        setSelectedDate(newDate);
+                      }}
+                      className="bg-gray-100 border-0 rounded-lg px-4 py-2 text-gray-700"
+                    />
+                  </div>
+                  
+                  {/* Time Selection */}
+                  {!newEvent.isAllDay && (
+                    <div className="flex items-center space-x-2">
+                      <TimeDropdown
                         value={newEvent.startTime}
-                        onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
-                        className="border-0 border-b border-gray-300 rounded-none focus:ring-0 focus:border-blue-500"
+                        onChange={(time: string) => setNewEvent({ ...newEvent, startTime: time })}
+                        className="bg-blue-50 border border-blue-200 text-blue-700"
                       />
-                    </div>
-                    <span className="py-2 text-gray-500">–</span>
-                    <div className="flex-1">
-                      <Input
-                        type="datetime-local"
+                      <span className="text-gray-500">–</span>
+                      <TimeDropdown
                         value={newEvent.endTime}
-                        onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
-                        className="border-0 border-b border-gray-300 rounded-none focus:ring-0 focus:border-blue-500"
+                        onChange={(time: string) => setNewEvent({ ...newEvent, endTime: time })}
+                        className="bg-gray-100 border border-gray-300 text-gray-700"
                       />
                     </div>
+                  )}
+                  
+                  {/* All Day Checkbox */}
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="allDay"
+                      checked={newEvent.isAllDay}
+                      onChange={(e) => setNewEvent({ ...newEvent, isAllDay: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                    />
+                    <label htmlFor="allDay" className="text-gray-700">Todo el día</label>
+                    <span className="text-blue-600 text-sm cursor-pointer hover:underline">Zo</span>
                   </div>
                   <div className="text-sm text-gray-500 flex items-center gap-2">
                     <span>Zona horaria</span>
