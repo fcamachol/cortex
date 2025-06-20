@@ -21,10 +21,17 @@ export default function ConversationList({ selectedConversation, onSelectConvers
     queryKey: [`/api/whatsapp/conversations/${userId}`],
   });
 
-  const filteredConversations = conversations.filter((conv: any) =>
-    conv.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.latestMessage?.content?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredConversations = conversations
+    .filter((conv: any) =>
+      conv.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      conv.latestMessage?.content?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a: any, b: any) => {
+      // Sort by most recent message timestamp (newest first)
+      const aTime = a.latestMessage?.timestamp || a.lastMessageAt || a.updatedAt || 0;
+      const bTime = b.latestMessage?.timestamp || b.lastMessageAt || b.updatedAt || 0;
+      return new Date(bTime).getTime() - new Date(aTime).getTime();
+    });
 
   if (isLoading) {
     return (
