@@ -192,6 +192,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Webhook handler functions for Evolution API events
   async function handleWebhookMessagesUpsert(instanceName: string, data: any) {
+    // Override Evolution API's internal instance IDs IMMEDIATELY before any processing
+    const correctedInstanceId = instanceName;
+    
+    // Recursively override instanceId in all nested objects
+    const overrideInstanceIds = (obj: any) => {
+      if (obj && typeof obj === 'object') {
+        if (obj.instanceId) {
+          obj.instanceId = correctedInstanceId;
+        }
+        if (Array.isArray(obj)) {
+          obj.forEach(overrideInstanceIds);
+        } else {
+          Object.values(obj).forEach(overrideInstanceIds);
+        }
+      }
+    };
+    
+    overrideInstanceIds(data);
+    
     console.log(`📩 Processing messages.upsert for ${instanceName}:`, JSON.stringify(data, null, 2));
     
     try {
@@ -206,21 +225,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`✅ Found instance: ${instanceName} (${instance.displayName})`);
       console.log(`📱 Owner JID: ${instance.ownerJid}`);
 
-      // Handle messages array from Evolution API webhook format
-      const messages = data.messages || [data]; // Support both array and single message
-      
       if (!Array.isArray(messages)) {
         console.log('Invalid messages format received');
         return;
-      }
-
-      // Override instanceId in all message data before processing
-      // Evolution API sends different internal IDs but we need consistent instance names
-      const correctedInstanceId = instanceName;
-      for (const message of messages) {
-        if (message && message.instanceId) {
-          message.instanceId = correctedInstanceId;
-        }
       }
 
       // Helper functions for media handling
@@ -635,6 +642,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   async function handleWebhookContactsUpsert(instanceName: string, data: any) {
+    // Override Evolution API's internal instance IDs IMMEDIATELY before any processing
+    const correctedInstanceId = instanceName;
+    
+    // Recursively override instanceId in all nested objects
+    const overrideInstanceIds = (obj: any) => {
+      if (obj && typeof obj === 'object') {
+        if (obj.instanceId) {
+          obj.instanceId = correctedInstanceId;
+        }
+        if (Array.isArray(obj)) {
+          obj.forEach(overrideInstanceIds);
+        } else {
+          Object.values(obj).forEach(overrideInstanceIds);
+        }
+      }
+    };
+    
+    overrideInstanceIds(data);
+    
     console.log(`👤 Processing contacts.upsert for ${instanceName}:`, data);
     
     try {
@@ -646,18 +672,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       
-      // Use the webhook URL instance name consistently
-      const correctedInstanceId = instanceName;
-      
-      // Handle both single contact and array of contacts
-      const contacts = Array.isArray(data) ? data : [data];
-      
       for (const contact of contacts) {
         if (contact.remoteJid) {
-          // Override any internal instanceId with our corrected one
-          contact.instanceId = correctedInstanceId;
-          
-          console.log(`📱 Processing contact: ${contact.remoteJid} for instance ${correctedInstanceId} (was: ${contact.instanceId})`);
+          console.log(`📱 Processing contact: ${contact.remoteJid} for instance ${correctedInstanceId}`);
         }
       }
     } catch (error) {
@@ -1088,6 +1105,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   async function handleWebhookChatsUpsert(instanceName: string, data: any) {
+    // Override Evolution API's internal instance IDs IMMEDIATELY before any processing
+    const correctedInstanceId = instanceName;
+    
+    // Recursively override instanceId in all nested objects
+    const overrideInstanceIds = (obj: any) => {
+      if (obj && typeof obj === 'object') {
+        if (obj.instanceId) {
+          obj.instanceId = correctedInstanceId;
+        }
+        if (Array.isArray(obj)) {
+          obj.forEach(overrideInstanceIds);
+        } else {
+          Object.values(obj).forEach(overrideInstanceIds);
+        }
+      }
+    };
+    
+    overrideInstanceIds(data);
+    
     console.log(`💬 Processing chats.upsert for ${instanceName}:`, data);
     
     try {
@@ -1098,9 +1134,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`Instance ${instanceName} not found in whatsapp.instances table`);
         return;
       }
-      
-      // Use the webhook URL instance name consistently
-      const correctedInstanceId = instanceName;
 
       // Process each chat in the data array
       for (const chat of data) {
