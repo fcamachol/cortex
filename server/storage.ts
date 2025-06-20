@@ -85,6 +85,7 @@ export interface IStorage {
   createWhatsappChat(chat: InsertWhatsappChat): Promise<WhatsappChat>;
   updateWhatsappChat(userId: string, instanceId: string, chatId: string, chat: Partial<InsertWhatsappChat>): Promise<WhatsappChat>;
   deleteWhatsappChat(userId: string, instanceId: string, chatId: string): Promise<void>;
+  getConversationsWithLatestMessages(userId: string): Promise<any[]>;
 
   // WhatsApp messages
   getWhatsappMessages(userId: string, instanceId: string, chatId: string, limit?: number): Promise<WhatsappMessage[]>;
@@ -427,6 +428,101 @@ export class DatabaseStorage implements IStorage {
         eq(whatsappChats.instanceId, instanceId),
         eq(whatsappChats.chatId, chatId)
       ));
+  }
+
+  async getConversationsWithLatestMessages(userId: string): Promise<any[]> {
+    // Single optimized query to get conversations with their latest message and contact info
+    const result = await db.execute(sql`
+      SELECT DISTINCT ON (c.chat_id, c.instance_id)
+        c.chat_id,
+        c.instance_id,
+        c.type,
+        c.unread_count,
+        c.is_archived,
+        c.is_pinned,
+        c.is_muted,
+        c.last_message_timestamp,
+        c.created_at,
+        c.updated_at,
+        -- Latest message info
+        m.message_id as latest_message_id,
+        m.content as latest_message_content,
+        m.message_type as latest_message_type,
+        m.from_me as latest_message_from_me,
+        m.timestamp as latest_message_timestamp,
+        m.sender_jid as latest_message_sender,
+        -- Contact info
+        ct.push_name,
+        ct.verified_name,
+        ct.profile_picture_url,
+        -- Group info  
+        g.subject as group_subject,
+        g.description as group_description,
+        -- Instance info
+        i.display_name as instance_name
+      FROM whatsapp.chats c
+      INNER JOIN whatsapp.instances i ON c.instance_id = i.instance_id
+      LEFT JOIN whatsapp.messages m ON c.chat_id = m.chat_id 
+        AND c.instance_id = m.instance_id
+        AND m.timestamp = (
+          SELECT MAX(m2.timestamp) 
+          FROM whatsapp.messages m2 
+          WHERE m2.chat_id = c.chat_id AND m2.instance_id = c.instance_id
+        )
+      LEFT JOIN whatsapp.contacts ct ON c.chat_id = ct.jid AND c.instance_id = ct.instance_id
+      LEFT JOIN whatsapp.groups g ON c.chat_id = g.group_jid AND c.instance_id = g.instance_id
+      WHERE i.client_id = ${userId}
+      ORDER BY c.chat_id, c.instance_id, c.last_message_timestamp DESC NULLS LAST
+    `);
+
+    return result.rows.map((row: any) => {
+      // Determine display name
+      let displayName = row.chat_id;
+      if (row.group_subject) {
+        displayName = row.group_subject;
+      } else if (row.push_name || row.verified_name) {
+        displayName = row.push_name || row.verified_name;
+      } else if (row.chat_id.includes('@s.whatsapp.net')) {
+        displayName = row.chat_id.split('@')[0];
+      }
+
+      return {
+        chatId: row.chat_id,
+        instanceId: row.instance_id,
+        type: row.type,
+        unreadCount: row.unread_count || 0,
+        isArchived: row.is_archived || false,
+        isPinned: row.is_pinned || false,
+        isMuted: row.is_muted || false,
+        lastMessageTimestamp: row.last_message_timestamp,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        title: displayName,
+        displayName: displayName,
+        // Latest message info
+        latestMessage: row.latest_message_id ? {
+          messageId: row.latest_message_id,
+          content: row.latest_message_content,
+          messageType: row.latest_message_type,
+          fromMe: row.latest_message_from_me,
+          timestamp: row.latest_message_timestamp,
+          senderJid: row.latest_message_sender
+        } : null,
+        // Contact info
+        contactInfo: (row.push_name || row.verified_name || row.profile_picture_url) ? {
+          pushName: row.push_name,
+          verifiedName: row.verified_name,
+          profilePictureUrl: row.profile_picture_url
+        } : null,
+        // Group info
+        groupInfo: row.group_subject ? {
+          subject: row.group_subject,
+          description: row.group_description
+        } : null,
+        // Instance info
+        instanceName: row.instance_name
+      };
+    });
   }
 
   // WhatsApp messages

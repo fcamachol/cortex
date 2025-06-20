@@ -13,7 +13,6 @@ interface ConversationListProps {
 
 export default function ConversationList({ selectedConversation, onSelectConversation }: ConversationListProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [conversationsWithMessages, setConversationsWithMessages] = useState<any[]>([]);
 
   // Mock user ID - in real app this would come from auth context
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
@@ -22,42 +21,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
     queryKey: [`/api/whatsapp/conversations/${userId}`],
   });
 
-  // Fetch latest message for each conversation
-  useEffect(() => {
-    const fetchLatestMessages = async () => {
-      if (conversations.length === 0) return;
-
-      const conversationsWithLatestMessages = await Promise.all(
-        conversations.map(async (conversation: any) => {
-          try {
-            const response = await fetch(`/api/whatsapp/messages/${conversation.chatId || conversation.id}?limit=1`);
-            if (response.ok) {
-              const messages = await response.json();
-              const latestMessage = messages[0];
-              return {
-                ...conversation,
-                latestMessage: latestMessage ? {
-                  content: latestMessage.textContent || latestMessage.content,
-                  createdAt: latestMessage.createdAt,
-                  fromMe: latestMessage.fromMe,
-                  messageType: latestMessage.messageType
-                } : null
-              };
-            }
-          } catch (error) {
-            console.error('Error fetching messages for conversation:', conversation.chatId || conversation.id, error);
-          }
-          return conversation;
-        })
-      );
-
-      setConversationsWithMessages(conversationsWithLatestMessages);
-    };
-
-    fetchLatestMessages();
-  }, [conversations]);
-
-  const filteredConversations = conversationsWithMessages.filter((conv: any) =>
+  const filteredConversations = conversations.filter((conv: any) =>
     conv.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     conv.latestMessage?.content?.toLowerCase().includes(searchQuery.toLowerCase())
   );

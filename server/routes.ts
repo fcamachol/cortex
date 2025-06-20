@@ -2271,114 +2271,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // WhatsApp conversation routes - fetch from Evolution API
+  // Optimized WhatsApp conversations endpoint with latest messages
   app.get("/api/whatsapp/conversations/:userId", async (req, res) => {
     try {
       const userId = req.params.userId;
-      const { instanceId } = req.query;
       
-      // Get user's active WhatsApp instances
-      const instances = await storage.getWhatsappInstances(userId);
-      const allConversations = [];
+      // Get conversations with latest messages in a single optimized query
+      const conversationsWithMessages = await storage.getConversationsWithLatestMessages(userId);
       
-      for (const instance of instances) {
-        if (instance.isConnected && instance.apiKey) {
-          try {
-            // Fetch chats from Evolution API
-            const evolutionApi = getInstanceEvolutionApi(instance.apiKey);
-            const chats = await evolutionApi.fetchChats(instance.instanceId);
-            
-            if (chats && Array.isArray(chats)) {
-              for (const chat of chats) {
-                // Create or update conversation in database
-                const conversationData = {
-                  instanceId: instance.instanceId,
-                  chatId: chat.id,
-                  type: chat.id.includes('@g.us') ? 'group' as const : 'individual' as const,
-                  unreadCount: chat.unreadCount || 0,
-                  lastMessageTimestamp: chat.lastMessage?.messageTimestamp ? new Date(chat.lastMessage.messageTimestamp * 1000) : null
-                };
-                
-                // Check if conversation exists
-                const existingConversations = await storage.getWhatsappChats(userId, instance.instanceId);
-                const existing = existingConversations.find(c => c.chatId === chat.id);
-                
-                let conversation;
-                if (existing) {
-                  conversation = await storage.updateWhatsappChat(userId, instance.instanceId, chat.id, conversationData);
-                } else {
-                  conversation = await storage.createWhatsappChat(conversationData);
-                }
-                
-                allConversations.push(conversation);
-              }
-            }
-          } catch (apiError) {
-            console.error(`Failed to fetch chats for instance ${instance.instanceId}:`, apiError);
-          }
-        }
-      }
+      console.log(`📱 Found ${conversationsWithMessages.length} conversations with latest messages`);
       
-      // Also get any existing conversations from database
-      const dbConversations = await storage.getWhatsappChats(userId, instanceId as string);
-      
-      // Merge and deduplicate by chatId
-      const conversationMap = new Map();
-      [...allConversations, ...dbConversations].forEach(conv => {
-        const key = conv.chatId;
-        const currentTimestamp = conv.lastMessageTimestamp?.getTime() || 0;
-        const existingTimestamp = conversationMap.get(key)?.lastMessageTimestamp?.getTime() || 0;
-        if (!conversationMap.has(key) || currentTimestamp > existingTimestamp) {
-          conversationMap.set(key, conv);
-        }
-      });
-      
-      const finalConversations = Array.from(conversationMap.values())
-        .filter(conv => conv.chatId && conv.chatId !== 'undefined') // Filter out undefined chatIds
-        .sort((a, b) => (b.lastMessageTimestamp?.getTime() || 0) - (a.lastMessageTimestamp?.getTime() || 0));
-      
-      // Enhance conversations with contact/group information
-      const enhancedConversations = await Promise.all(finalConversations.map(async (conversation) => {
-        try {
-          // Get contact information for this chat
-          const contact = await storage.getWhatsappContact(userId, conversation.instanceId, conversation.chatId);
-          
-          // Get group information if it's a group chat
-          let groupInfo = null;
-          if (conversation.type === 'group') {
-            try {
-              groupInfo = await storage.getWhatsappGroup(userId, conversation.instanceId, conversation.chatId);
-            } catch (groupError) {
-              console.log(`No group info found for ${conversation.chatId}`);
-            }
-          }
-          
-          // Determine display name
-          let displayName = conversation.chatId;
-          if (groupInfo && groupInfo.subject) {
-            displayName = groupInfo.subject;
-          } else if (contact && (contact.pushName || contact.verifiedName)) {
-            displayName = contact.pushName || contact.verifiedName;
-          } else if (conversation.chatId.includes('@s.whatsapp.net')) {
-            // Extract phone number for individual chats
-            displayName = conversation.chatId.split('@')[0];
-          }
-          
-          return {
-            ...conversation,
-            displayName,
-            contactInfo: contact,
-            groupInfo
-          };
-        } catch (error) {
-          console.error(`Error enhancing conversation ${conversation.chatId}:`, error);
-          return conversation;
-        }
-      }));
-      
-      res.json(enhancedConversations);
+      res.json(conversationsWithMessages);
     } catch (error) {
-      console.error('Error fetching conversations:', error);
+      console.error('Error fetching optimized conversations:', error);
       res.status(500).json({ error: "Failed to get conversations" });
     }
   });
