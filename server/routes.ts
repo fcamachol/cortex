@@ -4191,5 +4191,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Calendar integration routes
+  app.get('/api/calendar/account/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const account = await storage.getCalendarAccount(userId);
+      if (!account) {
+        return res.status(404).json({ error: 'Calendar account not found' });
+      }
+      res.json(account);
+    } catch (error) {
+      console.error('Error fetching calendar account:', error);
+      res.status(500).json({ error: 'Failed to fetch calendar account' });
+    }
+  });
+
+  app.post('/api/calendar/account', async (req, res) => {
+    try {
+      const accountData = req.body;
+      const account = await storage.createCalendarAccount(accountData);
+      res.status(201).json(account);
+    } catch (error) {
+      console.error('Error creating calendar account:', error);
+      res.status(500).json({ error: 'Failed to create calendar account' });
+    }
+  });
+
+  app.get('/api/calendar/calendars/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const calendars = await storage.getCalendarCalendars(userId);
+      res.json(calendars);
+    } catch (error) {
+      console.error('Error fetching calendars:', error);
+      res.status(500).json({ error: 'Failed to fetch calendars' });
+    }
+  });
+
+  app.post('/api/calendar/calendars', async (req, res) => {
+    try {
+      const calendarData = req.body;
+      const calendar = await storage.createCalendarCalendar(calendarData);
+      res.status(201).json(calendar);
+    } catch (error) {
+      console.error('Error creating calendar:', error);
+      res.status(500).json({ error: 'Failed to create calendar' });
+    }
+  });
+
+  app.get('/api/calendar/events/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { calendarId } = req.query;
+      const events = await storage.getCalendarEvents(userId, calendarId ? Number(calendarId) : undefined);
+      res.json(events);
+    } catch (error) {
+      console.error('Error fetching calendar events:', error);
+      res.status(500).json({ error: 'Failed to fetch calendar events' });
+    }
+  });
+
+  app.post('/api/calendar/events', async (req, res) => {
+    try {
+      const eventData = req.body;
+      const event = await storage.createCalendarEvent(eventData);
+      res.status(201).json(event);
+    } catch (error) {
+      console.error('Error creating calendar event:', error);
+      res.status(500).json({ error: 'Failed to create calendar event' });
+    }
+  });
+
+  app.get('/api/calendar/events/:eventId/attendees', async (req, res) => {
+    try {
+      const { eventId } = req.params;
+      const attendees = await storage.getCalendarAttendees(Number(eventId));
+      res.json(attendees);
+    } catch (error) {
+      console.error('Error fetching event attendees:', error);
+      res.status(500).json({ error: 'Failed to fetch event attendees' });
+    }
+  });
+
+  app.post('/api/calendar/attendees', async (req, res) => {
+    try {
+      const attendeeData = req.body;
+      const attendee = await storage.createCalendarAttendee(attendeeData);
+      res.status(201).json(attendee);
+    } catch (error) {
+      console.error('Error creating calendar attendee:', error);
+      res.status(500).json({ error: 'Failed to create calendar attendee' });
+    }
+  });
+
   return httpServer;
 }
