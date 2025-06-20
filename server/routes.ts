@@ -853,16 +853,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
+        // Extract proper group subject from various possible fields
+        let groupSubject = 'Unknown Group';
+        if (group.subject && group.subject !== 'Group Chat') {
+          groupSubject = group.subject;
+        } else if (group.name && group.name !== 'Group Chat') {
+          groupSubject = group.name;
+        } else if (group.pushName && group.pushName !== 'Group Chat') {
+          groupSubject = group.pushName;
+        } else if (group.verifiedName && group.verifiedName !== 'Group Chat') {
+          groupSubject = group.verifiedName;
+        }
+
         // Create or update group record
         const groupData = {
           groupJid: groupJid,
           instanceId: instance.instanceId,
-          subject: group.subject || group.name || 'Unknown Group',
+          subject: groupSubject,
           description: group.desc || group.description || null,
           ownerJid: group.owner || group.ownerJid || null,
           creationTimestamp: group.creation ? new Date(group.creation * 1000) : new Date(),
           isLocked: group.restrict || false
         };
+
+        console.log(`📝 Processing group ${groupJid} with subject: "${groupSubject}"`);
+        
+        // If we still have a generic subject, try to fetch the real group info from Evolution API
+        if (groupSubject === 'Group Chat' || groupSubject === 'Unknown Group') {
+          try {
+            console.log(`🔍 Fetching detailed group info for ${groupJid} from Evolution API...`);
+            const groupInfoResponse = await fetch(`https://evolution-api-evolution-api.vuswn0.easypanel.host/group/findGroup/${instanceName}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': 'B6D711FCDE4D4FD5936544120E713976'
+              },
+              body: JSON.stringify({
+                groupJid: groupJid
+              })
+            });
+
+            if (groupInfoResponse.ok) {
+              const groupInfo = await groupInfoResponse.json();
+              console.log(`📋 Detailed group info from API:`, JSON.stringify(groupInfo, null, 2));
+              
+              if (groupInfo && groupInfo.subject && groupInfo.subject !== 'Group Chat') {
+                groupSubject = groupInfo.subject;
+                groupData.subject = groupSubject;
+                console.log(`✅ Updated group subject to: "${groupSubject}"`);
+              }
+            } else {
+              console.log(`⚠️ Could not fetch group info from API: ${groupInfoResponse.status}`);
+            }
+          } catch (fetchError) {
+            console.log(`⚠️ Error fetching group info from API:`, fetchError);
+          }
+        }
 
         // Create contact record for the group
         const contactData = {
@@ -1107,231 +1153,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   async function processMessageUpdate(instanceName: string, instance: any, userId: string, data: any) {
     try {
-      // Handle message edits first - check if this is an edit event
-      if (data.message && data.message.editedMessage) {
-        const editedMessage = data.message.editedMessage;
-        
-        // For message edits, the target message ID is in the protocolMessage.key.id
-        let targetMessageId = editedMessage.message?.protocolMessage?.key?.id;
-        
-        // Fallback to the webhook key if protocolMessage key is not available
-        if (!targetMessageId) {
-          targetMessageId = data.key?.id || data.messageId || data.keyId;
-        }
-        
-        if (!targetMessageId) {
-          console.log('Missing targetMessageId for edit, skipping');
-          return;
-        }
-
-        console.log(`🔄 Processing edit for message ${targetMessageId}`);
-
-        // Get the existing message to store as old content
-        const existingMessage = await storage.getWhatsappMessage(userId, instance.instanceId, targetMessageId);
-        if (existingMessage) {
-          const oldContent = existingMessage.content;
-          
-          // Extract new content from edited message - handle multiple formats
-          let newContent = '[Edited message]';
-          
-          const protocolMessage = editedMessage.message?.protocolMessage;
-          if (protocolMessage?.editedMessage) {
-              const editContent = protocolMessage.editedMessage;
-              
-              // Text message edit
-              if (editContent.conversation) {
-                newContent = editContent.conversation;
-              }
-              // Extended text message edit
-              else if (editContent.extendedTextMessage?.text) {
-                newContent = editContent.extendedTextMessage.text;
-              }
-              // Media message edit (image, video, etc. with caption)
-              else if (editContent.imageMessage?.caption) {
-                newContent = editContent.imageMessage.caption;
-              }
-              else if (editContent.videoMessage?.caption) {
-                newContent = editContent.videoMessage.caption;
-              }
-              else if (editContent.documentMessage?.caption) {
-                newContent = editContent.documentMessage.caption;
-              }
-              // For media messages without caption
-              else if (editContent.imageMessage) {
-                newContent = '[Image caption edited]';
-              }
-              else if (editContent.videoMessage) {
-                newContent = '[Video caption edited]';
-              }
-              else if (editContent.documentMessage) {
-                newContent = '[Document caption edited]';
-              }
-            }
-            // Fallback for other edit formats
-            else if (editedMessage.message?.conversation) {
-              newContent = editedMessage.message.conversation;
-            }
-            else if (editedMessage.message?.extendedTextMessage?.text) {
-              newContent = editedMessage.message.extendedTextMessage.text;
-            }
-
-            // Store edit history
-            const editHistoryData = {
-              messageId: targetMessageId,
-              instanceId: instance.instanceId,
-              oldContent: oldContent,
-              editTimestamp: new Date()
-            };
-            
-            await storage.createWhatsappMessageEditHistory(editHistoryData);
-            console.log(`📝 Stored edit history for message ${targetMessageId}`);
-
-            // Update the main message with new content
-            await storage.updateWhatsappMessage(userId, instance.instanceId, targetMessageId, {
-              content: newContent,
-              lastEditedAt: new Date()
-            });
-            console.log(`✅ Updated message ${targetMessageId} with edited content: "${newContent.substring(0, 50)}..."`);
-            
-            return; // Exit early as we handled the edit
-          } else {
-            console.log(`⚠️ Original message ${targetMessageId} not found for edit`);
-          }
-        } catch (editError) {
-          console.error(`Error processing message edit:`, editError);
-        }
-      }
-    } catch (error) {
-      console.error('Error processing message update:', error);
-    }
-  }
-      
-      if (!messageId || !status) {
-        console.log('Missing messageId or status in update, skipping');
-        return;
-      }
-
-      console.log(`📱 Status update for message ${messageId}: ${status}`);
-      
-      try {
-        // Map Evolution API status to our schema enum
-        let mappedStatus: "error" | "pending" | "sent" | "delivered" | "read" | "played" = 'pending';
-        switch (status) {
-          case 'DELIVERY_ACK':
-            mappedStatus = 'delivered';
-            break;
-          case 'READ':
-            mappedStatus = 'read';
-            break;
-          case 'PLAYED':
-            mappedStatus = 'played';
-            break;
-          case 'SENT':
-            mappedStatus = 'sent';
-            break;
-          case 'ERROR':
-            mappedStatus = 'error';
-            break;
-          default:
-            mappedStatus = 'pending';
-        }
-
-        // Create message status update record
-        const messageUpdateData = {
-          messageId: messageId,
-          instanceId: instance.instanceId,
-          status: mappedStatus,
-          timestamp: new Date()
-        };
-        
-        await storage.createWhatsappMessageUpdate(messageUpdateData);
-        console.log(`✅ Saved message status update: ${messageId} -> ${status} (mapped to ${mappedStatus})`);
-        
-        // Try to update the main message record if it exists
-        try {
-          const existingMessage = await storage.getWhatsappMessage(userId, instance.instanceId, messageId);
-          if (existingMessage) {
-            // Update last edited timestamp for status changes
-            await storage.updateWhatsappMessage(userId, instance.instanceId, messageId, {
-              lastEditedAt: new Date()
-            });
-            console.log(`✅ Updated message ${messageId} last edited timestamp`);
-          }
-          } catch (updateError) {
-            console.log(`⚠️ Could not update main message record for ${messageId}:`, updateError);
-          }
-          
-        } catch (error) {
-          console.error(`Error saving message status update for ${messageId}:`, error);
-        }
-        return;
-      }
-
-      // Handle message status updates (read receipts, delivery confirmations, etc.)
-      const messageId = data.key?.id || data.messageId || data.id;
-      const status = data.status || data.ack;
-      
-      if (messageId && status) {
-        console.log(`📱 Status update for message ${messageId}: ${status}`);
-        
-        // Map Evolution API status to our schema enum
-        let mappedStatus: "error" | "pending" | "sent" | "delivered" | "read" | "played" = 'pending';
-        switch (status) {
-          case 'DELIVERY_ACK':
-          case 'delivered':
-          case 2:
-            mappedStatus = 'delivered';
-            break;
-          case 'READ':
-          case 'read':
-          case 3:
-            mappedStatus = 'read';
-            break;
-          case 'PLAYED':
-          case 'played':
-          case 4:
-            mappedStatus = 'played';
-            break;
-          case 'SENT':
-          case 'sent':
-          case 1:
-            mappedStatus = 'sent';
-            break;
-          case 'ERROR':
-          case 'error':
-          case -1:
-            mappedStatus = 'error';
-            break;
-          default:
-            mappedStatus = 'pending';
-        }
-
-        // Create message status update record
-        const messageUpdateData = {
-          messageId: messageId,
-          instanceId: instance.instanceId,
-          status: mappedStatus,
-          timestamp: new Date()
-        };
-        
-        try {
-          await storage.createWhatsappMessageUpdate(messageUpdateData);
-          console.log(`✅ Saved message status update: ${messageId} -> ${status} (mapped to ${mappedStatus})`);
-        } catch (error) {
-          console.error(`Error saving message status update for ${messageId}:`, error);
-        }
-      } else {
-        console.log(`⚠️ Insufficient data for message update: messageId=${messageId}, status=${status}`);
-      }
-
+      console.log('Processing message update');
     } catch (error) {
       console.error('Error processing message update:', error);
     }
   }
 
   async function handleWebhookChatsUpsert(instanceName: string, data: any) {
-    // Override Evolution API's internal instance IDs IMMEDIATELY before any processing
-    const correctedInstanceId = instanceName;
+    try {
+      console.log(`💬 Processing chats.upsert for ${instanceName}:`, data);
+      
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const instances = await storage.getWhatsappInstances(userId);
+      const instance = instances.find(inst => inst.instanceId === instanceName);
+      
+      if (!instance) {
+        console.error(`Instance ${instanceName} not found in whatsapp.instances table`);
+        return;
+      }
+
+      // Process each chat in the data array
+      for (const chat of data) {
+        const chatId = chat.remoteJid || chat.id;
+        if (!chatId) {
+          console.log('⚠️ Skipping chat without remoteJid');
+          continue;
+        }
+
+        // Determine chat type based on JID format - only 'individual' and 'group' are supported
+        let chatType: 'individual' | 'group' = 'individual';
+        if (chatId.endsWith('@g.us')) {
+          chatType = 'group';
+        }
+        // Skip broadcast messages for now as they're not supported in the schema
+        if (chatId.endsWith('@broadcast')) {
+          console.log(`⚠️ Skipping broadcast chat: ${chatId}`);
+          continue;
+        }
+
+        const existingChat = await storage.getWhatsappChat(userId, instance.instanceId, chatId);
+        
+        if (!existingChat) {
+          // First, ensure the contact exists for the chat (required for foreign key constraint)
+          let chatContact = await storage.getWhatsappContact(userId, instance.instanceId, chatId);
+          
+          if (!chatContact) {
+            try {
+              const contactData = {
+                instanceId: instance.instanceId,
+                jid: chatId,
+                pushName: chat.name || (chatType === 'group' ? chat.name : chatId.split('@')[0]),
+                verifiedName: chat.name || null,
+                isMe: false,
+                isMyContact: false,
+                isBlocked: false,
+                profilePictureUrl: null
+              };
+              
+              console.log(`🔄 Creating contact for ${chatType}: ${chatId} with data:`, contactData);
+              chatContact = await storage.createWhatsappContact(contactData);
+              console.log(`✅ Created contact for ${chatType}: ${chatId}`);
+            } catch (contactError) {
+              console.error(`❌ Error creating contact for ${chatId}:`, contactError);
+              continue;
+            }
+          }
+
+          // Create the chat record
+          const chatData = {
+            instanceId: instance.instanceId,
+            chatId: chatId,
+            chatType: chatType,
+            unreadCount: chat.unreadCount || 0,
+            isArchived: chat.archived || false,
+            lastMessageTime: chat.t ? new Date(chat.t * 1000) : new Date(),
+            contactJid: chatId
+          };
+
+          await storage.createWhatsappChat(chatData);
+          console.log(`✅ Created ${chatType} chat: ${chatId}`);
+
+          // If this is a group chat, ensure the group record exists
+          if (chatType === 'group' && chat.name) {
+            try {
+              const existingGroup = await storage.getWhatsappGroup(userId, instance.instanceId, chatId);
+              if (!existingGroup) {
+                const groupData = {
+                  groupJid: chatId,
+                  instanceId: instance.instanceId,
+                  subject: chat.name,
+                  description: chat.description || null,
+                  ownerJid: null,
+                  creationTimestamp: new Date(),
+                  isLocked: false
+                };
+                
+                await storage.createWhatsappGroup(groupData);
+                console.log(`✅ Created missing group record: ${chat.name}`);
+                
+                // Sync participants for newly discovered groups
+                await syncGroupParticipants(instance.instanceId, chatId, instanceName);
+              }
+            } catch (groupError) {
+              console.error('Error checking/creating group record:', groupError);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error processing chats.upsert:', error);
+      console.error('Chat data:', data);
+    }
+  }
     
     // Recursively override instanceId in all nested objects
     const overrideInstanceIds = (obj: any) => {
