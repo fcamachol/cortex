@@ -236,6 +236,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
+      // Override instanceId in all message data before processing
+      // Evolution API sends different internal IDs but we need consistent instance names
+      const correctedInstanceId = instanceName;
+      for (const message of messages) {
+        if (message && message.instanceId) {
+          message.instanceId = correctedInstanceId;
+        }
+      }
+
       // Helper functions for media handling
       const isMediaMessage = (messageContent: any): boolean => {
         return !!(
@@ -692,7 +701,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Override any internal instanceId with our corrected one
           contact.instanceId = correctedInstanceId;
           
-          console.log(`📱 Processing contact: ${contact.remoteJid} for instance ${correctedInstanceId}`);
+          console.log(`📱 Processing contact: ${contact.remoteJid} for instance ${correctedInstanceId} (was: ${contact.instanceId})`);
         }
       }
     } catch (error) {
