@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Paperclip, Smile, Send, User, Plus, MoreVertical } from "lucide-react";
+import { ContactTasksAndEvents } from "@/components/contacts/ContactTasksAndEvents";
 // WebSocket functionality removed - using webhook-based system
 import { apiRequest } from "@/lib/queryClient";
 import { formatPhoneNumber } from "@/lib/phoneUtils";
@@ -156,8 +157,19 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
         </div>
       </div>
 
+      {/* Contact Tasks & Events */}
+      {conversation && (
+        <div className="border-b border-gray-200 dark:border-gray-700 p-4">
+          <ContactTasksAndEvents
+            contactJid={conversation.chatId}
+            contactName={conversation.title || 'Unknown Contact'}
+            instanceId={instanceId}
+          />
+        </div>
+      )}
+
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 chat-area max-h-[calc(100vh-200px)] scroll-smooth scrollbar-thin chat-messages-scroll">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 chat-area max-h-[calc(100vh-300px)] scroll-smooth scrollbar-thin chat-messages-scroll">
         <div className="space-y-4">
           {messages.length === 0 ? (
             <div className="text-center text-gray-500 dark:text-gray-400 mt-8">

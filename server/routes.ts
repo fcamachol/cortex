@@ -2840,6 +2840,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get tasks linked to a contact
+  app.get("/api/contacts/tasks", async (req, res) => {
+    try {
+      const { contactJid, userId } = req.query;
+      
+      if (!contactJid || !userId) {
+        return res.status(400).json({ error: "Missing contactJid or userId" });
+      }
+
+      // Query tasks linked to this contact via related_chat_jid or contact metadata
+      const tasksQuery = await pool.query(`
+        SELECT 
+          id,
+          title,
+          description,
+          status,
+          priority,
+          due_date,
+          created_at,
+          updated_at,
+          metadata
+        FROM tasks 
+        WHERE user_id = $1 
+        AND (
+          metadata->>'related_chat_jid' = $2 
+          OR metadata->>'contact_jid' = $2
+          OR contact_id IN (
+            SELECT contact_id FROM contacts 
+            WHERE user_id = $1 
+            AND (phone = $3 OR metadata->>'jid' = $2)
+          )
+        )
+        ORDER BY 
+          CASE WHEN status = 'completed' THEN 1 ELSE 0 END,
+          due_date ASC NULLS LAST,
+          created_at DESC
+      `, [userId, contactJid, contactJid.split('@')[0]]);
+
+      res.json(tasksQuery.rows);
+    } catch (error) {
+      console.error('Error fetching contact tasks:', error);
+      res.status(500).json({ error: "Failed to fetch contact tasks" });
+    }
+  });
+
+  // Get calendar events linked to a contact
+  app.get("/api/contacts/events", async (req, res) => {
+    try {
+      const { contactJid, userId } = req.query;
+      
+      if (!contactJid || !userId) {
+        return res.status(400).json({ error: "Missing contactJid or userId" });
+      }
+
+      // Query upcoming calendar events linked to this contact
+      const eventsQuery = await pool.query(`
+        SELECT DISTINCT
+          ce.event_id,
+          ce.title,
+          ce.description,
+          ce.start_time,
+          ce.end_time,
+          ce.is_all_day,
+          ce.location,
+          ce.meet_link,
+          ce.status
+        FROM calendar.events ce
+        JOIN calendar.calendars cc ON ce.calendar_id = cc.calendar_id
+        JOIN calendar.accounts ca ON cc.account_id = ca.account_id
+        LEFT JOIN calendar.attendees cat ON ce.event_id = cat.event_id
+        WHERE ca.user_id = $1::uuid
+        AND ce.start_time >= NOW()
+        AND (
+          ce.description ILIKE '%' || $3 || '%'
+          OR cat.email = $4
+          OR ce.title ILIKE '%' || $5 || '%'
+        )
+        ORDER BY ce.start_time ASC
+        LIMIT 10
+      `, [
+        userId, 
+        contactJid,
+        contactJid.split('@')[0], // phone number search
+        contactJid.replace('@s.whatsapp.net', '@gmail.com'), // email guess
+        contactJid.split('@')[0] // name search
+      ]);
+
+      res.json(eventsQuery.rows);
+    } catch (error) {
+      console.error('Error fetching contact events:', error);
+      res.status(500).json({ error: "Failed to fetch contact events" });
+    }
+  });
+
   // Send WhatsApp message
   app.post("/api/whatsapp/send-message", async (req, res) => {
     try {
