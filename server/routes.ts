@@ -361,19 +361,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
-        // Determine message type from the message content
-        let messageType: 'text' | 'image' | 'video' | 'audio' | 'document' | 'sticker' | 'location' | 'contact_card' | 'reaction' = 'text';
+        // Determine message type from the message content - use Evolution API message types
+        let messageType = 'conversation'; // Default to conversation
         if (message.message) {
           const messageContent = message.message;
-          if (messageContent.reactionMessage) messageType = 'reaction';
-          else if (messageContent.conversation || messageContent.extendedTextMessage) messageType = 'text';
-          else if (messageContent.imageMessage) messageType = 'image';
-          else if (messageContent.videoMessage) messageType = 'video';
-          else if (messageContent.audioMessage) messageType = 'audio';
-          else if (messageContent.documentMessage) messageType = 'document';
-          else if (messageContent.stickerMessage) messageType = 'sticker';
-          else if (messageContent.locationMessage) messageType = 'location';
-          else if (messageContent.contactMessage) messageType = 'contact_card';
+          if (messageContent.reactionMessage) messageType = 'reactionMessage';
+          else if (messageContent.conversation) messageType = 'conversation';
+          else if (messageContent.extendedTextMessage) messageType = 'extendedTextMessage';
+          else if (messageContent.imageMessage) messageType = 'imageMessage';
+          else if (messageContent.videoMessage) messageType = 'videoMessage';
+          else if (messageContent.audioMessage) messageType = 'audioMessage';
+          else if (messageContent.documentMessage) messageType = 'documentMessage';
+          else if (messageContent.stickerMessage) messageType = 'stickerMessage';
+          else if (messageContent.locationMessage) messageType = 'locationMessage';
+          else if (messageContent.contactMessage) messageType = 'contactMessage';
         }
         
         // Also check the messageType field from Evolution API
