@@ -3191,6 +3191,125 @@ Message ID: ${messageId}`;
     }
   });
 
+  // Sync all groups and participants from Evolution API
+  app.post('/api/whatsapp/instances/:instanceId/sync-groups-complete', async (req: Request & { user?: { id: string } }, res: Response) => {
+    try {
+      const { instanceId } = req.params;
+      const userId = req.user?.id || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+
+      const instance = await storage.getWhatsappInstance(userId, instanceId);
+      if (!instance || !instance.apiKey) {
+        return res.status(404).json({ error: 'Instance not found or missing API key' });
+      }
+
+      console.log(`🔄 Starting complete group sync for instance: ${instanceId}`);
+
+      // Use Evolution API to fetch all groups with participants
+      const evolutionApi = getEvolutionApi();
+      const headers = { 'apikey': instance.apiKey };
+      
+      try {
+        // First, fetch all chats to get groups
+        const chatsResponse = await fetch(`https://evolution-api-evolution-api.vuswn0.easypanel.host/chat/findAll/${instanceId}`, {
+          method: 'GET',
+          headers
+        });
+
+        if (!chatsResponse.ok) {
+          throw new Error(`Failed to fetch chats: ${chatsResponse.status}`);
+        }
+
+        const chatsData = await chatsResponse.json();
+        const groupChats = chatsData.filter((chat: any) => chat.id && chat.id.endsWith('@g.us'));
+
+        console.log(`📱 Found ${groupChats.length} group chats to sync`);
+
+        let syncedGroups = 0;
+        let totalParticipants = 0;
+
+        for (const chat of groupChats) {
+          const groupJid = chat.id;
+          
+          try {
+            // Create/update the chat record
+            const chatData = {
+              chatId: groupJid,
+              instanceId: instanceId,
+              type: 'group' as const,
+              name: chat.name || 'Unknown Group',
+              unreadCount: chat.unreadCount || 0,
+              isPinned: false,
+              isArchived: chat.archived || false,
+              isMuted: chat.mute || false
+            };
+
+            await storage.createWhatsappChat(chatData);
+
+            // Create/update the group record
+            const groupData = {
+              groupJid: groupJid,
+              instanceId: instanceId,
+              subject: chat.name || 'Unknown Group',
+              description: null,
+              ownerJid: null,
+              creationTimestamp: new Date(),
+              isLocked: false
+            };
+
+            await storage.createWhatsappGroup(groupData);
+
+            // Fetch participants for this specific group
+            const participantsResponse = await fetch(`${process.env.EVOLUTION_API_URL}/group/participants/${instanceId}?groupJid=${encodeURIComponent(groupJid)}`, {
+              method: 'GET',
+              headers
+            });
+
+            if (participantsResponse.ok) {
+              const participantsData = await participantsResponse.json();
+              
+              if (participantsData && Array.isArray(participantsData.participants)) {
+                for (const participant of participantsData.participants) {
+                  const participantData = {
+                    groupJid: groupJid,
+                    instanceId: instanceId,
+                    participantJid: participant.id || participant.jid,
+                    isAdmin: participant.admin === 'admin' || participant.isAdmin || false,
+                    isSuperAdmin: participant.admin === 'superadmin' || participant.isSuperAdmin || false
+                  };
+
+                  await storage.createWhatsappGroupParticipant(participantData);
+                  totalParticipants++;
+                }
+                console.log(`✅ Synced ${participantsData.participants.length} participants for group: ${chat.name}`);
+              }
+            } else {
+              console.log(`⚠️ Could not fetch participants for group: ${chat.name}`);
+            }
+
+            syncedGroups++;
+          } catch (groupError) {
+            console.error(`❌ Error syncing group ${groupJid}:`, groupError);
+          }
+        }
+
+        res.json({
+          success: true,
+          message: `Synchronized ${syncedGroups} groups with ${totalParticipants} total participants`,
+          syncedGroups,
+          totalParticipants,
+          totalGroups: groupChats.length
+        });
+
+      } catch (apiError) {
+        console.error('❌ Error calling Evolution API:', apiError);
+        res.status(500).json({ error: 'Failed to fetch data from Evolution API' });
+      }
+    } catch (error) {
+      console.error('❌ Error in complete group sync:', error);
+      res.status(500).json({ error: 'Failed to sync groups' });
+    }
+  });
+
   app.post('/api/whatsapp/instances/:instanceId/sync-participants', async (req: Request & { user?: { id: string } }, res: Response) => {
     try {
       const { instanceId } = req.params;
