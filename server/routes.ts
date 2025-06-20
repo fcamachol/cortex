@@ -405,7 +405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!chatContact) {
             // Create the contact if it doesn't exist
             const newContactData = {
-              instanceId: correctedInstanceId,
+              instanceId: correctedInstanceId, // Maps to whatsapp.instances.instance_id
               jid: contactJid,
               pushName: message.pushName || contactJid.split('@')[0],
               verifiedName: null,
@@ -447,7 +447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Create the chat if it doesn't exist
             const chatType: 'individual' | 'group' = chatId.includes('@g.us') ? 'group' : 'individual';
             const newChatData = {
-              instanceId: correctedInstanceId,
+              instanceId: correctedInstanceId, // Maps to whatsapp.instances.instance_id
               chatId: chatId,
               type: chatType,
               unreadCount: 0,
@@ -528,7 +528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           // Save regular messages to WhatsApp messages table (excluding reactions)
           const whatsappMessageData = {
-            instanceId: correctedInstanceId,
+            instanceId: correctedInstanceId, // This maps to the whatsapp instances table instance_id
             messageId: message.key.id || '',
             chatId: chatId,
             senderJid: message.participant || message.key.remoteJid || '',
