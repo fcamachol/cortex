@@ -325,11 +325,19 @@ export class ActionsEngine {
     console.log('📋 Config received:', config);
     console.log('📍 Context received:', context);
 
+    // Enhanced description for reaction-based tasks
+    let enhancedDescription = this.interpolateTemplate(config.description, context);
+    
+    // If this task is created from a reaction, include the original message
+    if (context.reaction && context.content) {
+      enhancedDescription = `Task created from reaction ${context.reaction}\n\nOriginal message: "${context.content}"\n\n${enhancedDescription}`;
+    }
+
     // Simple task creation without complex database queries for now
     const taskData = {
       userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42', // Use default user ID
       title: this.interpolateTemplate(config.title, context),
-      description: this.interpolateTemplate(config.description, context),
+      description: enhancedDescription,
       priority: config.priority || 'medium',
       taskStatus: 'to_do',
       dueDate: config.dueDate ? new Date(config.dueDate) : null,

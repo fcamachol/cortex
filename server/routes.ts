@@ -777,33 +777,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      // Extract reaction data from webhook
-      const messageId = data.key?.id || data.messageId;
-      const reactionEmoji = data.message?.reactionMessage?.text || data.reaction;
-      const senderJid = data.key?.participant || data.key?.remoteJid || data.senderJid;
-      const chatId = data.key?.remoteJid || data.chatId;
+      // Extract reaction data from webhook - handle nested reactionMessage structure
+      const reactionData = data.message?.reactionMessage;
+      if (!reactionData) {
+        console.log('⚠️ No reactionMessage found in data');
+        return;
+      }
 
-      if (!messageId || !reactionEmoji || !senderJid || !chatId) {
+      const originalMessageId = reactionData.key?.id;
+      const reactionEmoji = reactionData.text;
+      const senderJid = data.key?.remoteJid;
+      const chatId = data.key?.remoteJid;
+
+      if (!originalMessageId || !reactionEmoji || !senderJid || !chatId) {
         console.log('⚠️ Missing reaction data, skipping');
         return;
       }
 
-      console.log(`⭐ Reaction detected: ${reactionEmoji} on message ${messageId} by ${senderJid}`);
+      console.log(`⭐ Reaction detected: ${reactionEmoji} on message ${originalMessageId} by ${senderJid}`);
 
       // Get the original message to extract content
-      const originalMessage = await storage.getWhatsappMessage(userId, instance.instanceId, messageId);
+      const originalMessage = await storage.getWhatsappMessage(userId, instance.instanceId, originalMessageId);
       if (!originalMessage) {
-        console.log(`⚠️ Original message not found: ${messageId}`);
+        console.log(`⚠️ Original message not found: ${originalMessageId}`);
         return;
       }
 
       // Process actions triggers for this reaction
       const triggerContext = {
-        reactionId: `${messageId}_${reactionEmoji}`,
-        messageId: messageId,
+        reactionId: `${originalMessageId}_${reactionEmoji}`,
+        messageId: originalMessageId,
         instanceId: instance.instanceId,
         chatId: chatId,
         senderJid: senderJid,
+        reactorJid: senderJid, // Who performed the reaction
+        originalSenderJid: originalMessage.senderJid || originalMessage.fromMe ? 'me' : senderJid,
         content: originalMessage.content || '',
         reaction: reactionEmoji,
         timestamp: new Date(),
@@ -2800,6 +2808,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await handleWebhookGroupParticipantsUpdate(instanceId, eventData.data);
       } else if (eventData.event === 'groups.upsert') {
         await handleWebhookGroupsUpsert(instanceId, eventData.data);
+      } else if (eventData.event === 'message.reaction') {
+        await handleWebhookMessageReaction(instanceId, eventData.data);
       }
 
       res.status(200).json({ success: true });
