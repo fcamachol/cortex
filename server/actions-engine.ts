@@ -272,6 +272,10 @@ export class ActionsEngine {
       const newTask = result.rows[0];
       
       console.log('✅ Intelligent task saved to database:', newTask);
+      
+      // Notify clients about new task creation for real-time updates
+      ActionsEngine.notifyTaskCreated(newTask);
+      
       return { 
         success: true, 
         data: newTask, 
@@ -497,5 +501,23 @@ export class ActionsEngine {
       .replace(/\{\{senderJid\}\}/g, context.senderJid || '')
       .replace(/\{\{chatId\}\}/g, context.chatId || '')
       .replace(/\{\{timestamp\}\}/g, context.timestamp.toISOString() || '');
+  }
+
+  // Event notification system for real-time updates
+  private static taskUpdateCallbacks: Array<(task: any) => void> = [];
+
+  static onTaskCreated(callback: (task: any) => void) {
+    ActionsEngine.taskUpdateCallbacks.push(callback);
+  }
+
+  static notifyTaskCreated(task: any) {
+    console.log('📢 Broadcasting task creation to', ActionsEngine.taskUpdateCallbacks.length, 'listeners');
+    ActionsEngine.taskUpdateCallbacks.forEach(callback => {
+      try {
+        callback(task);
+      } catch (error) {
+        console.error('Error in task notification callback:', error);
+      }
+    });
   }
 }

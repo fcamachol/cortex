@@ -70,6 +70,43 @@ export function TasksPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Set up real-time task updates via Server-Sent Events
+  useEffect(() => {
+    const eventSource = new EventSource('/api/events/tasks');
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'task_created') {
+          console.log('Real-time task update received:', data.task);
+          
+          // Immediately invalidate and refetch tasks
+          queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
+          
+          // Show notification toast
+          toast({
+            title: "New Task Created",
+            description: `Task "${data.task.title}" has been created automatically`,
+            duration: 5000
+          });
+        }
+      } catch (error) {
+        console.error('Error parsing SSE message:', error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE connection error:', error);
+      // Connection will automatically retry
+    };
+
+    // Cleanup on component unmount
+    return () => {
+      eventSource.close();
+    };
+  }, [queryClient, toast]);
+
   // Helper function to transform raw task data into hierarchical structure
   const transformTasksData = (data: Task[]) => {
     const taskMap = new Map<number, Task>();
@@ -103,10 +140,14 @@ export function TasksPage() {
     return rootTasks;
   };
 
-  // Fetch tasks
+  // Fetch tasks with auto-refresh
   const { data: tasks, isLoading: tasksLoading } = useQuery({
     queryKey: ['/api/crm/tasks'],
-    select: transformTasksData
+    select: transformTasksData,
+    refetchInterval: 5000, // Refresh every 5 seconds
+    refetchIntervalInBackground: true, // Keep refreshing when tab is not active
+    refetchOnWindowFocus: true, // Refresh when user returns to tab
+    staleTime: 0 // Always consider data stale to ensure fresh updates
   });
 
   // Fetch projects

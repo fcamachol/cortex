@@ -263,6 +263,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Server-Sent Events endpoint for real-time task updates
+  app.get('/api/events/tasks', (req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
+
+    res.write('data: {"type": "connected", "message": "Task updates stream connected"}\n\n');
+
+    const { ActionsEngine } = require('./actions-engine');
+    const taskCallback = (task: any) => {
+      const eventData = {
+        type: 'task_created',
+        task: task,
+        timestamp: new Date().toISOString()
+      };
+      res.write(`data: ${JSON.stringify(eventData)}\n\n`);
+    };
+
+    ActionsEngine.onTaskCreated(taskCallback);
+    console.log('📡 SSE client connected for task updates');
+
+    const heartbeat = setInterval(() => {
+      res.write('data: {"type": "heartbeat"}\n\n');
+    }, 30000);
+
+    req.on('close', () => {
+      console.log('📡 SSE client disconnected');
+      clearInterval(heartbeat);
+    });
+  });
+
   // Webhook handler functions for Evolution API events
   async function handleWebhookMessagesUpsert(instanceName: string, data: any) {
     // Override Evolution API's internal instance IDs IMMEDIATELY before any processing
