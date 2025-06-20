@@ -415,8 +415,38 @@ export default function CalendarModule() {
 
           {/* Mini Calendar */}
           <div className="p-4 border-b border-gray-200">
-            <div className="text-sm font-medium mb-3">{format(currentDate, 'MMMM yyyy')}</div>
-            {/* Mini calendar grid would go here */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-medium">{format(currentDate, 'MMMM yyyy')}</div>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}>
+                  <ChevronLeft className="w-3 h-3" />
+                </Button>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}>
+                  <ChevronRight className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Mini Calendar Grid */}
+            <div className="grid grid-cols-7 gap-1 text-xs">
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                <div key={`header-${idx}`} className="text-center text-gray-500 py-1">{day}</div>
+              ))}
+              {generateCalendarDays().map((day, index) => (
+                <button
+                  key={`day-${day.date.getTime()}`}
+                  onClick={() => setCurrentDate(day.date)}
+                  className={cn(
+                    "text-center py-1 rounded text-xs hover:bg-gray-100 transition-colors",
+                    day.isToday && "bg-blue-500 text-white hover:bg-blue-600",
+                    !day.isCurrentMonth && "text-gray-300",
+                    isSameDay(day.date, currentDate) && !day.isToday && "bg-gray-200"
+                  )}
+                >
+                  {day.dayNumber}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* My Calendars */}
@@ -625,22 +655,54 @@ export default function CalendarModule() {
                 
                 {/* Week Grid */}
                 <div className="flex-1 overflow-y-auto">
-                  {timeSlots.map((slot, slotIndex) => (
-                    <div key={slotIndex} className="flex border-b border-gray-100">
-                      <div className="w-16 p-2 text-xs text-gray-500 text-right border-r border-gray-200">
-                        {slot.time}
+                  <Droppable droppableId="week-view" type="EVENT">
+                    {(provided) => (
+                      <div ref={provided.innerRef} {...provided.droppableProps}>
+                        {timeSlots.map((slot, slotIndex) => (
+                          <div key={slotIndex} className="flex border-b border-gray-100">
+                            <div className="w-16 p-2 text-xs text-gray-500 text-right border-r border-gray-200">
+                              {slot.time}
+                            </div>
+                            {weekViewDays.map((day, dayIndex) => {
+                              const dayEvents = getEventsForDay(day.date).filter((event: any) => {
+                                const eventHour = new Date(event.startTime).getHours();
+                                return eventHour === slot.hour;
+                              });
+                              
+                              return (
+                                <div 
+                                  key={dayIndex} 
+                                  className="flex-1 min-h-[60px] border-r border-gray-100 last:border-r-0 cursor-pointer hover:bg-gray-50 transition-colors relative p-1"
+                                  onClick={() => handleGridClick(day.date, slot.hour)}
+                                >
+                                  {dayEvents.map((event: any, eventIndex: number) => (
+                                    <Draggable key={event.eventId} draggableId={event.eventId} index={eventIndex}>
+                                      {(provided, snapshot) => (
+                                        <div
+                                          ref={provided.innerRef}
+                                          {...provided.draggableProps}
+                                          {...provided.dragHandleProps}
+                                          className={cn(
+                                            "text-xs px-2 py-1 rounded-sm text-white cursor-pointer mb-1 truncate",
+                                            event.color,
+                                            snapshot.isDragging && "opacity-50"
+                                          )}
+                                          style={provided.draggableProps.style}
+                                        >
+                                          {event.title}
+                                        </div>
+                                      )}
+                                    </Draggable>
+                                  ))}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ))}
+                        {provided.placeholder}
                       </div>
-                      {weekViewDays.map((day, dayIndex) => (
-                        <div 
-                          key={dayIndex} 
-                          className="flex-1 min-h-[60px] border-r border-gray-100 last:border-r-0 cursor-pointer hover:bg-gray-50 transition-colors relative"
-                          onClick={() => handleGridClick(day.date, slot.hour)}
-                        >
-                          {/* Events for this hour would be positioned here */}
-                        </div>
-                      ))}
-                    </div>
-                  ))}
+                    )}
+                  </Droppable>
                 </div>
               </div>
             )}
@@ -734,6 +796,33 @@ export default function CalendarModule() {
                   onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
                   placeholder="Add location"
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="calendar">Calendar</Label>
+                <select
+                  id="calendar"
+                  value={newEvent.calendarId}
+                  onChange={(e) => setNewEvent({ ...newEvent, calendarId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {subCalendars.map((calendar) => (
+                    <option key={calendar.id} value={calendar.id}>
+                      {calendar.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="allDay"
+                  checked={newEvent.isAllDay}
+                  onChange={(e) => setNewEvent({ ...newEvent, isAllDay: e.target.checked })}
+                  className="rounded border-gray-300"
+                />
+                <Label htmlFor="allDay" className="text-sm">All day</Label>
               </div>
 
               <div className="flex items-center justify-between">
