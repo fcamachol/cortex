@@ -4,50 +4,38 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Database, MessageSquare, Users, Phone, Calendar } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Database, MessageSquare, Users, Phone, Calendar, Table as TableIcon, Folder, ChevronRight } from 'lucide-react';
 
-interface WhatsAppMessage {
-  message_id: string;
-  instance_id: string;
-  chat_id: string;
-  sender_jid: string;
-  from_me: boolean;
-  message_type: string;
-  content: string;
-  timestamp: string;
-  created_at: string;
+interface DatabaseSchema {
+  schema_name: string;
+  table_count: number;
 }
 
-interface WhatsAppInstance {
-  instance_id: string;
-  display_name: string;
-  owner_jid: string;
-  is_connected: boolean;
-  created_at: string;
+interface DatabaseTable {
+  table_name: string;
+  column_count: number;
 }
 
-interface WhatsAppContact {
-  jid: string;
-  instance_id: string;
-  push_name: string;
-  profile_picture_url?: string;
-  is_business: boolean;
-  last_updated_at: string;
+interface TableColumn {
+  column_name: string;
+  data_type: string;
+  is_nullable: string;
 }
 
-interface WhatsAppChat {
-  chat_id: string;
-  instance_id: string;
-  type: string;
-  unread_count: number;
-  last_message_timestamp: string;
+interface TableData {
+  columns: TableColumn[];
+  data: any[];
+  total: number;
 }
 
 export default function DatabaseViewer() {
-  const [messages, setMessages] = useState<WhatsAppMessage[]>([]);
-  const [instances, setInstances] = useState<WhatsAppInstance[]>([]);
-  const [contacts, setContacts] = useState<WhatsAppContact[]>([]);
-  const [chats, setChats] = useState<WhatsAppChat[]>([]);
+  const [schemas, setSchemas] = useState<DatabaseSchema[]>([]);
+  const [tables, setTables] = useState<DatabaseTable[]>([]);
+  const [tableData, setTableData] = useState<TableData | null>(null);
+  const [selectedSchema, setSelectedSchema] = useState<string>('');
+  const [selectedTable, setSelectedTable] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,38 +51,82 @@ export default function DatabaseViewer() {
     }
   };
 
-  const loadAllData = async () => {
+  const loadSchemas = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const [messagesData, instancesData, contactsData, chatsData] = await Promise.all([
-        fetchData('messages'),
-        fetchData('instances'),
-        fetchData('contacts'),
-        fetchData('chats')
-      ]);
+      const schemasData = await fetchData('schemas');
+      setSchemas(schemasData);
       
-      setMessages(messagesData);
-      setInstances(instancesData);
-      setContacts(contactsData);
-      setChats(chatsData);
+      // Auto-select whatsapp schema if available
+      const whatsappSchema = schemasData.find((s: DatabaseSchema) => s.schema_name === 'whatsapp');
+      if (whatsappSchema) {
+        setSelectedSchema('whatsapp');
+        await loadTables('whatsapp');
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load data');
+      setError(err instanceof Error ? err.message : 'Failed to load schemas');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTables = async (schema: string) => {
+    if (!schema) return;
+    
+    setLoading(true);
+    try {
+      const tablesData = await fetchData(`tables/${schema}`);
+      setTables(tablesData);
+      setSelectedTable('');
+      setTableData(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load tables');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTableData = async (schema: string, table: string) => {
+    if (!schema || !table) return;
+    
+    setLoading(true);
+    try {
+      const data = await fetchData(`table-data/${schema}/${table}?limit=100`);
+      setTableData(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load table data');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadAllData();
+    loadSchemas();
   }, []);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+  useEffect(() => {
+    if (selectedSchema) {
+      loadTables(selectedSchema);
+    }
+  }, [selectedSchema]);
+
+  useEffect(() => {
+    if (selectedSchema && selectedTable) {
+      loadTableData(selectedSchema, selectedTable);
+    }
+  }, [selectedSchema, selectedTable]);
+
+  const formatValue = (value: any): string => {
+    if (value === null || value === undefined) return 'NULL';
+    if (typeof value === 'object') return JSON.stringify(value);
+    if (typeof value === 'boolean') return value.toString();
+    if (value instanceof Date) return value.toLocaleString();
+    return String(value);
   };
 
-  const truncateText = (text: string, maxLength: number = 50) => {
+  const truncateText = (text: string, maxLength: number = 100) => {
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   };
 
@@ -103,9 +135,9 @@ export default function DatabaseViewer() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Database className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Database Viewer</h1>
+          <h1 className="text-2xl font-bold">Database Schemas & Tables</h1>
         </div>
-        <Button onClick={loadAllData} disabled={loading}>
+        <Button onClick={loadSchemas} disabled={loading}>
           {loading ? 'Loading...' : 'Refresh Data'}
         </Button>
       </div>
@@ -116,130 +148,146 @@ export default function DatabaseViewer() {
         </Alert>
       )}
 
-      <Tabs defaultValue="instances" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="instances" className="flex items-center gap-2">
-            <Phone className="h-4 w-4" />
-            Instances ({instances.length})
-          </TabsTrigger>
-          <TabsTrigger value="messages" className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
-            Messages ({messages.length})
-          </TabsTrigger>
-          <TabsTrigger value="contacts" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Contacts ({contacts.length})
-          </TabsTrigger>
-          <TabsTrigger value="chats" className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            Chats ({chats.length})
-          </TabsTrigger>
-        </TabsList>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Schemas Panel */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Folder className="h-5 w-5" />
+              Schemas ({schemas.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {schemas.map((schema) => (
+                <div
+                  key={schema.schema_name}
+                  className={`p-3 rounded-lg cursor-pointer border transition-colors ${
+                    selectedSchema === schema.schema_name
+                      ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
+                      : 'border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800'
+                  }`}
+                  onClick={() => setSelectedSchema(schema.schema_name)}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{schema.schema_name}</span>
+                    <Badge variant="outline">{schema.table_count} tables</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="instances">
-          <Card>
-            <CardHeader>
-              <CardTitle>WhatsApp Instances</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {instances.map((instance) => (
-                  <div key={instance.instance_id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold">{instance.display_name}</h3>
-                      <Badge variant={instance.is_connected ? "default" : "destructive"}>
-                        {instance.is_connected ? "Connected" : "Disconnected"}
-                      </Badge>
+        {/* Tables Panel */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TableIcon className="h-5 w-5" />
+              Tables ({tables.length})
+              {selectedSchema && (
+                <Badge variant="outline">{selectedSchema}</Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {selectedSchema ? (
+              <div className="space-y-2">
+                {tables.map((table) => (
+                  <div
+                    key={table.table_name}
+                    className={`p-3 rounded-lg cursor-pointer border transition-colors ${
+                      selectedTable === table.table_name
+                        ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
+                        : 'border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800'
+                    }`}
+                    onClick={() => setSelectedTable(table.table_name)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{table.table_name}</span>
+                      <Badge variant="outline">{table.column_count} cols</Badge>
                     </div>
-                    <p className="text-sm text-gray-600">Instance ID: {instance.instance_id}</p>
-                    <p className="text-sm text-gray-600">Owner: {instance.owner_jid}</p>
-                    <p className="text-sm text-gray-600">Created: {formatDate(instance.created_at)}</p>
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            ) : (
+              <p className="text-gray-500 text-center py-4">Select a schema to view tables</p>
+            )}
+          </CardContent>
+        </Card>
 
-        <TabsContent value="messages">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Messages</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {messages.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 20).map((message) => (
-                  <div key={`${message.message_id}-${message.instance_id}`} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={message.from_me ? "default" : "secondary"}>
-                          {message.from_me ? "Sent" : "Received"}
-                        </Badge>
-                        <Badge variant="outline">{message.message_type}</Badge>
-                      </div>
-                      <span className="text-xs text-gray-500">{formatDate(message.timestamp)}</span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-1">From: {message.sender_jid}</p>
-                    <p className="text-sm text-gray-600 mb-2">Instance: {instances.find(i => i.instance_id === message.instance_id)?.display_name || message.instance_id}</p>
-                    <p className="text-sm">{truncateText(message.content, 100)}</p>
-                    <p className="text-xs text-gray-400 mt-2">Message ID: {message.message_id}</p>
-                  </div>
-                ))}
+        {/* Quick Stats Panel */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Database Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span>Total Schemas</span>
+                <Badge>{schemas.length}</Badge>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              <div className="flex items-center justify-between">
+                <span>Total Tables</span>
+                <Badge>{schemas.reduce((sum, s) => sum + s.table_count, 0)}</Badge>
+              </div>
+              {selectedSchema && selectedTable && tableData && (
+                <div className="flex items-center justify-between">
+                  <span>Table Rows</span>
+                  <Badge>{tableData.total}</Badge>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-        <TabsContent value="contacts">
-          <Card>
-            <CardHeader>
-              <CardTitle>Contacts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {contacts.map((contact) => (
-                  <div key={`${contact.jid}-${contact.instance_id}`} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold">{contact.push_name || contact.jid}</h3>
-                      {contact.is_business && <Badge variant="outline">Business</Badge>}
-                    </div>
-                    <p className="text-sm text-gray-600">JID: {contact.jid}</p>
-                    <p className="text-sm text-gray-600">Instance: {instances.find(i => i.instance_id === contact.instance_id)?.display_name || contact.instance_id}</p>
-                    <p className="text-sm text-gray-600">Last Updated: {formatDate(contact.last_updated_at)}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="chats">
-          <Card>
-            <CardHeader>
-              <CardTitle>Chats</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {chats.map((chat) => (
-                  <div key={`${chat.chat_id}-${chat.instance_id}`} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold">{chat.chat_id}</h3>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{chat.type}</Badge>
-                        {chat.unread_count > 0 && (
-                          <Badge variant="destructive">{chat.unread_count} unread</Badge>
-                        )}
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-600">Instance: {instances.find(i => i.instance_id === chat.instance_id)?.display_name || chat.instance_id}</p>
-                    <p className="text-sm text-gray-600">Last Message: {formatDate(chat.last_message_timestamp)}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Table Data Display */}
+      {selectedSchema && selectedTable && tableData && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TableIcon className="h-5 w-5" />
+              {selectedSchema}.{selectedTable} Data
+              <Badge variant="outline">{tableData.total} rows</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {tableData.columns.map((column) => (
+                      <TableHead key={column.column_name} className="whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="font-semibold">{column.column_name}</span>
+                          <span className="text-xs text-gray-500">
+                            {column.data_type}
+                            {column.is_nullable === 'NO' && ' (NOT NULL)'}
+                          </span>
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tableData.data.map((row, index) => (
+                    <TableRow key={index}>
+                      {tableData.columns.map((column) => (
+                        <TableCell key={column.column_name} className="max-w-xs">
+                          <div className="truncate" title={formatValue(row[column.column_name])}>
+                            {truncateText(formatValue(row[column.column_name]), 50)}
+                          </div>
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

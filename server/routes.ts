@@ -4446,6 +4446,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Database viewer endpoints
+  app.get('/api/database/schemas', async (req: Request, res: Response) => {
+    try {
+      const result = await db.execute(sql`
+        SELECT 
+          schema_name,
+          (SELECT COUNT(*) FROM information_schema.tables 
+           WHERE table_schema = s.schema_name) as table_count
+        FROM information_schema.schemata s
+        WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+        ORDER BY schema_name
+      `);
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Database schemas error:', error);
+      res.status(500).json({ error: 'Failed to fetch schemas' });
+    }
+  });
+
+  app.get('/api/database/tables/:schema', async (req: Request, res: Response) => {
+    try {
+      const { schema } = req.params;
+      const result = await db.execute(sql`
+        SELECT 
+          table_name,
+          (SELECT COUNT(*) FROM information_schema.columns 
+           WHERE table_schema = t.table_schema AND table_name = t.table_name) as column_count
+        FROM information_schema.tables t
+        WHERE table_schema = ${schema}
+        AND table_type = 'BASE TABLE'
+        ORDER BY table_name
+      `);
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Database tables error:', error);
+      res.status(500).json({ error: 'Failed to fetch tables' });
+    }
+  });
+
+  app.get('/api/database/table-data/:schema/:table', async (req: Request, res: Response) => {
+    try {
+      const { schema, table } = req.params;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      // Get table columns first
+      const columnsResult = await db.execute(sql`
+        SELECT column_name, data_type, is_nullable
+        FROM information_schema.columns
+        WHERE table_schema = ${schema} AND table_name = ${table}
+        ORDER BY ordinal_position
+      `);
+      
+      // Get table data - using raw query since we need dynamic table name
+      const dataQuery = `SELECT * FROM "${schema}"."${table}" ORDER BY CASE WHEN column_name = 'created_at' THEN created_at END DESC LIMIT ${limit}`;
+      const dataResult = await db.execute(sql.raw(dataQuery));
+      
+      res.json({
+        columns: columnsResult.rows,
+        data: dataResult.rows,
+        total: dataResult.rows.length
+      });
+    } catch (error) {
+      console.error('Database table data error:', error);
+      res.status(500).json({ error: 'Failed to fetch table data' });
+    }
+  });
+
   app.get('/api/database/messages', async (req: Request, res: Response) => {
     try {
       const result = await db.execute(sql`
