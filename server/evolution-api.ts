@@ -183,15 +183,17 @@ export class EvolutionApi {
   // Chat Management - Using WebSocket events for real-time data
   async fetchChats(instanceName: string): Promise<any> {
     try {
-      // Evolution API uses WebSocket events for chat data
-      // Check if we have cached chat data from WebSocket events
+      // Evolution API primarily uses WebSocket events for chat data
+      // The REST endpoints may not be available in all configurations
       const cachedChats = await this.getCachedChats(instanceName);
       if (cachedChats.length > 0) {
         return cachedChats;
       }
       
-      // Use the correct Evolution API endpoint pattern
-      return await this.makeRequest(`/chat/findAll/${instanceName}`);
+      // Evolution API v2.2.3 may not expose REST chat endpoints
+      // Data will come through webhooks instead
+      console.log(`No cached chats found for ${instanceName}, data will come via webhooks`);
+      return [];
     } catch (error) {
       console.log('Chat data will be populated via webhook events');
       return [];
