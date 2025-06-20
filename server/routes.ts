@@ -3246,6 +3246,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get WhatsApp instances from database for action rules
+  app.get('/api/actions/whatsapp-instances', async (req: Request, res: Response) => {
+    try {
+      const instances = await db.execute(sql`
+        SELECT 
+          instance_id as "instanceId",
+          display_name as "displayName", 
+          is_connected as "isConnected",
+          owner_jid as "ownerJid",
+          created_at as "createdAt"
+        FROM whatsapp.instances 
+        ORDER BY created_at DESC
+      `);
+
+      const transformedInstances = instances.rows.map(instance => ({
+        ...instance,
+        phoneNumber: instance.ownerJid ? instance.ownerJid.replace('@s.whatsapp.net', '') : null
+      }));
+
+      res.json(transformedInstances);
+    } catch (error) {
+      console.error('Error fetching WhatsApp instances:', error);
+      res.status(500).json({ error: 'Failed to fetch instances' });
+    }
+  });
+
   // Get action templates
   app.get('/api/actions/templates', async (req: Request, res: Response) => {
     try {
