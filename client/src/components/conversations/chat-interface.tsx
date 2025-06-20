@@ -229,9 +229,11 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
             </Avatar>
             <div>
               <h2 className="font-semibold text-gray-900 dark:text-gray-100">
-                {conversation?.title ? 
-                  (conversation.title.includes('@') ? formatPhoneNumber(conversation.title) : conversation.title) : 
-                  'Unknown Contact'}
+                {conversation?.type === 'group' ? 
+                  (conversation.chatId || 'Unknown Group') :
+                  (conversation?.title && conversation.title.includes('@') ? 
+                    formatPhoneNumber(conversation.title) : 
+                    (conversation?.title || formatPhoneNumber(conversation?.chatId || 'Unknown Contact')))}
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {conversation?.status || 'Online'}
