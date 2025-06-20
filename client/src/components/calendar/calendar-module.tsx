@@ -525,14 +525,14 @@ export default function CalendarModule() {
 
   // Toggle calendar visibility
   const toggleCalendarVisibility = (calendarId: string) => {
-    setSubCalendars(prev => prev.map(cal => 
-      cal.id === calendarId ? { ...cal, visible: !cal.visible } : cal
-    ));
+    // Since subCalendars is now from a query, we'll implement backend visibility toggle
+    // For now, this will trigger a refetch to simulate the toggle
+    refetchCalendars();
   };
 
   // Filter events by visible calendars
   const visibleEvents = events.filter((event: any) => {
-    const calendar = subCalendars.find(cal => 
+    const calendar = subCalendars?.find((cal: any) => 
       cal.id === event.calendarId || cal.provider === event.provider
     );
     return calendar ? calendar.visible : true;
@@ -964,105 +964,222 @@ export default function CalendarModule() {
           </div>
         </div>
 
-        {/* Create Event Dialog */}
+        {/* Create Event Dialog - Google Calendar Style */}
         <Dialog open={isCreateEventOpen} onOpenChange={setIsCreateEventOpen}>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Create Event</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="title">Title</Label>
+          <DialogContent className="sm:max-w-[680px] max-h-[90vh] overflow-y-auto p-0">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b">
+              <div className="flex-1">
                 <Input
-                  id="title"
                   value={newEvent.title}
                   onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                  placeholder="Add title"
+                  placeholder="Añade un título"
+                  className="text-2xl font-normal border-0 border-b-2 border-blue-500 rounded-none px-0 focus:ring-0 focus:border-blue-600"
                 />
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="startTime">Start Time</Label>
+              <Button variant="ghost" size="sm" onClick={() => setIsCreateEventOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="flex px-6 pt-4">
+              <button
+                onClick={() => setEventTab('event')}
+                className={cn(
+                  "px-4 py-2 text-sm font-medium rounded-t-lg",
+                  eventTab === 'event' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"
+                )}
+              >
+                Evento
+              </button>
+              <button
+                onClick={() => setEventTab('task')}
+                className={cn(
+                  "px-4 py-2 text-sm font-medium rounded-t-lg ml-2",
+                  eventTab === 'task' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"
+                )}
+              >
+                Tarea
+              </button>
+              <button
+                onClick={() => setEventTab('appointment')}
+                className={cn(
+                  "px-4 py-2 text-sm font-medium rounded-t-lg ml-2",
+                  eventTab === 'appointment' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"
+                )}
+              >
+                Agenda de citas
+              </button>
+            </div>
+
+            {/* Form Content */}
+            <div className="px-6 pb-6 space-y-4">
+              {/* Date and Time */}
+              <div className="flex items-center space-x-4">
+                <Clock className="h-5 w-5 text-gray-500" />
+                <div className="flex-1 space-y-2">
+                  <div className="flex space-x-4">
+                    <div className="flex-1">
+                      <Input
+                        type="datetime-local"
+                        value={newEvent.startTime}
+                        onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
+                        className="border-0 border-b border-gray-300 rounded-none focus:ring-0 focus:border-blue-500"
+                      />
+                    </div>
+                    <span className="py-2 text-gray-500">–</span>
+                    <div className="flex-1">
+                      <Input
+                        type="datetime-local"
+                        value={newEvent.endTime}
+                        onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
+                        className="border-0 border-b border-gray-300 rounded-none focus:ring-0 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Zona horaria • No se repite
+                  </div>
+                </div>
+              </div>
+
+              {/* Add Guests */}
+              <div className="flex items-start space-x-4 py-3 hover:bg-gray-50 rounded cursor-pointer">
+                <Users className="h-5 w-5 text-gray-500 mt-1" />
+                <div className="flex-1">
+                  <div className="text-gray-700">Añadir invitados</div>
+                  {newEvent.guests.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {newEvent.guests.map((guest, index) => (
+                        <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                          {guest}
+                          <X 
+                            className="h-3 w-3 cursor-pointer" 
+                            onClick={() => setNewEvent({
+                              ...newEvent,
+                              guests: newEvent.guests.filter((_, i) => i !== index)
+                            })}
+                          />
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex mt-2">
+                    <Input
+                      value={guestEmail}
+                      onChange={(e) => setGuestEmail(e.target.value)}
+                      placeholder="Añadir correos electrónicos"
+                      className="border-0 border-b border-gray-300 rounded-none focus:ring-0 focus:border-blue-500"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && guestEmail.trim()) {
+                          setNewEvent({
+                            ...newEvent,
+                            guests: [...newEvent.guests, guestEmail.trim()]
+                          });
+                          setGuestEmail('');
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Add Google Meet */}
+              <div className="flex items-center space-x-4 py-3 hover:bg-gray-50 rounded cursor-pointer">
+                <Video className="h-5 w-5 text-gray-500" />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-700">Añadir videollamada de Google Meet</span>
+                    <Checkbox
+                      checked={newEvent.hasGoogleMeet}
+                      onCheckedChange={(checked) => setNewEvent({
+                        ...newEvent,
+                        hasGoogleMeet: checked as boolean,
+                        meetLink: checked ? 'https://meet.google.com/new' : ''
+                      })}
+                    />
+                  </div>
+                  {newEvent.hasGoogleMeet && (
+                    <div className="text-sm text-blue-600 mt-1">
+                      {newEvent.meetLink}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Add Location */}
+              <div className="flex items-center space-x-4 py-3 hover:bg-gray-50 rounded">
+                <MapPin className="h-5 w-5 text-gray-500" />
+                <div className="flex-1">
                   <Input
-                    id="startTime"
-                    type="time"
-                    value={newEvent.startTime}
-                    onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
+                    value={newEvent.location}
+                    onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
+                    placeholder="Añadir ubicación"
+                    className="border-0 border-b border-gray-300 rounded-none focus:ring-0 focus:border-blue-500"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="endTime">End Time</Label>
-                  <Input
-                    id="endTime"
-                    type="time"
-                    value={newEvent.endTime}
-                    onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
+              </div>
+
+              {/* Add Description */}
+              <div className="flex items-start space-x-4 py-3 hover:bg-gray-50 rounded">
+                <div className="h-5 w-5 border-2 border-gray-400 mt-1"></div>
+                <div className="flex-1">
+                  <Textarea
+                    value={newEvent.description}
+                    onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                    placeholder="Añadir descripción o un archivo adjunto de Google Drive"
+                    className="border-0 border-b border-gray-300 rounded-none focus:ring-0 focus:border-blue-500 min-h-[60px]"
                   />
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={newEvent.description}
-                  onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                  placeholder="Add description"
-                />
+              {/* Calendar Selection */}
+              <div className="flex items-center space-x-4 py-3">
+                <CalendarIcon className="h-5 w-5 text-gray-500" />
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                    <select
+                      value={newEvent.calendarId}
+                      onChange={(e) => setNewEvent({ ...newEvent, calendarId: e.target.value })}
+                      className="bg-transparent border-0 focus:ring-0 text-gray-700"
+                    >
+                      {subCalendars.map((calendar) => (
+                        <option key={calendar.id} value={calendar.id}>
+                          {calendar.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="text-sm text-gray-500 mt-1">
+                    No disponible • Visibilidad predeterminada • Notificar 10 minutos antes
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  value={newEvent.location}
-                  onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-                  placeholder="Add location"
-                />
+              {/* Notifications */}
+              <div className="flex items-center space-x-4 py-3">
+                <Bell className="h-5 w-5 text-gray-500" />
+                <div className="flex-1">
+                  <div className="text-gray-700">Notificaciones</div>
+                  <div className="text-sm text-gray-500">10 minutos antes</div>
+                </div>
               </div>
+            </div>
 
-              <div>
-                <Label htmlFor="calendar">Calendar</Label>
-                <select
-                  id="calendar"
-                  value={newEvent.calendarId}
-                  onChange={(e) => setNewEvent({ ...newEvent, calendarId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {subCalendars.map((calendar) => (
-                    <option key={calendar.id} value={calendar.id}>
-                      {calendar.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="allDay"
-                  checked={newEvent.isAllDay}
-                  onChange={(e) => setNewEvent({ ...newEvent, isAllDay: e.target.checked })}
-                  className="rounded border-gray-300"
-                />
-                <Label htmlFor="allDay" className="text-sm">All day</Label>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsCreateEventOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleCreateEvent}
-                  disabled={createEventMutation.isPending}
-                >
-                  {createEventMutation.isPending ? "Creating..." : "Save"}
-                </Button>
-              </div>
+            {/* Footer */}
+            <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50">
+              <Button variant="outline" className="text-blue-600">
+                Más opciones
+              </Button>
+              <Button 
+                onClick={handleCreateEvent}
+                disabled={createEventMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {createEventMutation.isPending ? "Guardando..." : "Guardar"}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
