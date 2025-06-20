@@ -59,7 +59,9 @@ app.use((req, res, next) => {
     console.log("⚠️ Evolution API credentials not found in environment");
   }
 
-  // Serve the frontend properly first
+  await registerRoutes(app);
+
+  // Serve the frontend after API routes are registered
   const server = createServer(app);
   
   if (app.get("env") === "development") {
@@ -67,8 +69,6 @@ app.use((req, res, next) => {
   } else {
     serveStatic(app);
   }
-
-  await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
