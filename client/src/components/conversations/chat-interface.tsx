@@ -287,6 +287,12 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                       : 'whatsapp-message-received'
                   }`}
                 >
+                  {/* Sender name for group chats */}
+                  {conversation?.type === 'group' && !message.isFromMe && (
+                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
+                      {message.senderJid ? formatPhoneNumber(message.senderJid.replace('@s.whatsapp.net', '')) : 'Unknown'}
+                    </p>
+                  )}
                   <p className="text-sm">{message.content}</p>
                   <div className={`flex items-center justify-end mt-1 space-x-1 ${
                     message.isFromMe ? 'justify-end' : 'justify-start'
