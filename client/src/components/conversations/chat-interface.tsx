@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Paperclip, Smile, Send, User, Plus, MoreVertical } from "lucide-react";
-import { useWebSocket } from "@/hooks/use-websocket";
+// WebSocket functionality removed - using webhook-based system
 import { apiRequest } from "@/lib/queryClient";
 import { formatPhoneNumber } from "@/lib/phoneUtils";
 
@@ -20,8 +20,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   // Mock user ID - in real app this would come from auth context
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
 
-  // WebSocket connection for real-time messages
-  useWebSocket(userId);
+  // Note: Real-time messaging now handled via webhook-based Evolution API
 
   const { data: conversation = {} } = useQuery<any>({
     queryKey: [`/api/whatsapp/conversation/${conversationId}`],

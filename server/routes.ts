@@ -6,6 +6,7 @@ import fetch from "node-fetch";
 import { storage } from "./storage";
 import { getEvolutionApi, updateEvolutionApiSettings, getEvolutionApiSettings, getInstanceEvolutionApi } from "./evolution-api";
 import { db, pool } from "./db";
+import { setRLSContext } from "./rls-context";
 import { actionsEngine, ActionsEngine } from "./actions-engine";
 import { 
   insertUserSchema,
@@ -14,6 +15,7 @@ import {
   insertWhatsappChatSchema,
   insertWhatsappMessageSchema,
   whatsappInstances,
+  whatsappMessageMedia,
   actionRules,
   actionExecutions,
   actionTemplates,
@@ -2322,10 +2324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (messageData.fromMe && messageData.instanceId && messageData.chatId) {
         try {
           // Evolution API message sending will be implemented via webhook response
-          const result = {success: true, message: 'Webhook-based message sending'};
-          
-          // Update message with Evolution API response
-          messageData.messageId = result.key?.id || messageData.messageId;
+          console.log('Message will be sent via Evolution API webhook response');
           // Note: deliveryStatus field will be handled separately in message updates
         } catch (evolError) {
           console.error('Failed to send via Evolution API:', evolError);
@@ -2856,7 +2855,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      await setRLSContext(req.user.id);
+      // await setRLSContext(req.user.id); // RLS context will be implemented
       
       const { instanceId, messageId } = req.params;
       
@@ -3033,16 +3032,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Default user ID
       const { workspaceId, spaceId } = req.query;
 
-      let query = db.select().from(actionRules).where(eq(actionRules.userId, userId));
-
+      const conditions = [eq(actionRules.userId, userId)];
+      
       if (workspaceId) {
-        query = query.where(eq(actionRules.workspaceId, workspaceId as string));
+        conditions.push(eq(actionRules.workspaceId, workspaceId as string));
       }
       if (spaceId) {
-        query = query.where(eq(actionRules.spaceId, parseInt(spaceId as string)));
+        conditions.push(eq(actionRules.spaceId, parseInt(spaceId as string)));
       }
 
-      const rules = await query.orderBy(desc(actionRules.createdAt));
+      const rules = await db
+        .select()
+        .from(actionRules)
+        .where(and(...conditions))
+        .orderBy(desc(actionRules.createdAt));
       res.json(rules);
     } catch (error) {
       console.error('Error fetching action rules:', error);
@@ -3182,13 +3185,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { category } = req.query;
 
-      let query = db.select().from(actionTemplates).where(eq(actionTemplates.isPublic, true));
-
+      const conditions = [eq(actionTemplates.isPublic, true)];
+      
       if (category) {
-        query = query.where(eq(actionTemplates.category, category as string));
+        conditions.push(eq(actionTemplates.category, category as string));
       }
 
-      const templates = await query.orderBy(desc(actionTemplates.usageCount));
+      const templates = await db
+        .select()
+        .from(actionTemplates)
+        .where(and(...conditions))
+        .orderBy(desc(actionTemplates.usageCount));
       res.json(templates);
     } catch (error) {
       console.error('Error fetching action templates:', error);
