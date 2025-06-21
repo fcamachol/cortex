@@ -6,8 +6,7 @@ import {
     type WhatsappMessages,
     type WhatsappContacts,
     type WhatsappChats,
-    type WhatsappGroups,
-    type WhatsappMessageUpdates
+    type WhatsappGroups
 } from '@shared/schema';
 
 /**
@@ -82,7 +81,6 @@ export const WebhookApiAdapter = {
      * Handles message status updates (sent, delivered, read).
      */
     async handleMessageUpdate(instanceId: string, data: any): Promise<void> {
-        console.log('📝 Translating message update...');
         if (!data || !Array.isArray(data.updates)) return;
         for (const update of data.updates) {
              const messageId = update.key?.id;
@@ -107,7 +105,7 @@ export const WebhookApiAdapter = {
         if (!contacts || contacts.length === 0) return;
 
         for (const rawContact of contacts) {
-            const cleanContact = this.mapApiPayloadToWhatsappContact(rawContact, instanceId);
+            const cleanContact = await this.mapApiPayloadToWhatsappContact(rawContact, instanceId);
             if (cleanContact) {
                 await storage.upsertWhatsappContact(cleanContact);
                 console.log(`✅ [${instanceId}] Contact upserted: ${cleanContact.jid}`);
@@ -163,8 +161,6 @@ export const WebhookApiAdapter = {
         const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chat_id }, cleanMessage.instance_id);
         if (chatData) await storage.upsertWhatsappChat(chatData);
     },
-    
-
 
     // --- Data Mapping Functions ---
 
