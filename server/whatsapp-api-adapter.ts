@@ -259,7 +259,7 @@ export const WebhookApiAdapter = {
         // Create chat if it doesn't exist
         if (cleanMessage.chat_id) {
             const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chat_id }, cleanMessage.instance_id);
-            if (chatData && chatData.chat_id) {
+            if (chatData && chatData.chatId) {
                 try {
                     await storage.upsertWhatsappChat(chatData);
                     console.log(`✅ [${cleanMessage.instance_id}] Auto-created chat: ${cleanMessage.chat_id}`);
