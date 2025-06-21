@@ -120,8 +120,18 @@ export function TaskList({
     return new Date(dateString) < new Date();
   };
 
-  const renderTask = (task: Task, depth = 0) => (
-    <div key={task.task_id} className={`${depth > 0 ? 'ml-8' : ''}`}>
+  const renderTask = (task: Task, depth = 0) => {
+    // Debug: Log task data for troubleshooting
+    if (task.triggering_message_id) {
+      console.log('Task with message:', {
+        title: task.title,
+        related_chat_jid: task.related_chat_jid,
+        triggering_message_id: task.triggering_message_id
+      });
+    }
+    
+    return (
+      <div key={task.task_id} className={`${depth > 0 ? 'ml-8' : ''}`}>
       <Card className="mb-2 hover:shadow-sm transition-shadow">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
@@ -160,6 +170,13 @@ export function TaskList({
                 {task.related_chat_jid && (
                   <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded font-mono">
                     {task.related_chat_jid.split('@')[0]}
+                  </span>
+                )}
+                
+                {/* Debug: Always show if we have a triggering_message_id */}
+                {task.triggering_message_id && !task.related_chat_jid && (
+                  <span className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded font-mono">
+                    No JID
                   </span>
                 )}
                 
@@ -340,7 +357,8 @@ export function TaskList({
         </CardContent>
       </Card>
     </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400 scroll-smooth">
