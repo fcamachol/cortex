@@ -434,6 +434,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertWhatsappContact(contact: InsertWhatsappContact): Promise<WhatsappContact> {
+    // Validate required fields before insertion
+    if (!contact.jid || !contact.instanceId) {
+      throw new Error(`Invalid contact data: jid=${contact.jid}, instanceId=${contact.instanceId}`);
+    }
+
     const [upsertedContact] = await db
       .insert(whatsappContacts)
       .values(contact)

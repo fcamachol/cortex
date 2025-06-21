@@ -53,7 +53,18 @@ export const WebhookApiAdapter = {
      * Handles new messages with a robust, sequential process to prevent race conditions.
      */
     async handleMessageUpsert(instanceId: string, data: any, sender?: string): Promise<void> {
-        const messages = Array.isArray(data.messages) ? data.messages : [data];
+        // Handle both old format (data.messages array) and new format (single message in data)
+        let messages = [];
+        if (data.messages && Array.isArray(data.messages)) {
+            messages = data.messages;
+        } else if (data.key) {
+            // Single message format - wrap in array
+            messages = [data];
+        } else {
+            console.warn(`[${instanceId}] Invalid messages.upsert payload:`, data);
+            return;
+        }
+
         if (!messages[0]?.key) {
             console.warn(`[${instanceId}] Invalid messages.upsert payload:`, data);
             return;
@@ -107,10 +118,16 @@ export const WebhookApiAdapter = {
         if (!contacts || contacts.length === 0) return;
 
         for (const rawContact of contacts) {
-            const cleanContact = this.mapApiPayloadToWhatsappContact(rawContact, instanceId);
-            if (cleanContact) {
-                await storage.upsertWhatsappContact(cleanContact);
-                console.log(`✅ [${instanceId}] Contact upserted: ${cleanContact.jid}`);
+            try {
+                const cleanContact = await this.mapApiPayloadToWhatsappContact(rawContact, instanceId);
+                if (cleanContact && cleanContact.jid) {
+                    await storage.upsertWhatsappContact(cleanContact);
+                    console.log(`✅ [${instanceId}] Contact upserted: ${cleanContact.jid}`);
+                } else {
+                    console.warn(`⚠️ [${instanceId}] Skipping contact with missing JID:`, rawContact);
+                }
+            } catch (error) {
+                console.error(`❌ [${instanceId}] Error processing contact:`, error);
             }
         }
     },
