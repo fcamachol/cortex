@@ -49,17 +49,28 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     const contact = contacts.find((c: any) => c.jid === conv.chatId);
     
     if (contact) {
-      return contact.pushName || contact.verifiedName || 'Unknown Contact';
+      return contact.pushName || contact.verifiedName || formatPhoneNumber(conv.chatId.replace('@s.whatsapp.net', ''));
     }
     
-    if (conv.type === 'group') {
-      // For groups, try to get the group name from the chatId
-      return conv.chatId.includes('@g.us') ? 'Group Chat' : conv.chatId;
-    } else {
-      // For individuals, format the phone number
-      const phoneNumber = conv.chatId.replace('@s.whatsapp.net', '');
-      return formatPhoneNumber(phoneNumber);
+    if (conv.type === 'group' || conv.chatId.includes('@g.us')) {
+      return 'Group Chat';
     }
+    
+    // For individuals, format the phone number
+    return formatPhoneNumber(conv.chatId.replace('@s.whatsapp.net', ''));
+  };
+
+  // Helper function to get display name for a sender JID
+  const getSenderDisplayName = (senderJid: string) => {
+    // Try to find matching contact first
+    const contact = contacts.find((c: any) => c.jid === senderJid);
+    
+    if (contact) {
+      return contact.pushName || contact.verifiedName || formatPhoneNumber(senderJid.replace('@s.whatsapp.net', ''));
+    }
+    
+    // If no contact found, format the phone number
+    return formatPhoneNumber(senderJid.replace('@s.whatsapp.net', ''));
   };
 
   const conversation = conversations.find(conv => conv.chatId === conversationId);
