@@ -1199,6 +1199,27 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // WhatsApp Labels
+  async createWhatsappLabel(label: any): Promise<any> {
+    // Simple storage method for webhook handlers - implement with proper typing later
+    console.log('Label storage not implemented yet, logging:', label);
+    return label;
+  }
+
+  // WhatsApp Chat Labels
+  async createWhatsappChatLabel(chatLabel: any): Promise<any> {
+    // Simple storage method for webhook handlers - implement with proper typing later
+    console.log('Chat label storage not implemented yet, logging:', chatLabel);
+    return chatLabel;
+  }
+
+  // WhatsApp Call Logs
+  async createWhatsappCallLog(callLog: any): Promise<any> {
+    // Simple storage method for webhook handlers - implement with proper typing later
+    console.log('Call log storage not implemented yet, logging:', callLog);
+    return callLog;
+  }
+
   async createCalendarCalendar(calendar: any): Promise<any> {
     try {
       const [newCalendar] = await db

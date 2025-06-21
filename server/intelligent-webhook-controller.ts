@@ -158,6 +158,20 @@ export const WebhookController = {
             case 'connection.update':
                 await this.handleConnectionUpdate(instanceId, data);
                 break;
+            case 'group.participants.update':
+                await this.handleGroupParticipantsUpdate(instanceId, data);
+                break;
+            case 'labels.edit':
+            case 'labels.association':
+                await this.handleLabelsUpdate(instanceId, data);
+                break;
+            case 'chats.set':
+            case 'chats.delete':
+                await this.handleChatLabelsUpdate(instanceId, data);
+                break;
+            case 'call':
+                await this.handleCallLogs(instanceId, data);
+                break;
             default:
                 console.log(`- Unhandled event type: ${eventType}`);
         }
@@ -374,24 +388,44 @@ export const WebhookController = {
      * Handles contact updates from the webhook.
      */
     async handleContactsUpsert(instanceId: string, data: any) {
-        console.log(`👤 Processing contacts upsert for instance ${instanceId}`, JSON.stringify(data, null, 2));
+        console.log(`👤 Processing contacts upsert for instance ${instanceId}`);
         
         // Evolution API can send contacts in different formats
         let contacts = [];
         
+        // Debug the data structure
+        console.log(`🔍 Contact data structure: hasData=${!!data.data}, isDataArray=${Array.isArray(data.data)}, dataType=${typeof data.data}`);
+        
         if (data.data && Array.isArray(data.data)) {
+            // Array of contacts in data.data
             contacts = data.data;
+            console.log(`📋 Found ${contacts.length} contacts in data.data array`);
+        } else if (data.data && typeof data.data === 'object' && (data.data.remoteJid || data.data.id || data.data.jid)) {
+            // Single contact object in data.data
+            contacts = [data.data];
+            console.log(`📄 Found single contact in data.data: ${data.data.remoteJid || data.data.id || data.data.jid}`);
         } else if (Array.isArray(data)) {
+            // Direct array of contacts
             contacts = data;
+            console.log(`📋 Found ${contacts.length} contacts in root array`);
         } else if (data.data && data.data.contacts) {
+            // Contacts nested in data.data.contacts
             contacts = Array.isArray(data.data.contacts) ? data.data.contacts : [data.data.contacts];
+            console.log(`📋 Found contacts in data.data.contacts`);
         } else if (data.contacts) {
+            // Contacts nested in data.contacts
             contacts = Array.isArray(data.contacts) ? data.contacts : [data.contacts];
-        } else if (data.id || data.jid || data.pushName) {
-            // Single contact format
+            console.log(`📋 Found contacts in data.contacts`);
+        } else if (data.id || data.jid || data.pushName || data.remoteJid) {
+            // Single contact at root level
             contacts = [data];
+            console.log(`📄 Found single contact at root level`);
         } else {
             console.log('⚠️ No valid contact data found in webhook payload');
+            console.log('🔍 Available keys:', Object.keys(data || {}));
+            if (data.data) {
+                console.log('🔍 data.data keys:', Object.keys(data.data || {}));
+            }
             return;
         }
         
@@ -851,6 +885,149 @@ export const WebhookController = {
                     }
                 }
             }
+        }
+    },
+
+    /**
+     * Handles group participant updates from the webhook.
+     */
+    async handleGroupParticipantsUpdate(instanceId: string, data: any) {
+        console.log(`👥 Processing group participants update for instance ${instanceId}`);
+        
+        // Extract participant data from nested structure
+        let participantData = data;
+        if (data.data && !data.participants) {
+            participantData = data.data;
+        }
+        
+        if (!participantData.participants || !participantData.groupId) {
+            console.log('⚠️ No valid group participant data found');
+            return;
+        }
+        
+        // Store group participant changes in database
+        for (const participant of participantData.participants) {
+            try {
+                const groupParticipantData = {
+                    groupJid: participantData.groupId,
+                    participantJid: participant,
+                    instanceId: instanceId,
+                    action: participantData.action || 'unknown',
+                    timestamp: new Date(),
+                    rawPayload: JSON.stringify(data)
+                };
+                
+                await storage.createWhatsappGroupParticipant(groupParticipantData);
+                console.log(`✅ [${instanceId}] Stored group participant update: ${participant} ${participantData.action} in ${participantData.groupId}`);
+            } catch (error) {
+                console.log(`❌ Error storing group participant update:`, error);
+            }
+        }
+    },
+
+    /**
+     * Handles label updates from the webhook.
+     */
+    async handleLabelsUpdate(instanceId: string, data: any) {
+        console.log(`🏷️ Processing labels update for instance ${instanceId}`);
+        
+        // Extract label data from nested structure
+        let labelData = data;
+        if (data.data && !data.labelId) {
+            labelData = data.data;
+        }
+        
+        if (!labelData.labelId) {
+            console.log('⚠️ No valid label data found');
+            return;
+        }
+        
+        try {
+            const labelUpdateData = {
+                labelId: labelData.labelId,
+                instanceId: instanceId,
+                name: labelData.name || '',
+                color: labelData.color || null,
+                action: labelData.action || 'update',
+                timestamp: new Date(),
+                rawPayload: JSON.stringify(data)
+            };
+            
+            await storage.createWhatsappLabel(labelUpdateData);
+            console.log(`✅ [${instanceId}] Stored label update: ${labelData.labelId}`);
+        } catch (error) {
+            console.log(`❌ Error storing label update:`, error);
+        }
+    },
+
+    /**
+     * Handles chat label updates from the webhook.
+     */
+    async handleChatLabelsUpdate(instanceId: string, data: any) {
+        console.log(`🏷️💬 Processing chat labels update for instance ${instanceId}`);
+        
+        // Extract chat label data from nested structure
+        let chatLabelData = data;
+        if (data.data && !data.chatId) {
+            chatLabelData = data.data;
+        }
+        
+        if (!chatLabelData.chatId) {
+            console.log('⚠️ No valid chat label data found');
+            return;
+        }
+        
+        try {
+            const chatLabelUpdateData = {
+                chatId: chatLabelData.chatId,
+                instanceId: instanceId,
+                labelIds: chatLabelData.labelIds || [],
+                action: chatLabelData.action || 'set',
+                timestamp: new Date(),
+                rawPayload: JSON.stringify(data)
+            };
+            
+            await storage.createWhatsappChatLabel(chatLabelUpdateData);
+            console.log(`✅ [${instanceId}] Stored chat label update: ${chatLabelData.chatId}`);
+        } catch (error) {
+            console.log(`❌ Error storing chat label update:`, error);
+        }
+    },
+
+    /**
+     * Handles call logs from the webhook.
+     */
+    async handleCallLogs(instanceId: string, data: any) {
+        console.log(`📞 Processing call logs for instance ${instanceId}`);
+        
+        // Extract call data from nested structure
+        let callData = data;
+        if (data.data && !data.callId) {
+            callData = data.data;
+        }
+        
+        if (!callData.callId && !callData.id) {
+            console.log('⚠️ No valid call data found');
+            return;
+        }
+        
+        try {
+            const callLogData = {
+                callId: callData.callId || callData.id,
+                instanceId: instanceId,
+                fromJid: callData.from || callData.fromJid,
+                toJid: callData.to || callData.toJid,
+                status: callData.status || 'unknown',
+                duration: callData.duration || 0,
+                timestamp: callData.timestamp ? new Date(callData.timestamp * 1000) : new Date(),
+                isVideo: callData.isVideo || false,
+                rawPayload: JSON.stringify(data)
+            };
+            
+            await storage.createWhatsappCallLog(callLogData);
+            console.log(`✅ [${instanceId}] Stored call log: ${callLogData.callId}`);
+        } catch (error) {
+            console.log(`❌ Error storing call log:`, error);
         }
     },
 
