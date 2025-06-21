@@ -143,6 +143,7 @@ export const WebhookController = {
                 break;
             case 'contacts.upsert':
             case 'contacts.update':
+                console.log(`👤 Contact event data:`, JSON.stringify(data, null, 2));
                 await this.handleContactsUpsert(instanceId, data);
                 break;
             case 'chats.upsert':
@@ -366,31 +367,52 @@ export const WebhookController = {
      * Handles contact updates from the webhook.
      */
     async handleContactsUpsert(instanceId: string, data: any) {
-        console.log(`👤 Processing contacts upsert for instance ${instanceId}`);
+        console.log(`👤 Processing contacts upsert for instance ${instanceId}`, JSON.stringify(data, null, 2));
         
-        if (!data || !Array.isArray(data)) {
+        // Evolution API can send contacts in different formats
+        let contacts = [];
+        
+        if (data.data && Array.isArray(data.data)) {
+            contacts = data.data;
+        } else if (Array.isArray(data)) {
+            contacts = data;
+        } else if (data.data && data.data.contacts) {
+            contacts = Array.isArray(data.data.contacts) ? data.data.contacts : [data.data.contacts];
+        } else if (data.contacts) {
+            contacts = Array.isArray(data.contacts) ? data.contacts : [data.contacts];
+        } else if (data.id || data.jid || data.pushName) {
+            // Single contact format
+            contacts = [data];
+        } else {
             console.log('⚠️ No valid contact data found in webhook payload');
             return;
         }
         
-        for (const rawContact of data) {
-            if (!rawContact.id) continue;
-            
-            const contactData = {
-                jid: rawContact.id,
-                instanceId: instanceId,
-                pushName: rawContact.pushName || rawContact.name || '',
-                profilePictureUrl: rawContact.profilePicUrl || null,
-                isBusiness: rawContact.isBusiness || false,
-                isMe: rawContact.isMe || false,
-                isBlocked: rawContact.isBlocked || false
-            };
-            
+        for (const rawContact of contacts) {
             try {
+                // Extract contact JID from different possible fields
+                const jid = rawContact.id || rawContact.jid || rawContact.remoteJid;
+                if (!jid) {
+                    console.log('⚠️ Contact missing required JID');
+                    continue;
+                }
+                
+                const contactData = {
+                    jid: jid,
+                    instanceId: instanceId,
+                    pushName: rawContact.pushName || rawContact.push_name || rawContact.name || rawContact.notify || null,
+                    verifiedName: rawContact.verifiedName || rawContact.verified_name || null,
+                    profilePictureUrl: rawContact.profilePicUrl || rawContact.profilePictureUrl || rawContact.profile_picture_url || null,
+                    isBusiness: rawContact.isBusiness || rawContact.is_business || false,
+                    isMe: rawContact.isMe || rawContact.is_me || false,
+                    isBlocked: rawContact.isBlocked || rawContact.is_blocked || false
+                };
+                
                 await storage.createWhatsappContact(contactData);
-                console.log(`✅ [${instanceId}] Created/Updated contact: ${contactData.jid}`);
+                console.log(`✅ [${instanceId}] Created/Updated contact: ${contactData.jid} (${contactData.pushName || 'No name'})`);
+                
             } catch (error) {
-                console.log(`📝 Contact ${contactData.jid} processing error:`, error.message);
+                console.log(`❌ Contact processing error:`, error);
             }
         }
     },
