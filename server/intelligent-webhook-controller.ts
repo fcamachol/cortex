@@ -298,6 +298,9 @@ export const WebhookController = {
                 await storage.upsertWhatsappMessage(messageForDb);
                 console.log(`✅ [${instanceId}] Saved/Updated message: ${messageForDb.message_id}`);
                 
+                // 4. Process actions engine for this message
+                await this.processMessageForActions(messageForDb, instanceId);
+                
                 if (messageForDb.quoted_message_id) {
                     await this.handleReplyToContextMessage(instanceId, messageForDb);
                 }
@@ -305,6 +308,33 @@ export const WebhookController = {
             
         } catch (error) {
             console.error(`❌ Error processing message ${messageData.key.id}:`, error);
+        }
+    },
+
+    /**
+     * Process message for automated actions
+     */
+    async processMessageForActions(message: any, instanceId?: string) {
+        try {
+            const { ActionsEngine } = await import('./actions-engine');
+            const { hashtags, keywords } = ActionsEngine.extractHashtagsAndKeywords(message.content || '');
+            
+            const triggerContext = {
+                messageId: message.message_id,
+                instanceId: instanceId || message.instance_id,
+                chatId: message.chat_id,
+                senderJid: message.sender_jid,
+                content: message.content || '',
+                hashtags,
+                keywords,
+                timestamp: new Date(message.timestamp),
+                fromMe: message.from_me || false
+            };
+
+            await ActionsEngine.processMessageForActions(triggerContext);
+            console.log(`🔍 Processed message for automated actions`);
+        } catch (error) {
+            console.error('Error processing message for actions:', error);
         }
     },
 
