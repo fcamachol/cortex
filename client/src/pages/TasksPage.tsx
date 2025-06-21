@@ -401,6 +401,7 @@ export function TasksPage() {
               onPriorityChange={handleTaskPriorityChange}
               onEditTask={setEditingTask}
               onCreateSubtask={handleCreateSubtask}
+              onTaskClick={setSelectedTask}
             />
           )}
         </TabsContent>

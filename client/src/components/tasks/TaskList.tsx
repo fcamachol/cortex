@@ -37,6 +37,7 @@ interface TaskListProps {
   onPriorityChange: (taskId: number, newPriority: string) => void;
   onEditTask: (task: Task) => void;
   onCreateSubtask: (parentTaskId: number, subtaskData: Partial<Task>) => void;
+  onTaskClick: (task: Task) => void;
 }
 
 export function TaskList({ 
@@ -44,7 +45,8 @@ export function TaskList({
   onStatusChange, 
   onPriorityChange, 
   onEditTask, 
-  onCreateSubtask 
+  onCreateSubtask,
+  onTaskClick 
 }: TaskListProps) {
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
   const [expandedChecklists, setExpandedChecklists] = useState<Set<number>>(new Set());
@@ -157,9 +159,12 @@ export function TaskList({
             )}
 
             {/* Task Content */}
-            <div className="flex-1 min-w-0">
+            <div 
+              className="flex-1 min-w-0 cursor-pointer" 
+              onClick={() => onTaskClick(task)}
+            >
               <div className="flex items-center gap-2 mb-1">
-                <h4 className={`font-medium text-sm ${task.status === 'done' ? 'line-through text-muted-foreground' : ''}`}>
+                <h4 className={`font-medium text-sm ${task.status === 'done' ? 'line-through text-muted-foreground' : ''} hover:text-blue-600 transition-colors`}>
                   {task.title}
                 </h4>
                 
