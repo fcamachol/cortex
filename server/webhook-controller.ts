@@ -28,7 +28,7 @@ export const WebhookController = {
             // 2. Create standardized event payload for our adapter
             const standardizedEvent = {
                 event: eventType.replace('-', '.'), // Convert "messages-upsert" to "messages.upsert"
-                data: eventPayload,
+                data: eventPayload.data || eventPayload, // Extract nested data if present
                 instanceId: instanceName
             };
 

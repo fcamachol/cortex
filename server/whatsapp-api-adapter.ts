@@ -53,20 +53,23 @@ export const WebhookApiAdapter = {
      * Handles new messages with a robust, sequential process to prevent race conditions.
      */
     async handleMessageUpsert(instanceId: string, data: any, sender?: string): Promise<void> {
-        // Handle both old format (data.messages array) and new format (single message in data)
+        // Handle webhook payload structure based on your mapping
         let messages = [];
-        if (data.messages && Array.isArray(data.messages)) {
-            messages = data.messages;
-        } else if (data.key) {
-            // Single message format - wrap in array
+        
+        // Check for direct message data structure from Evolution API
+        if (data.key && data.messageType) {
+            // Single message format - the data object itself contains the message
             messages = [data];
+        } else if (data.messages && Array.isArray(data.messages)) {
+            // Old format with messages array
+            messages = data.messages;
         } else {
-            console.warn(`[${instanceId}] No valid message structure found in data:`, JSON.stringify(data, null, 2));
+            console.warn(`[${instanceId}] No valid message structure found, skipping processing`);
             return;
         }
 
         if (!messages[0]?.key) {
-            console.warn(`[${instanceId}] Message missing key field:`, JSON.stringify(messages[0], null, 2));
+            console.warn(`[${instanceId}] Message missing key field, skipping processing`);
             return;
         }
 
