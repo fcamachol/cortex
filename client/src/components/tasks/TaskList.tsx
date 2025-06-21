@@ -121,14 +121,13 @@ export function TaskList({
   };
 
   const renderTask = (task: Task, depth = 0) => {
-    // Debug: Log task data for troubleshooting
-    if (task.triggering_message_id) {
-      console.log('Task with message:', {
-        title: task.title,
-        related_chat_jid: task.related_chat_jid,
-        triggering_message_id: task.triggering_message_id
-      });
-    }
+    // Debug: Log all task data to see what we're receiving
+    console.log('Rendering task:', {
+      title: task.title,
+      related_chat_jid: task.related_chat_jid,
+      triggering_message_id: task.triggering_message_id,
+      task_id: task.task_id
+    });
     
     return (
       <div key={task.task_id} className={`${depth > 0 ? 'ml-8' : ''}`}>
