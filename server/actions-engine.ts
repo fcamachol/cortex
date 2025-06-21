@@ -152,7 +152,16 @@ export class ActionsEngine {
   }
 
   private static async createTask(config: any, context: TriggerContext): Promise<any> {
-    console.log('📝 Creating intelligent task from reaction trigger');
+    console.log('📝 Creating intelligent task from action trigger');
+    
+    // Process config templates first
+    const processedConfig = {
+      title: ActionsEngine.interpolateTemplate(config.title || 'New Task', context),
+      description: ActionsEngine.interpolateTemplate(config.description || 'Task description', context),
+      priority: config.priority || 'medium'
+    };
+
+    console.log('🔄 Processed config templates:', processedConfig);
     
     // Get the current message for conversation context
     const currentMessage = await db
@@ -168,7 +177,7 @@ export class ActionsEngine {
 
     let fullContextText = context.content || '';
     let conversationContext = '';
-    let taskTitle = context.content || 'New Task';
+    let taskTitle = processedConfig.title;
 
     // Enhanced context gathering for quoted/replied messages
     if (currentMessage[0]?.quotedMessageId) {
@@ -191,7 +200,11 @@ export class ActionsEngine {
         
         conversationContext = `Original: "${originalContent}"\n\nReply: "${replyContent}"`;
         fullContextText = `${originalContent} ${replyContent}`;
-        taskTitle = replyContent.length > 5 ? replyContent : originalContent;
+        
+        // Use processed title unless we have a better one from conversation
+        if (replyContent.length > 5 && replyContent.length < 80) {
+          taskTitle = replyContent;
+        }
         
         console.log('💬 Conversation context built:', conversationContext);
       }
@@ -201,7 +214,7 @@ export class ActionsEngine {
     const nlpAnalysis = ActionsEngine.analyzeMessageIntelligently(fullContextText);
     
     // Enhanced description with conversation context and intelligent insights
-    let enhancedDescription = '';
+    let enhancedDescription = processedConfig.description;
     
     // If this task is created from a reaction, include context and NLP insights
     if (context.reaction) {
@@ -210,8 +223,6 @@ export class ActionsEngine {
       } else {
         enhancedDescription = `Task created from reaction ${context.reaction}\n\nMessage: "${context.content}"`;
       }
-    } else {
-      enhancedDescription = ActionsEngine.interpolateTemplate(config.description, context);
     }
       
     // Add intelligent insights to description
@@ -229,7 +240,7 @@ export class ActionsEngine {
     }
 
     // Use intelligent priority detection
-    const intelligentPriority = nlpAnalysis.isUrgent ? 'high' : (config.priority || nlpAnalysis.suggestedPriority || 'medium');
+    const intelligentPriority = nlpAnalysis.isUrgent ? 'high' : (processedConfig.priority || nlpAnalysis.suggestedPriority || 'medium');
 
     // Use intelligent due date if detected
     let dueDate = null;
@@ -239,13 +250,10 @@ export class ActionsEngine {
       dueDate = nlpAnalysis.suggestedDueDate;
     }
 
-    // Generate intelligent title from conversation context
-    let intelligentTitle = ActionsEngine.createIntelligentTitle(config.title, context, nlpAnalysis);
-    if (taskTitle && taskTitle.length < 80) {
-      intelligentTitle = taskTitle;
-      if (nlpAnalysis.isUrgent && !intelligentTitle.toLowerCase().includes('urgent')) {
-        intelligentTitle = `[URGENT] ${intelligentTitle}`;
-      }
+    // Use processed title with intelligent enhancements
+    let intelligentTitle = taskTitle;
+    if (nlpAnalysis.isUrgent && !intelligentTitle.toLowerCase().includes('urgent')) {
+      intelligentTitle = `[URGENT] ${intelligentTitle}`;
     }
 
     const taskData = {
@@ -496,11 +504,21 @@ export class ActionsEngine {
   static interpolateTemplate(template: string, context: TriggerContext): string {
     if (!template) return '';
     
+    // Extract phone number from JID for sender display
+    const senderPhone = context.senderJid ? context.senderJid.split('@')[0] : '';
+    const chatPhone = context.chatId ? context.chatId.split('@')[0] : '';
+    
     return template
       .replace(/\{\{content\}\}/g, context.content || '')
       .replace(/\{\{senderJid\}\}/g, context.senderJid || '')
+      .replace(/\{\{sender\}\}/g, senderPhone || context.senderJid || '')
       .replace(/\{\{chatId\}\}/g, context.chatId || '')
-      .replace(/\{\{timestamp\}\}/g, context.timestamp.toISOString() || '');
+      .replace(/\{\{chat\}\}/g, chatPhone || context.chatId || '')
+      .replace(/\{\{messageId\}\}/g, context.messageId || '')
+      .replace(/\{\{instanceId\}\}/g, context.instanceId || '')
+      .replace(/\{\{reaction\}\}/g, context.reaction || '')
+      .replace(/\{\{timestamp\}\}/g, context.timestamp.toISOString() || '')
+      .replace(/\{\{originalSender\}\}/g, context.originalSenderJid || '');
   }
 
   // Event notification system for real-time updates
