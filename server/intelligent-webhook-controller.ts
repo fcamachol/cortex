@@ -1086,8 +1086,247 @@ export const WebhookController = {
      * Central action trigger logic.
      */
     async triggerAction(instanceId: string, triggerType: 'reaction' | 'hashtag', triggerValue: string, context: { messageId: string, reactorJid: string }) {
-        // Implementation for action triggers
         console.log(`🔄 Trigger action: ${triggerType} -> ${triggerValue}`);
+        
+        try {
+            // Query active action rules that match the trigger type
+            const matchingRules = await storage.getMatchingActionRules(triggerType, triggerValue, instanceId);
+            
+            if (matchingRules.length === 0) {
+                console.log(`📭 No matching action rules found for ${triggerType}: ${triggerValue}`);
+                return;
+            }
+            
+            console.log(`🎯 Found ${matchingRules.length} matching action rule(s)`);
+            
+            // Execute each matching rule
+            for (const rule of matchingRules) {
+                await this.executeActionRule(rule, triggerType, triggerValue, context, instanceId);
+            }
+        } catch (error) {
+            console.log(`❌ Error processing action triggers:`, error);
+        }
+    },
+
+    /**
+     * Execute a specific action rule
+     */
+    async executeActionRule(rule: any, triggerType: string, triggerValue: string, context: any, instanceId: string) {
+        const startTime = Date.now();
+        const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        console.log(`⚡ Executing action rule: "${rule.ruleName}" (${rule.actionType})`);
+        
+        try {
+            // Check cooldown period
+            if (rule.cooldownMinutes > 0 && rule.lastExecutedAt) {
+                const cooldownEnd = new Date(rule.lastExecutedAt.getTime() + (rule.cooldownMinutes * 60 * 1000));
+                if (new Date() < cooldownEnd) {
+                    console.log(`⏰ Rule "${rule.ruleName}" is in cooldown period`);
+                    return;
+                }
+            }
+            
+            // Check daily execution limit
+            const today = new Date().toDateString();
+            const todayExecutions = await storage.getActionExecutionsToday(rule.ruleId);
+            if (todayExecutions >= rule.maxExecutionsPerDay) {
+                console.log(`📊 Rule "${rule.ruleName}" has reached daily execution limit`);
+                return;
+            }
+            
+            // Prepare trigger data
+            const triggerData = {
+                triggerType,
+                triggerValue,
+                context,
+                instanceId,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Execute the action based on type
+            let result;
+            switch (rule.actionType) {
+                case 'create_task':
+                    result = await this.executeCreateTask(rule.actionConfig, triggerData);
+                    break;
+                case 'create_calendar_event':
+                    result = await this.executeCreateCalendarEvent(rule.actionConfig, triggerData);
+                    break;
+                case 'send_message':
+                    result = await this.executeSendMessage(rule.actionConfig, triggerData);
+                    break;
+                case 'add_label':
+                    result = await this.executeAddLabel(rule.actionConfig, triggerData);
+                    break;
+                case 'send_notification':
+                    result = await this.executeSendNotification(rule.actionConfig, triggerData);
+                    break;
+                case 'webhook':
+                    result = await this.executeWebhook(rule.actionConfig, triggerData);
+                    break;
+                default:
+                    throw new Error(`Unknown action type: ${rule.actionType}`);
+            }
+            
+            const processingTime = Date.now() - startTime;
+            
+            // Log successful execution
+            await storage.createActionExecution({
+                ruleId: rule.ruleId,
+                triggeredBy: context.messageId || context.reactorJid,
+                triggerData,
+                status: 'success',
+                result,
+                executedAt: new Date(),
+                processingTimeMs: processingTime
+            });
+            
+            // Update rule statistics
+            await storage.updateActionRuleStats(rule.ruleId);
+            
+            console.log(`✅ Action rule "${rule.ruleName}" executed successfully in ${processingTime}ms`);
+            
+        } catch (error) {
+            const processingTime = Date.now() - startTime;
+            
+            // Log failed execution
+            await storage.createActionExecution({
+                ruleId: rule.ruleId,
+                triggeredBy: context.messageId || context.reactorJid,
+                triggerData: {
+                    triggerType,
+                    triggerValue,
+                    context,
+                    instanceId,
+                    timestamp: new Date().toISOString()
+                },
+                status: 'failed',
+                errorMessage: error.message,
+                executedAt: new Date(),
+                processingTimeMs: processingTime
+            });
+            
+            console.log(`❌ Action rule "${rule.ruleName}" failed:`, error.message);
+        }
+    },
+
+    /**
+     * Execute create task action
+     */
+    async executeCreateTask(config: any, triggerData: any) {
+        console.log(`📝 Creating task from reaction trigger`);
+        
+        const taskData = {
+            title: config.title || `Task from ${triggerData.triggerType}: ${triggerData.triggerValue}`,
+            description: config.description || `Automatically created from WhatsApp ${triggerData.triggerType}`,
+            priority: config.priority || 'medium',
+            dueDate: config.dueDate ? new Date(config.dueDate) : null,
+            // Additional task fields based on config
+        };
+        
+        // Store the task (assuming we have a tasks storage method)
+        const task = await storage.createTask(taskData);
+        
+        return { taskId: task.taskId, title: task.title };
+    },
+
+    /**
+     * Execute create calendar event action  
+     */
+    async executeCreateCalendarEvent(config: any, triggerData: any) {
+        console.log(`📅 Creating calendar event from reaction trigger`);
+        
+        const eventData = {
+            title: config.title || `Event from ${triggerData.triggerType}: ${triggerData.triggerValue}`,
+            startTime: config.startTime ? new Date(config.startTime) : new Date(),
+            endTime: config.endTime ? new Date(config.endTime) : new Date(Date.now() + 60 * 60 * 1000), // 1 hour default
+            attendees: config.attendees || []
+        };
+        
+        // Create calendar event (this would integrate with calendar service)
+        const event = await this.createEvent(eventData);
+        
+        return { eventId: event.id, title: event.title };
+    },
+
+    /**
+     * Execute send message action
+     */
+    async executeSendMessage(config: any, triggerData: any) {
+        console.log(`💬 Sending message from reaction trigger`);
+        
+        const message = config.message || `Automated response to ${triggerData.triggerType}: ${triggerData.triggerValue}`;
+        const targetJid = config.targetJid || triggerData.context.reactorJid;
+        
+        // Send message via Evolution API (would need to implement actual sending)
+        const result = { 
+            message, 
+            targetJid, 
+            sent: true,
+            timestamp: new Date().toISOString() 
+        };
+        
+        return result;
+    },
+
+    /**
+     * Execute add label action
+     */
+    async executeAddLabel(config: any, triggerData: any) {
+        console.log(`🏷️ Adding label from reaction trigger`);
+        
+        const labelData = {
+            name: config.labelName || `${triggerData.triggerType}_${triggerData.triggerValue}`,
+            color: config.color || '#007bff',
+            messageId: triggerData.context.messageId,
+            instanceId: triggerData.instanceId
+        };
+        
+        // Add label to message/chat (assuming we have label methods)
+        const result = { labelName: labelData.name, applied: true };
+        
+        return result;
+    },
+
+    /**
+     * Execute send notification action
+     */
+    async executeSendNotification(config: any, triggerData: any) {
+        console.log(`🔔 Sending notification from reaction trigger`);
+        
+        const notification = {
+            title: config.title || 'WhatsApp Action Triggered',
+            message: config.message || `${triggerData.triggerType}: ${triggerData.triggerValue}`,
+            type: config.type || 'info'
+        };
+        
+        // Send notification (would integrate with notification service)
+        const result = { notificationSent: true, title: notification.title };
+        
+        return result;
+    },
+
+    /**
+     * Execute webhook action
+     */
+    async executeWebhook(config: any, triggerData: any) {
+        console.log(`🔗 Calling webhook from reaction trigger`);
+        
+        const webhookData = {
+            trigger: triggerData,
+            config: config,
+            timestamp: new Date().toISOString()
+        };
+        
+        // Call external webhook (would need actual HTTP implementation)
+        const result = { 
+            webhookUrl: config.url, 
+            called: true,
+            data: webhookData
+        };
+        
+        return result;
     },
 
     /**

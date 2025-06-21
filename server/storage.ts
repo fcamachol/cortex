@@ -18,6 +18,9 @@ import {
   calendarCalendars,
   calendarEvents,
   calendarAttendees,
+  actionRules,
+  actionExecutions,
+  tasks,
   type User,
   type InsertUser,
   type WhatsappInstance,
@@ -167,6 +170,13 @@ export interface IStorage {
   getCalendars(): Promise<any[]>;
   getCalendarProviders(): Promise<any[]>;
   getActionsInstances(): Promise<any[]>;
+
+  // Action Rules methods
+  getMatchingActionRules(triggerType: string, triggerValue: string, instanceId: string): Promise<any[]>;
+  getActionExecutionsToday(ruleId: string): Promise<number>;
+  createActionExecution(execution: any): Promise<any>;
+  updateActionRuleStats(ruleId: string): Promise<void>;
+  createTask(taskData: any): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1270,6 +1280,124 @@ export class DatabaseStorage implements IStorage {
   async getActionsInstances(): Promise<any[]> {
     // Return empty array for now - can be implemented based on your actions schema
     return [];
+  }
+
+  // Action Rules implementation
+  async getMatchingActionRules(triggerType: string, triggerValue: string, instanceId: string): Promise<any[]> {
+    try {
+      // Query active action rules that match the trigger type and conditions
+      const rules = await db.select().from(actionRules)
+        .where(
+          and(
+            eq(actionRules.isActive, true),
+            eq(actionRules.triggerType, triggerType as any)
+          )
+        );
+
+      // Filter rules based on trigger conditions and instance filters
+      const matchingRules = rules.filter(rule => {
+        // Check trigger conditions
+        const conditions = rule.triggerConditions as any;
+        if (conditions && conditions.values) {
+          if (!conditions.values.includes(triggerValue)) {
+            return false;
+          }
+        }
+
+        // Check instance filters
+        const instanceFilters = rule.instanceFilters as any;
+        if (instanceFilters && instanceFilters.instances) {
+          if (!instanceFilters.instances.includes(instanceId)) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      return matchingRules;
+    } catch (error) {
+      console.error('Error getting matching action rules:', error);
+      return [];
+    }
+  }
+
+  async getActionExecutionsToday(ruleId: string): Promise<number> {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const [result] = await db.select({ count: sql<number>`count(*)` })
+        .from(actionExecutions)
+        .where(
+          and(
+            eq(actionExecutions.ruleId, ruleId),
+            sql`${actionExecutions.executedAt} >= ${today}`,
+            sql`${actionExecutions.executedAt} < ${tomorrow}`
+          )
+        );
+
+      return result.count || 0;
+    } catch (error) {
+      console.error('Error getting today action executions:', error);
+      return 0;
+    }
+  }
+
+  async createActionExecution(execution: any): Promise<any> {
+    try {
+      const [newExecution] = await db.insert(actionExecutions).values({
+        ruleId: execution.ruleId,
+        triggeredBy: execution.triggeredBy,
+        triggerData: execution.triggerData,
+        status: execution.status,
+        result: execution.result,
+        errorMessage: execution.errorMessage,
+        executedAt: execution.executedAt,
+        processingTimeMs: execution.processingTimeMs
+      }).returning();
+      
+      return newExecution;
+    } catch (error) {
+      console.error('Error creating action execution:', error);
+      throw error;
+    }
+  }
+
+  async updateActionRuleStats(ruleId: string): Promise<void> {
+    try {
+      await db.update(actionRules)
+        .set({ 
+          totalExecutions: sql`${actionRules.totalExecutions} + 1`,
+          lastExecutedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(actionRules.ruleId, ruleId));
+    } catch (error) {
+      console.error('Error updating action rule stats:', error);
+    }
+  }
+
+  async createTask(taskData: any): Promise<any> {
+    try {
+      const [newTask] = await db.insert(tasks).values({
+        userId: taskData.userId || 'system',
+        title: taskData.title,
+        description: taskData.description,
+        taskStatus: taskData.status || 'to_do',
+        priority: taskData.priority || 'medium',
+        dueDate: taskData.dueDate,
+        conversationJid: taskData.conversationJid,
+        contactJid: taskData.contactJid
+      }).returning();
+      
+      return newTask;
+    } catch (error) {
+      console.error('Error creating task:', error);
+      throw error;
+    }
   }
 }
 
