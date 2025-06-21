@@ -45,19 +45,15 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   // Helper function to get display name for conversation
   const getConversationDisplayName = (conv: any) => {
-    // Try to find matching contact first
-    const contact = contacts.find((c: any) => c.jid === conv.chatId);
-    
-    if (contact) {
-      return contact.pushName || contact.verifiedName || formatPhoneNumber(conv.chatId.replace('@s.whatsapp.net', ''));
+    // Use chat ID as the primary identifier
+    if (conv.chatId.includes('@g.us')) {
+      // For groups, return formatted group identifier
+      return conv.chatId;
+    } else {
+      // For individuals, return formatted phone number from chat ID
+      const phoneNumber = conv.chatId.replace('@s.whatsapp.net', '');
+      return formatPhoneNumber(phoneNumber);
     }
-    
-    if (conv.type === 'group' || conv.chatId.includes('@g.us')) {
-      return 'Group Chat';
-    }
-    
-    // For individuals, format the phone number
-    return formatPhoneNumber(conv.chatId.replace('@s.whatsapp.net', ''));
   };
 
   // Helper function to get display name for a sender JID

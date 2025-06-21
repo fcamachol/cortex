@@ -20,18 +20,12 @@ export default function ConversationList({ selectedConversation, onSelectConvers
 
   // Helper function to get display name for conversation
   const getConversationDisplayName = (conv: any) => {
-    // Try to find matching contact first
-    const contact = contacts.find((c: any) => c.jid === conv.chatId);
-    
-    if (contact) {
-      return contact.pushName || contact.verifiedName || 'Unknown Contact';
-    }
-    
-    if (conv.type === 'group') {
-      // For groups, try to get the group name from the chatId
-      return conv.chatId.includes('@g.us') ? 'Group Chat' : conv.chatId;
+    // Use chat ID as the primary identifier
+    if (conv.chatId.includes('@g.us')) {
+      // For groups, return formatted group identifier
+      return conv.chatId;
     } else {
-      // For individuals, format the phone number
+      // For individuals, return formatted phone number from chat ID
       const phoneNumber = conv.chatId.replace('@s.whatsapp.net', '');
       return formatPhoneNumber(phoneNumber);
     }
