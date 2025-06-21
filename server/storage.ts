@@ -63,6 +63,7 @@ import { eq, desc, and, or, ilike, sql } from "drizzle-orm";
 export interface IStorage {
   // User management
   getUser(userId: string): Promise<User | undefined>;
+  getUserById(userId: string): Promise<AppUser | null>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(userId: string, user: Partial<InsertUser>): Promise<User>;
@@ -191,6 +192,20 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return updatedUser;
+  }
+
+  async getUserById(userId: string): Promise<AppUser | null> {
+    try {
+      const [user] = await db
+        .select()
+        .from(appUsers)
+        .where(eq(appUsers.userId, userId))
+        .limit(1);
+      return user || null;
+    } catch (error) {
+      console.error(`Error fetching user by ID: ${userId}`, error);
+      throw error;
+    }
   }
 
   // WhatsApp instances

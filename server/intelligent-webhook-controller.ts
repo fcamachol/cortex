@@ -199,7 +199,7 @@ export const WebhookController = {
                 fromMe: key.fromMe,
                 messageType,
                 content,
-                timestamp: timestamp.toISOString(),
+                timestamp: timestamp,
                 quotedMessageId: null,
                 isForwarded: false,
                 forwardingScore: 0,
