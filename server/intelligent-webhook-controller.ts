@@ -117,6 +117,7 @@ export const WebhookController = {
     async processEvolutionEvent(instanceId: string, event: any) {
         const { event: eventType, data, sender } = event; // `sender` is the reactor in reaction updates
         console.log(`📨 Webhook Event Received: ${eventType} for instance ${instanceId}`);
+        console.log(`🔍 Full event structure:`, JSON.stringify({ eventType, dataType: typeof data, dataKeys: data ? Object.keys(data) : 'null', hasArray: Array.isArray(data) }, null, 2));
 
         switch (eventType) {
             case 'messages.upsert':
@@ -168,24 +169,30 @@ export const WebhookController = {
     async handleMessageUpsert(instanceId: string, data: any) {
         console.log(`📝 Processing message upsert for instance ${instanceId}`);
         
-        // Evolution API sends message data directly, not wrapped in arrays
-        if (!data || !data.key || !data.key.id) {
+        // Extract message data from nested Evolution API structure
+        let messageData = data;
+        if (data.data && !data.key) {
+            messageData = Array.isArray(data.data) ? data.data[0] : data.data;
+        }
+        
+        if (!messageData || !messageData.key || !messageData.key.id) {
             console.log('⚠️ No valid message data found in webhook payload');
+            console.log('🔍 Available data keys:', data ? Object.keys(data) : 'none');
             return;
         }
         
-        const chatId = data.key.remoteJid;
-        const senderJid = data.key.fromMe ? instanceId : (data.key.participant || data.key.remoteJid);
+        const chatId = messageData.key.remoteJid;
+        const senderJid = messageData.key.fromMe ? instanceId : (messageData.key.participant || messageData.key.remoteJid);
         
         try {
             // 1. First ensure contact exists for the sender
             const contactData = {
                 jid: senderJid,
                 instanceId: instanceId,
-                pushName: data.key.fromMe ? 'Me' : (data.pushName || ''),
+                pushName: messageData.key.fromMe ? 'Me' : (messageData.pushName || ''),
                 profilePictureUrl: null,
                 isBusiness: false,
-                isMe: data.key.fromMe,
+                isMe: messageData.key.fromMe,
                 isBlocked: false
             };
             
@@ -211,7 +218,7 @@ export const WebhookController = {
                 isArchived: false,
                 isPinned: false,
                 isMuted: false,
-                lastMessageTimestamp: new Date(data.messageTimestamp * 1000)
+                lastMessageTimestamp: new Date(messageData.messageTimestamp * 1000)
             };
             
             try {
@@ -223,7 +230,7 @@ export const WebhookController = {
             }
             
             // 3. Finally create the message with all dependencies satisfied
-            const messageForDb = this.mapApiPayloadToWhatsappMessage(data, instanceId);
+            const messageForDb = this.mapApiPayloadToWhatsappMessage(messageData, instanceId);
             if (messageForDb) {
                 await storage.upsertWhatsappMessage(messageForDb);
                 console.log(`✅ [${instanceId}] Saved/Updated message: ${messageForDb.message_id}`);
@@ -234,7 +241,7 @@ export const WebhookController = {
             }
             
         } catch (error) {
-            console.error(`❌ Error processing message ${data.key.id}:`, error);
+            console.error(`❌ Error processing message ${messageData.key.id}:`, error);
         }
     },
 
