@@ -1556,11 +1556,12 @@ export class DatabaseStorage implements IStorage {
   async getActionRulesByTrigger(triggerType: string, triggerValue: string, instanceId: string): Promise<any[]> {
     try {
       const result = await db.execute(sql`
-        SELECT * FROM actions.action_rules 
-        WHERE trigger_type = ${triggerType}
-        AND trigger_conditions ->> 'value' = ${triggerValue}
-        AND (instance_filters IS NULL OR instance_filters ->> 'instanceId' = ${instanceId})
-        AND is_active = true
+        SELECT rule_id, rule_name, trigger_type, trigger_value, action_type, action_config, instance_id, is_active
+        FROM crm.action_rules 
+        WHERE is_active = true 
+        AND trigger_type = ${triggerType}
+        AND trigger_value = ${triggerValue}
+        AND (instance_id = ${instanceId} OR instance_id IS NULL)
       `);
       return result.rows;
     } catch (error) {

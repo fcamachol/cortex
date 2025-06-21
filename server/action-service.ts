@@ -67,6 +67,9 @@ export const ActionService = {
             // 1. Find matching action rules from the database
             const matchingRules = await storage.getActionRulesByTrigger(triggerType, triggerValue, instanceId);
             
+            console.log(`🔍 Debug: Found ${matchingRules.length} rules for ${triggerType}:${triggerValue}:${instanceId}`);
+            console.log(`🔍 Rules data:`, JSON.stringify(matchingRules, null, 2));
+            
             if (matchingRules.length === 0) {
                 console.log(`📭 No matching action rules found for ${triggerType}: ${triggerValue}`);
                 return;
@@ -74,10 +77,10 @@ export const ActionService = {
 
             // 2. Process each matching rule
             for (const rule of matchingRules) {
-                console.log(`⚡ Executing action rule: ${rule.ruleName} (${rule.actionType})`);
+                console.log(`⚡ Executing action rule: ${rule.rule_name} (${rule.action_type})`);
                 
                 // 3. Execute the specific action based on rule configuration
-                await this.executeAction(rule.actionType, rule.actionConfig, {
+                await this.executeAction(rule.action_type, rule.action_config, {
                     instanceId,
                     triggerType,
                     triggerValue,
