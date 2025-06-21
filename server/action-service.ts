@@ -38,7 +38,6 @@ export const ActionService = {
                 SseManager.notifyClientsOfNewReaction(storedReaction);
             }).catch(error => {
                 console.error(`❌ Error storing reaction:`, error);
-                console.error(`❌ Reaction data that failed:`, JSON.stringify(cleanReaction, null, 2));
             });
             
             // Security check - only process reactions from internal users
