@@ -7,7 +7,7 @@ import {
     type WhatsappContacts,
     type WhatsappChats,
     type WhatsappGroups,
-    type WhatsappMessageUpdates
+    type WhatsappCallLogs // Import the new type
 } from '@shared/schema';
 
 /**
@@ -44,6 +44,11 @@ export const WebhookApiAdapter = {
             case 'groups.update':
                  await this.handleGroupsUpsert(instanceId, data);
                  break;
+            // --- NEW: Handle call events ---
+            case 'call':
+                await this.handleCall(instanceId, data);
+                break;
+            // -----------------------------
             default:
                 console.log(`- Unhandled event type in adapter: ${eventType}`);
         }
@@ -53,75 +58,14 @@ export const WebhookApiAdapter = {
      * Handles new messages with a robust, sequential process to prevent race conditions.
      */
     async handleMessageUpsert(instanceId: string, data: any, sender?: string): Promise<void> {
-        // Handle webhook payload structure based on your mapping
-        let messages = [];
-        
-        // Check for direct message data structure from Evolution API
-        if (data.key && data.messageType) {
-            // Single message format - the data object itself contains the message
-            messages = [data];
-        } else if (data.messages && Array.isArray(data.messages)) {
-            // Old format with messages array
-            messages = data.messages;
-        } else {
-            console.warn(`[${instanceId}] No valid message structure found, skipping processing`);
-            return;
-        }
-
+        const messages = Array.isArray(data.messages) ? data.messages : [data];
         if (!messages[0]?.key) {
-            console.warn(`[${instanceId}] Message missing key field, skipping processing`);
+            console.warn(`[${instanceId}] Invalid messages.upsert payload:`, data);
             return;
-        }
-
-        console.log(`📨 [${instanceId}] Processing ${messages.length} message(s), type: ${messages[0].messageType}`);
-        
-        // Debug reaction messages
-        if (messages[0].messageType === 'reactionMessage') {
-            console.log(`🎭 [${instanceId}] Reaction message details:`, JSON.stringify(messages[0].message, null, 2));
         }
 
         for (const rawMessage of messages) {
             try {
-                // Handle reaction messages specially
-                if (rawMessage.messageType === 'reactionMessage' && rawMessage.message?.reactionMessage) {
-                    const reactionData = {
-                        messageId: rawMessage.message.reactionMessage.key?.id,
-                        instanceId: instanceId,
-                        chatId: rawMessage.key.remoteJid,
-                        senderJid: rawMessage.key.participant || rawMessage.key.remoteJid,
-                        reactionEmoji: rawMessage.message.reactionMessage.text,
-                        timestamp: new Date(rawMessage.messageTimestamp * 1000),
-                        fromMe: rawMessage.key.fromMe || false
-                    };
-                    
-                    console.log(`🎭 [${instanceId}] Processing reaction: ${reactionData.reactionEmoji} on message ${reactionData.messageId}`);
-                    
-                    // Create contact if needed for reaction sender
-                    const senderContactData = {
-                        jid: reactionData.senderJid,
-                        instanceId: instanceId,
-                        pushName: rawMessage.pushName || null,
-                        verifiedName: null,
-                        profilePictureUrl: null,
-                        isBusiness: false,
-                        isMe: reactionData.fromMe,
-                        isBlocked: false,
-                        firstSeenAt: new Date(),
-                        lastUpdatedAt: new Date()
-                    };
-                    
-                    try {
-                        await storage.upsertWhatsappContact(senderContactData);
-                    } catch (error) {
-                        console.error(`❌ [${instanceId}] Error creating contact for reaction:`, error);
-                    }
-                    
-                    // Process reaction through action service
-                    ActionService.processReaction(reactionData);
-                    return; // Skip regular message processing for reactions
-                }
-
-                // Regular message processing
                 const cleanMessage = await this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
                 if (!cleanMessage) continue;
 
@@ -143,7 +87,6 @@ export const WebhookApiAdapter = {
      * Handles message status updates (sent, delivered, read).
      */
     async handleMessageUpdate(instanceId: string, data: any): Promise<void> {
-        console.log('📝 Translating message update...');
         if (!data || !Array.isArray(data.updates)) return;
         for (const update of data.updates) {
              const messageId = update.key?.id;
@@ -168,16 +111,10 @@ export const WebhookApiAdapter = {
         if (!contacts || contacts.length === 0) return;
 
         for (const rawContact of contacts) {
-            try {
-                const cleanContact = await this.mapApiPayloadToWhatsappContact(rawContact, instanceId);
-                if (cleanContact && cleanContact.jid) {
-                    await storage.upsertWhatsappContact(cleanContact);
-                    console.log(`✅ [${instanceId}] Contact upserted: ${cleanContact.jid}`);
-                } else {
-                    console.warn(`⚠️ [${instanceId}] Skipping contact with missing JID:`, rawContact);
-                }
-            } catch (error) {
-                console.error(`❌ [${instanceId}] Error processing contact:`, error);
+            const cleanContact = await this.mapApiPayloadToWhatsappContact(rawContact, instanceId);
+            if (cleanContact) {
+                await storage.upsertWhatsappContact(cleanContact);
+                console.log(`✅ [${instanceId}] Contact upserted: ${cleanContact.jid}`);
             }
         }
     },
@@ -186,7 +123,7 @@ export const WebhookApiAdapter = {
      * Handles chat creation and updates with robust payload parsing.
      */
     async handleChatsUpsert(instanceId: string, data: any): Promise<void> {
-        // Robustly find the array of chats from inconsistent API payloads
+        // --- FIX: Robustly find the array of chats from inconsistent API payloads ---
         let chats: any[] = [];
         if (Array.isArray(data)) {
             chats = data;
@@ -203,16 +140,10 @@ export const WebhookApiAdapter = {
         }
         
         for (const rawChat of chats) {
-            try {
-                const cleanChat = this.mapApiPayloadToWhatsappChat(rawChat, instanceId);
-                if (cleanChat && cleanChat.chatId) {
-                    await storage.upsertWhatsappChat(cleanChat);
-                    console.log(`✅ [${instanceId}] Chat upserted: ${cleanChat.chatId}`);
-                } else {
-                    console.warn(`⚠️ [${instanceId}] Skipping chat with missing or invalid ID:`, rawChat);
-                }
-            } catch (error) {
-                console.error(`❌ [${instanceId}] Error processing chat:`, error);
+            const cleanChat = this.mapApiPayloadToWhatsappChat(rawChat, instanceId);
+            if (cleanChat) {
+                await storage.upsertWhatsappChat(cleanChat);
+                console.log(`✅ [${instanceId}] Chat upserted: ${cleanChat.chat_id}`);
             }
         }
     },
@@ -230,61 +161,49 @@ export const WebhookApiAdapter = {
             }
         }
     },
+    
+    /**
+     * Handles incoming call events.
+     */
+    async handleCall(instanceId: string, data: any[]): Promise<void> {
+        if (!Array.isArray(data)) return;
+        for (const rawCall of data) {
+            const cleanCallLog = this.mapApiPayloadToWhatsappCallLog(rawCall, instanceId);
+            if (cleanCallLog) {
+                await storage.upsertCallLog(cleanCallLog);
+                console.log(`📞 [${instanceId}] Call log stored: ${cleanCallLog.call_log_id}`);
+            }
+        }
+    },
 
     /**
      * Guarantees that the contact and chat related to a message exist in the DB.
      */
     async ensureDependenciesForMessage(cleanMessage: WhatsappMessages, rawMessage: any): Promise<void> {
-        // Create contact for message sender using proper field structure
-        const senderContactData = {
-            jid: cleanMessage.sender_jid,
-            instanceId: cleanMessage.instance_id,
-            pushName: rawMessage.pushName || null,
-            verifiedName: null,
-            profilePictureUrl: null,
-            isBusiness: false,
-            isMe: cleanMessage.from_me,
-            isBlocked: false,
-            firstSeenAt: new Date(),
-            lastUpdatedAt: new Date()
-        };
-        
-        try {
-            await storage.upsertWhatsappContact(senderContactData);
-            console.log(`✅ [${cleanMessage.instance_id}] Auto-created contact: ${cleanMessage.sender_jid}`);
-        } catch (error) {
-            console.error(`❌ [${cleanMessage.instance_id}] Error creating contact:`, error);
+        const senderContact = await this.mapApiPayloadToWhatsappContact({
+            id: cleanMessage.sender_jid,
+            pushName: rawMessage.pushName
+        }, cleanMessage.instance_id);
+        if (senderContact) await storage.upsertWhatsappContact(senderContact);
+
+        if (cleanMessage.chat_id.endsWith('@g.us')) {
+            const chatContact = await this.mapApiPayloadToWhatsappContact({ id: cleanMessage.chat_id }, cleanMessage.instance_id);
+            if (chatContact) await storage.upsertWhatsappContact(chatContact);
         }
 
-        // Create chat if it doesn't exist
-        if (cleanMessage.chat_id) {
-            const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chat_id }, cleanMessage.instance_id);
-            if (chatData && chatData.chat_id) {
-                try {
-                    await storage.upsertWhatsappChat(chatData);
-                    console.log(`✅ [${cleanMessage.instance_id}] Auto-created chat: ${cleanMessage.chat_id}`);
-                } catch (error) {
-                    console.error(`❌ [${cleanMessage.instance_id}] Error creating chat:`, error);
-                }
-            }
-        }
+        const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chat_id }, cleanMessage.instance_id);
+        if (chatData) await storage.upsertWhatsappChat(chatData);
     },
-    
-
 
     // --- Data Mapping Functions ---
 
     async mapApiPayloadToWhatsappMessage(rawMessage: any, instanceId: string): Promise<Omit<WhatsappMessages, 'created_at'> | null> {
-        if (!rawMessage.key?.id || !rawMessage.key?.remoteJid) {
-            console.warn(`Missing required fields - id: ${rawMessage.key?.id}, remoteJid: ${rawMessage.key?.remoteJid}`);
-            return null;
-        }
+        if (!rawMessage.key?.id || !rawMessage.key?.remoteJid) return null;
         const timestamp = rawMessage.messageTimestamp;
 
         const getMessageType = (type?: string): WhatsappMessages['message_type'] => {
             const validTypes: WhatsappMessages['message_type'][] = ['text', 'image', 'video', 'audio', 'document', 'sticker', 'location', 'contact_card', 'contact_card_multi', 'order', 'revoked', 'unsupported', 'reaction', 'call_log', 'edited_message'];
             if (type === 'conversation') return 'text';
-            if (type === 'reactionMessage') return 'reaction';
             if (type && validTypes.includes(type as any)) return type as WhatsappMessages['message_type'];
             return 'unsupported';
         };
@@ -313,44 +232,39 @@ export const WebhookApiAdapter = {
 
     async mapApiPayloadToWhatsappContact(rawContact: any, instanceId: string): Promise<Omit<WhatsappContacts, 'first_seen_at' | 'last_updated_at'> | null> {
         const jid = rawContact.id || rawContact.remoteJid;
-        if (!jid) {
-            console.warn(`⚠️ [${instanceId}] Contact missing JID - id: ${rawContact.id}, remoteJid: ${rawContact.remoteJid}`);
-            return null;
-        }
+        if (!jid) return null;
 
         const instance = await storage.getInstanceById(instanceId);
         
         return {
             jid: jid,
-            instanceId: instanceId,
-            pushName: rawContact.name || rawContact.pushName || rawContact.notify,
-            verifiedName: rawContact.verifiedName,
-            profilePictureUrl: rawContact.profilePicUrl || rawContact.profilePictureUrl,
-            isBusiness: rawContact.isBusiness || false,
-            isMe: instance?.ownerJid === jid,
-            isBlocked: rawContact.isBlocked || false,
-            firstSeenAt: new Date(),
-            lastUpdatedAt: new Date()
+            instance_id: instanceId,
+            push_name: rawContact.name || rawContact.pushName || rawContact.notify,
+            verified_name: rawContact.verifiedName,
+            profile_picture_url: rawContact.profilePicUrl || rawContact.profilePictureUrl,
+            is_business: rawContact.isBusiness || false,
+            is_me: instance?.owner_jid === jid,
+            is_blocked: rawContact.isBlocked || false,
         };
     },
     
     mapApiPayloadToWhatsappChat(rawChat: any, instanceId: string): Omit<WhatsappChats, 'created_at' | 'updated_at'> | null {
         const chatId = rawChat.id || rawChat.remoteJid;
-        // Add guard against empty or null chatIds
+        // --- FIX: Add guard against empty or null chatIds ---
         if (!chatId || typeof chatId !== 'string' || chatId.trim() === '') {
             return null;
         }
         
         return {
-            chatId: chatId,
-            instanceId: instanceId,
+            chat_id: chatId,
+            instance_id: instanceId,
             type: chatId.endsWith('@g.us') ? 'group' : 'individual',
-            unreadCount: rawChat.unreadCount || 0,
-            isArchived: rawChat.archived || false,
-            isPinned: rawChat.pinned ? true : false,
-            isMuted: rawChat.muteEndTime ? new Date(rawChat.muteEndTime * 1000) > new Date() : false,
-            muteEndTimestamp: rawChat.muteEndTime ? new Date(rawChat.muteEndTime * 1000) : undefined,
-            lastMessageTimestamp: rawChat.conversationTimestamp ? new Date(rawChat.conversationTimestamp * 1000) : undefined,
+            unread_count: rawChat.unreadCount || 0,
+            is_archived: rawChat.archived || false,
+            is_pinned: rawChat.pinned ? true : false,
+            is_muted: rawChat.muteEndTime ? new Date(rawChat.muteEndTime * 1000) > new Date() : false,
+            mute_end_timestamp: rawChat.muteEndTime ? new Date(rawChat.muteEndTime * 1000) : undefined,
+            last_message_timestamp: rawChat.conversationTimestamp ? new Date(rawChat.conversationTimestamp * 1000) : undefined,
         };
     },
 
@@ -364,6 +278,29 @@ export const WebhookApiAdapter = {
             description: rawGroup.desc,
             creation_timestamp: rawGroup.creation ? new Date(rawGroup.creation * 1000) : undefined,
             is_locked: rawGroup.announce || false,
+        };
+    },
+    
+    mapApiPayloadToWhatsappCallLog(rawCall: any, instanceId: string): Omit<WhatsappCallLogs, 'created_at' | 'updated_at'> | null {
+        if (!rawCall.id) return null;
+
+        const mapOutcome = (status: string): WhatsappCallLogs['outcome'] => {
+            if (status === 'accept') return 'answered';
+            if (status === 'reject' || status === 'decline') return 'declined';
+            if (status === 'miss' || status === 'timeout') return 'missed';
+            return 'missed'; // Default fallback
+        }
+
+        return {
+            call_log_id: rawCall.id,
+            instance_id: instanceId,
+            chat_id: rawCall.chatId,
+            from_jid: rawCall.from,
+            from_me: rawCall.fromMe || false,
+            start_timestamp: new Date(rawCall.date),
+            is_video_call: rawCall.isVideo || false,
+            duration_seconds: rawCall.duration,
+            outcome: mapOutcome(rawCall.status),
         };
     },
     
@@ -382,12 +319,6 @@ export const WebhookApiAdapter = {
     extractMessageContent(message: any): string {
         const msg = message.message;
         if (!msg) return '';
-        
-        // Handle reaction messages
-        if (msg.reactionMessage) {
-            return `[Reaction: ${msg.reactionMessage.text}]`;
-        }
-        
-        return msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.videoMessage?.caption || '[Media]';
+        return msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.videoMessage?.caption || '';
     }
 };
