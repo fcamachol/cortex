@@ -912,6 +912,8 @@ export const WebhookController = {
                     groupJid: participantData.groupId,
                     participantJid: participant,
                     instanceId: instanceId,
+                    isAdmin: false,
+                    isSuperAdmin: false,
                     action: participantData.action || 'unknown',
                     timestamp: new Date(),
                     rawPayload: JSON.stringify(data)
