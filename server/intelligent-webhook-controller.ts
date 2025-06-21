@@ -142,34 +142,64 @@ export const WebhookController = {
             return;
         }
         
-        // Ensure chat exists before inserting message to maintain foreign key integrity
         const chatId = data.key.remoteJid;
-        const chatData = {
-            chatId: chatId,
-            instanceId: instanceId,
-            type: chatId.includes('@g.us') ? 'group' : 'individual',
-            unreadCount: 0,
-            isArchived: false,
-            isPinned: false,
-            isMuted: false,
-            lastMessageTimestamp: new Date(data.messageTimestamp * 1000)
-        };
+        const senderJid = data.key.fromMe ? instanceId : (data.key.participant || data.key.remoteJid);
         
         try {
-            await storage.createWhatsappChat(chatData);
-        } catch (error) {
-            // Chat might already exist, which is fine
-            console.log(`📝 Chat ${chatId} already exists or error creating:`, error.message);
-        }
-        
-        const messageForDb = this.mapApiPayloadToWhatsappMessage(data, instanceId);
-        if (messageForDb) {
-            await storage.upsertWhatsappMessage(messageForDb);
-            console.log(`✅ [${instanceId}] Saved/Updated message: ${messageForDb.message_id}`);
-            
-            if (messageForDb.quoted_message_id) {
-                await this.handleReplyToContextMessage(instanceId, messageForDb);
+            // 1. First ensure contact exists for the sender
+            if (!data.key.fromMe) {
+                const contactData = {
+                    jid: senderJid,
+                    instanceId: instanceId,
+                    pushName: data.pushName || '',
+                    profilePictureUrl: null,
+                    isBusiness: false,
+                    isMe: false,
+                    isBlocked: false
+                };
+                
+                try {
+                    await storage.createWhatsappContact(contactData);
+                    console.log(`✅ [${instanceId}] Created contact: ${senderJid}`);
+                } catch (error) {
+                    // Contact might already exist
+                    console.log(`📝 Contact ${senderJid} already exists`);
+                }
             }
+            
+            // 2. Then ensure chat exists
+            const chatData = {
+                chatId: chatId,
+                instanceId: instanceId,
+                type: chatId.includes('@g.us') ? 'group' : 'individual',
+                unreadCount: 0,
+                isArchived: false,
+                isPinned: false,
+                isMuted: false,
+                lastMessageTimestamp: new Date(data.messageTimestamp * 1000)
+            };
+            
+            try {
+                await storage.createWhatsappChat(chatData);
+                console.log(`✅ [${instanceId}] Created chat: ${chatId}`);
+            } catch (error) {
+                // Chat might already exist
+                console.log(`📝 Chat ${chatId} already exists`);
+            }
+            
+            // 3. Finally create the message with all dependencies satisfied
+            const messageForDb = this.mapApiPayloadToWhatsappMessage(data, instanceId);
+            if (messageForDb) {
+                await storage.upsertWhatsappMessage(messageForDb);
+                console.log(`✅ [${instanceId}] Saved/Updated message: ${messageForDb.message_id}`);
+                
+                if (messageForDb.quoted_message_id) {
+                    await this.handleReplyToContextMessage(instanceId, messageForDb);
+                }
+            }
+            
+        } catch (error) {
+            console.error(`❌ Error processing message ${data.key.id}:`, error);
         }
     },
 
@@ -249,7 +279,32 @@ export const WebhookController = {
      */
     async handleContactsUpsert(instanceId: string, data: any) {
         console.log(`👤 Processing contacts upsert for instance ${instanceId}`);
-        // Implementation for contact updates
+        
+        if (!data || !Array.isArray(data)) {
+            console.log('⚠️ No valid contact data found in webhook payload');
+            return;
+        }
+        
+        for (const rawContact of data) {
+            if (!rawContact.id) continue;
+            
+            const contactData = {
+                jid: rawContact.id,
+                instanceId: instanceId,
+                pushName: rawContact.pushName || rawContact.name || '',
+                profilePictureUrl: rawContact.profilePicUrl || null,
+                isBusiness: rawContact.isBusiness || false,
+                isMe: rawContact.isMe || false,
+                isBlocked: rawContact.isBlocked || false
+            };
+            
+            try {
+                await storage.createWhatsappContact(contactData);
+                console.log(`✅ [${instanceId}] Created/Updated contact: ${contactData.jid}`);
+            } catch (error) {
+                console.log(`📝 Contact ${contactData.jid} processing error:`, error.message);
+            }
+        }
     },
 
     /**
@@ -257,7 +312,35 @@ export const WebhookController = {
      */
     async handleChatsUpsert(instanceId: string, data: any) {
         console.log(`💬 Processing chats upsert for instance ${instanceId}:`, data);
-        // Implementation for chat updates
+        
+        if (!data || !Array.isArray(data)) {
+            console.log('⚠️ No valid chat data found in webhook payload');
+            return;
+        }
+        
+        for (const rawChat of data) {
+            if (!rawChat.id && !rawChat.remoteJid) continue;
+            
+            const chatId = rawChat.id || rawChat.remoteJid;
+            const chatData = {
+                chatId: chatId,
+                instanceId: instanceId,
+                type: chatId.includes('@g.us') ? 'group' : 'individual',
+                unreadCount: rawChat.unreadMessages || rawChat.unreadCount || 0,
+                isArchived: rawChat.archived || rawChat.isArchived || false,
+                isPinned: rawChat.pinned || rawChat.isPinned || false,
+                isMuted: rawChat.muted || rawChat.isMuted || false,
+                lastMessageTimestamp: rawChat.lastMessage?.messageTimestamp ? 
+                    new Date(rawChat.lastMessage.messageTimestamp * 1000) : null
+            };
+            
+            try {
+                await storage.createWhatsappChat(chatData);
+                console.log(`✅ [${instanceId}] Created/Updated chat: ${chatData.chatId}`);
+            } catch (error) {
+                console.log(`📝 Chat ${chatData.chatId} processing error:`, error.message);
+            }
+        }
     },
 
     /**
