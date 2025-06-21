@@ -82,6 +82,46 @@ export const WebhookApiAdapter = {
 
         for (const rawMessage of messages) {
             try {
+                // Handle reaction messages specially
+                if (rawMessage.messageType === 'reactionMessage' && rawMessage.message?.reactionMessage) {
+                    const reactionData = {
+                        messageId: rawMessage.message.reactionMessage.key?.id,
+                        instanceId: instanceId,
+                        chatId: rawMessage.key.remoteJid,
+                        senderJid: rawMessage.key.participant || rawMessage.key.remoteJid,
+                        reactionEmoji: rawMessage.message.reactionMessage.text,
+                        timestamp: new Date(rawMessage.messageTimestamp * 1000),
+                        fromMe: rawMessage.key.fromMe || false
+                    };
+                    
+                    console.log(`🎭 [${instanceId}] Processing reaction: ${reactionData.reactionEmoji} on message ${reactionData.messageId}`);
+                    
+                    // Create contact if needed for reaction sender
+                    const senderContactData = {
+                        jid: reactionData.senderJid,
+                        instanceId: instanceId,
+                        pushName: rawMessage.pushName || null,
+                        verifiedName: null,
+                        profilePictureUrl: null,
+                        isBusiness: false,
+                        isMe: reactionData.fromMe,
+                        isBlocked: false,
+                        firstSeenAt: new Date(),
+                        lastUpdatedAt: new Date()
+                    };
+                    
+                    try {
+                        await storage.upsertWhatsappContact(senderContactData);
+                    } catch (error) {
+                        console.error(`❌ [${instanceId}] Error creating contact for reaction:`, error);
+                    }
+                    
+                    // Process reaction through action service
+                    ActionService.processReaction(reactionData);
+                    return; // Skip regular message processing for reactions
+                }
+
+                // Regular message processing
                 const cleanMessage = await this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
                 if (!cleanMessage) continue;
 
@@ -90,28 +130,8 @@ export const WebhookApiAdapter = {
                 const storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
                 console.log(`✅ [${instanceId}] Message stored: ${storedMessage.message_id}`);
                 
-                // Handle reaction messages specially for action processing
-                if (rawMessage.messageType === 'reactionMessage' && rawMessage.message?.reactionMessage) {
-                    const reactionData = {
-                        messageId: rawMessage.message.reactionMessage.key?.id,
-                        instanceId: instanceId,
-                        chatId: cleanMessage.chat_id,
-                        senderJid: cleanMessage.sender_jid,
-                        reactionEmoji: rawMessage.message.reactionMessage.text,
-                        timestamp: cleanMessage.timestamp,
-                        fromMe: cleanMessage.from_me
-                    };
-                    
-                    console.log(`🎭 [${instanceId}] Processing reaction: ${reactionData.reactionEmoji} on message ${reactionData.messageId}`);
-                    
-                    // Store reaction and trigger action processing
-                    await storage.upsertWhatsappReaction(reactionData);
-                    ActionService.processReaction(reactionData);
-                } else {
-                    // Regular message processing
-                    SseManager.notifyClientsOfNewMessage(storedMessage);
-                    ActionService.processNewMessage(storedMessage);
-                }
+                SseManager.notifyClientsOfNewMessage(storedMessage);
+                ActionService.processNewMessage(storedMessage);
 
             } catch (error) {
                 console.error(`❌ Error processing message upsert for ${rawMessage.key?.id}:`, error);
@@ -218,13 +238,15 @@ export const WebhookApiAdapter = {
         }
 
         // Create chat if it doesn't exist
-        const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chat_id }, cleanMessage.instance_id);
-        if (chatData) {
-            try {
-                await storage.upsertWhatsappChat(chatData);
-                console.log(`✅ [${cleanMessage.instance_id}] Auto-created chat: ${cleanMessage.chat_id}`);
-            } catch (error) {
-                console.error(`❌ [${cleanMessage.instance_id}] Error creating chat:`, error);
+        if (cleanMessage.chat_id) {
+            const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chat_id }, cleanMessage.instance_id);
+            if (chatData && chatData.chat_id) {
+                try {
+                    await storage.upsertWhatsappChat(chatData);
+                    console.log(`✅ [${cleanMessage.instance_id}] Auto-created chat: ${cleanMessage.chat_id}`);
+                } catch (error) {
+                    console.error(`❌ [${cleanMessage.instance_id}] Error creating chat:`, error);
+                }
             }
         }
     },
@@ -234,7 +256,10 @@ export const WebhookApiAdapter = {
     // --- Data Mapping Functions ---
 
     async mapApiPayloadToWhatsappMessage(rawMessage: any, instanceId: string): Promise<Omit<WhatsappMessages, 'created_at'> | null> {
-        if (!rawMessage.key?.id || !rawMessage.key?.remoteJid) return null;
+        if (!rawMessage.key?.id || !rawMessage.key?.remoteJid) {
+            console.warn(`Missing required fields - id: ${rawMessage.key?.id}, remoteJid: ${rawMessage.key?.remoteJid}`);
+            return null;
+        }
         const timestamp = rawMessage.messageTimestamp;
 
         const getMessageType = (type?: string): WhatsappMessages['message_type'] => {
