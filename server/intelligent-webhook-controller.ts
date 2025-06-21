@@ -320,21 +320,27 @@ export const WebhookController = {
             const { hashtags, keywords } = ActionsEngine.extractHashtagsAndKeywords(message.content || '');
             
             const triggerContext = {
-                messageId: message.message_id,
-                instanceId: instanceId || message.instance_id,
-                chatId: message.chat_id,
-                senderJid: message.sender_jid,
+                messageId: message.messageId || message.message_id,
+                instanceId: instanceId || message.instanceId || message.instance_id,
+                chatId: message.chatId || message.chat_id,
+                senderJid: message.senderJid || message.sender_jid,
                 content: message.content || '',
                 hashtags,
                 keywords,
                 timestamp: new Date(message.timestamp),
-                fromMe: message.from_me || false
+                fromMe: message.fromMe || message.from_me || false
             };
 
+            console.log('🎯 Action context prepared:', {
+                messageId: triggerContext.messageId,
+                hashtags: triggerContext.hashtags,
+                content: triggerContext.content.substring(0, 50) + '...'
+            });
+
             await ActionsEngine.processMessageForActions(triggerContext);
-            console.log(`🔍 Processed message for automated actions`);
+            console.log(`✅ Processed message for automated actions`);
         } catch (error) {
-            console.error('Error processing message for actions:', error);
+            console.error('❌ Error processing message for actions:', error);
         }
     },
 
