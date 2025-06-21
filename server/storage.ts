@@ -1551,6 +1551,101 @@ export class DatabaseStorage implements IStorage {
       throw error;
     }
   }
+
+  // Action Service support methods
+  async getActionRulesByTrigger(triggerType: string, triggerValue: string, instanceId: string): Promise<any[]> {
+    try {
+      const result = await db.execute(sql`
+        SELECT * FROM actions.action_rules 
+        WHERE trigger_type = ${triggerType} 
+        AND trigger_value = ${triggerValue}
+        AND (instance_id = ${instanceId} OR instance_id IS NULL)
+        AND is_enabled = true
+      `);
+      return result.rows;
+    } catch (error) {
+      console.error('Error getting action rules:', error);
+      return [];
+    }
+  }
+
+  async getTasksByTriggeringMessageId(messageId: string, instanceId: string): Promise<any[]> {
+    try {
+      const result = await db.execute(sql`
+        SELECT * FROM crm.tasks 
+        WHERE triggering_message_id = ${messageId}
+        AND instance_id = ${instanceId}
+      `);
+      return result.rows;
+    } catch (error) {
+      console.error('Error getting tasks by triggering message:', error);
+      return [];
+    }
+  }
+
+  async updateTask(taskId: number, updates: any): Promise<any> {
+    try {
+      const setClause = Object.keys(updates)
+        .map(key => `${key} = $${Object.keys(updates).indexOf(key) + 2}`)
+        .join(', ');
+      
+      const values = [taskId, ...Object.values(updates)];
+      
+      const result = await db.execute(sql`
+        UPDATE crm.tasks 
+        SET ${sql.raw(setClause)}, updated_at = NOW()
+        WHERE task_id = $1
+        RETURNING *
+      `);
+      
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error updating task:', error);
+      throw error;
+    }
+  }
+
+  async getWhatsappMessage(messageId: string, instanceId: string): Promise<any> {
+    try {
+      const [message] = await db
+        .select()
+        .from(whatsappMessages)
+        .where(
+          and(
+            eq(whatsappMessages.messageId, messageId),
+            eq(whatsappMessages.instanceId, instanceId)
+          )
+        )
+        .limit(1);
+      
+      return message;
+    } catch (error) {
+      console.error('Error getting WhatsApp message:', error);
+      return null;
+    }
+  }
+
+  async upsertWhatsappMessageReaction(reactionData: InsertWhatsappMessageReaction): Promise<any> {
+    try {
+      const [reaction] = await db
+        .insert(whatsappMessageReactions)
+        .values(reactionData)
+        .onConflictDoUpdate({
+          target: [whatsappMessageReactions.messageId, whatsappMessageReactions.reactorJid],
+          set: {
+            reactionEmoji: reactionData.reactionEmoji,
+            timestamp: reactionData.timestamp,
+            fromMe: reactionData.fromMe
+          }
+        })
+        .returning();
+      
+      return reaction;
+    } catch (error) {
+      console.error('Error upserting WhatsApp message reaction:', error);
+      throw error;
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();

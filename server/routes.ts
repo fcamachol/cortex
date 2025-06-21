@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { eq } from 'drizzle-orm';
 import { appUsers } from '../shared/schema';
 import { nanoid } from 'nanoid';
-import { WebhookController } from './intelligent-webhook-controller';
+import { WebhookController } from './webhook-controller';
 
 // Server-Sent Events connections map
 const sseClients = new Map<string, Response>();
@@ -590,8 +590,8 @@ export async function registerRoutes(app: Express): Promise<void> {
     });
   });
 
-  // WhatsApp webhook handlers - Use the intelligent webhook controller
-  app.post('/api/evolution/webhook/:instanceName/:eventType', async (req: Request, res: Response) => {
+  // WhatsApp webhook handlers - Use the new layered webhook controller
+  app.post('/api/whatsapp/webhook/:instanceName', async (req: Request, res: Response) => {
     await WebhookController.handleIncomingEvent(req, res);
   });
 

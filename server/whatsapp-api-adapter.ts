@@ -6,7 +6,8 @@ import {
     whatsappChats,
     type InsertWhatsappMessage,
     type InsertWhatsappContact,
-    type InsertWhatsappChat
+    type InsertWhatsappChat,
+    type InsertWhatsappMessageReaction
 } from '@shared/schema';
 
 /**
@@ -39,6 +40,16 @@ export const WhatsAppApiAdapter = {
                  // This logic would be expanded to handle status updates properly
                  console.log(`📝 Translating message update...`);
                  break;
+
+            case 'messages.reaction':
+                const reactions = Array.isArray(data.reactions) ? data.reactions : [data];
+                for (const rawReaction of reactions) {
+                    const cleanReaction = this.mapApiPayloadToWhatsappReaction(rawReaction, instanceId);
+                    if (cleanReaction) {
+                        ActionService.processReaction(cleanReaction);
+                    }
+                }
+                break;
 
             case 'contacts.upsert':
             case 'contacts.update':
@@ -151,6 +162,19 @@ export const WhatsAppApiAdapter = {
             isMuted: rawChat.muteEndTime ? new Date(rawChat.muteEndTime * 1000) > new Date() : false,
             muteEndTimestamp: rawChat.muteEndTime ? new Date(rawChat.muteEndTime * 1000) : undefined,
             lastMessageTimestamp: rawChat.conversationTimestamp ? new Date(rawChat.conversationTimestamp * 1000) : undefined,
+        };
+    },
+    
+    mapApiPayloadToWhatsappReaction(rawReaction: any, instanceId: string): InsertWhatsappMessageReaction | null {
+        if (!rawReaction.messageId && !rawReaction.key?.id) return null;
+        
+        return {
+            messageId: rawReaction.messageId || rawReaction.key?.id,
+            instanceId: instanceId,
+            reactorJid: rawReaction.reactorJid || rawReaction.key?.participant || rawReaction.key?.remoteJid,
+            reactionEmoji: rawReaction.reaction || rawReaction.reactionEmoji || '',
+            fromMe: rawReaction.fromMe || false,
+            timestamp: rawReaction.timestamp ? new Date(rawReaction.timestamp * 1000) : new Date()
         };
     },
     
