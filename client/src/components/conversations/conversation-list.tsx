@@ -22,8 +22,9 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   const getConversationDisplayName = (conv: any) => {
     // Use chat ID as the primary identifier
     if (conv.chatId.includes('@g.us')) {
-      // For groups, return formatted group identifier
-      return conv.chatId;
+      // For groups, extract the numeric part before the dash
+      const groupId = conv.chatId.replace('@g.us', '').split('-')[0];
+      return `Group ${formatPhoneNumber(groupId)}`;
     } else {
       // For individuals, return formatted phone number from chat ID
       const phoneNumber = conv.chatId.replace('@s.whatsapp.net', '');
