@@ -137,79 +137,32 @@ export const WebhookController = {
      */
     async handleMessageUpsert(instanceId: string, data: any) {
         console.log(`📝 Processing message upsert for instance ${instanceId}`);
+        console.log('Received data structure:', JSON.stringify(data, null, 2));
         
-        try {
-            const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-            const instances = await storage.getWhatsappInstances(userId);
-            const instance = instances.find(inst => inst.instanceId === instanceId);
-            if (!instance) {
-                console.error(`❌ Instance ${instanceId} not found`);
-                return;
+        if (!data || !Array.isArray(data.messages)) {
+            console.log('⚠️ No valid message data found in webhook payload');
+            console.log('Data structure check - data exists:', !!data);
+            console.log('Data.messages exists:', !!data?.messages);
+            console.log('Data.messages is array:', Array.isArray(data?.messages));
+            return;
+        }
+        
+        for (const rawMessage of data.messages) {
+            const messageForDb = this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
+            if (messageForDb) {
+                await storage.upsertWhatsappMessage(messageForDb);
+                console.log(`✅ [${instanceId}] Saved/Updated message: ${messageForDb.message_id}`);
+                
+                // Notify connected clients about new message
+                const { notifyClientsOfNewMessage } = require('./routes');
+                notifyClientsOfNewMessage(messageForDb);
+                
+                if (messageForDb.quoted_message_id) {
+                    await this.handleReplyToContextMessage(instanceId, messageForDb);
+                }
             }
-
-            // Handle message array from Evolution API webhook
-            let messages = [];
-            if (Array.isArray(data)) {
-                messages = data;
-            } else if (data.data && Array.isArray(data.data)) {
-                messages = data.data;
-            } else if (data.key) {
-                messages = [data];
-            } else {
-                console.log('⚠️ No valid message data found in webhook payload');
-                return;
-            }
-
-            // Process each message in the array
-            for (const messageData of messages) {
-
-            const key = messageData.key;
-            const message = messageData.message;
-
-            if (!key || !key.id) {
-                console.log('⚠️ Skipping message without valid key structure');
-                return;
-            }
-
-            // Extract message content based on message type
-            let content = '';
-            let messageType = 'text';
-
-            if (message.conversation) {
-                content = message.conversation;
-                messageType = 'text';
-            } else if (message.extendedTextMessage?.text) {
-                content = message.extendedTextMessage.text;
-                messageType = 'text';
-            } else if (message.imageMessage?.caption) {
-                content = message.imageMessage.caption || '[Image]';
-                messageType = 'image';
-            } else if (message.documentMessage?.caption) {
-                content = message.documentMessage.caption || '[Document]';
-                messageType = 'document';
-            } else {
-                content = '[Unsupported message type]';
-                messageType = 'unknown';
-            }
-
-            const messageId = key.id;
-            const chatId = key.remoteJid;
-            const senderJid = key.fromMe ? instance.instanceId : (key.participant || key.remoteJid);
-            const timestamp = new Date(messageData.messageTimestamp * 1000);
-
-            // Create message record for WhatsApp schema
-            const messageRecord = {
-                messageId,
-                instanceId,
-                chatId,
-                senderJid,
-                fromMe: key.fromMe,
-                messageType,
-                content,
-                timestamp: timestamp,
-                quotedMessageId: null,
-                isForwarded: false,
-                forwardingScore: 0,
+        }
+    },
                 isStarred: false,
                 isEdited: false,
                 lastEditedAt: null,
@@ -242,6 +195,69 @@ export const WebhookController = {
         } catch (error) {
             console.error('❌ Error processing message upsert:', error);
         }
+    },
+
+    /**
+     * Maps Evolution API message payload to WhatsApp message structure
+     */
+    mapApiPayloadToWhatsappMessage(rawMessage: any, instanceId: string) {
+        if (!rawMessage.key || !rawMessage.key.id) return null;
+
+        const key = rawMessage.key;
+        const message = rawMessage.message;
+
+        // Extract message content based on message type
+        let content = '';
+        let messageType = 'text';
+
+        if (message.conversation) {
+            content = message.conversation;
+            messageType = 'text';
+        } else if (message.extendedTextMessage?.text) {
+            content = message.extendedTextMessage.text;
+            messageType = 'text';
+        } else if (message.imageMessage?.caption) {
+            content = message.imageMessage.caption || '[Image]';
+            messageType = 'image';
+        } else if (message.videoMessage?.caption) {
+            content = message.videoMessage.caption || '[Video]';
+            messageType = 'video';
+        } else if (message.audioMessage) {
+            content = '[Audio]';
+            messageType = 'audio';
+        } else if (message.documentMessage?.caption) {
+            content = message.documentMessage.caption || '[Document]';
+            messageType = 'document';
+        } else {
+            content = '[Unsupported message type]';
+            messageType = 'unknown';
+        }
+
+        return {
+            message_id: key.id,
+            instance_id: instanceId,
+            chat_id: key.remoteJid,
+            sender_jid: key.fromMe ? instanceId : (key.participant || key.remoteJid),
+            from_me: key.fromMe,
+            message_type: messageType,
+            content: content,
+            timestamp: new Date(rawMessage.messageTimestamp * 1000),
+            quoted_message_id: null,
+            is_forwarded: false,
+            forwarding_score: 0,
+            is_starred: false,
+            is_edited: false,
+            source_platform: rawMessage.source || 'android',
+            raw_api_payload: rawMessage
+        };
+    },
+
+    /**
+     * Handle replies to context messages
+     */
+    async handleReplyToContextMessage(instanceId: string, messageForDb: any) {
+        // Implementation for handling replies to context messages
+        console.log(`🔗 Processing reply context for message ${messageForDb.message_id}`);
     },
 
     /**

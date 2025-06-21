@@ -672,6 +672,50 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async upsertWhatsappMessage(message: any): Promise<any> {
+    try {
+      // Convert the message format to match the WhatsApp schema
+      const messageRecord = {
+        messageId: message.message_id,
+        instanceId: message.instance_id,
+        chatId: message.chat_id,
+        senderJid: message.sender_jid,
+        fromMe: message.from_me,
+        messageType: message.message_type,
+        content: message.content,
+        timestamp: message.timestamp,
+        quotedMessageId: message.quoted_message_id,
+        isForwarded: message.is_forwarded || false,
+        forwardingScore: message.forwarding_score || 0,
+        isStarred: message.is_starred || false,
+        isEdited: message.is_edited || false,
+        lastEditedAt: message.last_edited_at,
+        sourcePlatform: message.source_platform || 'evolution-api',
+        rawApiPayload: message.raw_api_payload
+      };
+
+      const [newMessage] = await db
+        .insert(whatsappMessages)
+        .values(messageRecord)
+        .onConflictDoUpdate({
+          target: [whatsappMessages.messageId, whatsappMessages.instanceId],
+          set: {
+            content: messageRecord.content,
+            messageType: messageRecord.messageType,
+            isEdited: messageRecord.isEdited,
+            lastEditedAt: messageRecord.lastEditedAt,
+            rawApiPayload: messageRecord.rawApiPayload,
+            updatedAt: new Date()
+          }
+        })
+        .returning();
+      return newMessage;
+    } catch (error: any) {
+      console.error('Error upserting WhatsApp message:', error);
+      throw error;
+    }
+  }
+
   async updateWhatsappMessage(userId: string, instanceId: string, messageId: string, message: Partial<InsertWhatsappMessage>): Promise<WhatsappMessage> {
     const [updatedMessage] = await db
       .update(whatsappMessages)
