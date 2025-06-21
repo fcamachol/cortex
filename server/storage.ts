@@ -728,6 +728,28 @@ export class DatabaseStorage implements IStorage {
     return updatedMessage;
   }
 
+  async updateWhatsappMessageContent(params: { 
+    messageId: string; 
+    instanceId: string; 
+    newContent: string; 
+    isEdited: boolean; 
+    lastEditedAt: Date; 
+  }): Promise<WhatsappMessage> {
+    const [updatedMessage] = await db
+      .update(whatsappMessages)
+      .set({
+        content: params.newContent,
+        isEdited: params.isEdited,
+        lastEditedAt: params.lastEditedAt
+      })
+      .where(and(
+        eq(whatsappMessages.instanceId, params.instanceId),
+        eq(whatsappMessages.messageId, params.messageId)
+      ))
+      .returning();
+    return updatedMessage;
+  }
+
   async deleteWhatsappMessage(userId: string, instanceId: string, messageId: string): Promise<void> {
     await db
       .delete(whatsappMessages)

@@ -551,15 +551,31 @@ export const WebhookController = {
                 originalContent = editData.oldText;
             }
             
+            const editTimestamp = new Date(editData.editTimestamp * 1000 || Date.now());
+            
+            // Step 1: Store the original content in edit history for audit trail
             const editRecord = {
                 messageId,
                 instanceId,
                 oldContent: originalContent,
-                editTimestamp: new Date(editData.editTimestamp * 1000 || Date.now())
+                editTimestamp
             };
             
             await storage.createWhatsappMessageEditHistory(editRecord);
-            console.log(`✅ [${instanceId}] Stored message edit: ${messageId}`);
+            
+            // Step 2: Update the actual message content with the new edited content
+            if (editedContent) {
+                await storage.updateWhatsappMessageContent({
+                    messageId,
+                    instanceId,
+                    newContent: editedContent,
+                    isEdited: true,
+                    lastEditedAt: editTimestamp
+                });
+                console.log(`✅ [${instanceId}] Updated message content and stored edit history: ${messageId}`);
+            } else {
+                console.log(`✅ [${instanceId}] Stored message edit history: ${messageId}`);
+            }
             
         } catch (error) {
             console.log(`❌ Error storing message edit:`, error);
