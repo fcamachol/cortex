@@ -118,6 +118,7 @@ export const WebhookController = {
         const { event: eventType, data, sender } = event; // `sender` is the reactor in reaction updates
         console.log(`📨 Webhook Event Received: ${eventType} for instance ${instanceId}`);
         console.log(`🔍 Full event structure:`, JSON.stringify({ eventType, dataType: typeof data, dataKeys: data ? Object.keys(data) : 'null', hasArray: Array.isArray(data) }, null, 2));
+        console.log(`🔍 DEBUG - About to process event type: ${eventType}`);
 
         switch (eventType) {
             case 'messages.upsert':
@@ -131,8 +132,22 @@ export const WebhookController = {
                 // Check for reactions first
                 if (messageData.key && messageData.message?.reactionMessage) {
                     console.log(`🎯 Detected reaction in messages.upsert`);
-                    // Extract reactor JID properly from the reaction data
-                    const reactorJid = messageData.key.participant || messageData.key.remoteJid || sender;
+                    // Debug the actual data structure
+                    console.log(`🔍 Full messageData.key:`, JSON.stringify(messageData.key, null, 2));
+                    console.log(`🔍 Sender value:`, sender);
+                    
+                    // Extract reactor JID with proper fallback logic
+                    let reactorJid = messageData.key.participant || messageData.key.remoteJid || sender;
+                    
+                    // If still no reactor JID, use a reasonable default based on the chat type
+                    if (!reactorJid) {
+                        // For reactions, the reactor is usually the owner of the message key
+                        reactorJid = messageData.key.fromMe ? 
+                            (messageData.key.remoteJid || sender || `${instanceId}@owner`) :
+                            (messageData.key.remoteJid || sender || `${instanceId}@participant`);
+                    }
+                    
+                    console.log(`🔍 Final reactorJid:`, reactorJid);
                     await this.handleReaction(instanceId, messageData, reactorJid);
                 } else {
                     await this.handleMessageUpsert(instanceId, data);
@@ -152,7 +167,14 @@ export const WebhookController = {
                     await this.handleReaction(instanceId, updateData.updates[0], reactorJid);
                 } else if (updateData.message?.reactionMessage) {
                     console.log(`🎯 Detected direct reaction in messages.update`);
-                    const reactorJid = updateData.key?.participant || updateData.key?.remoteJid || sender;
+                    console.log(`🔍 Update Reactor JID debug: participant=${updateData.key?.participant}, remoteJid=${updateData.key?.remoteJid}, sender=${sender}, fromMe=${updateData.key?.fromMe}`);
+                    let reactorJid = updateData.key?.participant || updateData.key?.remoteJid || sender;
+                    
+                    // For reactions fromMe=true, use the instance's own JID or remoteJid
+                    if (updateData.key?.fromMe && !reactorJid) {
+                        reactorJid = updateData.key?.remoteJid || sender || `${instanceId}@self`;
+                    }
+                    
                     await this.handleReaction(instanceId, updateData, reactorJid);
                 } else {
                     await this.handleMessageUpdate(instanceId, data);
