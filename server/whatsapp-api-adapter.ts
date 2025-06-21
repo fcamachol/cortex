@@ -303,13 +303,15 @@ export const WebhookApiAdapter = {
         
         return {
             jid: jid,
-            instance_id: instanceId,
-            push_name: rawContact.name || rawContact.pushName || rawContact.notify,
-            verified_name: rawContact.verifiedName,
-            profile_picture_url: rawContact.profilePicUrl || rawContact.profilePictureUrl,
-            is_business: rawContact.isBusiness || false,
-            is_me: instance?.owner_jid === jid,
-            is_blocked: rawContact.isBlocked || false,
+            instanceId: instanceId,
+            pushName: rawContact.name || rawContact.pushName || rawContact.notify,
+            verifiedName: rawContact.verifiedName,
+            profilePictureUrl: rawContact.profilePicUrl || rawContact.profilePictureUrl,
+            isBusiness: rawContact.isBusiness || false,
+            isMe: instance?.ownerJid === jid,
+            isBlocked: rawContact.isBlocked || false,
+            firstSeenAt: new Date(),
+            lastUpdatedAt: new Date()
         };
     },
     

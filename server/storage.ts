@@ -79,6 +79,7 @@ export interface IStorage {
   // WhatsApp instances
   getWhatsappInstances(userId: string): Promise<WhatsappInstance[]>;
   getWhatsappInstance(userId: string, instanceId: string): Promise<WhatsappInstance | undefined>;
+  getInstanceById(instanceId: string): Promise<WhatsappInstance | null>;
   createWhatsappInstance(instance: InsertWhatsappInstance): Promise<WhatsappInstance>;
   updateWhatsappInstance(userId: string, instanceId: string, instance: Partial<InsertWhatsappInstance>): Promise<WhatsappInstance>;
   updateWhatsappInstanceStatus(instanceId: string, status: string, connectionData?: any): Promise<WhatsappInstance | null>;
@@ -1914,6 +1915,17 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Error fetching action templates:', error);
       return [];
+    }
+  }
+
+  async getInstanceById(instanceId: string): Promise<any> {
+    try {
+      const [instance] = await db.select().from(whatsappInstances)
+        .where(eq(whatsappInstances.instanceId, instanceId));
+      return instance || null;
+    } catch (error) {
+      console.error('Error fetching instance by ID:', instanceId, error);
+      return null;
     }
   }
 }
