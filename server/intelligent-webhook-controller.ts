@@ -122,6 +122,10 @@ export const WebhookController = {
             case 'chats.update':
                 await this.handleChatsUpsert(instanceId, data);
                 break;
+            case 'groups.upsert':
+            case 'groups.update':
+                await this.handleGroupsUpsert(instanceId, data);
+                break;
             case 'connection.update':
                 await this.handleConnectionUpdate(instanceId, data);
                 break;
@@ -416,6 +420,67 @@ export const WebhookController = {
 
         console.log(`👍 Reaction '${reactionEmoji}' on message ${targetMessageId} by ${reactorJid}`);
         await this.triggerAction(instanceId, 'reaction', reactionEmoji, { messageId: targetMessageId, reactorJid });
+    },
+
+    /**
+     * Handles group updates from the webhook.
+     */
+    async handleGroupsUpsert(instanceId: string, data: any) {
+        console.log(`👥 Processing groups upsert for instance ${instanceId}`);
+        
+        if (!data || !Array.isArray(data)) {
+            console.log('⚠️ No valid group data found in webhook payload');
+            return;
+        }
+        
+        for (const rawGroup of data) {
+            if (!rawGroup.id && !rawGroup.remoteJid) continue;
+            
+            const groupId = rawGroup.id || rawGroup.remoteJid;
+            
+            // First ensure the group exists as a chat
+            const chatData = {
+                chatId: groupId,
+                instanceId: instanceId,
+                type: 'group',
+                unreadCount: rawGroup.unreadMessages || rawGroup.unreadCount || 0,
+                isArchived: rawGroup.archived || false,
+                isPinned: rawGroup.pinned || false,
+                isMuted: rawGroup.muted || false,
+                lastMessageTimestamp: rawGroup.lastMessage?.messageTimestamp ? 
+                    new Date(rawGroup.lastMessage.messageTimestamp * 1000) : null
+            };
+            
+            try {
+                await storage.createWhatsappChat(chatData);
+                console.log(`✅ [${instanceId}] Created/Updated group chat: ${groupId}`);
+            } catch (error) {
+                console.log(`📝 Group chat ${groupId} already exists or error:`, error.message);
+            }
+            
+            // Process group participants if available
+            if (rawGroup.participants) {
+                for (const participant of rawGroup.participants) {
+                    const contactData = {
+                        jid: participant.id || participant.jid,
+                        instanceId: instanceId,
+                        pushName: participant.notify || participant.name || '',
+                        profilePictureUrl: null,
+                        isBusiness: false,
+                        isMe: false,
+                        isBlocked: false
+                    };
+                    
+                    try {
+                        await storage.createWhatsappContact(contactData);
+                        console.log(`✅ [${instanceId}] Created group participant: ${contactData.jid}`);
+                    } catch (error) {
+                        // Participant contact might already exist
+                        console.log(`📝 Group participant ${contactData.jid} already exists`);
+                    }
+                }
+            }
+        }
     },
 
     /**
