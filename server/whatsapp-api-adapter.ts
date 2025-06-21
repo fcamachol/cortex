@@ -123,12 +123,13 @@ export const WebhookApiAdapter = {
 
                 // Regular message processing
                 const cleanMessage = await this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
+                console.log(`🔍 [${instanceId}] Mapped message data:`, JSON.stringify(cleanMessage, null, 2));
                 if (!cleanMessage) continue;
 
                 await this.ensureDependenciesForMessage(cleanMessage, rawMessage);
                 
                 const storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
-                console.log(`✅ [${instanceId}] Message stored: ${storedMessage.message_id}`);
+                console.log(`✅ [${instanceId}] Message stored: ${storedMessage.messageId}`);
                 
                 SseManager.notifyClientsOfNewMessage(storedMessage);
                 ActionService.processNewMessage(storedMessage);
@@ -237,13 +238,13 @@ export const WebhookApiAdapter = {
     async ensureDependenciesForMessage(cleanMessage: WhatsappMessages, rawMessage: any): Promise<void> {
         // Create contact for message sender using proper field structure
         const senderContactData = {
-            jid: cleanMessage.sender_jid,
-            instanceId: cleanMessage.instance_id,
+            jid: cleanMessage.senderJid,
+            instanceId: cleanMessage.instanceId,
             pushName: rawMessage.pushName || null,
             verifiedName: null,
             profilePictureUrl: null,
             isBusiness: false,
-            isMe: cleanMessage.from_me,
+            isMe: cleanMessage.fromMe,
             isBlocked: false,
             firstSeenAt: new Date(),
             lastUpdatedAt: new Date()
@@ -251,20 +252,20 @@ export const WebhookApiAdapter = {
         
         try {
             await storage.upsertWhatsappContact(senderContactData);
-            console.log(`✅ [${cleanMessage.instance_id}] Auto-created contact: ${cleanMessage.sender_jid}`);
+            console.log(`✅ [${cleanMessage.instanceId}] Auto-created contact: ${cleanMessage.senderJid}`);
         } catch (error) {
-            console.error(`❌ [${cleanMessage.instance_id}] Error creating contact:`, error);
+            console.error(`❌ [${cleanMessage.instanceId}] Error creating contact:`, error);
         }
 
         // Create chat if it doesn't exist
-        if (cleanMessage.chat_id) {
-            const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chat_id }, cleanMessage.instance_id);
+        if (cleanMessage.chatId) {
+            const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chatId }, cleanMessage.instanceId);
             if (chatData && chatData.chatId) {
                 try {
                     await storage.upsertWhatsappChat(chatData);
-                    console.log(`✅ [${cleanMessage.instance_id}] Auto-created chat: ${cleanMessage.chat_id}`);
+                    console.log(`✅ [${cleanMessage.instanceId}] Auto-created chat: ${cleanMessage.chatId}`);
                 } catch (error) {
-                    console.error(`❌ [${cleanMessage.instance_id}] Error creating chat:`, error);
+                    console.error(`❌ [${cleanMessage.instanceId}] Error creating chat:`, error);
                 }
             }
         }
@@ -275,6 +276,7 @@ export const WebhookApiAdapter = {
     // --- Data Mapping Functions ---
 
     async mapApiPayloadToWhatsappMessage(rawMessage: any, instanceId: string): Promise<Omit<WhatsappMessages, 'created_at'> | null> {
+        console.log(`🔍 [${instanceId}] Raw message structure:`, JSON.stringify(rawMessage, null, 2));
         if (!rawMessage.key?.id || !rawMessage.key?.remoteJid) {
             console.warn(`Missing required fields - id: ${rawMessage.key?.id}, remoteJid: ${rawMessage.key?.remoteJid}`);
             return null;
@@ -290,24 +292,24 @@ export const WebhookApiAdapter = {
         };
 
         return {
-            message_id: rawMessage.key.id,
-            instance_id: instanceId,
-            chat_id: rawMessage.key.remoteJid,
-            sender_jid: rawMessage.key.participant || rawMessage.key.remoteJid,
-            from_me: rawMessage.key.fromMe || false,
-            message_type: getMessageType(rawMessage.messageType),
+            messageId: rawMessage.key.id,
+            instanceId: instanceId,
+            chatId: rawMessage.key.remoteJid,
+            senderJid: rawMessage.key.participant || rawMessage.key.remoteJid,
+            fromMe: rawMessage.key.fromMe || false,
+            messageType: getMessageType(rawMessage.messageType),
             content: this.extractMessageContent(rawMessage),
             timestamp: timestamp && typeof timestamp === 'number' ? new Date(timestamp * 1000) : new Date(),
-            quoted_message_id: rawMessage.message?.extendedTextMessage?.contextInfo?.quotedMessage?.key?.id,
-            is_forwarded: (rawMessage.message?.extendedTextMessage?.contextInfo?.forwardingScore || 0) > 0,
-            forwarding_score: rawMessage.message?.extendedTextMessage?.contextInfo?.forwardingScore || 0,
-            is_starred: rawMessage.starred || false,
-            is_edited: rawMessage.messageType === 'editedMessage',
-            last_edited_at: rawMessage.messageType === 'editedMessage' && timestamp && typeof timestamp === 'number'
+            quotedMessageId: rawMessage.message?.extendedTextMessage?.contextInfo?.quotedMessage?.key?.id,
+            isForwarded: (rawMessage.message?.extendedTextMessage?.contextInfo?.forwardingScore || 0) > 0,
+            forwardingScore: rawMessage.message?.extendedTextMessage?.contextInfo?.forwardingScore || 0,
+            isStarred: rawMessage.starred || false,
+            isEdited: rawMessage.messageType === 'editedMessage',
+            lastEditedAt: rawMessage.messageType === 'editedMessage' && timestamp && typeof timestamp === 'number'
                 ? new Date(timestamp * 1000)
                 : undefined,
-            source_platform: rawMessage.source,
-            raw_api_payload: rawMessage,
+            sourcePlatform: rawMessage.source,
+            rawApiPayload: rawMessage,
         };
     },
 
