@@ -415,10 +415,32 @@ export const WebhookController = {
      * Handles a reaction event.
      */
     async handleReaction(instanceId: string, reactionData: any, reactorJid: string) {
-        const reactionEmoji = reactionData.message.reactionMessage.text;
-        const targetMessageId = reactionData.message.reactionMessage.key.id;
+        const reactionMessage = reactionData.message.reactionMessage;
+        const reactionEmoji = reactionMessage.text;
+        const targetMessageId = reactionMessage.key.id;
+        const targetChatId = reactionMessage.key.remoteJid;
 
         console.log(`👍 Reaction '${reactionEmoji}' on message ${targetMessageId} by ${reactorJid}`);
+
+        // Store the reaction in the message_reactions table
+        const reactionRecord = {
+            messageId: targetMessageId,
+            instanceId: instanceId,
+            reactorJid: reactorJid,
+            reactionEmoji: reactionEmoji,
+            fromMe: reactionData.key.fromMe || false,
+            timestamp: new Date(reactionData.messageTimestamp * 1000 || Date.now())
+        };
+
+        try {
+            await storage.createWhatsappMessageReaction(reactionRecord);
+            console.log(`✅ [${instanceId}] Stored reaction: ${reactionEmoji} by ${reactorJid} on ${targetMessageId}`);
+        } catch (error) {
+            console.log(`❌ Error storing reaction:`, error);
+            console.log(`❌ Reaction record was:`, reactionRecord);
+        }
+
+        // Also trigger any configured actions
         await this.triggerAction(instanceId, 'reaction', reactionEmoji, { messageId: targetMessageId, reactorJid });
     },
 
