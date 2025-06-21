@@ -1,9 +1,10 @@
 import { ActionService } from './action-service';
 import { storage } from './storage';
+import { SseManager } from './sse-manager';
 import { 
-    whatsappMessages,
-    whatsappContacts, 
-    whatsappChats,
+    type WhatsappMessages,
+    type WhatsappContacts,
+    type WhatsappChats,
     type InsertWhatsappMessage,
     type InsertWhatsappContact,
     type InsertWhatsappChat,
@@ -12,34 +13,26 @@ import {
 
 /**
  * @class WhatsAppApiAdapter
- * @description The "Translator" layer. Its only job is to take raw API payloads
- * and map them into the clean, consistent data objects that our application uses internally.
- * It then passes these clean objects to the ActionService or StorageLayer.
+ * @description The "Translator" layer. Its only job is to take raw API payloads,
+ * map them into clean internal data objects, and then command the storage layer
+ * in the correct order to prevent data integrity errors.
  */
 export const WhatsAppApiAdapter = {
 
+    /**
+     * Main entry point for all webhook events.
+     */
     async processIncomingEvent(instanceId: string, event: any): Promise<void> {
         const { event: eventType, data, sender } = event;
         console.log(`📨 [${instanceId}] Translating event: ${eventType}`);
 
         switch (eventType) {
             case 'messages.upsert':
-                const messages = Array.isArray(data.messages) ? data.messages : [data];
-                for (const rawMessage of messages) {
-                    if (!rawMessage.key) continue;
-                    const cleanMessage = this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
-                    if (cleanMessage) {
-                        // Process message immediately without blocking operations
-                        ActionService.processNewMessage(cleanMessage);
-                    }
-                }
+                await this.handleMessageUpsert(instanceId, data, sender);
                 break;
-
             case 'messages.update':
-                 // This logic would be expanded to handle status updates properly
-                 console.log(`📝 Translating message update...`);
-                 break;
-
+                console.log(`📝 Translating message update...`);
+                break;
             case 'messages.reaction':
                 const reactions = Array.isArray(data.reactions) ? data.reactions : [data];
                 for (const rawReaction of reactions) {
@@ -49,40 +42,88 @@ export const WhatsAppApiAdapter = {
                     }
                 }
                 break;
-
             case 'contacts.upsert':
             case 'contacts.update':
                 const contacts = Array.isArray(data.contacts) ? data.contacts : Array.isArray(data) ? data : [data];
-                 for (const rawContact of contacts) {
+                for (const rawContact of contacts) {
                     const cleanContact = this.mapApiPayloadToWhatsappContact(rawContact, instanceId);
                     if(cleanContact) {
-                        // Non-blocking storage operation
                         storage.upsertWhatsappContact(cleanContact).catch(err => 
                             console.error('Contact upsert error:', err)
                         );
                     }
-                 }
+                }
                 break;
-            
             case 'chats.upsert':
             case 'chats.update':
                 const chats = Array.isArray(data) ? data : data.chats;
-                 if (!Array.isArray(chats)) break;
-                 for (const rawChat of chats) {
+                if (!Array.isArray(chats)) break;
+                for (const rawChat of chats) {
                     const cleanChat = this.mapApiPayloadToWhatsappChat(rawChat, instanceId);
                     if(cleanChat) {
-                        // Non-blocking storage operation
                         storage.upsertWhatsappChat(cleanChat).catch(err => 
                             console.error('Chat upsert error:', err)
                         );
                     }
-                 }
+                }
                 break;
-
-            // Add other event handlers here...
             default:
                 console.log(`⚠️ Unhandled event type in adapter: ${eventType}`);
         }
+    },
+
+    /**
+     * Handles new messages with a robust, sequential process to prevent race conditions.
+     */
+    async handleMessageUpsert(instanceId: string, data: any, sender?: string): Promise<void> {
+        const messages = Array.isArray(data.messages) ? data.messages : [data];
+        if (!messages[0]?.key) return;
+
+        for (const rawMessage of messages) {
+            try {
+                // 1. Map the raw payload to our clean internal object
+                const cleanMessage = this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
+                if (!cleanMessage) continue;
+
+                // 2. Proactively ensure dependencies exist before saving the message.
+                // This is the key to preventing foreign key constraint errors.
+                await this.ensureDependenciesForMessage(cleanMessage, rawMessage);
+                
+                // 3. Now it's safe to save the message itself.
+                const storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
+                console.log(`✅ [${instanceId}] Message stored: ${storedMessage.messageId}`);
+                
+                // 4. Notify frontend clients and process actions.
+                SseManager.notifyClientsOfNewMessage(storedMessage);
+                ActionService.processNewMessage(storedMessage);
+
+            } catch (error) {
+                console.error(`❌ Error processing message upsert for ${rawMessage.key?.id}:`, error);
+            }
+        }
+    },
+
+    /**
+     * Guarantees that the contact and chat related to a message exist in the DB.
+     * This is called BEFORE attempting to insert the message.
+     */
+    async ensureDependenciesForMessage(cleanMessage: InsertWhatsappMessage, rawMessage: any): Promise<void> {
+        // A. Ensure the SENDER contact record exists.
+        const senderContact = this.mapApiPayloadToWhatsappContact({
+            id: cleanMessage.senderJid,
+            pushName: rawMessage.pushName
+        }, cleanMessage.instanceId);
+        if (senderContact) await storage.upsertWhatsappContact(senderContact);
+
+        // B. Ensure the CHAT contact record exists (for groups, this is different from the sender).
+        if (cleanMessage.chatId.endsWith('@g.us')) {
+            const chatContact = this.mapApiPayloadToWhatsappContact({ id: cleanMessage.chatId }, cleanMessage.instanceId);
+            if (chatContact) await storage.upsertWhatsappContact(chatContact);
+        }
+
+        // C. Ensure the CHAT metadata record exists.
+        const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chatId }, cleanMessage.instanceId);
+        if (chatData) await storage.upsertWhatsappChat(chatData);
     },
     
 
@@ -154,23 +195,24 @@ export const WhatsAppApiAdapter = {
             lastMessageTimestamp: rawChat.conversationTimestamp ? new Date(rawChat.conversationTimestamp * 1000) : undefined,
         };
     },
-    
+
     mapApiPayloadToWhatsappReaction(rawReaction: any, instanceId: string): InsertWhatsappMessageReaction | null {
-        if (!rawReaction.messageId && !rawReaction.key?.id) return null;
+        if (!rawReaction.key?.id || !rawReaction.reaction) return null;
         
         return {
-            messageId: rawReaction.messageId || rawReaction.key?.id,
+            messageId: rawReaction.key.id,
             instanceId: instanceId,
-            reactorJid: rawReaction.reactorJid || rawReaction.key?.participant || rawReaction.key?.remoteJid,
-            reactionEmoji: rawReaction.reaction || rawReaction.reactionEmoji || '',
-            fromMe: rawReaction.fromMe || false,
-            timestamp: rawReaction.timestamp ? new Date(rawReaction.timestamp * 1000) : new Date()
+            reactorJid: rawReaction.key.participant || rawReaction.key.remoteJid,
+            reactionEmoji: rawReaction.reaction.text,
+            timestamp: rawReaction.reaction.senderTimestampMs ? new Date(rawReaction.reaction.senderTimestampMs) : new Date(),
         };
     },
-    
+
     extractMessageContent(message: any): string {
         const msg = message.message;
         if (!msg) return '';
         return msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.videoMessage?.caption || '';
+    }
+};
     }
 };

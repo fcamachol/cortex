@@ -14,25 +14,18 @@ import {
  */
 export const ActionService = {
 
-    async processNewMessage(cleanMessage: InsertWhatsappMessage): Promise<void> {
+    async processNewMessage(storedMessage: any): Promise<void> {
         try {
-            // Save message to database asynchronously without blocking
-            storage.upsertWhatsappMessage(cleanMessage).then(() => {
-                console.log(`✅ [${cleanMessage.instanceId}] Message stored: ${cleanMessage.messageId}`);
-            }).catch(error => {
-                console.error(`❌ Error storing message ${cleanMessage.messageId}:`, error);
-            });
-            
-            // Process business logic without waiting for database operations
-            if (cleanMessage.quotedMessageId) {
-                this.handleReplyToContextMessage(cleanMessage.instanceId, cleanMessage);
+            // Process business logic with the stored message
+            if (storedMessage.quotedMessageId) {
+                this.handleReplyToContextMessage(storedMessage.instanceId, storedMessage);
             }
 
-            if (cleanMessage.content) {
-                this.processHashtagTriggers(cleanMessage);
+            if (storedMessage.content) {
+                this.processHashtagTriggers(storedMessage);
             }
         } catch (error) {
-            console.error(`❌ Error processing new message ${cleanMessage.messageId}:`, error);
+            console.error(`❌ Error processing new message ${storedMessage.messageId}:`, error);
         }
     },
 
