@@ -554,14 +554,8 @@ export const WebhookController = {
             const editRecord = {
                 messageId,
                 instanceId,
-                originalContent,
-                editedContent,
-                editTimestamp: new Date(editData.editTimestamp * 1000 || Date.now()),
-                metadata: {
-                    remoteJid: editData.remoteJid,
-                    fromMe: editData.fromMe || false,
-                    participant: editData.participant
-                }
+                oldContent: originalContent,
+                editTimestamp: new Date(editData.editTimestamp * 1000 || Date.now())
             };
             
             await storage.createWhatsappMessageEditHistory(editRecord);
