@@ -1194,8 +1194,30 @@ export class DatabaseStorage implements IStorage {
 
   async getTasks(): Promise<any[]> {
     try {
-      const taskResults = await db.select().from(tasks).orderBy(tasks.createdAt);
-      return taskResults;
+      const result = await db.execute(sql`
+        SELECT 
+          task_id,
+          instance_id,
+          title,
+          description,
+          status,
+          priority,
+          due_date,
+          parent_task_id,
+          triggering_message_id,
+          assigned_to_user_id,
+          related_chat_jid,
+          created_by_user_id,
+          created_at,
+          updated_at,
+          space_id,
+          project_id
+        FROM crm.tasks 
+        ORDER BY created_at DESC
+      `);
+      
+      console.log('Raw task query result:', result.rows?.length, 'tasks found');
+      return result.rows || [];
     } catch (error) {
       console.error('Error fetching tasks:', error);
       return [];
