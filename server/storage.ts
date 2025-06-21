@@ -90,6 +90,7 @@ export interface IStorage {
   createWhatsappContact(contact: InsertWhatsappContact): Promise<WhatsappContact>;
   updateWhatsappContact(userId: string, instanceId: string, jid: string, contact: Partial<InsertWhatsappContact>): Promise<WhatsappContact>;
   deleteWhatsappContact(userId: string, instanceId: string, jid: string): Promise<void>;
+  upsertWhatsappContact(contact: InsertWhatsappContact): Promise<WhatsappContact>;
 
   // WhatsApp chats
   getWhatsappChats(userId: string, instanceId?: string): Promise<WhatsappChat[]>;
@@ -98,6 +99,7 @@ export interface IStorage {
   updateWhatsappChat(userId: string, instanceId: string, chatId: string, chat: Partial<InsertWhatsappChat>): Promise<WhatsappChat>;
   deleteWhatsappChat(userId: string, instanceId: string, chatId: string): Promise<void>;
   getConversationsWithLatestMessages(userId: string): Promise<any[]>;
+  upsertWhatsappChat(chat: InsertWhatsappChat): Promise<WhatsappChat>;
 
   // WhatsApp messages
   getWhatsappMessages(userId: string, instanceId: string, chatId: string, limit?: number): Promise<WhatsappMessage[]>;
@@ -105,6 +107,10 @@ export interface IStorage {
   createWhatsappMessage(message: InsertWhatsappMessage): Promise<WhatsappMessage>;
   updateWhatsappMessage(userId: string, instanceId: string, messageId: string, message: Partial<InsertWhatsappMessage>): Promise<WhatsappMessage>;
   deleteWhatsappMessage(userId: string, instanceId: string, messageId: string): Promise<void>;
+  upsertWhatsappMessage(message: InsertWhatsappMessage): Promise<WhatsappMessage>;
+  getWhatsappMessageById(messageId: string, instanceId: string): Promise<WhatsappMessage | undefined>;
+  upsertWhatsappMessageReaction(reaction: InsertWhatsappMessageReaction): Promise<WhatsappMessageReaction>;
+  getActionRulesByTrigger(triggerType: string, triggerValue: string, instanceId: string): Promise<any[]>;
 
   // WhatsApp message edit history
   createWhatsappMessageEditHistory(editHistory: InsertWhatsappMessageEditHistory): Promise<WhatsappMessageEditHistory>;
@@ -421,6 +427,26 @@ export class DatabaseStorage implements IStorage {
       ));
   }
 
+  async upsertWhatsappContact(contact: InsertWhatsappContact): Promise<WhatsappContact> {
+    const [upsertedContact] = await db
+      .insert(whatsappContacts)
+      .values(contact)
+      .onConflictDoUpdate({
+        target: [whatsappContacts.jid, whatsappContacts.instanceId],
+        set: {
+          pushName: contact.pushName,
+          verifiedName: contact.verifiedName,
+          profilePictureUrl: contact.profilePictureUrl,
+          isBusiness: contact.isBusiness,
+          isMe: contact.isMe,
+          isBlocked: contact.isBlocked,
+          lastUpdatedAt: new Date()
+        }
+      })
+      .returning();
+    return upsertedContact;
+  }
+
   // WhatsApp chats
   async getWhatsappChats(userId: string, instanceId?: string): Promise<WhatsappChat[]> {
     const query = db
@@ -500,6 +526,27 @@ export class DatabaseStorage implements IStorage {
         eq(whatsappChats.instanceId, instanceId),
         eq(whatsappChats.chatId, chatId)
       ));
+  }
+
+  async upsertWhatsappChat(chat: InsertWhatsappChat): Promise<WhatsappChat> {
+    const [upsertedChat] = await db
+      .insert(whatsappChats)
+      .values(chat)
+      .onConflictDoUpdate({
+        target: [whatsappChats.chatId, whatsappChats.instanceId],
+        set: {
+          type: chat.type,
+          unreadCount: chat.unreadCount,
+          isArchived: chat.isArchived,
+          isPinned: chat.isPinned,
+          isMuted: chat.isMuted,
+          muteEndTimestamp: chat.muteEndTimestamp,
+          lastMessageTimestamp: chat.lastMessageTimestamp,
+          updatedAt: new Date()
+        }
+      })
+      .returning();
+    return upsertedChat;
   }
 
   async getConversationsWithLatestMessages(userId: string): Promise<any[]> {
