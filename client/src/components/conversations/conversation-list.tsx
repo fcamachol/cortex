@@ -49,14 +49,19 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   });
 
   // Fetch recent messages to show latest message per conversation
-  const { data: messages = [] } = useQuery<any[]>({
-    queryKey: [`/api/whatsapp/chat-messages`],
-    queryFn: () => fetch(`/api/whatsapp/chat-messages?userId=${userId}&limit=100`).then(res => res.json()),
+  const { data: messagesResponse = [] } = useQuery<any[]>({
+    queryKey: [`/api/whatsapp/conversations/${userId}`],
+    queryFn: () => fetch(`/api/whatsapp/conversations/${userId}`).then(res => res.json()),
     refetchInterval: 3000,
   });
 
+  // Ensure messages is always an array
+  const messages = Array.isArray(messagesResponse) ? messagesResponse : [];
+
   // Helper function to get latest message for a conversation
   const getLatestMessage = (chatId: string) => {
+    if (!Array.isArray(messages) || messages.length === 0) return null;
+    
     return messages
       .filter((msg: any) => msg.chatId === chatId)
       .sort((a: any, b: any) => new Date(b.timestamp || b.createdAt).getTime() - new Date(a.timestamp || a.createdAt).getTime())[0];
