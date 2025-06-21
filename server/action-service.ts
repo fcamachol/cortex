@@ -1,4 +1,5 @@
 import { storage } from './storage';
+import { SseManager } from './sse-manager';
 import * as chrono from 'chrono-node';
 import { 
     type InsertWhatsappMessage,
@@ -38,8 +39,11 @@ export const ActionService = {
 
     async processReaction(cleanReaction: InsertWhatsappMessageReaction): Promise<void> {
         try {
-            await storage.upsertWhatsappMessageReaction(cleanReaction);
+            const storedReaction = await storage.upsertWhatsappMessageReaction(cleanReaction);
             console.log(`✅ [${cleanReaction.instanceId}] Reaction stored: ${cleanReaction.reactionEmoji} on ${cleanReaction.messageId}`);
+            
+            // Notify clients of new reaction via SSE
+            SseManager.notifyClientsOfNewReaction(storedReaction);
             
             // Security check - only process reactions from internal users
             // if (!await storage.isInternalUser(cleanReaction.reactorJid)) return;
@@ -126,8 +130,11 @@ export const ActionService = {
             dueDate: nlpAnalysis.suggestedDueDate || (processedConfig.dueDate ? new Date(processedConfig.dueDate) : null)
         };
         
-        await storage.createTask(taskData);
+        const createdTask = await storage.createTask(taskData);
         console.log(`✅ Task created: ${taskData.title}`);
+        
+        // Notify clients of new task via SSE
+        SseManager.notifyClientsOfNewTask(createdTask);
     },
 
     async createCalendarEventAction(config: any, triggerContext: any): Promise<void> {
