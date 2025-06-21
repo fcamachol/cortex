@@ -1,0 +1,60 @@
+import { storage } from './storage';
+import * as chrono from 'chrono-node';
+// Your SSE notification logic would also be called from here
+// import { notifyClientsOfNewMessage } from './sse-manager';
+
+/**
+ * @class ActionService
+ * @description The "Kitchen / Brain" of the application. It receives clean data
+ * objects and orchestrates the complex business logic, such as checking rules,
+ * running NLP, calling external APIs, and commanding the storage layer.
+ */
+export const ActionService = {
+
+    async processNewMessage(cleanMessage: any): Promise<void> {
+        // First, save the message itself to the database
+        await storage.upsertWhatsappMessage(cleanMessage);
+        console.log(`✅ [${cleanMessage.instance_id}] Message stored: ${cleanMessage.message_id}`);
+        
+        // Notify any connected front-end clients about the new message
+        // notifyClientsOfNewMessage(cleanMessage);
+
+        // Then, check if this message is a reply that updates an existing task/event
+        if (cleanMessage.quoted_message_id) {
+            await this.handleReplyToContextMessage(cleanMessage.instance_id, cleanMessage);
+        }
+
+        // Then, check for hashtag-based triggers
+        // ... hashtag trigger logic would go here ...
+    },
+
+    async processReaction(cleanReaction: any): Promise<void> {
+        await storage.upsertWhatsappReaction(cleanReaction);
+        
+        // Security check
+        // if (!await storage.isInternalUser(cleanReaction.reactor_jid)) return;
+        
+        // Now, trigger the action logic
+        await this.triggerAction(cleanReaction.instance_id, 'reaction', cleanReaction.reaction_emoji, {
+            messageId: cleanReaction.message_id,
+            reactorJid: cleanReaction.reactor_jid,
+        });
+    },
+
+    async triggerAction(instanceId: string, triggerType: string, triggerValue: string, context: any) {
+        // This function contains the full logic from nlp_context_logic
+        // 1. Find rule in `actions.action_rules`
+        // 2. Check for existing tasks
+        // 3. Create new task/subtask or update existing task
+        // 4. Call NLP parser
+        // 5. Call Google Calendar API
+        // 6. Save results via storage layer
+        console.log(`🧠 ActionService processing trigger: ${triggerType} -> ${triggerValue}`);
+    },
+
+    async handleReplyToContextMessage(instanceId: string, replyMessage: any) {
+        // ... logic to check if quoted message is linked to a task/event
+        // and update it with NLP data from the reply.
+        console.log(`💡 ActionService processing reply to message: ${replyMessage.quoted_message_id}`);
+    }
+};
