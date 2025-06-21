@@ -1394,10 +1394,10 @@ export class DatabaseStorage implements IStorage {
           ${taskData.description || ''},
           ${taskData.status || 'pending'},
           ${taskData.priority || 'medium'},
-          ${taskData.dueDate || null},
-          ${taskData.assignedToUserId || null},
-          ${taskData.conversationJid || null},
-          ${taskData.createdByUserId || null},
+          ${taskData.dueDate},
+          ${taskData.assignedToUserId},
+          ${taskData.conversationJid},
+          ${taskData.createdByUserId},
           NOW(),
           NOW()
         ) RETURNING *
