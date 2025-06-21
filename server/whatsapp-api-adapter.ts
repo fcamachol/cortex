@@ -27,10 +27,9 @@ export const WhatsAppApiAdapter = {
                 const messages = Array.isArray(data.messages) ? data.messages : [data];
                 for (const rawMessage of messages) {
                     if (!rawMessage.key) continue;
-                    // First ensure contact/chat exist to prevent foreign key errors
-                    await this.ensureContactAndChatExist(rawMessage, instanceId);
                     const cleanMessage = this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
                     if (cleanMessage) {
+                        // Process message immediately without blocking operations
                         ActionService.processNewMessage(cleanMessage);
                     }
                 }
@@ -57,7 +56,10 @@ export const WhatsAppApiAdapter = {
                  for (const rawContact of contacts) {
                     const cleanContact = this.mapApiPayloadToWhatsappContact(rawContact, instanceId);
                     if(cleanContact) {
-                        storage.upsertWhatsappContact(cleanContact);
+                        // Non-blocking storage operation
+                        storage.upsertWhatsappContact(cleanContact).catch(err => 
+                            console.error('Contact upsert error:', err)
+                        );
                     }
                  }
                 break;
@@ -69,7 +71,10 @@ export const WhatsAppApiAdapter = {
                  for (const rawChat of chats) {
                     const cleanChat = this.mapApiPayloadToWhatsappChat(rawChat, instanceId);
                     if(cleanChat) {
-                        storage.upsertWhatsappChat(cleanChat);
+                        // Non-blocking storage operation
+                        storage.upsertWhatsappChat(cleanChat).catch(err => 
+                            console.error('Chat upsert error:', err)
+                        );
                     }
                  }
                 break;
@@ -80,22 +85,7 @@ export const WhatsAppApiAdapter = {
         }
     },
     
-    async ensureContactAndChatExist(rawMessage: any, instanceId: string) {
-        const senderJid = rawMessage.key.participant || rawMessage.key.remoteJid;
-        const chatId = rawMessage.key.remoteJid;
-        if (!senderJid || !chatId) return;
-        
-        const senderContact = this.mapApiPayloadToWhatsappContact({ id: senderJid, pushName: rawMessage.pushName }, instanceId);
-        if(senderContact) await storage.upsertWhatsappContact(senderContact);
-        
-        if (chatId.endsWith('@g.us') && chatId !== senderJid) {
-             const groupContact = this.mapApiPayloadToWhatsappContact({ id: chatId }, instanceId);
-             if(groupContact) await storage.upsertWhatsappContact(groupContact);
-        }
 
-        const chatData = this.mapApiPayloadToWhatsappChat({ id: chatId, name: rawMessage.pushName }, instanceId);
-        if(chatData) await storage.upsertWhatsappChat(chatData);
-    },
 
     // --- Data Mapping Functions ---
 

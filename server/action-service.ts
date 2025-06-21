@@ -16,21 +16,20 @@ export const ActionService = {
 
     async processNewMessage(cleanMessage: InsertWhatsappMessage): Promise<void> {
         try {
-            // First, save the message itself to the database
-            await storage.upsertWhatsappMessage(cleanMessage);
-            console.log(`✅ [${cleanMessage.instanceId}] Message stored: ${cleanMessage.messageId}`);
+            // Save message to database asynchronously without blocking
+            storage.upsertWhatsappMessage(cleanMessage).then(() => {
+                console.log(`✅ [${cleanMessage.instanceId}] Message stored: ${cleanMessage.messageId}`);
+            }).catch(error => {
+                console.error(`❌ Error storing message ${cleanMessage.messageId}:`, error);
+            });
             
-            // Notify any connected front-end clients about the new message
-            // notifyClientsOfNewMessage(cleanMessage);
-
-            // Then, check if this message is a reply that updates an existing task/event
+            // Process business logic without waiting for database operations
             if (cleanMessage.quotedMessageId) {
-                await this.handleReplyToContextMessage(cleanMessage.instanceId, cleanMessage);
+                this.handleReplyToContextMessage(cleanMessage.instanceId, cleanMessage);
             }
 
-            // Check for hashtag-based triggers in message content
             if (cleanMessage.content) {
-                await this.processHashtagTriggers(cleanMessage);
+                this.processHashtagTriggers(cleanMessage);
             }
         } catch (error) {
             console.error(`❌ Error processing new message ${cleanMessage.messageId}:`, error);
@@ -39,11 +38,14 @@ export const ActionService = {
 
     async processReaction(cleanReaction: InsertWhatsappMessageReaction): Promise<void> {
         try {
-            const storedReaction = await storage.upsertWhatsappMessageReaction(cleanReaction);
-            console.log(`✅ [${cleanReaction.instanceId}] Reaction stored: ${cleanReaction.reactionEmoji} on ${cleanReaction.messageId}`);
-            
-            // Notify clients of new reaction via SSE
-            SseManager.notifyClientsOfNewReaction(storedReaction);
+            // Store reaction asynchronously without blocking
+            storage.upsertWhatsappMessageReaction(cleanReaction).then((storedReaction) => {
+                console.log(`✅ [${cleanReaction.instanceId}] Reaction stored: ${cleanReaction.reactionEmoji} on ${cleanReaction.messageId}`);
+                // Notify clients of new reaction via SSE
+                SseManager.notifyClientsOfNewReaction(storedReaction);
+            }).catch(error => {
+                console.error(`❌ Error storing reaction:`, error);
+            });
             
             // Security check - only process reactions from internal users
             // if (!await storage.isInternalUser(cleanReaction.reactorJid)) return;
