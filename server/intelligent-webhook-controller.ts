@@ -430,12 +430,27 @@ export const WebhookController = {
     async handleChatsUpsert(instanceId: string, data: any) {
         console.log(`💬 Processing chats upsert for instance ${instanceId}:`, data);
         
-        if (!data || !Array.isArray(data)) {
+        // Extract chat data from nested Evolution API structure
+        let chats = [];
+        if (data && data.data && Array.isArray(data.data)) {
+            chats = data.data;
+        } else if (Array.isArray(data)) {
+            chats = data;
+        } else if (data && data.data && !Array.isArray(data.data)) {
+            chats = [data.data];
+        } else if (data && (data.remoteJid || data.id)) {
+            chats = [data];
+        }
+        
+        console.log(`🔍 Extracted ${chats.length} chats from payload`);
+        
+        if (chats.length === 0) {
             console.log('⚠️ No valid chat data found in webhook payload');
+            console.log('🔍 Available data keys:', data ? Object.keys(data) : 'none');
             return;
         }
         
-        for (const rawChat of data) {
+        for (const rawChat of chats) {
             if (!rawChat.id && !rawChat.remoteJid) continue;
             
             const chatId = rawChat.id || rawChat.remoteJid;
