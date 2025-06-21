@@ -127,9 +127,7 @@ export const WebhookController = {
                     messageData = Array.isArray(data.data) ? data.data[0] : data.data;
                 }
                 
-                // Debug reaction detection
-                console.log(`🔍 Checking for reaction: hasKey=${!!messageData.key}, hasMessage=${!!messageData.message}, hasReactionMessage=${!!messageData.message?.reactionMessage}`);
-                
+
                 // Check for reactions first
                 if (messageData.key && messageData.message?.reactionMessage) {
                     console.log(`🎯 Detected reaction in messages.upsert`);
