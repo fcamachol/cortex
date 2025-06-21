@@ -391,7 +391,7 @@ export const WebhookController = {
         for (const rawContact of contacts) {
             try {
                 // Extract contact JID from different possible fields
-                const jid = rawContact.id || rawContact.jid || rawContact.remoteJid;
+                const jid = rawContact.remoteJid || rawContact.id || rawContact.jid;
                 if (!jid) {
                     console.log('⚠️ Contact missing required JID');
                     continue;
