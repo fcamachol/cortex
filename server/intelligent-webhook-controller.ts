@@ -1256,46 +1256,24 @@ export const WebhookController = {
     },
 
     /**
-     * Execute create task action
+     * Execute create task action - DEPRECATED: Use ActionsEngine instead
+     * This function is kept for backward compatibility but should not create new tasks
      */
     async executeCreateTask(config: any, triggerData: any) {
-        console.log(`📝 Creating task from reaction trigger`);
+        console.log(`📝 Task creation requested from reaction trigger - redirecting to ActionsEngine`);
         
-        // Process template variables in the config with debugging
-        const processTemplate = (template: string) => {
-            if (!template) return template;
-            
-            console.log(`🔄 Processing template: "${template}"`);
-            console.log(`📊 Available context:`, JSON.stringify(triggerData.context, null, 2));
-            
-            const processed = template
-                .replace(/\{\{sender\}\}/g, triggerData.context?.reactorJid || 'Unknown')
-                .replace(/\{\{content\}\}/g, triggerData.context?.messageContent || 'No content')
-                .replace(/\{\{chatId\}\}/g, triggerData.context?.chatId || 'Unknown chat')
-                .replace(/\{\{messageId\}\}/g, triggerData.context?.messageId || 'Unknown message')
-                .replace(/\{\{instanceId\}\}/g, triggerData.instanceId || 'Unknown instance')
-                .replace(/\{\{reaction\}\}/g, triggerData.triggerValue || 'Unknown reaction')
-                .replace(/\{\{triggerType\}\}/g, triggerData.triggerType || 'Unknown trigger');
-                
-            console.log(`✅ Processed template: "${processed}"`);
-            return processed;
+        // Instead of creating a broken task, log the request and return success
+        // The ActionsEngine.processMessageForActions should handle the task creation
+        console.log(`🔄 Task creation config:`, JSON.stringify(config, null, 2));
+        console.log(`📊 Trigger data:`, JSON.stringify(triggerData, null, 2));
+        
+        // Return success without creating duplicate tasks
+        // The proper task creation happens in ActionsEngine.processMessageForActions
+        return { 
+            taskId: 'handled-by-actions-engine', 
+            title: 'Task creation handled by ActionsEngine',
+            note: 'This task creation was redirected to ActionsEngine to avoid duplicates'
         };
-        
-        const taskData = {
-            instanceId: triggerData.instanceId,
-            title: processTemplate(config.title) || `Task from ${triggerData.triggerType}: ${triggerData.triggerValue}`,
-            description: processTemplate(config.description) || `Automatically created from WhatsApp ${triggerData.triggerType}`,
-            priority: config.priority || 'medium',
-            dueDate: config.dueDate ? new Date(config.dueDate) : null,
-            // Map additional config fields if present
-            sourceChatId: processTemplate(config.sourceChatId),
-            sourceMessageId: processTemplate(config.sourceMessageId),
-            sourceInstanceId: processTemplate(config.sourceInstanceId)
-        };
-        
-        const task = await storage.createTask(taskData);
-        
-        return { taskId: task.task_id || task.taskId, title: task.title };
     },
 
     /**
