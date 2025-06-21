@@ -1256,6 +1256,19 @@ export class DatabaseStorage implements IStorage {
       console.log('Query result type:', typeof result);
       console.log('Query result structure:', Object.keys(result));
       
+      // Debug: Check first row with related_chat_jid
+      if (result.rows && result.rows.length > 0) {
+        const taskWithJid = result.rows.find((row: any) => row.related_chat_jid);
+        if (taskWithJid) {
+          console.log('Sample task with JID:', {
+            task_id: taskWithJid.task_id,
+            title: taskWithJid.title,
+            related_chat_jid: taskWithJid.related_chat_jid,
+            jid_type: typeof taskWithJid.related_chat_jid
+          });
+        }
+      }
+      
       if (result.rows && Array.isArray(result.rows)) {
         return result.rows;
       } else if (Array.isArray(result)) {
