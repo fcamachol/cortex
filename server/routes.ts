@@ -6,30 +6,7 @@ import { eq } from 'drizzle-orm';
 import { appUsers } from '../shared/schema';
 import { nanoid } from 'nanoid';
 import { WebhookController } from './webhook-controller';
-
-// Server-Sent Events connections map
-const sseClients = new Map<string, Response>();
-
-function notifyClientsOfNewMessage(messageRecord: any) {
-  const data = JSON.stringify({
-    type: 'new_message',
-    message: messageRecord
-  });
-  
-  sseClients.forEach((client, clientId) => {
-    try {
-      client.write(`data: ${data}\n\n`);
-    } catch (error) {
-      console.error(`Error sending SSE to client ${clientId}:`, error);
-      sseClients.delete(clientId);
-    }
-  });
-  
-  console.log(`📡 Notified ${sseClients.size} connected clients of new message`);
-}
-
-// Export the notification function for use by webhook controller
-export { notifyClientsOfNewMessage };
+import { SseManager } from './sse-manager';
 
 function formatToE164(phoneNumber: string): string {
   let cleaned = phoneNumber.replace(/\D/g, '');
@@ -81,35 +58,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // Server-Sent Events endpoint for real-time updates
-  app.get('/api/events/messages', (req: Request, res: Response) => {
-    const clientId = nanoid();
-    
-    // Set SSE headers
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Cache-Control'
-    });
-
-    // Send initial connection message
-    res.write(`data: ${JSON.stringify({ type: 'connected', clientId })}\n\n`);
-
-    // Store connection
-    sseConnections.set(clientId, res);
-    console.log(`📡 New SSE client connected: ${clientId} (${sseConnections.size} total)`);
-
-    // Handle client disconnect
-    req.on('close', () => {
-      sseConnections.delete(clientId);
-      console.log(`📡 SSE client disconnected: ${clientId} (${sseConnections.size} remaining)`);
-    });
-
-    req.on('error', () => {
-      sseConnections.delete(clientId);
-    });
-  });
+  app.get('/api/events', SseManager.handleNewConnection);
 
   // Authentication routes
   app.post('/api/auth/signup', async (req: Request, res: Response) => {
@@ -563,32 +512,8 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Server-Sent Events for real-time message updates
-  app.get('/api/whatsapp/messages/stream', (req: Request, res: Response) => {
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Cache-Control'
-    });
-
-    // Send initial connection confirmation
-    res.write('data: {"type":"connected"}\n\n');
-
-    // Add client to SSE connections
-    const clientId = Date.now().toString();
-    sseClients.set(clientId, res);
-
-    // Handle client disconnect
-    req.on('close', () => {
-      sseClients.delete(clientId);
-    });
-
-    req.on('aborted', () => {
-      sseClients.delete(clientId);
-    });
-  });
+  // Legacy SSE route - redirect to main events endpoint
+  app.get('/api/whatsapp/messages/stream', SseManager.handleNewConnection);
 
   // WhatsApp webhook handlers - Use the new layered webhook controller
   app.post('/api/whatsapp/webhook/:instanceName', async (req: Request, res: Response) => {

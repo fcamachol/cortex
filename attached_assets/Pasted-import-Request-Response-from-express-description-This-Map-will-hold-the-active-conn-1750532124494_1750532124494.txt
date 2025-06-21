@@ -1,0 +1,92 @@
+import { Request, Response } from 'express';
+
+/**
+ * @description This Map will hold the active connections to our frontend clients.
+ * The key is a unique client ID, and the value is the Express Response object.
+ */
+const sseConnections = new Map<string, Response>();
+
+/**
+ * @class SseManager
+ * @description Manages real-time updates pushed from the server to the client
+ * using Server-Sent Events (SSE). This replaces inefficient polling.
+ */
+export const SseManager = {
+
+    /**
+     * Handles a new client connecting to the real-time event stream.
+     * It sets the necessary headers and stores the connection.
+     */
+    handleNewConnection(req: Request, res: Response) {
+        // Set headers for SSE connection
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.flushHeaders(); // Flush the headers to establish the connection
+
+        const clientId = Date.now().toString() + Math.random().toString(36).substring(2);
+        sseConnections.set(clientId, res);
+        console.log(`📡 SSE Client connected: ${clientId}`);
+
+        // Send a welcome message
+        res.write(`data: ${JSON.stringify({ type: 'connected', message: 'Welcome to the real-time event stream!' })}\n\n`);
+
+        // Remove the client from the map when they disconnect
+        req.on('close', () => {
+            sseConnections.delete(clientId);
+            console.log(`🔌 SSE Client disconnected: ${clientId}`);
+        });
+    },
+
+    /**
+     * Pushes a new WhatsApp message to all connected clients.
+     * This function should be called by your ActionService after a message is saved.
+     * @param messageRecord - The clean message object to send to the frontend.
+     */
+    notifyClientsOfNewMessage(messageRecord: any) {
+        if (sseConnections.size === 0) {
+            return; // No clients to notify
+        }
+        
+        console.log(`📡 Notifying ${sseConnections.size} connected clients of new message`);
+        
+        const messageData = JSON.stringify({
+            type: 'new_message',
+            payload: messageRecord
+        });
+
+        // Send the event to all connected clients
+        for (const [clientId, res] of sseConnections.entries()) {
+            try {
+                res.write(`data: ${messageData}\n\n`);
+            } catch (error) {
+                console.error(`📡 Error sending to client ${clientId}:`, error);
+                // Remove broken connection
+                sseConnections.delete(clientId);
+            }
+        }
+    }
+};
+
+/**
+ * HOW TO USE THIS IN YOUR APPLICATION:
+ *
+ * 1. In your main server file (e.g., `index.ts`):
+ * - import { SseManager } from './sse-manager';
+ * - Add the route for clients to connect:
+ * `app.get('/api/events', SseManager.handleNewConnection);`
+ *
+ * 2. In your `ActionService.ts` file:
+ * - import { SseManager } from './sse-manager';
+ * - After a new message is successfully saved to the database, call the notification function:
+ * `await storage.upsertWhatsappMessage(cleanMessage);`
+ * `SseManager.notifyClientsOfNewMessage(cleanMessage);`
+ *
+ * 3. In your Frontend (e.g., a React component):
+ * - Use the `EventSource` API to connect to your backend.
+ * `const eventSource = new EventSource('/api/events');`
+ * `eventSource.onmessage = (event) => {`
+ * `  const data = JSON.parse(event.data);`
+ * `  if (data.type === 'new_message') { ... update your state ... }`
+ * `};`
+ */
