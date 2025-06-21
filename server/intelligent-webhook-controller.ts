@@ -253,14 +253,23 @@ export const WebhookController = {
      * Handles message updates (status changes, reactions, etc.)
      */
     async handleMessageUpdate(instanceId: string, data: any) {
-        console.log(`📝 Processing message update for instance ${instanceId}`);
+        console.log(`📝 Processing message update for instance ${instanceId}`, JSON.stringify(data, null, 2));
         
-        if (!data || !data.update) {
+        // Evolution API can send updates in different formats
+        let updates = [];
+        
+        if (data.update) {
+            updates = Array.isArray(data.update) ? data.update : [data.update];
+        } else if (data.key && data.status) {
+            // Direct update format
+            updates = [data];
+        } else if (Array.isArray(data)) {
+            // Array of updates
+            updates = data;
+        } else {
             console.log('⚠️ No valid message update data found in webhook payload');
             return;
         }
-
-        const updates = Array.isArray(data.update) ? data.update : [data.update];
         
         for (const update of updates) {
             if (!update.key?.id || !update.status) continue;
