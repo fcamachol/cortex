@@ -121,17 +121,37 @@ export const WebhookController = {
 
         switch (eventType) {
             case 'messages.upsert':
+                // Extract message data from nested Evolution API structure
+                let messageData = data;
+                if (data.data && !data.key) {
+                    messageData = Array.isArray(data.data) ? data.data[0] : data.data;
+                }
+                
+                // Debug reaction detection
+                console.log(`🔍 Checking for reaction: hasKey=${!!messageData.key}, hasMessage=${!!messageData.message}, hasReactionMessage=${!!messageData.message?.reactionMessage}`);
+                
                 // Check for reactions first
-                if (data.key && data.message?.reactionMessage) { // Reaction payloads are not in an array
-                    await this.handleReaction(instanceId, data, sender || data.key.participant);
+                if (messageData.key && messageData.message?.reactionMessage) {
+                    console.log(`🎯 Detected reaction in messages.upsert`);
+                    await this.handleReaction(instanceId, messageData, sender || messageData.key.participant);
                 } else {
                     await this.handleMessageUpsert(instanceId, data);
                 }
                 break;
             case 'messages.update':
-                 // This might contain reactions or status updates
-                 if (data.updates && data.updates[0]?.message?.reactionMessage) {
-                    await this.handleReaction(instanceId, data.updates[0], sender);
+                // Extract update data from nested Evolution API structure
+                let updateData = data;
+                if (data.data && !data.updates && !data.messageId) {
+                    updateData = data.data;
+                }
+                
+                // Check for reactions in updates
+                if (updateData.updates && updateData.updates[0]?.message?.reactionMessage) {
+                    console.log(`🎯 Detected reaction in messages.update (updates array)`);
+                    await this.handleReaction(instanceId, updateData.updates[0], sender);
+                } else if (updateData.message?.reactionMessage) {
+                    console.log(`🎯 Detected direct reaction in messages.update`);
+                    await this.handleReaction(instanceId, updateData, sender || updateData.key?.participant);
                 } else {
                     await this.handleMessageUpdate(instanceId, data);
                 }
