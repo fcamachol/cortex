@@ -184,6 +184,12 @@ export interface IStorage {
   getActionsInstances(): Promise<any[]>;
 
   // Action Rules methods
+  getActionRules(userId: string): Promise<any[]>;
+  getActionRule(userId: string, ruleId: string): Promise<any>;
+  createActionRule(rule: any): Promise<any>;
+  updateActionRule(userId: string, ruleId: string, rule: any): Promise<any>;
+  deleteActionRule(userId: string, ruleId: string): Promise<void>;
+  getActionTemplates(): Promise<any[]>;
   getMatchingActionRules(triggerType: string, triggerValue: string, instanceId: string): Promise<any[]>;
   getActionExecutionsToday(ruleId: string): Promise<number>;
   createActionExecution(execution: any): Promise<any>;
@@ -1803,6 +1809,106 @@ export class DatabaseStorage implements IStorage {
         timestamp: reactionData.timestamp,
         fromMe: reactionData.fromMe
       };
+    }
+  }
+
+  // Action Rules methods
+  async getActionRules(userId: string): Promise<any[]> {
+    try {
+      const result = await db.select().from(actionRules)
+        .where(eq(actionRules.userId, userId))
+        .orderBy(desc(actionRules.createdAt));
+      return result;
+    } catch (error) {
+      console.error('Error fetching action rules:', error);
+      return [];
+    }
+  }
+
+  async getActionRule(userId: string, ruleId: string): Promise<any> {
+    try {
+      const [rule] = await db.select().from(actionRules)
+        .where(and(
+          eq(actionRules.userId, userId),
+          eq(actionRules.ruleId, ruleId)
+        ));
+      return rule;
+    } catch (error) {
+      console.error('Error fetching action rule:', error);
+      return null;
+    }
+  }
+
+  async createActionRule(rule: any): Promise<any> {
+    try {
+      const [newRule] = await db.insert(actionRules).values(rule).returning();
+      return newRule;
+    } catch (error) {
+      console.error('Error creating action rule:', error);
+      throw error;
+    }
+  }
+
+  async updateActionRule(userId: string, ruleId: string, rule: any): Promise<any> {
+    try {
+      const [updatedRule] = await db.update(actionRules)
+        .set({ ...rule, updatedAt: new Date() })
+        .where(and(
+          eq(actionRules.userId, userId),
+          eq(actionRules.ruleId, ruleId)
+        ))
+        .returning();
+      return updatedRule;
+    } catch (error) {
+      console.error('Error updating action rule:', error);
+      throw error;
+    }
+  }
+
+  async deleteActionRule(userId: string, ruleId: string): Promise<void> {
+    try {
+      await db.delete(actionRules).where(and(
+        eq(actionRules.userId, userId),
+        eq(actionRules.ruleId, ruleId)
+      ));
+    } catch (error) {
+      console.error('Error deleting action rule:', error);
+      throw error;
+    }
+  }
+
+  async getActionTemplates(): Promise<any[]> {
+    try {
+      // Return some basic templates for now since the action templates table might not have data
+      return [
+        {
+          templateId: '1',
+          templateName: 'Create Task from Hashtag',
+          description: 'Automatically create a task when a message contains #task',
+          category: 'productivity',
+          triggerType: 'hashtag',
+          actionType: 'create_task',
+          defaultConfig: {
+            triggerConditions: { hashtag: 'task' },
+            actionConfig: { priority: 'medium' }
+          }
+        },
+        {
+          templateId: '2',
+          templateName: 'Urgent Item Detection',
+          description: 'Create priority tasks for messages with urgent keywords',
+          category: 'productivity',
+          triggerType: 'keyword',
+          actionType: 'create_task',
+          defaultConfig: {
+            triggerConditions: { keywords: ['urgent', 'URGENT', 'urgente'] },
+            actionConfig: { priority: 'high' }
+          }
+        }
+      ];
+    } catch (error) {
+      console.error('Error fetching action templates:', error);
+      return [];
     }
   }
 }

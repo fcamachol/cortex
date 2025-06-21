@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { WhatsAppApiAdapter } from './whatsapp-api-adapter'; // Import the next layer
+import { WebhookApiAdapter } from './whatsapp-api-adapter'; // Import the next layer
 
 /**
  * @class WebhookController
@@ -34,7 +34,7 @@ export const WebhookController = {
 
             // 3. Pass the raw payload to the next layer for processing asynchronously.
             // We don't `await` this, allowing the HTTP response to be sent instantly.
-            WhatsAppApiAdapter.processIncomingEvent(instanceName, standardizedEvent);
+            WebhookApiAdapter.processIncomingEvent(instanceName, standardizedEvent);
 
         } catch (error) {
             console.error('❌ Critical error in webhook handler:', error);

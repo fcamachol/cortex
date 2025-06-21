@@ -444,6 +444,90 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Actions API routes
+  app.get('/api/actions/rules', async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const rules = await storage.getActionRules(userId);
+      res.json(rules);
+    } catch (error) {
+      console.error('Error fetching action rules:', error);
+      res.status(500).json({ error: 'Failed to fetch action rules' });
+    }
+  });
+
+  app.get('/api/actions/stats', async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const rules = await storage.getActionRules(userId);
+      const stats = {
+        totalRules: rules.length,
+        activeRules: rules.filter(r => r.isActive).length,
+        totalExecutions: rules.reduce((sum, rule) => sum + (rule.totalExecutions || 0), 0),
+        recentExecutions: 0 // Would need separate query for recent executions
+      };
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching action stats:', error);
+      res.status(500).json({ error: 'Failed to fetch action stats' });
+    }
+  });
+
+  app.post('/api/actions/rules', async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const ruleData = {
+        ...req.body,
+        userId: userId
+      };
+      const rule = await storage.createActionRule(ruleData);
+      res.status(201).json(rule);
+    } catch (error) {
+      console.error('Error creating action rule:', error);
+      res.status(500).json({ error: 'Failed to create action rule' });
+    }
+  });
+
+  app.patch('/api/actions/rules/:ruleId/toggle', async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const { ruleId } = req.params;
+      const rule = await storage.getActionRule(userId, ruleId);
+      if (!rule) {
+        return res.status(404).json({ error: 'Rule not found' });
+      }
+      const updatedRule = await storage.updateActionRule(userId, ruleId, { 
+        isActive: !rule.isActive 
+      });
+      res.json(updatedRule);
+    } catch (error) {
+      console.error('Error toggling action rule:', error);
+      res.status(500).json({ error: 'Failed to toggle action rule' });
+    }
+  });
+
+  app.delete('/api/actions/rules/:ruleId', async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const { ruleId } = req.params;
+      await storage.deleteActionRule(userId, ruleId);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting action rule:', error);
+      res.status(500).json({ error: 'Failed to delete action rule' });
+    }
+  });
+
+  app.get('/api/actions/templates', async (req: Request, res: Response) => {
+    try {
+      const templates = await storage.getActionTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching action templates:', error);
+      res.status(500).json({ error: 'Failed to fetch action templates' });
+    }
+  });
+
   app.get('/api/actions/whatsapp-instances', async (req: Request, res: Response) => {
     try {
       const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
