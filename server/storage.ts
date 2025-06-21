@@ -70,6 +70,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<AppUser | null>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  createAppUser(user: InsertAppUser): Promise<AppUser>;
   updateUser(userId: string, user: Partial<InsertUser>): Promise<User>;
 
   // WhatsApp instances

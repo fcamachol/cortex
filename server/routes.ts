@@ -112,12 +112,12 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // Authentication routes
-  app.post('/api/auth/register', async (req: Request, res: Response) => {
+  app.post('/api/auth/signup', async (req: Request, res: Response) => {
     try {
-      const { email, password, name } = req.body;
+      const { email, password, fullName } = req.body;
       
-      if (!email || !password || !name) {
-        return res.status(400).json({ error: 'Missing required fields' });
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
       }
 
       // Check if user already exists
@@ -127,33 +127,31 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       // Hash password
-      const hashedPassword = await bcrypt.hash(password, 10);
+      const hashedPassword = await bcrypt.hash(password, 12);
 
       // Create user
-      const newUser = await storage.createUser({
+      const newUser = await storage.createAppUser({
         email,
-        password: hashedPassword,
-        name,
-        role: 'user'
+        passwordHash: hashedPassword,
+        fullName: fullName || null
       });
 
       const token = jwt.sign(
         { userId: newUser.userId },
         process.env.JWT_SECRET || 'fallback-secret',
-        { expiresIn: '24h' }
+        { expiresIn: '7d' }
       );
 
       res.status(201).json({
-        message: 'User created successfully',
         token,
         user: {
           userId: newUser.userId,
           email: newUser.email,
-          name: newUser.name
+          fullName: newUser.fullName
         }
       });
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('Signup error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -173,7 +171,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       // Check password
-      const isPasswordValid = await bcrypt.compare(password, user.password);
+      const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
       if (!isPasswordValid) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
@@ -190,7 +188,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         user: {
           userId: user.userId,
           email: user.email,
-          name: user.name
+          fullName: user.fullName
         }
       });
     } catch (error) {
@@ -218,7 +216,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         user: {
           userId: user.userId,
           email: user.email,
-          name: user.name
+          fullName: user.fullName
         }
       });
     } catch (error) {
