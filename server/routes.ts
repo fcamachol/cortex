@@ -296,6 +296,52 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Get specific message content by message ID
+  app.get('/api/whatsapp/message-content', async (req: Request, res: Response) => {
+    try {
+      const { messageId, instanceId, userId } = req.query;
+      
+      if (!messageId || !instanceId) {
+        return res.status(400).json({ error: 'messageId and instanceId are required' });
+      }
+
+      const message = await storage.getWhatsappMessageById(
+        messageId as string,
+        instanceId as string
+      );
+      
+      if (!message) {
+        return res.status(404).json({ error: 'Message not found' });
+      }
+
+      res.json(message);
+    } catch (error) {
+      console.error('Error fetching message content:', error);
+      res.status(500).json({ error: 'Failed to fetch message content' });
+    }
+  });
+
+  // Get message replies for a specific message
+  app.get('/api/whatsapp/message-replies', async (req: Request, res: Response) => {
+    try {
+      const { originalMessageId, instanceId, userId } = req.query;
+      
+      if (!originalMessageId || !instanceId) {
+        return res.status(400).json({ error: 'originalMessageId and instanceId are required' });
+      }
+
+      const replies = await storage.getMessageReplies(
+        originalMessageId as string,
+        instanceId as string
+      );
+      
+      res.json(replies);
+    } catch (error) {
+      console.error('Error fetching message replies:', error);
+      res.status(500).json({ error: 'Failed to fetch message replies' });
+    }
+  });
+
   app.get('/api/spaces/:userId', async (req: Request, res: Response) => {
     try {
       const { userId } = req.params;

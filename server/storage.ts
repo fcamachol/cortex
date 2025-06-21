@@ -64,7 +64,7 @@ import {
   type InsertCalendarAttendee
 } from "../shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, ilike, sql } from "drizzle-orm";
+import { eq, desc, asc, and, or, ilike, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User management
@@ -785,6 +785,42 @@ export class DatabaseStorage implements IStorage {
         eq(whatsappMessages.instanceId, instanceId),
         eq(whatsappMessages.messageId, messageId)
       ));
+  }
+
+  async getWhatsappMessageById(messageId: string, instanceId: string): Promise<WhatsappMessage | null> {
+    try {
+      const [message] = await db
+        .select()
+        .from(whatsappMessages)
+        .where(and(
+          eq(whatsappMessages.messageId, messageId),
+          eq(whatsappMessages.instanceId, instanceId)
+        ))
+        .limit(1);
+      
+      return message || null;
+    } catch (error) {
+      console.error('Error fetching message by ID:', error);
+      throw error;
+    }
+  }
+
+  async getMessageReplies(originalMessageId: string, instanceId: string): Promise<WhatsappMessage[]> {
+    try {
+      const replies = await db
+        .select()
+        .from(whatsappMessages)
+        .where(and(
+          eq(whatsappMessages.quotedMessageId, originalMessageId),
+          eq(whatsappMessages.instanceId, instanceId)
+        ))
+        .orderBy(asc(whatsappMessages.timestamp));
+      
+      return replies;
+    } catch (error) {
+      console.error('Error fetching message replies:', error);
+      throw error;
+    }
   }
 
   // WhatsApp message edit history
