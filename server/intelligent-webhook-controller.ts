@@ -147,23 +147,26 @@ export const WebhookController = {
         
         try {
             // 1. First ensure contact exists for the sender
-            if (!data.key.fromMe) {
-                const contactData = {
-                    jid: senderJid,
-                    instanceId: instanceId,
-                    pushName: data.pushName || '',
-                    profilePictureUrl: null,
-                    isBusiness: false,
-                    isMe: false,
-                    isBlocked: false
-                };
-                
+            const contactData = {
+                jid: senderJid,
+                instanceId: instanceId,
+                pushName: data.key.fromMe ? 'Me' : (data.pushName || ''),
+                profilePictureUrl: null,
+                isBusiness: false,
+                isMe: data.key.fromMe,
+                isBlocked: false
+            };
+            
+            try {
+                await storage.createWhatsappContact(contactData);
+                console.log(`✅ [${instanceId}] Created contact: ${senderJid}`);
+            } catch (error) {
+                // Contact might already exist, try to update it instead
                 try {
-                    await storage.createWhatsappContact(contactData);
-                    console.log(`✅ [${instanceId}] Created contact: ${senderJid}`);
-                } catch (error) {
-                    // Contact might already exist
-                    console.log(`📝 Contact ${senderJid} already exists`);
+                    await storage.updateWhatsappContact(senderJid, instanceId, contactData);
+                    console.log(`📝 Contact ${senderJid} updated`);
+                } catch (updateError) {
+                    console.log(`📝 Contact ${senderJid} exists, proceeding`);
                 }
             }
             
@@ -212,32 +215,8 @@ export const WebhookController = {
         const key = rawMessage.key;
         const message = rawMessage.message;
 
-        // Extract message content based on message type
-        let content = '';
-        let messageType = 'text';
-
-        if (message.conversation) {
-            content = message.conversation;
-            messageType = 'text';
-        } else if (message.extendedTextMessage?.text) {
-            content = message.extendedTextMessage.text;
-            messageType = 'text';
-        } else if (message.imageMessage?.caption) {
-            content = message.imageMessage.caption || '[Image]';
-            messageType = 'image';
-        } else if (message.videoMessage?.caption) {
-            content = message.videoMessage.caption || '[Video]';
-            messageType = 'video';
-        } else if (message.audioMessage) {
-            content = '[Audio]';
-            messageType = 'audio';
-        } else if (message.documentMessage?.caption) {
-            content = message.documentMessage.caption || '[Document]';
-            messageType = 'document';
-        } else {
-            content = '[Unsupported message type]';
-            messageType = 'unknown';
-        }
+        // Extract message content and determine type using comprehensive mapping
+        const { content, messageType } = this.extractMessageContentAndType(message);
 
         return {
             message_id: key.id,
@@ -341,6 +320,83 @@ export const WebhookController = {
                 console.log(`📝 Chat ${chatData.chatId} processing error:`, error.message);
             }
         }
+    },
+
+    /**
+     * Comprehensive message content extraction with proper type mapping
+     */
+    extractMessageContentAndType(message: any): { content: string; messageType: string } {
+        if (!message) return { content: '', messageType: 'unsupported' };
+
+        // Text messages
+        if (message.conversation) {
+            return { content: message.conversation, messageType: 'text' };
+        }
+        if (message.extendedTextMessage?.text) {
+            return { content: message.extendedTextMessage.text, messageType: 'text' };
+        }
+
+        // Media messages with captions
+        if (message.imageMessage) {
+            return { 
+                content: message.imageMessage.caption || '[Image]', 
+                messageType: 'image' 
+            };
+        }
+        if (message.videoMessage) {
+            return { 
+                content: message.videoMessage.caption || '[Video]', 
+                messageType: 'video' 
+            };
+        }
+        if (message.audioMessage) {
+            return { content: '[Audio]', messageType: 'audio' };
+        }
+        if (message.documentMessage) {
+            return { 
+                content: message.documentMessage.caption || `[Document: ${message.documentMessage.fileName || 'file'}]`, 
+                messageType: 'document' 
+            };
+        }
+
+        // Special message types
+        if (message.stickerMessage) {
+            return { content: '[Sticker]', messageType: 'sticker' };
+        }
+        if (message.locationMessage) {
+            return { 
+                content: `[Location: ${message.locationMessage.name || 'Unknown location'}]`, 
+                messageType: 'location' 
+            };
+        }
+        if (message.contactMessage) {
+            return { 
+                content: `[Contact: ${message.contactMessage.displayName || 'Unknown contact'}]`, 
+                messageType: 'contact_card' 
+            };
+        }
+        if (message.contactsArrayMessage) {
+            return { 
+                content: `[Contacts: ${message.contactsArrayMessage.contacts?.length || 0} contacts]`, 
+                messageType: 'contact_card_multi' 
+            };
+        }
+
+        // System/control messages
+        if (message.protocolMessage) {
+            if (message.protocolMessage.type === 'REVOKE') {
+                return { content: 'This message was deleted', messageType: 'revoked' };
+            }
+        }
+        if (message.reactionMessage) {
+            return { 
+                content: `Reacted with ${message.reactionMessage.text}`, 
+                messageType: 'reaction' 
+            };
+        }
+
+        // Fallback for unknown message types
+        return { content: '[Unsupported message type]', messageType: 'unsupported' };
     },
 
     /**
