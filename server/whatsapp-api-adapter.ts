@@ -87,8 +87,7 @@ export const WebhookApiAdapter = {
                     const reactionData = {
                         messageId: rawMessage.message.reactionMessage.key?.id,
                         instanceId: instanceId,
-                        chatId: rawMessage.key.remoteJid,
-                        senderJid: rawMessage.key.participant || rawMessage.key.remoteJid,
+                        reactorJid: rawMessage.key.participant || rawMessage.key.remoteJid,
                         reactionEmoji: rawMessage.message.reactionMessage.text,
                         timestamp: new Date(rawMessage.messageTimestamp * 1000),
                         fromMe: rawMessage.key.fromMe || false
@@ -98,7 +97,7 @@ export const WebhookApiAdapter = {
                     
                     // Create contact if needed for reaction sender
                     const senderContactData = {
-                        jid: reactionData.senderJid,
+                        jid: reactionData.reactorJid,
                         instanceId: instanceId,
                         pushName: rawMessage.pushName || null,
                         verifiedName: null,
