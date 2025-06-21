@@ -1,5 +1,6 @@
 import { 
   users,
+  appUsers,
   whatsappInstances,
   whatsappContacts,
   whatsappChats,
@@ -23,6 +24,8 @@ import {
   tasks,
   type User,
   type InsertUser,
+  type AppUser,
+  type InsertAppUser,
   type WhatsappInstance,
   type InsertWhatsappInstance,
   type WhatsappContact,
@@ -230,6 +233,19 @@ export class DatabaseStorage implements IStorage {
       return user || null;
     } catch (error) {
       console.error(`Error fetching user by email: ${email}`, error);
+      throw error;
+    }
+  }
+
+  async createAppUser(user: InsertAppUser): Promise<AppUser> {
+    try {
+      const [newUser] = await db
+        .insert(appUsers)
+        .values(user)
+        .returning();
+      return newUser;
+    } catch (error) {
+      console.error('Error creating app user:', error);
       throw error;
     }
   }
