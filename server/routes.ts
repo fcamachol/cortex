@@ -294,7 +294,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/api/spaces/:userId', async (req: Request, res: Response) => {
     try {
       const { userId } = req.params;
-      const spaces = await storage.getSpaces(userId);
+      const spaces = await storage.getSpacesForUser(userId);
       res.json(spaces);
     } catch (error) {
       console.error('Error fetching spaces:', error);
