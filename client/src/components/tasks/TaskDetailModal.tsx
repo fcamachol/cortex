@@ -556,9 +556,20 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                   placeholder="Task name"
                 />
               ) : (
-                <DialogTitle className="text-xl font-semibold text-left">
-                  {task.title}
-                </DialogTitle>
+                <div>
+                  <DialogTitle className="text-xl font-semibold text-left">
+                    {task.title}
+                  </DialogTitle>
+                  {/* Show chat JID badge */}
+                  {task.related_chat_jid && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded font-mono">
+                        {String(task.related_chat_jid).split('@')[0]}
+                      </span>
+                      <span className="text-xs text-gray-500">WhatsApp Chat</span>
+                    </div>
+                  )}
+                </div>
               )}
               {/* Chat/Group Information */}
               {chatInfo && (
