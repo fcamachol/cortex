@@ -61,15 +61,21 @@ export const WebhookApiAdapter = {
             // Single message format - wrap in array
             messages = [data];
         } else {
-            // Skip logging for now since validation seems too strict
+            console.warn(`[${instanceId}] No valid message structure found in data:`, JSON.stringify(data, null, 2));
             return;
         }
 
         if (!messages[0]?.key) {
+            console.warn(`[${instanceId}] Message missing key field:`, JSON.stringify(messages[0], null, 2));
             return;
         }
 
         console.log(`📨 [${instanceId}] Processing ${messages.length} message(s), type: ${messages[0].messageType}`);
+        
+        // Debug reaction messages
+        if (messages[0].messageType === 'reactionMessage') {
+            console.log(`🎭 [${instanceId}] Reaction message details:`, JSON.stringify(messages[0].message, null, 2));
+        }
 
         for (const rawMessage of messages) {
             try {
@@ -324,6 +330,12 @@ export const WebhookApiAdapter = {
     extractMessageContent(message: any): string {
         const msg = message.message;
         if (!msg) return '';
-        return msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.videoMessage?.caption || '';
+        
+        // Handle reaction messages
+        if (msg.reactionMessage) {
+            return `[Reaction: ${msg.reactionMessage.text}]`;
+        }
+        
+        return msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.videoMessage?.caption || '[Media]';
     }
 };
