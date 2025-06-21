@@ -1389,7 +1389,7 @@ export class DatabaseStorage implements IStorage {
           due_date, assigned_to_user_id, related_chat_jid, 
           created_by_user_id, created_at, updated_at
         ) VALUES (
-          ${taskData.instanceId || 'default'},
+          ${taskData.instanceId},
           ${taskData.title},
           ${taskData.description || ''},
           ${taskData.status || 'pending'},
@@ -1406,6 +1406,36 @@ export class DatabaseStorage implements IStorage {
       return result.rows[0];
     } catch (error) {
       console.error('Error creating task:', error);
+      throw error;
+    }
+  }
+
+  async createCalendarEvent(eventData: any): Promise<any> {
+    try {
+      // Use raw SQL to insert into the correct calendar events table
+      const result = await db.execute(sql`
+        INSERT INTO calendar.events (
+          calendar_id, provider_event_id, title, description, 
+          start_time, end_time, is_all_day, location, status,
+          created_at, updated_at
+        ) VALUES (
+          ${eventData.calendarId || 1},
+          ${eventData.providerEventId || `whatsapp-${Date.now()}`},
+          ${eventData.title},
+          ${eventData.description || ''},
+          ${eventData.startTime || new Date()},
+          ${eventData.endTime || new Date(Date.now() + 60 * 60 * 1000)},
+          ${eventData.isAllDay || false},
+          ${eventData.location || null},
+          ${eventData.status || 'confirmed'},
+          NOW(),
+          NOW()
+        ) RETURNING *
+      `);
+      
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error creating calendar event:', error);
       throw error;
     }
   }
