@@ -167,6 +167,7 @@ export interface IStorage {
 
   // Additional API methods
   getAppSpaces(userId: string): Promise<any[]>;
+  getTasks(): Promise<any[]>;
   getCrmTasks(): Promise<any[]>;
   getCrmProjects(): Promise<any[]>;
   getCrmChecklistItems(): Promise<any[]>;
@@ -1189,6 +1190,16 @@ export class DatabaseStorage implements IStorage {
   async getAppSpaces(userId: string): Promise<any[]> {
     // Return empty array for now - can be implemented based on your app schema
     return [];
+  }
+
+  async getTasks(): Promise<any[]> {
+    try {
+      const taskResults = await db.select().from(tasks).orderBy(tasks.createdAt);
+      return taskResults;
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      return [];
+    }
   }
 
   async getCrmTasks(): Promise<any[]> {
