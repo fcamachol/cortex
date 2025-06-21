@@ -22,7 +22,12 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   const getConversationDisplayName = (conv: any) => {
     // Use chat ID as the primary identifier
     if (conv.chatId.includes('@g.us')) {
-      // For groups, extract the numeric part before the dash
+      // For groups, try to find the group name in contacts
+      const contact = contacts.find((c: any) => c.jid === conv.chatId);
+      if (contact && (contact.pushName || contact.verifiedName)) {
+        return contact.pushName || contact.verifiedName;
+      }
+      // Fallback to group identifier if no name found
       const groupId = conv.chatId.replace('@g.us', '').split('-')[0];
       return `Group ${formatPhoneNumber(groupId)}`;
     } else {
