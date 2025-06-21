@@ -1296,11 +1296,22 @@ export class DatabaseStorage implements IStorage {
 
       // Filter rules based on trigger conditions and instance filters
       const matchingRules = rules.filter(rule => {
-        // Check trigger conditions
+        // Check trigger conditions based on trigger type
         const conditions = rule.triggerConditions as any;
-        if (conditions && conditions.values) {
-          if (!conditions.values.includes(triggerValue)) {
-            return false;
+        if (conditions) {
+          if (triggerType === 'reaction' && conditions.reactions) {
+            if (!conditions.reactions.includes(triggerValue)) {
+              return false;
+            }
+          } else if (triggerType === 'hashtag' && conditions.hashtags) {
+            if (!conditions.hashtags.includes(triggerValue)) {
+              return false;
+            }
+          } else if (conditions.values) {
+            // Fallback for other trigger types
+            if (!conditions.values.includes(triggerValue)) {
+              return false;
+            }
           }
         }
 
