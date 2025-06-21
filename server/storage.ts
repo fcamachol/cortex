@@ -835,6 +835,74 @@ export class DatabaseStorage implements IStorage {
       ));
   }
 
+  async upsertWhatsappMessage(message: InsertWhatsappMessage): Promise<WhatsappMessage> {
+    try {
+      const [upsertedMessage] = await db
+        .insert(whatsappMessages)
+        .values(message)
+        .onConflictDoUpdate({
+          target: [whatsappMessages.messageId, whatsappMessages.instanceId],
+          set: {
+            content: message.content,
+            messageType: message.messageType,
+            isEdited: message.isEdited || false,
+            lastEditedAt: message.lastEditedAt,
+            rawApiPayload: message.rawApiPayload
+          }
+        })
+        .returning();
+      return upsertedMessage;
+    } catch (error: any) {
+      console.error('Error upserting WhatsApp message:', error);
+      throw error;
+    }
+  }
+
+  async getWhatsappMessageById(messageId: string, instanceId: string): Promise<WhatsappMessage | undefined> {
+    const [result] = await db
+      .select()
+      .from(whatsappMessages)
+      .where(and(
+        eq(whatsappMessages.messageId, messageId),
+        eq(whatsappMessages.instanceId, instanceId)
+      ));
+    return result || undefined;
+  }
+
+  async upsertWhatsappMessageReaction(reaction: InsertWhatsappMessageReaction): Promise<WhatsappMessageReaction> {
+    const [upsertedReaction] = await db
+      .insert(whatsappMessageReactions)
+      .values(reaction)
+      .onConflictDoUpdate({
+        target: [whatsappMessageReactions.messageId, whatsappMessageReactions.instanceId, whatsappMessageReactions.reactorJid],
+        set: {
+          reactionEmoji: reaction.reactionEmoji,
+          fromMe: reaction.fromMe,
+          timestamp: reaction.timestamp
+        }
+      })
+      .returning();
+    return upsertedReaction;
+  }
+
+  async getActionRulesByTrigger(triggerType: string, triggerValue: string, instanceId: string): Promise<any[]> {
+    try {
+      const results = await db
+        .select()
+        .from(actionRules)
+        .where(and(
+          eq(actionRules.triggerType, triggerType as any),
+          eq(actionRules.triggerValue, triggerValue),
+          eq(actionRules.instanceId, instanceId),
+          eq(actionRules.isActive, true)
+        ));
+      return results;
+    } catch (error) {
+      console.error('Error fetching action rules:', error);
+      return [];
+    }
+  }
+
   async getWhatsappMessageById(messageId: string, instanceId: string): Promise<WhatsappMessage | null> {
     try {
       const [message] = await db

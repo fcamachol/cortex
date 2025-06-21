@@ -12,10 +12,11 @@ export const WebhookController = {
     async handleIncomingEvent(req: Request, res: Response): Promise<void> {
         try {
             const instanceName = req.params.instanceName;
+            const eventType = req.params.eventType;
             const eventPayload = req.body;
 
             // Basic validation
-            if (!instanceName || !eventPayload || !eventPayload.event) {
+            if (!instanceName || !eventType || !eventPayload) {
                 console.warn('⚠️ Received invalid webhook payload.');
                 res.status(400).json({ error: 'Invalid payload' });
                 return;
@@ -24,9 +25,16 @@ export const WebhookController = {
             // 1. Acknowledge receipt immediately.
             res.status(200).json({ status: "received" });
 
-            // 2. Pass the raw payload to the next layer for processing asynchronously.
+            // 2. Create standardized event payload for our adapter
+            const standardizedEvent = {
+                event: eventType.replace('-', '.'), // Convert "messages-upsert" to "messages.upsert"
+                data: eventPayload,
+                instanceId: instanceName
+            };
+
+            // 3. Pass the raw payload to the next layer for processing asynchronously.
             // We don't `await` this, allowing the HTTP response to be sent instantly.
-            WhatsAppApiAdapter.processIncomingEvent(instanceName, eventPayload);
+            WhatsAppApiAdapter.processIncomingEvent(instanceName, standardizedEvent);
 
         } catch (error) {
             console.error('❌ Critical error in webhook handler:', error);

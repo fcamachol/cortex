@@ -515,8 +515,8 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Legacy SSE route - redirect to main events endpoint
   app.get('/api/whatsapp/messages/stream', SseManager.handleNewConnection);
 
-  // WhatsApp webhook handlers - Use the new layered webhook controller
-  app.post('/api/whatsapp/webhook/:instanceName', async (req: Request, res: Response) => {
+  // Evolution API webhook handlers - Use the new layered webhook controller
+  app.post('/api/evolution/webhook/:instanceName/:eventType', async (req: Request, res: Response) => {
     await WebhookController.handleIncomingEvent(req, res);
   });
 
