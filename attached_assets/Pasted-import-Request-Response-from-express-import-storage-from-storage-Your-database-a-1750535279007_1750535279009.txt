@@ -1,23 +1,20 @@
-import { ActionService } from './action-service';
-import { storage } from './storage';
-import { SseManager } from './sse-manager';
-import { 
+import { Request, Response } from 'express';
+import { storage } from './storage'; // Your database access layer
+import { SseManager } from './sse-manager'; // Your real-time notification manager
+import { ActionService } from './action-service'; // Your business logic engine
+import {
     type WhatsappMessages,
     type WhatsappContacts,
-    type WhatsappChats,
-    type InsertWhatsappMessage,
-    type InsertWhatsappContact,
-    type InsertWhatsappChat,
-    type InsertWhatsappMessageReaction
+    type WhatsappChats
 } from '@shared/schema';
 
 /**
- * @class WhatsAppApiAdapter
+ * @class WebhookApiAdapter
  * @description The "Translator" layer. Its only job is to take raw API payloads,
  * map them into clean internal data objects, and then command the storage layer
  * in the correct order to prevent data integrity errors.
  */
-export const WhatsAppApiAdapter = {
+export const WebhookApiAdapter = {
 
     /**
      * Main entry point for all webhook events.
@@ -41,8 +38,9 @@ export const WhatsAppApiAdapter = {
             case 'chats.update':
                 await this.handleChatsUpsert(instanceId, data);
                 break;
+            // Add other event handlers here as needed
             default:
-                console.log(`⚠️ Unhandled event type in adapter: ${eventType}`);
+                console.log(`- Unhandled event type in adapter: ${eventType}`);
         }
     },
 
@@ -54,7 +52,7 @@ export const WhatsAppApiAdapter = {
         if (!messages[0]?.key) {
             console.warn(`[${instanceId}] Invalid messages.upsert payload:`, data);
             return;
-        }
+        };
 
         for (const rawMessage of messages) {
             try {
@@ -64,7 +62,7 @@ export const WhatsAppApiAdapter = {
                 await this.ensureDependenciesForMessage(cleanMessage, rawMessage);
                 
                 const storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
-                console.log(`✅ [${instanceId}] Message stored: ${storedMessage.messageId}`);
+                console.log(`✅ [${instanceId}] Message stored: ${storedMessage.message_id}`);
                 
                 SseManager.notifyClientsOfNewMessage(storedMessage);
                 ActionService.processNewMessage(storedMessage);
@@ -117,7 +115,7 @@ export const WhatsAppApiAdapter = {
             const cleanChat = this.mapApiPayloadToWhatsappChat(rawChat, instanceId);
             if (cleanChat) {
                 await storage.upsertWhatsappChat(cleanChat);
-                console.log(`✅ [${instanceId}] Chat upserted: ${cleanChat.chatId}`);
+                console.log(`✅ [${instanceId}] Chat upserted: ${cleanChat.chat_id}`);
             }
         }
     },
@@ -128,102 +126,88 @@ export const WhatsAppApiAdapter = {
      */
     async ensureDependenciesForMessage(cleanMessage: any, rawMessage: any): Promise<void> {
         const senderContact = this.mapApiPayloadToWhatsappContact({
-            id: cleanMessage.senderJid,
+            id: cleanMessage.sender_jid,
             pushName: rawMessage.pushName
-        }, cleanMessage.instanceId);
+        }, cleanMessage.instance_id);
         if (senderContact) await storage.upsertWhatsappContact(senderContact);
 
-        if (cleanMessage.chatId.endsWith('@g.us')) {
-            const chatContact = this.mapApiPayloadToWhatsappContact({ id: cleanMessage.chatId }, cleanMessage.instanceId);
+        if (cleanMessage.chat_id.endsWith('@g.us')) {
+            const chatContact = this.mapApiPayloadToWhatsappContact({ id: cleanMessage.chat_id }, cleanMessage.instance_id);
             if (chatContact) await storage.upsertWhatsappContact(chatContact);
         }
 
-        const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chatId }, cleanMessage.instanceId);
+        const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chat_id }, cleanMessage.instance_id);
         if (chatData) await storage.upsertWhatsappChat(chatData);
     },
-    
-
 
     // --- Data Mapping Functions ---
 
-    mapApiPayloadToWhatsappMessage(rawMessage: any, instanceId: string): InsertWhatsappMessage | null {
+    mapApiPayloadToWhatsappMessage(rawMessage: any, instanceId: string): Omit<WhatsappMessages, 'created_at'> | null {
         if (!rawMessage.key?.id || !rawMessage.key?.remoteJid) return null;
         const timestamp = rawMessage.messageTimestamp;
 
-        const getMessageType = (type?: string): InsertWhatsappMessage['messageType'] => {
+        const getMessageType = (type?: string): WhatsappMessages['message_type'] => {
             const validTypes = ['text', 'image', 'video', 'audio', 'document', 'sticker', 'location', 'contact_card', 'contact_card_multi', 'order', 'revoked', 'unsupported', 'reaction', 'call_log', 'edited_message'];
             if (type === 'conversation') return 'text';
-            if (type && validTypes.includes(type)) return type as InsertWhatsappMessage['messageType'];
+            if (type && validTypes.includes(type)) return type as WhatsappMessages['message_type'];
             return 'unsupported';
         };
 
         return {
-            messageId: rawMessage.key.id,
-            instanceId: instanceId,
-            chatId: rawMessage.key.remoteJid,
-            senderJid: rawMessage.key.participant || rawMessage.key.remoteJid,
-            fromMe: rawMessage.key.fromMe || false,
-            messageType: getMessageType(rawMessage.messageType),
+            message_id: rawMessage.key.id,
+            instance_id: instanceId,
+            chat_id: rawMessage.key.remoteJid,
+            sender_jid: rawMessage.key.participant || rawMessage.key.remoteJid,
+            from_me: rawMessage.key.fromMe || false,
+            message_type: getMessageType(rawMessage.messageType),
             content: this.extractMessageContent(rawMessage),
             timestamp: timestamp && typeof timestamp === 'number' ? new Date(timestamp * 1000) : new Date(),
-            quotedMessageId: rawMessage.message?.extendedTextMessage?.contextInfo?.quotedMessage?.key?.id,
-            isForwarded: (rawMessage.message?.extendedTextMessage?.contextInfo?.forwardingScore || 0) > 0,
-            forwardingScore: rawMessage.message?.extendedTextMessage?.contextInfo?.forwardingScore || 0,
-            isStarred: rawMessage.starred || false,
-            isEdited: rawMessage.messageType === 'editedMessage',
-            lastEditedAt: rawMessage.messageType === 'editedMessage' && timestamp && typeof timestamp === 'number'
+            quoted_message_id: rawMessage.message?.extendedTextMessage?.contextInfo?.quotedMessage?.key?.id,
+            is_forwarded: (rawMessage.message?.extendedTextMessage?.contextInfo?.forwardingScore || 0) > 0,
+            forwarding_score: rawMessage.message?.extendedTextMessage?.contextInfo?.forwardingScore || 0,
+            is_starred: rawMessage.starred || false,
+            is_edited: rawMessage.messageType === 'editedMessage',
+            last_edited_at: rawMessage.messageType === 'editedMessage' && timestamp && typeof timestamp === 'number'
                 ? new Date(timestamp * 1000)
                 : undefined,
-            sourcePlatform: rawMessage.source,
-            rawApiPayload: rawMessage,
+            source_platform: rawMessage.source,
+            raw_api_payload: rawMessage,
         };
     },
 
-    mapApiPayloadToWhatsappContact(rawContact: any, instanceId: string): InsertWhatsappContact | null {
+    mapApiPayloadToWhatsappContact(rawContact: any, instanceId: string): Omit<WhatsappContacts, 'first_seen_at' | 'last_updated_at'> | null {
         const jid = rawContact.id || rawContact.remoteJid;
         if (!jid) return null;
         
         return {
             jid: jid,
-            instanceId: instanceId,
-            pushName: rawContact.name || rawContact.pushName || rawContact.notify,
-            verifiedName: rawContact.verifiedName,
-            profilePictureUrl: rawContact.profilePicUrl || rawContact.profilePictureUrl,
-            isBusiness: rawContact.isBusiness || false,
-            isMe: false,
-            isBlocked: rawContact.isBlocked || false,
+            instance_id: instanceId,
+            push_name: rawContact.name || rawContact.pushName || rawContact.notify,
+            verified_name: rawContact.verifiedName,
+            profile_picture_url: rawContact.profilePicUrl || rawContact.profilePictureUrl,
+            is_business: rawContact.isBusiness || false,
+            is_me: false,
+            is_blocked: rawContact.isBlocked || false,
         };
     },
     
-    mapApiPayloadToWhatsappChat(rawChat: any, instanceId: string): InsertWhatsappChat | null {
+    mapApiPayloadToWhatsappChat(rawChat: any, instanceId: string): Omit<WhatsappChats, 'created_at' | 'updated_at'> | null {
         const chatId = rawChat.id || rawChat.remoteJid;
         if (!chatId) return null;
         
         return {
-            chatId: chatId,
-            instanceId: instanceId,
+            chat_id: chatId,
+            instance_id: instanceId,
             type: chatId.endsWith('@g.us') ? 'group' : 'individual',
-            unreadCount: rawChat.unreadCount || 0,
-            isArchived: rawChat.archived || false,
-            isPinned: rawChat.pinned ? true : false,
-            isMuted: rawChat.muteEndTime ? new Date(rawChat.muteEndTime * 1000) > new Date() : false,
-            muteEndTimestamp: rawChat.muteEndTime ? new Date(rawChat.muteEndTime * 1000) : undefined,
-            lastMessageTimestamp: rawChat.conversationTimestamp ? new Date(rawChat.conversationTimestamp * 1000) : undefined,
+            unread_count: rawChat.unreadCount || 0,
+            is_archived: rawChat.archived || false,
+            is_pinned: rawChat.pinned ? true : false,
+            is_muted: rawChat.muteEndTime ? new Date(rawChat.muteEndTime * 1000) > new Date() : false,
+            mute_end_timestamp: rawChat.muteEndTime ? new Date(rawChat.muteEndTime * 1000) : undefined,
+            last_message_timestamp: rawChat.conversationTimestamp ? new Date(rawChat.conversationTimestamp * 1000) : undefined,
         };
     },
-
-    mapApiPayloadToWhatsappReaction(rawReaction: any, instanceId: string): InsertWhatsappMessageReaction | null {
-        if (!rawReaction.key?.id || !rawReaction.reaction) return null;
-        
-        return {
-            messageId: rawReaction.key.id,
-            instanceId: instanceId,
-            reactorJid: rawReaction.key.participant || rawReaction.key.remoteJid,
-            reactionEmoji: rawReaction.reaction.text,
-            timestamp: rawReaction.reaction.senderTimestampMs ? new Date(rawReaction.reaction.senderTimestampMs) : new Date(),
-        };
-    },
-
+    
     extractMessageContent(message: any): string {
         const msg = message.message;
         if (!msg) return '';
