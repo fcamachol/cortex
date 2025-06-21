@@ -121,13 +121,10 @@ export function TaskList({
   };
 
   const renderTask = (task: Task, depth = 0) => {
-    // Debug: Log all task data to see what we're receiving
-    console.log('Rendering task:', {
-      title: task.title,
-      related_chat_jid: task.related_chat_jid,
-      triggering_message_id: task.triggering_message_id,
-      task_id: task.task_id
-    });
+    // Debug: Log task data for tasks that should have JIDs
+    if (task.title === "si desde la reaccion") {
+      console.log('Found target task:', task);
+    }
     
     return (
       <div key={task.task_id} className={`${depth > 0 ? 'ml-8' : ''}`}>
@@ -166,16 +163,17 @@ export function TaskList({
                   {task.title}
                 </h4>
                 
+                {/* Show chat JID if available */}
                 {task.related_chat_jid && (
                   <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded font-mono">
-                    {task.related_chat_jid.split('@')[0]}
+                    {String(task.related_chat_jid).split('@')[0]}
                   </span>
                 )}
                 
-                {/* Debug: Always show if we have a triggering_message_id */}
+                {/* Show when task has message but no JID for debugging */}
                 {task.triggering_message_id && !task.related_chat_jid && (
-                  <span className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded font-mono">
-                    No JID
+                  <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded text-xs">
+                    📱 WhatsApp
                   </span>
                 )}
                 
