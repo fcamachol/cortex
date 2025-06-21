@@ -261,7 +261,10 @@ export const WebhookController = {
         if (data.update) {
             updates = Array.isArray(data.update) ? data.update : [data.update];
         } else if (data.key && data.status) {
-            // Direct update format
+            // Direct update format with key structure
+            updates = [data];
+        } else if (data.keyId || data.messageId || data.status) {
+            // Evolution API actual format with keyId, messageId, etc.
             updates = [data];
         } else if (Array.isArray(data)) {
             // Array of updates
@@ -272,9 +275,21 @@ export const WebhookController = {
         }
         
         for (const update of updates) {
-            if (!update.key?.id || !update.status) continue;
+            // Handle different message ID formats from Evolution API
+            let messageId = null;
+            if (update.key?.id) {
+                messageId = update.key.id;
+            } else if (update.keyId) {
+                messageId = update.keyId;
+            } else if (update.messageId) {
+                messageId = update.messageId;
+            }
             
-            const messageId = update.key.id;
+            if (!messageId || !update.status) {
+                console.log('⚠️ Message update missing required messageId or status');
+                continue;
+            }
+            
             const status = update.status;
             
             // Map Evolution API status to our enum values
@@ -292,7 +307,7 @@ export const WebhookController = {
             };
             
             try {
-                await storage.createWhatsappMessageUpdate(updateRecord);
+                await this.storage.createMessageUpdate(updateRecord);
                 console.log(`✅ [${instanceId}] Stored message update: ${messageId} -> ${mappedStatus}`);
             } catch (error) {
                 console.log(`❌ Error storing message update:`, error);
