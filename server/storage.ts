@@ -1557,10 +1557,10 @@ export class DatabaseStorage implements IStorage {
     try {
       const result = await db.execute(sql`
         SELECT * FROM actions.action_rules 
-        WHERE trigger_type = ${triggerType} 
-        AND trigger_value = ${triggerValue}
-        AND (instance_id = ${instanceId} OR instance_id IS NULL)
-        AND is_enabled = true
+        WHERE trigger_type = ${triggerType}
+        AND trigger_conditions ->> 'value' = ${triggerValue}
+        AND (instance_filters IS NULL OR instance_filters ->> 'instanceId' = ${instanceId})
+        AND is_active = true
       `);
       return result.rows;
     } catch (error) {
