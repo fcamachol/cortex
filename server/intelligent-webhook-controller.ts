@@ -138,6 +138,9 @@ export const WebhookController = {
             case 'messages.edit':
                 await this.handleMessageEdit(instanceId, data);
                 break;
+            case 'messages.delete':
+                await this.handleMessageDeletion(instanceId, data);
+                break;
             case 'contacts.upsert':
             case 'contacts.update':
                 await this.handleContactsUpsert(instanceId, data);
@@ -585,6 +588,86 @@ export const WebhookController = {
             
         } catch (error) {
             console.log(`❌ Error storing message edit:`, error);
+        }
+    },
+
+    /**
+     * Handles message deletions from Evolution API
+     */
+    async handleMessageDeletion(instanceId: string, data: any) {
+        console.log(`🗑️ Processing message deletion for instance ${instanceId}`, JSON.stringify(data, null, 2));
+        
+        // Extract deletion data from different possible formats
+        let deletionData = null;
+        
+        if (data.data) {
+            deletionData = data.data;
+        } else if (data.keyId || data.messageId || data.key) {
+            deletionData = data;
+        }
+        
+        if (!deletionData) {
+            console.log('⚠️ No valid message deletion data found in webhook payload');
+            return;
+        }
+        
+        try {
+            // Extract message ID from different formats
+            let messageId = null;
+            if (deletionData.key?.id) {
+                messageId = deletionData.key.id;
+            } else if (deletionData.keyId) {
+                messageId = deletionData.keyId;
+            } else if (deletionData.messageId) {
+                messageId = deletionData.messageId;
+            }
+            
+            if (!messageId) {
+                console.log('⚠️ Message deletion missing required message ID');
+                return;
+            }
+            
+            // Extract chat ID
+            const chatId = deletionData.remoteJid || deletionData.key?.remoteJid || deletionData.chatId;
+            if (!chatId) {
+                console.log('⚠️ Message deletion missing required chat ID');
+                return;
+            }
+            
+            // Extract who deleted the message
+            const deletedBy = deletionData.participant || deletionData.deletedBy || deletionData.key?.participant || 'unknown';
+            
+            // Determine deletion type
+            let deletionType = 'sender'; // default
+            if (deletionData.deletionType) {
+                deletionType = deletionData.deletionType;
+            } else if (deletionData.key?.fromMe) {
+                deletionType = 'sender';
+            } else {
+                deletionType = 'everyone';
+            }
+            
+            // Get original content if available
+            const originalContent = deletionData.originalContent || deletionData.content || null;
+            
+            const deletionRecord = {
+                deletionId: `${messageId}_${Date.now()}`,
+                messageId,
+                instanceId,
+                chatId,
+                deletedBy,
+                deletionType,
+                originalContent,
+                originalTimestamp: deletionData.messageTimestamp ? new Date(deletionData.messageTimestamp * 1000) : null,
+                deletedAt: new Date(),
+                rawApiPayload: deletionData
+            };
+            
+            await storage.createWhatsappMessageDeletion(deletionRecord);
+            console.log(`✅ [${instanceId}] Stored message deletion: ${messageId} by ${deletedBy}`);
+            
+        } catch (error) {
+            console.log(`❌ Error storing message deletion:`, error);
         }
     },
 
