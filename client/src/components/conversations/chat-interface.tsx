@@ -36,6 +36,31 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     queryKey: [`/api/whatsapp/conversations/${userId}`],
   });
 
+  // Also fetch contacts for display names
+  const { data: contacts = [] } = useQuery<any[]>({
+    queryKey: [`/api/contacts/${userId}`],
+    refetchInterval: 5000,
+  });
+
+  // Helper function to get display name for conversation
+  const getConversationDisplayName = (conv: any) => {
+    // Try to find matching contact first
+    const contact = contacts.find((c: any) => c.jid === conv.chatId);
+    
+    if (contact) {
+      return contact.pushName || contact.verifiedName || 'Unknown Contact';
+    }
+    
+    if (conv.type === 'group') {
+      // For groups, try to get the group name from the chatId
+      return conv.chatId.includes('@g.us') ? 'Group Chat' : conv.chatId;
+    } else {
+      // For individuals, format the phone number
+      const phoneNumber = conv.chatId.replace('@s.whatsapp.net', '');
+      return formatPhoneNumber(phoneNumber);
+    }
+  };
+
   const conversation = conversations.find(conv => conv.chatId === conversationId);
   const instanceId = conversation?.instanceId;
 
@@ -285,11 +310,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
             </Avatar>
             <div>
               <h2 className="font-semibold text-gray-900 dark:text-gray-100">
-                {conversation?.type === 'group' ? 
-                  (conversation.chatId || 'Unknown Group') :
-                  (conversation?.title && conversation.title.includes('@') ? 
-                    formatPhoneNumber(conversation.title) : 
-                    (conversation?.title || formatPhoneNumber(conversation?.chatId || 'Unknown Contact')))}
+                {conversation ? getConversationDisplayName(conversation) : 'Unknown Contact'}
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {conversation?.status || 'Online'}
@@ -306,7 +327,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
               <PopoverContent className="w-96 p-0" align="end">
                 <ContactTasksAndEvents
                   contactJid={conversation.chatId}
-                  contactName={conversation.title || 'Unknown Contact'}
+                  contactName={conversation ? getConversationDisplayName(conversation) : 'Unknown Contact'}
                   instanceId={instanceId}
                 />
               </PopoverContent>
