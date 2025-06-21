@@ -298,11 +298,21 @@ export const WebhookApiAdapter = {
             return 'unsupported';
         };
 
+        // Determine the correct sender JID
+        const getSenderJid = (): string => {
+            // For group messages, participant field contains the actual sender
+            if (rawMessage.key.participant) {
+                return rawMessage.key.participant;
+            }
+            // For direct messages, use remoteJid
+            return rawMessage.key.remoteJid;
+        };
+
         return {
             messageId: rawMessage.key.id,
             instanceId: instanceId,
             chatId: rawMessage.key.remoteJid,
-            senderJid: rawMessage.key.participant || rawMessage.key.remoteJid,
+            senderJid: getSenderJid(),
             fromMe: rawMessage.key.fromMe || false,
             messageType: getMessageType(rawMessage.messageType),
             content: this.extractMessageContent(rawMessage),
