@@ -1252,7 +1252,8 @@ export const WebhookController = {
             endTime: eventData.endTime,
             calendarId: 1, // Default calendar
             isAllDay: false,
-            timezone: 'UTC'
+            timezone: 'UTC',
+            providerEventId: `whatsapp-${Date.now()}` // Generate unique provider event ID
         });
         
         return { eventId: event.eventId, title: event.title };
