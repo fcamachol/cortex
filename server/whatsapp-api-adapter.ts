@@ -214,5 +214,3 @@ export const WhatsAppApiAdapter = {
         return msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.videoMessage?.caption || '';
     }
 };
-    }
-};
