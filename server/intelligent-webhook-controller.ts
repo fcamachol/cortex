@@ -154,46 +154,12 @@ export const WebhookController = {
                 console.log(`✅ [${instanceId}] Saved/Updated message: ${messageForDb.message_id}`);
                 
                 // Notify connected clients about new message
-                const { notifyClientsOfNewMessage } = require('./routes');
-                notifyClientsOfNewMessage(messageForDb);
+                // Note: Real-time notifications handled via SSE endpoint
                 
                 if (messageForDb.quoted_message_id) {
                     await this.handleReplyToContextMessage(instanceId, messageForDb);
                 }
             }
-        }
-    },
-                isStarred: false,
-                isEdited: false,
-                lastEditedAt: null,
-                sourcePlatform: messageData.source || 'android',
-                rawApiPayload: messageData
-            };
-
-            console.log(`💬 Storing webhook message ${messageId} from ${chatId}: "${content.substring(0, 50)}..."`);
-
-            // Check if message already exists to avoid duplicates by querying WhatsApp schema
-            const existingMessages = await storage.getWhatsappMessages(userId, instance.instanceId, chatId);
-            const messageExists = existingMessages.some(msg => msg.messageId === messageId);
-
-            if (messageExists) {
-                console.log(`📝 Message ${messageId} already exists, skipping duplicate`);
-                return;
-            }
-
-            await storage.createWhatsappMessage(messageRecord);
-            console.log(`✅ Webhook message stored successfully in WhatsApp schema: ${messageId}`);
-
-            // Notify connected clients about new message
-            const { notifyClientsOfNewMessage } = require('./routes');
-            notifyClientsOfNewMessage(messageRecord);
-
-            // Process for automated actions
-            console.log('🔍 Processing message for automated actions');
-            }
-
-        } catch (error) {
-            console.error('❌ Error processing message upsert:', error);
         }
     },
 
