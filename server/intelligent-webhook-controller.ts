@@ -63,9 +63,30 @@ export const WebhookController = {
     async handleIncomingEvent(req: Request, res: Response) {
         try {
             const instanceName = req.params.instanceName;
+            const eventType = req.params.eventType;
             const eventPayload = req.body;
+            console.log(`🔍 Debug - instanceName: ${instanceName}, eventType: ${eventType}, req.path: ${req.path}`);
             res.status(200).json({ status: "received", instance: instanceName });
-            this.processEvolutionEvent(instanceName, eventPayload);
+            
+            // Extract event type from URL path if not in params
+            let actualEventType = eventType;
+            if (!actualEventType && req.path) {
+                const pathParts = req.path.split('/');
+                actualEventType = pathParts[pathParts.length - 1];
+            }
+            
+            // Handle event type from URL parameter or path
+            if (actualEventType) {
+                const normalizedEventType = actualEventType.replace(/-/g, '.');
+                console.log(`🔄 Converting URL event type: ${actualEventType} -> ${normalizedEventType}`);
+                const wrappedEvent = {
+                    event: normalizedEventType,
+                    data: eventPayload
+                };
+                this.processEvolutionEvent(instanceName, wrappedEvent);
+            } else {
+                this.processEvolutionEvent(instanceName, eventPayload);
+            }
         } catch (error) {
             console.error('❌ Critical error in webhook handler:', error);
         }
