@@ -157,6 +157,12 @@ export function TaskList({
                   {task.title}
                 </h4>
                 
+                {task.related_chat_jid && (
+                  <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded font-mono">
+                    {task.related_chat_jid.split('@')[0]}
+                  </span>
+                )}
+                
                 {task.priority && (
                   <Flag className={`h-3 w-3 ${getPriorityColor(task.priority)}`} />
                 )}
@@ -193,12 +199,7 @@ export function TaskList({
                   </div>
                 )}
                 
-                {task.related_chat_jid && (
-                  <div className="flex items-center gap-1 text-blue-500">
-                    <MessageSquare className="h-3 w-3" />
-                    WhatsApp
-                  </div>
-                )}
+
                 
                 {task.subtasks && task.subtasks.length > 0 && (
                   <span className="text-muted-foreground">
