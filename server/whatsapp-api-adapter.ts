@@ -284,10 +284,17 @@ export const WebhookApiAdapter = {
         const timestamp = rawMessage.messageTimestamp;
 
         const getMessageType = (type?: string): WhatsappMessages['message_type'] => {
+            console.log(`🔍 [${instanceId}] Message type received: ${type}`);
             const validTypes: WhatsappMessages['message_type'][] = ['text', 'image', 'video', 'audio', 'document', 'sticker', 'location', 'contact_card', 'contact_card_multi', 'order', 'revoked', 'unsupported', 'reaction', 'call_log', 'edited_message'];
             if (type === 'conversation') return 'text';
             if (type === 'reactionMessage') return 'reaction';
+            if (type === 'audioMessage') return 'audio';
+            if (type === 'imageMessage') return 'image';
+            if (type === 'videoMessage') return 'video';
+            if (type === 'documentMessage') return 'document';
+            if (type === 'stickerMessage') return 'sticker';
             if (type && validTypes.includes(type as any)) return type as WhatsappMessages['message_type'];
+            console.log(`⚠️ [${instanceId}] Unknown message type: ${type}, defaulting to unsupported`);
             return 'unsupported';
         };
 
@@ -390,6 +397,15 @@ export const WebhookApiAdapter = {
             return `[Reaction: ${msg.reactionMessage.text}]`;
         }
         
-        return msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.videoMessage?.caption || '[Media]';
+        // Handle media messages with specific content
+        if (msg.audioMessage) return '[Audio]';
+        if (msg.imageMessage) return msg.imageMessage.caption || '[Image]';
+        if (msg.videoMessage) return msg.videoMessage.caption || '[Video]';
+        if (msg.documentMessage) return msg.documentMessage.title || '[Document]';
+        if (msg.stickerMessage) return '[Sticker]';
+        if (msg.locationMessage) return '[Location]';
+        if (msg.contactMessage) return '[Contact]';
+        
+        return msg.conversation || msg.extendedTextMessage?.text || '[Media]';
     }
 };
