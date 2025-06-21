@@ -39,7 +39,8 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   // Also fetch contacts for display names
   const { data: contacts = [] } = useQuery<any[]>({
     queryKey: [`/api/contacts/${userId}`],
-    refetchInterval: 5000,
+    refetchInterval: false, // Disable polling - use SSE for updates
+    staleTime: 600000, // Cache for 10 minutes - contacts change rarely
   });
 
   // Helper function to get display name for conversation

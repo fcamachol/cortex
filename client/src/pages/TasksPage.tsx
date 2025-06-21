@@ -140,7 +140,7 @@ export function TasksPage() {
     return rootTasks;
   };
 
-  // Fetch tasks with auto-refresh
+  // Fetch tasks with SSE-based updates
   const { data: tasks, isLoading: tasksLoading } = useQuery({
     queryKey: ['/api/crm/tasks'],
     select: (data) => {
@@ -154,10 +154,9 @@ export function TasksPage() {
       
       return transformTasksData(data);
     },
-    refetchInterval: 5000, // Refresh every 5 seconds
-    refetchIntervalInBackground: true, // Keep refreshing when tab is not active
-    refetchOnWindowFocus: true, // Refresh when user returns to tab
-    staleTime: 0 // Always consider data stale to ensure fresh updates
+    refetchInterval: false, // Disable polling - use SSE for updates
+    staleTime: 300000, // Cache for 5 minutes
+    refetchOnWindowFocus: false, // Don't refetch on focus
   });
 
   // Fetch projects
@@ -215,6 +214,28 @@ export function TasksPage() {
       toast({ title: 'Failed to delete task', variant: 'destructive' });
     }
   });
+
+  // Set up SSE connection for real-time task updates
+  useEffect(() => {
+    const eventSource = new EventSource('/api/events');
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'new_task') {
+          // Refresh tasks when new task is created
+          queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
+        }
+      } catch (error) {
+        console.error('Error processing SSE event:', error);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [queryClient]);
 
   // Create project mutation
   const createProjectMutation = useMutation({
