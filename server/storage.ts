@@ -1382,19 +1382,17 @@ export class DatabaseStorage implements IStorage {
 
   async createTask(taskData: any): Promise<any> {
     try {
-      // Use raw SQL to insert into the correct CRM tasks table
+      // Use simplified raw SQL for CRM tasks table
+      const instanceId = taskData.instanceId || 'instance-1750433520122';
+      const title = taskData.title || 'Automated Task';
+      const description = taskData.description || 'Task created from WhatsApp reaction';
+      const status = taskData.status || 'pending';
+      const priority = taskData.priority || 'medium';
+      
       const result = await db.execute(sql`
-        INSERT INTO crm.tasks (
-          instance_id, title, description, status, priority, created_at, updated_at
-        ) VALUES (
-          ${taskData.instanceId || 'instance-1750433520122'},
-          ${taskData.title || 'Automated Task'},
-          ${taskData.description || 'Task created from WhatsApp reaction'},
-          ${taskData.status || 'pending'},
-          ${taskData.priority || 'medium'},
-          NOW(),
-          NOW()
-        ) RETURNING *
+        INSERT INTO crm.tasks (instance_id, title, description, status, priority, created_at, updated_at) 
+        VALUES (${instanceId}, ${title}, ${description}, ${status}, ${priority}, NOW(), NOW()) 
+        RETURNING *
       `);
       
       return result.rows[0];
