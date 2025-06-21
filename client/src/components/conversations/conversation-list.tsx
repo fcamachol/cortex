@@ -20,10 +20,11 @@ export default function ConversationList({ selectedConversation, onSelectConvers
 
   // Helper function to get display name for conversation
   const getConversationDisplayName = (conv: any) => {
-    // Use chat ID as the primary identifier
+    // Try to find contact name for both groups and individuals
+    const contact = contacts.find((c: any) => c.jid === conv.chatId);
+    
     if (conv.chatId.includes('@g.us')) {
-      // For groups, try to find the group name in contacts
-      const contact = contacts.find((c: any) => c.jid === conv.chatId);
+      // For groups, use group name from contacts
       if (contact && (contact.pushName || contact.verifiedName)) {
         return contact.pushName || contact.verifiedName;
       }
@@ -31,7 +32,11 @@ export default function ConversationList({ selectedConversation, onSelectConvers
       const groupId = conv.chatId.replace('@g.us', '').split('-')[0];
       return `Group ${formatPhoneNumber(groupId)}`;
     } else {
-      // For individuals, return formatted phone number from chat ID
+      // For individuals, use contact name if available
+      if (contact && (contact.pushName || contact.verifiedName)) {
+        return contact.pushName || contact.verifiedName;
+      }
+      // Fallback to formatted phone number if no contact name
       const phoneNumber = conv.chatId.replace('@s.whatsapp.net', '');
       return formatPhoneNumber(phoneNumber);
     }
