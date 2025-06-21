@@ -100,10 +100,8 @@ export const WebhookController = {
         switch (eventType) {
             case 'messages.upsert':
                 // Check for reactions first
-                if (data.messages && data.messages[0]?.message?.reactionMessage) {
-                    await this.handleReaction(instanceId, data.messages[0], sender);
-                } else if (Array.isArray(data) && data[0]?.message?.reactionMessage) {
-                    await this.handleReaction(instanceId, data[0], sender);
+                if (data.key && data.message?.reactionMessage) { // Reaction payloads are not in an array
+                    await this.handleReaction(instanceId, data, sender || data.key.participant);
                 } else {
                     await this.handleMessageUpsert(instanceId, data);
                 }
@@ -137,28 +135,40 @@ export const WebhookController = {
      */
     async handleMessageUpsert(instanceId: string, data: any) {
         console.log(`📝 Processing message upsert for instance ${instanceId}`);
-        console.log('Received data structure:', JSON.stringify(data, null, 2));
         
-        if (!data || !Array.isArray(data.messages)) {
+        // Evolution API sends message data directly, not wrapped in arrays
+        if (!data || !data.key || !data.key.id) {
             console.log('⚠️ No valid message data found in webhook payload');
-            console.log('Data structure check - data exists:', !!data);
-            console.log('Data.messages exists:', !!data?.messages);
-            console.log('Data.messages is array:', Array.isArray(data?.messages));
             return;
         }
         
-        for (const rawMessage of data.messages) {
-            const messageForDb = this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
-            if (messageForDb) {
-                await storage.upsertWhatsappMessage(messageForDb);
-                console.log(`✅ [${instanceId}] Saved/Updated message: ${messageForDb.message_id}`);
-                
-                // Notify connected clients about new message
-                // Note: Real-time notifications handled via SSE endpoint
-                
-                if (messageForDb.quoted_message_id) {
-                    await this.handleReplyToContextMessage(instanceId, messageForDb);
-                }
+        // Ensure chat exists before inserting message to maintain foreign key integrity
+        const chatId = data.key.remoteJid;
+        const chatData = {
+            chatId: chatId,
+            instanceId: instanceId,
+            type: chatId.includes('@g.us') ? 'group' : 'individual',
+            unreadCount: 0,
+            isArchived: false,
+            isPinned: false,
+            isMuted: false,
+            lastMessageTimestamp: new Date(data.messageTimestamp * 1000)
+        };
+        
+        try {
+            await storage.createWhatsappChat(chatData);
+        } catch (error) {
+            // Chat might already exist, which is fine
+            console.log(`📝 Chat ${chatId} already exists or error creating:`, error.message);
+        }
+        
+        const messageForDb = this.mapApiPayloadToWhatsappMessage(data, instanceId);
+        if (messageForDb) {
+            await storage.upsertWhatsappMessage(messageForDb);
+            console.log(`✅ [${instanceId}] Saved/Updated message: ${messageForDb.message_id}`);
+            
+            if (messageForDb.quoted_message_id) {
+                await this.handleReplyToContextMessage(instanceId, messageForDb);
             }
         }
     },
