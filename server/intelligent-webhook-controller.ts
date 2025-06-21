@@ -565,16 +565,22 @@ export const WebhookController = {
             
             // Step 2: Update the actual message content with the new edited content
             if (editedContent) {
-                await storage.updateWhatsappMessageContent({
-                    messageId,
-                    instanceId,
-                    newContent: editedContent,
-                    isEdited: true,
-                    lastEditedAt: editTimestamp
-                });
-                console.log(`✅ [${instanceId}] Updated message content and stored edit history: ${messageId}`);
+                try {
+                    await storage.updateWhatsappMessageContent({
+                        messageId,
+                        instanceId,
+                        newContent: editedContent,
+                        isEdited: true,
+                        lastEditedAt: editTimestamp
+                    });
+                    console.log(`✅ [${instanceId}] Updated message content and stored edit history: ${messageId}`);
+                    console.log(`📝 Content updated to: "${editedContent}"`);
+                } catch (updateError) {
+                    console.log(`❌ Error updating message content:`, updateError);
+                    console.log(`✅ [${instanceId}] Stored edit history only: ${messageId}`);
+                }
             } else {
-                console.log(`✅ [${instanceId}] Stored message edit history: ${messageId}`);
+                console.log(`✅ [${instanceId}] Stored message edit history: ${messageId} (no new content provided)`);
             }
             
         } catch (error) {
