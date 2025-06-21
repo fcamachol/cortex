@@ -382,9 +382,9 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   }`}
                 >
                   {/* Sender name for group chats */}
-                  {conversation?.type === 'group' && !message.isFromMe && (
+                  {(conversation?.type === 'group' || conversation?.chatId?.includes('@g.us')) && !message.isFromMe && (
                     <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
-                      {message.senderJid ? formatPhoneNumber(message.senderJid.replace('@s.whatsapp.net', '')) : 'Unknown'}
+                      {message.senderJid ? getSenderDisplayName(message.senderJid) : 'Unknown'}
                     </p>
                   )}
                   <p className="text-sm">{message.content}</p>
