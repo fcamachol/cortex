@@ -131,7 +131,9 @@ export const WebhookController = {
                 // Check for reactions first
                 if (messageData.key && messageData.message?.reactionMessage) {
                     console.log(`🎯 Detected reaction in messages.upsert`);
-                    await this.handleReaction(instanceId, messageData, sender || messageData.key.participant);
+                    // Extract reactor JID properly from the reaction data
+                    const reactorJid = messageData.key.participant || messageData.key.remoteJid || sender;
+                    await this.handleReaction(instanceId, messageData, reactorJid);
                 } else {
                     await this.handleMessageUpsert(instanceId, data);
                 }
@@ -146,10 +148,12 @@ export const WebhookController = {
                 // Check for reactions in updates
                 if (updateData.updates && updateData.updates[0]?.message?.reactionMessage) {
                     console.log(`🎯 Detected reaction in messages.update (updates array)`);
-                    await this.handleReaction(instanceId, updateData.updates[0], sender);
+                    const reactorJid = updateData.updates[0].key?.participant || updateData.updates[0].key?.remoteJid || sender;
+                    await this.handleReaction(instanceId, updateData.updates[0], reactorJid);
                 } else if (updateData.message?.reactionMessage) {
                     console.log(`🎯 Detected direct reaction in messages.update`);
-                    await this.handleReaction(instanceId, updateData, sender || updateData.key?.participant);
+                    const reactorJid = updateData.key?.participant || updateData.key?.remoteJid || sender;
+                    await this.handleReaction(instanceId, updateData, reactorJid);
                 } else {
                     await this.handleMessageUpdate(instanceId, data);
                 }
