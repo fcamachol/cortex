@@ -1217,7 +1217,17 @@ export class DatabaseStorage implements IStorage {
       `);
       
       console.log('Raw task query result:', result.rows?.length, 'tasks found');
-      return result.rows || [];
+      console.log('Query result type:', typeof result);
+      console.log('Query result structure:', Object.keys(result));
+      
+      if (result.rows && Array.isArray(result.rows)) {
+        return result.rows;
+      } else if (Array.isArray(result)) {
+        return result;
+      } else {
+        console.log('Unexpected result format:', result);
+        return [];
+      }
     } catch (error) {
       console.error('Error fetching tasks:', error);
       return [];
