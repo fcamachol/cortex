@@ -1509,10 +1509,18 @@ export class DatabaseStorage implements IStorage {
       const description = taskData.description || 'Task created from WhatsApp reaction';
       const status = taskData.status || 'pending';
       const priority = taskData.priority || 'medium';
+      const triggeringMessageId = taskData.triggeringMessageId || null;
+      const relatedChatJid = taskData.relatedChatJid || null;
       
       const result = await db.execute(sql`
-        INSERT INTO crm.tasks (instance_id, title, description, status, priority, created_at, updated_at) 
-        VALUES (${instanceId}, ${title}, ${description}, ${status}, ${priority}, NOW(), NOW()) 
+        INSERT INTO crm.tasks (
+          instance_id, title, description, status, priority, 
+          triggering_message_id, related_chat_jid, created_at, updated_at
+        ) 
+        VALUES (
+          ${instanceId}, ${title}, ${description}, ${status}, ${priority}, 
+          ${triggeringMessageId}, ${relatedChatJid}, NOW(), NOW()
+        ) 
         RETURNING *
       `);
       
