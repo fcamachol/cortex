@@ -48,11 +48,17 @@ export const ActionService = {
             // Security check - only process reactions from internal users
             // if (!await storage.isInternalUser(cleanReaction.reactorJid)) return;
             
+            // Get the original message content for template processing
+            const originalMessage = await storage.getWhatsappMessageById(cleanReaction.messageId, cleanReaction.instanceId);
+            console.log(`🔍 Retrieved message for reaction: ${cleanReaction.messageId}`, originalMessage?.content?.substring(0, 50));
+            
             // Trigger action logic based on reaction
             await this.triggerAction(cleanReaction.instanceId, 'reaction', cleanReaction.reactionEmoji, {
                 messageId: cleanReaction.messageId,
                 reactorJid: cleanReaction.reactorJid,
-                chatId: await this.getChatIdFromMessage(cleanReaction.messageId, cleanReaction.instanceId),
+                chatId: originalMessage?.chatId || await this.getChatIdFromMessage(cleanReaction.messageId, cleanReaction.instanceId),
+                content: originalMessage?.content || '',
+                senderJid: originalMessage?.senderJid || '',
                 timestamp: cleanReaction.timestamp
             });
         } catch (error) {
@@ -172,17 +178,29 @@ export const ActionService = {
         const processed = JSON.parse(JSON.stringify(config));
         const context = triggerContext.context;
         
+        console.log(`🔧 Processing template variables with context:`, {
+            messageId: context.messageId,
+            content: context.content?.substring(0, 50),
+            reactorJid: context.reactorJid,
+            senderJid: context.senderJid
+        });
+        
         const replaceVariables = (text: string): string => {
             if (!text || typeof text !== 'string') return text;
             
-            return text
+            const result = text
                 .replace(/\{\{sender\}\}/g, context.reactorJid || context.senderJid || 'Unknown')
                 .replace(/\{\{content\}\}/g, context.content || 'No content')
+                .replace(/\{\{message_content\}\}/g, context.content || 'No content')
+                .replace(/\{\{message_id\}\}/g, context.messageId || 'No ID')
                 .replace(/\{\{chatId\}\}/g, context.chatId || 'Unknown chat')
                 .replace(/\{\{messageId\}\}/g, context.messageId || 'Unknown message')
                 .replace(/\{\{instanceId\}\}/g, triggerContext.instanceId || 'Unknown instance')
                 .replace(/\{\{reaction\}\}/g, triggerContext.triggerValue || 'Unknown reaction')
                 .replace(/\{\{triggerType\}\}/g, triggerContext.triggerType || 'Unknown trigger');
+                
+            console.log(`🔧 Template replacement: "${text}" -> "${result}"`);
+            return result;
         };
         
         // Process all string values in config
