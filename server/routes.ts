@@ -5,23 +5,31 @@ import jwt from 'jsonwebtoken';
 import { eq } from 'drizzle-orm';
 import { appUsers } from '../shared/schema';
 import { nanoid } from 'nanoid';
-import { WebhookController, sseConnections } from './intelligent-webhook-controller';
+import { WebhookController } from './intelligent-webhook-controller';
+
+// Server-Sent Events connections map
+const sseClients = new Map<string, Response>();
 
 function notifyClientsOfNewMessage(messageRecord: any) {
-  console.log(`📡 Notifying ${sseConnections.size} connected clients of new message`);
+  const data = JSON.stringify({
+    type: 'new_message',
+    message: messageRecord
+  });
   
-  for (const [clientId, res] of sseConnections.entries()) {
+  sseClients.forEach((client, clientId) => {
     try {
-      res.write(`data: ${JSON.stringify({
-        type: 'new_message',
-        message: messageRecord
-      })}\n\n`);
+      client.write(`data: ${data}\n\n`);
     } catch (error) {
-      console.log(`❌ Error sending SSE to client ${clientId}:`, error);
-      sseConnections.delete(clientId);
+      console.error(`Error sending SSE to client ${clientId}:`, error);
+      sseClients.delete(clientId);
     }
-  }
+  });
+  
+  console.log(`📡 Notified ${sseClients.size} connected clients of new message`);
 }
+
+// Export the notification function for use by webhook controller
+export { notifyClientsOfNewMessage };
 
 function formatToE164(phoneNumber: string): string {
   let cleaned = phoneNumber.replace(/\D/g, '');
@@ -456,6 +464,79 @@ export async function registerRoutes(app: Express): Promise<void> {
       console.error('Error refreshing group subjects:', error);
       res.status(500).json({ error: 'Failed to refresh group subjects' });
     }
+  });
+
+  // WhatsApp Messages API - Fetch messages with full Evolution API data
+  app.get('/api/whatsapp/messages', async (req: AuthRequest, res: Response) => {
+    try {
+      const { chatId, instanceId, limit } = req.query;
+      const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const finalLimit = parseInt(limit as string || '50');
+      
+      if (chatId && instanceId) {
+        // Get messages for specific chat with full webhook data
+        const messages = await storage.getWhatsappMessages(
+          userId, 
+          instanceId as string, 
+          chatId as string, 
+          finalLimit
+        );
+        res.json(messages);
+      } else if (instanceId) {
+        // Get recent messages for specific instance
+        const messages = await storage.getWhatsappMessages(
+          userId, 
+          instanceId as string, 
+          '', 
+          finalLimit
+        );
+        res.json(messages);
+      } else {
+        res.status(400).json({ error: 'chatId and instanceId are required' });
+      }
+    } catch (error) {
+      console.error('Error fetching WhatsApp messages:', error);
+      res.status(500).json({ error: 'Failed to fetch messages' });
+    }
+  });
+
+  // WhatsApp Conversations with latest messages
+  app.get('/api/whatsapp/conversations', async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const conversations = await storage.getConversationsWithLatestMessages(userId);
+      res.json(conversations);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      res.status(500).json({ error: 'Failed to fetch conversations' });
+    }
+  });
+
+  // Server-Sent Events for real-time message updates
+  app.get('/api/whatsapp/messages/stream', (req: Request, res: Response) => {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+
+    // Send initial connection confirmation
+    res.write('data: {"type":"connected"}\n\n');
+
+    // Add client to SSE connections
+    const clientId = Date.now().toString();
+    sseClients.set(clientId, res);
+
+    // Handle client disconnect
+    req.on('close', () => {
+      sseClients.delete(clientId);
+    });
+
+    req.on('aborted', () => {
+      sseClients.delete(clientId);
+    });
   });
 
   // WhatsApp webhook handlers - Use the intelligent webhook controller
