@@ -1218,6 +1218,7 @@ export const WebhookController = {
         console.log(`📝 Creating task from reaction trigger`);
         
         const taskData = {
+            instanceId: triggerData.instanceId, // Use actual instance ID from webhook context
             title: config.title || `Task from ${triggerData.triggerType}: ${triggerData.triggerValue}`,
             description: config.description || `Automatically created from WhatsApp ${triggerData.triggerType}`,
             priority: config.priority || 'medium',

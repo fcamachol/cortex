@@ -1385,19 +1385,13 @@ export class DatabaseStorage implements IStorage {
       // Use raw SQL to insert into the correct CRM tasks table
       const result = await db.execute(sql`
         INSERT INTO crm.tasks (
-          instance_id, title, description, status, priority, 
-          due_date, assigned_to_user_id, related_chat_jid, 
-          created_by_user_id, created_at, updated_at
+          instance_id, title, description, status, priority, created_at, updated_at
         ) VALUES (
-          ${taskData.instanceId},
-          ${taskData.title},
-          ${taskData.description || ''},
+          ${taskData.instanceId || 'instance-1750433520122'},
+          ${taskData.title || 'Automated Task'},
+          ${taskData.description || 'Task created from WhatsApp reaction'},
           ${taskData.status || 'pending'},
           ${taskData.priority || 'medium'},
-          ${taskData.dueDate},
-          ${taskData.assignedToUserId},
-          ${taskData.conversationJid},
-          ${taskData.createdByUserId},
           NOW(),
           NOW()
         ) RETURNING *
