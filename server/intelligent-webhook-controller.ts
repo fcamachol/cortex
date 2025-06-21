@@ -1244,10 +1244,18 @@ export const WebhookController = {
             attendees: config.attendees || []
         };
         
-        // Create calendar event (this would integrate with calendar service)
-        const event = await this.createEvent(eventData);
+        // Create calendar event using storage method
+        const event = await storage.createCalendarEvent({
+            title: eventData.title,
+            description: `Automated event from WhatsApp reaction`,
+            startTime: eventData.startTime,
+            endTime: eventData.endTime,
+            calendarId: 1, // Default calendar
+            isAllDay: false,
+            timezone: 'UTC'
+        });
         
-        return { eventId: event.id, title: event.title };
+        return { eventId: event.eventId, title: event.title };
     },
 
     /**

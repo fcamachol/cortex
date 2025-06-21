@@ -1383,7 +1383,7 @@ export class DatabaseStorage implements IStorage {
   async createTask(taskData: any): Promise<any> {
     try {
       const [newTask] = await db.insert(tasks).values({
-        userId: taskData.userId || 'system',
+        userId: taskData.userId || '00000000-0000-0000-0000-000000000000',
         title: taskData.title,
         description: taskData.description,
         taskStatus: taskData.status || 'to_do',
