@@ -835,8 +835,16 @@ export const WebhookController = {
             console.log(`❌ Reaction record was:`, reactionRecord);
         }
 
-        // Also trigger any configured actions
-        await this.triggerAction(instanceId, 'reaction', reactionEmoji, { messageId: targetMessageId, reactorJid });
+        // Also trigger any configured actions with rich context
+        const actionContext = {
+            messageId: targetMessageId,
+            reactorJid: reactorJid,
+            chatId: targetChatId,
+            messageContent: '', // Will be populated if available
+            reactionEmoji: reactionEmoji,
+            timestamp: reactionRecord.timestamp
+        };
+        await this.triggerAction(instanceId, 'reaction', reactionEmoji, actionContext);
     },
 
     /**
@@ -1217,19 +1225,41 @@ export const WebhookController = {
     async executeCreateTask(config: any, triggerData: any) {
         console.log(`📝 Creating task from reaction trigger`);
         
-        const taskData = {
-            instanceId: triggerData.instanceId, // Use actual instance ID from webhook context
-            title: config.title || `Task from ${triggerData.triggerType}: ${triggerData.triggerValue}`,
-            description: config.description || `Automatically created from WhatsApp ${triggerData.triggerType}`,
-            priority: config.priority || 'medium',
-            dueDate: config.dueDate ? new Date(config.dueDate) : null,
-            // Additional task fields based on config
+        // Process template variables in the config with debugging
+        const processTemplate = (template: string) => {
+            if (!template) return template;
+            
+            console.log(`🔄 Processing template: "${template}"`);
+            console.log(`📊 Available context:`, JSON.stringify(triggerData.context, null, 2));
+            
+            const processed = template
+                .replace(/\{\{sender\}\}/g, triggerData.context?.reactorJid || 'Unknown')
+                .replace(/\{\{content\}\}/g, triggerData.context?.messageContent || 'No content')
+                .replace(/\{\{chatId\}\}/g, triggerData.context?.chatId || 'Unknown chat')
+                .replace(/\{\{messageId\}\}/g, triggerData.context?.messageId || 'Unknown message')
+                .replace(/\{\{instanceId\}\}/g, triggerData.instanceId || 'Unknown instance')
+                .replace(/\{\{reaction\}\}/g, triggerData.triggerValue || 'Unknown reaction')
+                .replace(/\{\{triggerType\}\}/g, triggerData.triggerType || 'Unknown trigger');
+                
+            console.log(`✅ Processed template: "${processed}"`);
+            return processed;
         };
         
-        // Store the task (assuming we have a tasks storage method)
+        const taskData = {
+            instanceId: triggerData.instanceId,
+            title: processTemplate(config.title) || `Task from ${triggerData.triggerType}: ${triggerData.triggerValue}`,
+            description: processTemplate(config.description) || `Automatically created from WhatsApp ${triggerData.triggerType}`,
+            priority: config.priority || 'medium',
+            dueDate: config.dueDate ? new Date(config.dueDate) : null,
+            // Map additional config fields if present
+            sourceChatId: processTemplate(config.sourceChatId),
+            sourceMessageId: processTemplate(config.sourceMessageId),
+            sourceInstanceId: processTemplate(config.sourceInstanceId)
+        };
+        
         const task = await storage.createTask(taskData);
         
-        return { taskId: task.taskId, title: task.title };
+        return { taskId: task.task_id || task.taskId, title: task.title };
     },
 
     /**
