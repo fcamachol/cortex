@@ -135,6 +135,9 @@ export const WebhookController = {
                     await this.handleMessageUpdate(instanceId, data);
                 }
                 break;
+            case 'messages.edit':
+                await this.handleMessageEdit(instanceId, data);
+                break;
             case 'contacts.upsert':
             case 'contacts.update':
                 await this.handleContactsUpsert(instanceId, data);
@@ -284,8 +287,11 @@ export const WebhookController = {
         } else if (data.key && data.status) {
             // Direct update format with key structure
             updates = [data];
+        } else if (data.data && (data.data.keyId || data.data.messageId || data.data.status)) {
+            // Evolution API wrapped format
+            updates = [data.data];
         } else if (data.keyId || data.messageId || data.status) {
-            // Evolution API actual format with keyId, messageId, etc.
+            // Evolution API direct format
             updates = [data];
         } else if (Array.isArray(data)) {
             // Array of updates
@@ -497,6 +503,73 @@ export const WebhookController = {
 
         // Fallback for unknown message types
         return { content: '[Unsupported message type]', messageType: 'unsupported' };
+    },
+
+    /**
+     * Handles message edits from Evolution API
+     */
+    async handleMessageEdit(instanceId: string, data: any) {
+        console.log(`✏️ Processing message edit for instance ${instanceId}`, JSON.stringify(data, null, 2));
+        
+        // Extract edit data from different possible formats
+        let editData = null;
+        
+        if (data.data) {
+            editData = data.data;
+        } else if (data.keyId || data.messageId) {
+            editData = data;
+        }
+        
+        if (!editData) {
+            console.log('⚠️ No valid message edit data found in webhook payload');
+            return;
+        }
+        
+        try {
+            // Extract message ID
+            const messageId = editData.keyId || editData.messageId;
+            if (!messageId) {
+                console.log('⚠️ Message edit missing required message ID');
+                return;
+            }
+            
+            // Extract edited content
+            let editedContent = '';
+            if (editData.editedMessage?.conversation) {
+                editedContent = editData.editedMessage.conversation;
+            } else if (editData.newText) {
+                editedContent = editData.newText;
+            } else if (editData.content) {
+                editedContent = editData.content;
+            }
+            
+            // Extract original content
+            let originalContent = '';
+            if (editData.originalMessage?.conversation) {
+                originalContent = editData.originalMessage.conversation;
+            } else if (editData.oldText) {
+                originalContent = editData.oldText;
+            }
+            
+            const editRecord = {
+                messageId,
+                instanceId,
+                originalContent,
+                editedContent,
+                editTimestamp: new Date(editData.editTimestamp * 1000 || Date.now()),
+                metadata: {
+                    remoteJid: editData.remoteJid,
+                    fromMe: editData.fromMe || false,
+                    participant: editData.participant
+                }
+            };
+            
+            await storage.createWhatsappMessageEditHistory(editRecord);
+            console.log(`✅ [${instanceId}] Stored message edit: ${messageId}`);
+            
+        } catch (error) {
+            console.log(`❌ Error storing message edit:`, error);
+        }
     },
 
     /**
