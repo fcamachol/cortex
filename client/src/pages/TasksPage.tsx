@@ -140,14 +140,39 @@ export function TasksPage() {
     return rootTasks;
   };
 
+  // Clear cache and force fresh data
+  useEffect(() => {
+    queryClient.removeQueries({ queryKey: ['/api/crm/tasks'] });
+  }, [queryClient]);
+
   // Fetch tasks with auto-refresh
   const { data: tasks, isLoading: tasksLoading } = useQuery({
-    queryKey: ['/api/crm/tasks'],
-    select: transformTasksData,
+    queryKey: ['/api/crm/tasks', Math.random()], // Force fresh fetch with random key
+    queryFn: async () => {
+      const response = await fetch('/api/crm/tasks', {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      return response.json();
+    },
+    select: (data) => {
+      // Debug: Log raw task data to see what we're receiving
+      const tasksWithJid = data.filter((task: any) => task.related_chat_jid);
+      console.log('Tasks with JID in frontend:', tasksWithJid.length, tasksWithJid.map((t: any) => ({
+        id: t.task_id,
+        title: t.title,
+        jid: t.related_chat_jid
+      })));
+      
+      return transformTasksData(data);
+    },
     refetchInterval: 5000, // Refresh every 5 seconds
     refetchIntervalInBackground: true, // Keep refreshing when tab is not active
     refetchOnWindowFocus: true, // Refresh when user returns to tab
-    staleTime: 0 // Always consider data stale to ensure fresh updates
+    staleTime: 0, // Always consider data stale to ensure fresh updates
+    cacheTime: 0 // Don't cache results
   });
 
   // Fetch projects

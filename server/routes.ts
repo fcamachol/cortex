@@ -355,6 +355,13 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get('/api/crm/tasks', async (req: Request, res: Response) => {
     try {
+      // Force no-cache headers to prevent 304 responses
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      
       const tasks = await storage.getTasks();
       res.json(tasks);
     } catch (error) {
