@@ -284,8 +284,7 @@ export const WebhookApiAdapter = {
         const timestamp = rawMessage.messageTimestamp;
 
         const getMessageType = (type?: string): WhatsappMessages['message_type'] => {
-            console.log(`🔍 [${instanceId}] Message type received: ${type}`);
-            const validTypes: WhatsappMessages['message_type'][] = ['text', 'image', 'video', 'audio', 'document', 'sticker', 'location', 'contact_card', 'contact_card_multi', 'order', 'revoked', 'unsupported', 'reaction', 'call_log', 'edited_message'];
+            // Direct message type mappings
             if (type === 'conversation') return 'text';
             if (type === 'reactionMessage') return 'reaction';
             if (type === 'audioMessage') return 'audio';
@@ -293,8 +292,9 @@ export const WebhookApiAdapter = {
             if (type === 'videoMessage') return 'video';
             if (type === 'documentMessage') return 'document';
             if (type === 'stickerMessage') return 'sticker';
-            if (type && validTypes.includes(type as any)) return type as WhatsappMessages['message_type'];
-            console.log(`⚠️ [${instanceId}] Unknown message type: ${type}, defaulting to unsupported`);
+            if (type === 'locationMessage') return 'location';
+            if (type === 'contactMessage') return 'contact_card';
+            
             return 'unsupported';
         };
 
