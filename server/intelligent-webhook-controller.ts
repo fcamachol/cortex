@@ -254,7 +254,58 @@ export const WebhookController = {
      */
     async handleMessageUpdate(instanceId: string, data: any) {
         console.log(`📝 Processing message update for instance ${instanceId}`);
-        // Implementation for message updates
+        
+        if (!data || !data.update) {
+            console.log('⚠️ No valid message update data found in webhook payload');
+            return;
+        }
+
+        const updates = Array.isArray(data.update) ? data.update : [data.update];
+        
+        for (const update of updates) {
+            if (!update.key?.id || !update.status) continue;
+            
+            const messageId = update.key.id;
+            const status = update.status;
+            
+            // Map Evolution API status to our enum values
+            const mappedStatus = this.mapMessageStatus(status);
+            if (!mappedStatus) {
+                console.log(`⚠️ Unknown message status: ${status}`);
+                continue;
+            }
+            
+            const updateRecord = {
+                messageId: messageId,
+                instanceId: instanceId,
+                status: mappedStatus,
+                timestamp: new Date(update.messageTimestamp * 1000 || Date.now())
+            };
+            
+            try {
+                await storage.createWhatsappMessageUpdate(updateRecord);
+                console.log(`✅ [${instanceId}] Stored message update: ${messageId} -> ${mappedStatus}`);
+            } catch (error) {
+                console.log(`❌ Error storing message update:`, error);
+                console.log(`❌ Update record was:`, updateRecord);
+            }
+        }
+    },
+
+    /**
+     * Maps Evolution API message status to our database enum values
+     */
+    mapMessageStatus(apiStatus: string): string | null {
+        const statusMap: { [key: string]: string } = {
+            'ERROR': 'error',
+            'PENDING': 'pending', 
+            'SERVER_ACK': 'sent',
+            'DELIVERY_ACK': 'delivered',
+            'READ': 'read',
+            'PLAYED': 'played'
+        };
+        
+        return statusMap[apiStatus] || null;
     },
 
     /**
