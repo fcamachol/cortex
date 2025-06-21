@@ -70,6 +70,13 @@ export const WebhookApiAdapter = {
             return;
         }
 
+        console.log(`📨 [${instanceId}] Processing ${messages.length} message(s), type: ${messages[0].messageType}`);
+        
+        // Handle reaction messages specially since they trigger actions
+        if (messages[0].messageType === 'reactionMessage') {
+            console.log(`🎭 [${instanceId}] Processing reaction message`);
+        }
+
         for (const rawMessage of messages) {
             try {
                 const cleanMessage = await this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
@@ -166,19 +173,37 @@ export const WebhookApiAdapter = {
      * Guarantees that the contact and chat related to a message exist in the DB.
      */
     async ensureDependenciesForMessage(cleanMessage: WhatsappMessages, rawMessage: any): Promise<void> {
-        const senderContact = await this.mapApiPayloadToWhatsappContact({
-            id: cleanMessage.sender_jid,
-            pushName: rawMessage.pushName
-        }, cleanMessage.instance_id);
-        if (senderContact) await storage.upsertWhatsappContact(senderContact);
-
-        if (cleanMessage.chat_id.endsWith('@g.us')) {
-            const chatContact = await this.mapApiPayloadToWhatsappContact({ id: cleanMessage.chat_id }, cleanMessage.instance_id);
-            if (chatContact) await storage.upsertWhatsappContact(chatContact);
+        // Create contact for message sender using proper field structure
+        const senderContactData = {
+            jid: cleanMessage.sender_jid,
+            instanceId: cleanMessage.instance_id,
+            pushName: rawMessage.pushName || null,
+            verifiedName: null,
+            profilePictureUrl: null,
+            isBusiness: false,
+            isMe: cleanMessage.from_me,
+            isBlocked: false,
+            firstSeenAt: new Date(),
+            lastUpdatedAt: new Date()
+        };
+        
+        try {
+            await storage.upsertWhatsappContact(senderContactData);
+            console.log(`✅ [${cleanMessage.instance_id}] Auto-created contact: ${cleanMessage.sender_jid}`);
+        } catch (error) {
+            console.error(`❌ [${cleanMessage.instance_id}] Error creating contact:`, error);
         }
 
+        // Create chat if it doesn't exist
         const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chat_id }, cleanMessage.instance_id);
-        if (chatData) await storage.upsertWhatsappChat(chatData);
+        if (chatData) {
+            try {
+                await storage.upsertWhatsappChat(chatData);
+                console.log(`✅ [${cleanMessage.instance_id}] Auto-created chat: ${cleanMessage.chat_id}`);
+            } catch (error) {
+                console.error(`❌ [${cleanMessage.instance_id}] Error creating chat:`, error);
+            }
+        }
     },
     
 
@@ -192,6 +217,7 @@ export const WebhookApiAdapter = {
         const getMessageType = (type?: string): WhatsappMessages['message_type'] => {
             const validTypes: WhatsappMessages['message_type'][] = ['text', 'image', 'video', 'audio', 'document', 'sticker', 'location', 'contact_card', 'contact_card_multi', 'order', 'revoked', 'unsupported', 'reaction', 'call_log', 'edited_message'];
             if (type === 'conversation') return 'text';
+            if (type === 'reactionMessage') return 'reaction';
             if (type && validTypes.includes(type as any)) return type as WhatsappMessages['message_type'];
             return 'unsupported';
         };
@@ -220,7 +246,10 @@ export const WebhookApiAdapter = {
 
     async mapApiPayloadToWhatsappContact(rawContact: any, instanceId: string): Promise<Omit<WhatsappContacts, 'first_seen_at' | 'last_updated_at'> | null> {
         const jid = rawContact.id || rawContact.remoteJid;
-        if (!jid) return null;
+        if (!jid) {
+            console.warn(`⚠️ [${instanceId}] Contact missing JID - id: ${rawContact.id}, remoteJid: ${rawContact.remoteJid}`);
+            return null;
+        }
 
         const instance = await storage.getInstanceById(instanceId);
         
