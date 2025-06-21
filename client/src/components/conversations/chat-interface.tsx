@@ -76,8 +76,8 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       return data.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     },
     enabled: !!conversationId && conversationId !== 'undefined' && !!instanceId,
-    refetchInterval: 30000, // Reduced polling frequency - real-time updates come via SSE
-    staleTime: 5000,
+    refetchInterval: false, // Disable polling - use SSE for real-time updates
+    staleTime: 300000, // Cache for 5 minutes
   });
 
   // Set up Server-Sent Events for real-time message updates
@@ -85,7 +85,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     if (!conversationId || !instanceId) return;
 
     console.log('Setting up SSE connection for real-time messages');
-    const eventSource = new EventSource('/api/events/messages');
+    const eventSource = new EventSource('/api/events');
 
     eventSource.onmessage = (event) => {
       try {

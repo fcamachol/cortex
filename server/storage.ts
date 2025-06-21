@@ -1584,6 +1584,22 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async getSpacesForUser(userId: string): Promise<any[]> {
+    try {
+      const result = await db.execute(sql`
+        SELECT s.* FROM app.spaces s
+        LEFT JOIN app.space_members sm ON s.space_id = sm.space_id
+        WHERE s.creator_user_id = ${userId} OR sm.user_id = ${userId}
+        GROUP BY s.space_id
+        ORDER BY s.display_order
+      `);
+      return result.rows;
+    } catch (error) {
+      console.error('Error fetching spaces for user:', userId, error);
+      return [];
+    }
+  }
+
   async updateTask(taskId: number, updates: any): Promise<any> {
     try {
       const setClause = Object.keys(updates)

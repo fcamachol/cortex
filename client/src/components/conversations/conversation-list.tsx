@@ -39,20 +39,23 @@ export default function ConversationList({ selectedConversation, onSelectConvers
 
   const { data: conversations = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/whatsapp/conversations/${userId}`],
-    refetchInterval: 3000, // Refresh every 3 seconds
+    refetchInterval: false, // Disable polling - use SSE for updates
+    staleTime: 300000, // Cache for 5 minutes
   });
 
   // Also fetch contacts for display names
   const { data: contacts = [] } = useQuery<any[]>({
     queryKey: [`/api/contacts/${userId}`],
-    refetchInterval: 5000,
+    refetchInterval: false, // Disable polling
+    staleTime: 600000, // Cache for 10 minutes - contacts change rarely
   });
 
   // Fetch recent messages to show latest message per conversation
   const { data: messagesResponse = [] } = useQuery<any[]>({
     queryKey: [`/api/whatsapp/conversations/${userId}`],
     queryFn: () => fetch(`/api/whatsapp/conversations/${userId}`).then(res => res.json()),
-    refetchInterval: 3000,
+    refetchInterval: false, // Disable polling - use SSE for updates
+    staleTime: 300000, // Cache for 5 minutes
   });
 
   // Ensure messages is always an array
@@ -67,18 +70,28 @@ export default function ConversationList({ selectedConversation, onSelectConvers
       .sort((a: any, b: any) => new Date(b.timestamp || b.createdAt).getTime() - new Date(a.timestamp || a.createdAt).getTime())[0];
   };
 
-  // Auto-refresh when new messages arrive or conversations change
+  // Set up SSE connection for real-time conversation updates
   useEffect(() => {
-    const refreshConversations = () => {
-      queryClient.invalidateQueries({
-        queryKey: [`/api/whatsapp/conversations/${userId}`]
-      });
+    const eventSource = new EventSource('/api/events');
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'new_message' || data.type === 'new_reaction') {
+          // Invalidate conversations to refresh latest message previews
+          queryClient.invalidateQueries({
+            queryKey: [`/api/whatsapp/conversations/${userId}`]
+          });
+        }
+      } catch (error) {
+        console.error('Error processing SSE event:', error);
+      }
     };
 
-    // Listen for WebSocket events or set up periodic refresh
-    const interval = setInterval(refreshConversations, 5000);
-    
-    return () => clearInterval(interval);
+    return () => {
+      eventSource.close();
+    };
   }, [queryClient, userId]);
 
   const filteredConversations = conversations
