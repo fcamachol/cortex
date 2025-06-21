@@ -102,6 +102,8 @@ export const WebhookController = {
                 // Check for reactions first
                 if (data.messages && data.messages[0]?.message?.reactionMessage) {
                     await this.handleReaction(instanceId, data.messages[0], sender);
+                } else if (Array.isArray(data) && data[0]?.message?.reactionMessage) {
+                    await this.handleReaction(instanceId, data[0], sender);
                 } else {
                     await this.handleMessageUpsert(instanceId, data);
                 }
@@ -145,16 +147,21 @@ export const WebhookController = {
                 return;
             }
 
-            // Handle single message in data object (Evolution API structure)
-            let messageData;
-            if (data.data && data.data.key) {
-                messageData = data.data;
+            // Handle message array from Evolution API webhook
+            let messages = [];
+            if (Array.isArray(data)) {
+                messages = data;
+            } else if (data.data && Array.isArray(data.data)) {
+                messages = data.data;
             } else if (data.key) {
-                messageData = data;
+                messages = [data];
             } else {
                 console.log('⚠️ No valid message data found in webhook payload');
                 return;
             }
+
+            // Process each message in the array
+            for (const messageData of messages) {
 
             const key = messageData.key;
             const message = messageData.message;
@@ -225,10 +232,12 @@ export const WebhookController = {
             console.log(`✅ Webhook message stored successfully in WhatsApp schema: ${messageId}`);
 
             // Notify connected clients about new message
+            const { notifyClientsOfNewMessage } = require('./routes');
             notifyClientsOfNewMessage(messageRecord);
 
             // Process for automated actions
             console.log('🔍 Processing message for automated actions');
+            }
 
         } catch (error) {
             console.error('❌ Error processing message upsert:', error);
