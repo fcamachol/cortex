@@ -307,7 +307,7 @@ export const WebhookController = {
             };
             
             try {
-                await this.storage.createMessageUpdate(updateRecord);
+                await storage.createWhatsappMessageUpdate(updateRecord);
                 console.log(`✅ [${instanceId}] Stored message update: ${messageId} -> ${mappedStatus}`);
             } catch (error) {
                 console.log(`❌ Error storing message update:`, error);
