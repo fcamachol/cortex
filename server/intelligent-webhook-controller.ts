@@ -458,11 +458,32 @@ export const WebhookController = {
                 console.log(`📝 Group chat ${groupId} already exists or error:`, error.message);
             }
             
+            // Create the actual group record in the groups table
+            const groupData = {
+                groupJid: groupId,
+                instanceId: instanceId,
+                subject: rawGroup.subject || rawGroup.name || '',
+                description: rawGroup.desc || rawGroup.description || null,
+                ownerJid: rawGroup.owner || null,
+                creationTimestamp: rawGroup.creation ? new Date(rawGroup.creation * 1000) : null,
+                isLocked: rawGroup.restrict || false
+            };
+            
+            try {
+                await storage.createWhatsappGroup(groupData);
+                console.log(`✅ [${instanceId}] Created/Updated group: ${groupId} - ${groupData.subject}`);
+            } catch (error) {
+                console.log(`📝 Group ${groupId} creation error:`, error.message);
+            }
+            
             // Process group participants if available
             if (rawGroup.participants) {
                 for (const participant of rawGroup.participants) {
+                    const participantJid = participant.id || participant.jid;
+                    
+                    // First create contact record for participant
                     const contactData = {
-                        jid: participant.id || participant.jid,
+                        jid: participantJid,
                         instanceId: instanceId,
                         pushName: participant.notify || participant.name || '',
                         profilePictureUrl: null,
@@ -473,10 +494,26 @@ export const WebhookController = {
                     
                     try {
                         await storage.createWhatsappContact(contactData);
-                        console.log(`✅ [${instanceId}] Created group participant: ${contactData.jid}`);
+                        console.log(`✅ [${instanceId}] Created group participant contact: ${participantJid}`);
                     } catch (error) {
-                        // Participant contact might already exist
-                        console.log(`📝 Group participant ${contactData.jid} already exists`);
+                        // Contact might already exist
+                        console.log(`📝 Group participant contact ${participantJid} already exists`);
+                    }
+                    
+                    // Then create group participant record
+                    const groupParticipantData = {
+                        groupJid: groupId,
+                        participantJid: participantJid,
+                        instanceId: instanceId,
+                        isAdmin: participant.admin === 'admin' || participant.admin === 'superadmin',
+                        isSuperAdmin: participant.admin === 'superadmin'
+                    };
+                    
+                    try {
+                        await storage.createWhatsappGroupParticipant(groupParticipantData);
+                        console.log(`✅ [${instanceId}] Created group participant: ${participantJid} (${participant.admin || 'member'})`);
+                    } catch (error) {
+                        console.log(`📝 Group participant ${participantJid} already exists`);
                     }
                 }
             }
