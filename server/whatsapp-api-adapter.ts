@@ -690,12 +690,54 @@ export const WebhookApiAdapter = {
             return 'unsupported';
         };
 
+        // Enhanced fromMe detection logic
+        const detectFromMe = async (rawMessage: any, instanceId: string): Promise<boolean> => {
+            // First check Evolution API flag (may be incorrect)
+            const apiFromMe = rawMessage.key.fromMe || false;
+            
+            // Get instance owner JID for comparison
+            const instance = await storage.getWhatsappInstance(instanceId);
+            const instanceOwnerJid = instance?.ownerJid;
+            
+            if (!instanceOwnerJid) {
+                console.log(`⚠️ [${instanceId}] No owner JID found for instance, using API fromMe: ${apiFromMe}`);
+                return apiFromMe;
+            }
+            
+            // For group messages, check if participant matches instance owner
+            if (rawMessage.key.participant) {
+                const isOwnerMessage = rawMessage.key.participant === instanceOwnerJid;
+                if (isOwnerMessage !== apiFromMe) {
+                    console.log(`🔧 [${instanceId}] Corrected fromMe flag: API=${apiFromMe}, Detected=${isOwnerMessage} for participant ${rawMessage.key.participant} vs owner ${instanceOwnerJid}`);
+                }
+                return isOwnerMessage;
+            }
+            
+            // For direct messages, check if this is a conversation with the instance owner
+            if (!rawMessage.key.participant) {
+                // In direct chats, fromMe=true means the instance owner sent the message
+                // If remoteJid equals owner, this chat is the owner talking to themselves (rare)
+                if (rawMessage.key.remoteJid === instanceOwnerJid) {
+                    // Self-chat scenario, trust the API flag
+                    return apiFromMe;
+                }
+                // For other direct chats, the API flag should be more reliable
+                return apiFromMe;
+            }
+            
+            // Fallback to API flag with logging
+            console.log(`📤 [${instanceId}] Using API fromMe flag: ${apiFromMe} for message ${rawMessage.key.id}`);
+            return apiFromMe;
+        };
+
+        const correctedFromMe = await detectFromMe(rawMessage, instanceId);
+
         return {
             messageId: rawMessage.key.id,
             instanceId: instanceId,
             chatId: rawMessage.key.remoteJid,
             senderJid: rawMessage.key.participant || rawMessage.key.remoteJid,
-            fromMe: rawMessage.key.fromMe || false,
+            fromMe: correctedFromMe,
             messageType: getMessageType(rawMessage.messageType),
             content: this.extractMessageContent(rawMessage),
             timestamp: timestamp && typeof timestamp === 'number' ? new Date(timestamp * 1000) : new Date(),
