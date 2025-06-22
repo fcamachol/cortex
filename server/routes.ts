@@ -197,6 +197,93 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Instance Management Routes
+  app.post('/api/whatsapp/instances/create', async (req: Request, res: Response) => {
+    try {
+      const { instanceName, webhookUrl, displayName, qrcode, number } = req.body;
+      
+      if (!instanceName) {
+        return res.status(400).json({ error: 'Instance name is required' });
+      }
+
+      const { InstanceManager } = await import('./instance-manager');
+      const result = await InstanceManager.createInstanceWithWebhook(instanceName, {
+        webhookUrl,
+        displayName,
+        qrcode,
+        number
+      });
+
+      if (result.success) {
+        res.json(result.instance);
+      } else {
+        res.status(400).json({ error: result.error });
+      }
+    } catch (error) {
+      console.error('Error creating instance:', error);
+      res.status(500).json({ error: 'Failed to create instance' });
+    }
+  });
+
+  app.get('/api/whatsapp/instances/:instanceName/status', async (req: Request, res: Response) => {
+    try {
+      const { instanceName } = req.params;
+      
+      const { InstanceManager } = await import('./instance-manager');
+      const result = await InstanceManager.getInstanceStatus(instanceName);
+
+      if (result.success) {
+        res.json({ status: result.status, qrcode: result.qrcode });
+      } else {
+        res.status(400).json({ error: result.error });
+      }
+    } catch (error) {
+      console.error('Error getting instance status:', error);
+      res.status(500).json({ error: 'Failed to get instance status' });
+    }
+  });
+
+  app.post('/api/whatsapp/instances/:instanceName/configure-webhook', async (req: Request, res: Response) => {
+    try {
+      const { instanceName } = req.params;
+      const { webhookUrl } = req.body;
+      
+      if (!webhookUrl) {
+        return res.status(400).json({ error: 'Webhook URL is required' });
+      }
+
+      const { InstanceManager } = await import('./instance-manager');
+      const success = await InstanceManager.configureInstanceWebhook(instanceName, webhookUrl);
+
+      if (success) {
+        res.json({ success: true, message: 'Webhook configured successfully' });
+      } else {
+        res.status(400).json({ error: 'Failed to configure webhook' });
+      }
+    } catch (error) {
+      console.error('Error configuring webhook:', error);
+      res.status(500).json({ error: 'Failed to configure webhook' });
+    }
+  });
+
+  app.delete('/api/whatsapp/instances/:instanceName', async (req: Request, res: Response) => {
+    try {
+      const { instanceName } = req.params;
+      
+      const { InstanceManager } = await import('./instance-manager');
+      const result = await InstanceManager.deleteInstance(instanceName);
+
+      if (result.success) {
+        res.json({ success: true, message: 'Instance deleted successfully' });
+      } else {
+        res.status(400).json({ error: result.error });
+      }
+    } catch (error) {
+      console.error('Error deleting instance:', error);
+      res.status(500).json({ error: 'Failed to delete instance' });
+    }
+  });
+
   app.get('/api/whatsapp/instances/status', async (req: Request, res: Response) => {
     try {
       const { instanceId } = req.query;
