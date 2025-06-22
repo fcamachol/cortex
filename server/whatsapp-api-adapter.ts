@@ -166,8 +166,9 @@ export const WebhookApiAdapter = {
                     const groupData = {
                         groupJid: cleanChat.chatId,
                         instanceId: instanceId,
-                        // Only use the chat name if it's a proper group subject, not a user's pushName
-                        subject: (rawChat.name && !rawChat.name.includes('@') && rawChat.name !== 'undefined') ? rawChat.name : 'New Group',
+                        // Always use placeholder for groups created via chat events
+                        // Actual group subjects should come from dedicated group.upsert events
+                        subject: 'New Group',
                         ownerJid: null,
                         description: null,
                         creationTimestamp: null,
