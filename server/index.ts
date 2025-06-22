@@ -1,88 +1,71 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { createServer } from "http";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { initializeEvolutionApi, getEvolutionApi } from "./evolution-api";
-import { createServer } from "http";
-import { Server as SocketIOServer } from "socket.io";
+import { initializeEvolutionApi } from "./evolution-api";
+import { SseManager } from "./sse-manager"; // Import the SSE manager
 
-const app = express();
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: false, limit: '50mb' }));
-
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
-    }
-  });
-
-  next();
-});
-
+// Main async function to start the server
 (async () => {
-  // Initialize Evolution API with correct credentials
-  console.log("🔗 Configuring Evolution API...");
-  initializeEvolutionApi({
-    baseUrl: 'https://evolution-api-evolution-api.vuswn0.easypanel.host',
-    apiKey: '119FA240-45ED-46A7-AE13-5A1B7C909D7D'
-  });
-    
-  try {
-    const evolutionApi = getEvolutionApi();
-    const response = await fetch('https://evolution-api-evolution-api.vuswn0.easypanel.host/', {
-      headers: { 'apikey': '119FA240-45ED-46A7-AE13-5A1B7C909D7D' }
+    // 1. Initialize Express App
+    const app = express();
+    const server = createServer(app);
+
+    // 2. Setup Middleware
+    // Use a large limit to handle webhooks with base64 media
+    app.use(express.json({ limit: '50mb' }));
+    app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+    // Optional: Add a simple logging middleware
+    app.use((req, res, next) => {
+        res.on("finish", () => {
+            if (req.path.startsWith("/api")) {
+                 console.log(`${req.method} ${req.path} ${res.statusCode} `);
+            }
+        });
+        next();
     });
-    const health = await response.json();
-    console.log("✅ Evolution API response:", health);
-    console.log("✅ Evolution API connected: healthy");
-  } catch (error) {
-    console.log("⚠️ Evolution API health check failed - will retry when needed");
-  }
+    
+    // 3. Initialize External Services
+    console.log("🔗 Configuring Evolution API...");
+    initializeEvolutionApi({
+        baseUrl: process.env.EVOLUTION_API_URL || 'https://evolution-api-evolution-api.vuswn0.easypanel.host',
+        apiKey: process.env.EVOLUTION_API_KEY || '119FA240-45ED-46A7-AE13-5A1B7C909D7D'
+    });
 
-  await registerRoutes(app);
+    // Optional: Perform an initial health check on startup
+    try {
+        const response = await fetch(process.env.EVOLUTION_API_URL || 'https://evolution-api-evolution-api.vuswn0.easypanel.host');
+        if(response.ok) console.log("✅ Evolution API health check successful.");
+    } catch (error) {
+        console.warn("⚠️ Evolution API health check failed on startup. Will retry on first use.");
+    }
+    
+    // 4. Register API and Real-time Routes
+    registerRoutes(app);
 
-  // Serve the frontend after API routes are registered
-  const server = createServer(app);
-  
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
+    // This single route handles real-time updates pushed to the frontend
+    app.get('/api/events', SseManager.handleNewConnection);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    // 5. Setup Frontend Serving (Vite for Dev, Static for Prod)
+    if (process.env.NODE_ENV === "development") {
+        await setupVite(app, server);
+    } else {
+        serveStatic(app);
+    }
 
-    console.error("Server error:", err);
-    res.status(status).json({ message });
-  });
+    // 6. Global Error Handling Middleware
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+        const status = err.status || 500;
+        const message = err.message || "Internal Server Error";
+        console.error("❌ Server Error:", err.stack);
+        res.status(status).json({ error: message });
+    });
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
-  server.listen(port, "0.0.0.0", () => {
-    log(`serving on port ${port}`);
-  });
+    // 7. Start the Server
+    const port = process.env.PORT || 5000;
+    server.listen(port, "0.0.0.0", () => {
+        console.log(`🚀 Server listening on port ${port}`);
+    });
+
 })();
