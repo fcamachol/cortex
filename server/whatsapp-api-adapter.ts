@@ -884,17 +884,26 @@ export const WebhookApiAdapter = {
 
         const instance = await storage.getInstanceById(instanceId);
         
-        // For groups, prefer subject field over other name fields
+        // For groups, ensure we use the authentic group subject from database
         let contactName = rawContact.name || rawContact.pushName || rawContact.notify;
-        if (jid.endsWith('@g.us') && rawContact.subject) {
-            contactName = rawContact.subject;
+        if (jid.endsWith('@g.us')) {
+            // Check if we have the authentic group subject in database
+            const existingGroup = await storage.getWhatsappGroup(jid, instanceId);
+            if (existingGroup?.subject && existingGroup.subject !== 'Group') {
+                contactName = existingGroup.subject;
+            } else if (rawContact.subject && rawContact.subject !== 'Group Chat') {
+                contactName = rawContact.subject;
+            } else {
+                // Fallback to generic group name for contact record
+                contactName = 'Group';
+            }
         }
         
         return {
             jid: jid,
             instanceId: instanceId,
             pushName: contactName,
-            verifiedName: rawContact.verifiedName || (jid.endsWith('@g.us') ? rawContact.subject : undefined),
+            verifiedName: rawContact.verifiedName || (jid.endsWith('@g.us') ? contactName : undefined),
             profilePictureUrl: rawContact.profilePicUrl || rawContact.profilePictureUrl,
             isBusiness: rawContact.isBusiness || false,
             isMe: instance?.ownerJid === jid,
