@@ -10,6 +10,7 @@ import QRTestPage from "@/pages/qr-test";
 import { TasksPage } from "@/pages/TasksPage";
 import DatabaseViewer from "@/pages/DatabaseViewer";
 import { GroupManagement } from "@/pages/GroupManagement";
+import { RealtimeMonitor } from "@/pages/RealtimeMonitor";
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
@@ -23,6 +24,7 @@ function AuthenticatedRoutes() {
       <Route path="/actions" component={ActionsPage} />
       <Route path="/tasks" component={TasksPage} />
       <Route path="/groups" component={() => <GroupManagement spaceId="7804247f-3ae8-4eb2-8c6d-2c44f967ad42" />} />
+      <Route path="/monitor" component={() => <RealtimeMonitor spaceId="7804247f-3ae8-4eb2-8c6d-2c44f967ad42" />} />
       <Route path="/database" component={DatabaseViewer} />
       <Route path="/qr-test" component={QRTestPage} />
       <Route component={NotFound} />
