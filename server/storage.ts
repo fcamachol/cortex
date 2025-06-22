@@ -58,6 +58,11 @@ class DatabaseStorage {
         return instance || null;
     }
 
+    async getInstanceByName(instanceName: string): Promise<WhatsappInstance | null> {
+        const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceName, instanceName));
+        return instance || null;
+    }
+
     async getWhatsappInstance(instanceName: string): Promise<WhatsappInstance | null> {
         const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceName, instanceName));
         return instance || null;
