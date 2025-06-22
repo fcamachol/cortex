@@ -980,40 +980,82 @@ export const WebhookApiAdapter = {
     },
 
     /**
-     * Fetch all groups using the new Evolution API endpoint
+     * Fetch all groups using the new Evolution API endpoint with streaming approach
      */
     async fetchAllGroupsFromApi(instanceId: string): Promise<{ success: boolean; groups: any[]; error?: string }> {
         try {
-            const evolutionApi = getEvolutionApi();
             const instance = await storage.getWhatsappInstance(instanceId);
             
             if (!instance?.apiKey) {
                 return { success: false, groups: [], error: 'No API key found for instance' };
             }
 
-            console.log(`🔍 [${instanceId}] Fetching all groups from Evolution API...`);
+            console.log(`🔍 [${instanceId}] Attempting to fetch groups from Evolution API...`);
 
-            // Use the new fetchAllGroups endpoint
-            const response = await fetch(`${process.env.EVOLUTION_API_URL}/group/fetchAllGroups/${instanceId}?getParticipants=false`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': instance.apiKey
-                },
-                timeout: 30000 // 30 second timeout
-            });
+            // Try multiple approaches to get group data
+            const approaches = [
+                { endpoint: `/group/fetchAllGroups/${instanceId}?getParticipants=false`, timeout: 15000 },
+                { endpoint: `/chat/findChats/${instanceId}`, timeout: 10000 },
+                { endpoint: `/instance/fetchInstances`, timeout: 5000 }
+            ];
 
-            if (!response.ok) {
-                throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+            for (const approach of approaches) {
+                try {
+                    console.log(`🔄 [${instanceId}] Trying ${approach.endpoint}...`);
+                    
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), approach.timeout);
+
+                    const response = await fetch(`${process.env.EVOLUTION_API_URL}${approach.endpoint}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': instance.apiKey
+                        },
+                        signal: controller.signal
+                    });
+
+                    clearTimeout(timeoutId);
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        
+                        // Process different response formats
+                        let groups = [];
+                        if (Array.isArray(data)) {
+                            groups = data.filter(item => item.id && item.id.endsWith('@g.us'));
+                        } else if (data.chats) {
+                            groups = data.chats.filter(chat => chat.id && chat.id.endsWith('@g.us'));
+                        } else if (approach.endpoint.includes('fetchInstances')) {
+                            // Find our instance in the list
+                            const targetInstance = Array.isArray(data) ? 
+                                data.find(inst => inst.name === instanceId) : 
+                                (data.name === instanceId ? data : null);
+                            
+                            if (targetInstance && targetInstance.Chat) {
+                                groups = targetInstance.Chat.filter(chat => chat.id && chat.id.endsWith('@g.us'));
+                            }
+                        }
+
+                        if (groups.length > 0) {
+                            console.log(`✅ [${instanceId}] Found ${groups.length} groups using ${approach.endpoint}`);
+                            return { success: true, groups, error: null };
+                        }
+                    }
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        console.log(`⏰ [${instanceId}] ${approach.endpoint} timed out`);
+                    } else {
+                        console.log(`❌ [${instanceId}] ${approach.endpoint} failed: ${error.message}`);
+                    }
+                    continue;
+                }
             }
 
-            const groups = await response.json();
-            console.log(`✅ [${instanceId}] Fetched ${groups.length} groups from Evolution API`);
-
-            return { success: true, groups: groups || [], error: null };
+            return { success: false, groups: [], error: 'All API endpoints failed or timed out' };
 
         } catch (error) {
-            console.error(`❌ [${instanceId}] Error fetching groups from API:`, error.message);
+            console.error(`❌ [${instanceId}] Error in fetchAllGroupsFromApi:`, error.message);
             return { success: false, groups: [], error: error.message };
         }
     },
