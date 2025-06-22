@@ -426,7 +426,7 @@ export const WebhookApiAdapter = {
             }
 
             // 2. Proactively fetch all groups from the Evolution API
-            const response = await fetch(`${instance.evolutionApiUrl}/group/findAll/${instanceId}`, {
+            const response = await fetch(`${instance.evolutionApiUrl}/chat/findChats/${instanceId}`, {
                 headers: { 'apikey': instance.apiKey }
             });
 

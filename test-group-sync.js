@@ -1,5 +1,5 @@
 // Direct test of the group sync functionality
-const { WebhookApiAdapter } = require('./server/whatsapp-api-adapter');
+import { WebhookApiAdapter } from './server/whatsapp-api-adapter.js';
 
 async function testGroupSync() {
     try {
