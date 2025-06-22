@@ -403,6 +403,12 @@ export const WebhookApiAdapter = {
      * Handles group creation and updates with Evolution API data taking priority
      */
     async handleGroupsUpsert(instanceId: string, data: any[]): Promise<void> {
+        // --- LOUD DIAGNOSTIC LOG ---
+        console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+        console.log('!!!      GROUPS.UPSERT WEBHOOK WAS CALLED     !!!');
+        console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+        // ---------------------------
+        
         if (!Array.isArray(data)) return;
         for (const rawGroup of data) {
             const groupJid = rawGroup.id;
@@ -693,6 +699,14 @@ export const WebhookApiAdapter = {
      * Process group participants from Evolution API data
      */
     async processGroupParticipants(instanceId: string, groupJid: string, participants: any[]): Promise<void> {
+        // --- LOUD DIAGNOSTIC LOG ---
+        console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+        console.log('!!!   PROCESSING GROUP PARTICIPANTS CALLED   !!!');
+        console.log(`!!!   GROUP: ${groupJid}                      !!!`);
+        console.log(`!!!   PARTICIPANTS COUNT: ${participants?.length || 0}           !!!`);
+        console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+        // ---------------------------
+        
         if (!participants || !Array.isArray(participants)) return;
         
         let processedCount = 0;
@@ -722,6 +736,14 @@ export const WebhookApiAdapter = {
     },
 
     async handleGroupParticipantsUpdate(instanceId: string, data: any): Promise<void> {
+        // --- LOUD DIAGNOSTIC LOG ---
+        console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+        console.log('!!!  GROUP.PARTICIPANTS.UPDATE WEBHOOK CALLED !!!');
+        console.log(`!!!  ACTION: ${data?.action || 'UNKNOWN'}                    !!!`);
+        console.log(`!!!  GROUP: ${data?.id || 'UNKNOWN'}              !!!`);
+        console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+        // ---------------------------
+        
         if (!data?.id || !data.participants || !Array.isArray(data.participants) || !data.action) {
             console.warn(`[${instanceId}] Invalid group.participants.update payload:`, data);
             return;
