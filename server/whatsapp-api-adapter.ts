@@ -77,6 +77,7 @@ export const WebhookApiAdapter = {
                  break;
             case 'groups.update':
             case 'GROUP_UPDATE':
+            case 'group.update':
                  await this.handleGroupUpdate(instanceId, data);
                  break;
             case 'group.participants.update':
@@ -1148,11 +1149,20 @@ export const WebhookApiAdapter = {
         try {
             const existingContact = await storage.getWhatsappContact(ownerJid, instanceId);
             if (!existingContact) {
-                const ownerContact = this.mapApiPayloadToWhatsappContact({ id: ownerJid }, instanceId);
-                if (ownerContact) {
-                    await storage.upsertWhatsappContact(ownerContact);
-                    console.log(`✅ Created owner contact for foreign key constraint: ${ownerJid}`);
-                }
+                // Create contact directly with required fields to avoid null constraint violations
+                const ownerContact = {
+                    jid: ownerJid,
+                    instanceId: instanceId,
+                    pushName: ownerJid.split('@')[0], // Use first part of JID as name
+                    verifiedName: undefined,
+                    profilePictureUrl: undefined,
+                    isBusiness: false,
+                    isMe: false,
+                    isBlocked: false,
+                };
+                
+                await storage.upsertWhatsappContact(ownerContact);
+                console.log(`✅ Created owner contact for foreign key constraint: ${ownerJid}`);
             }
         } catch (error) {
             console.warn(`Failed to ensure owner contact exists: ${ownerJid}`, error.message);
