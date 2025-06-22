@@ -311,10 +311,25 @@ export const WebhookApiAdapter = {
         if (!chats || chats.length === 0) return;
         
         for (const rawChat of chats) {
-            const cleanChat = this.mapApiPayloadToWhatsappChat(rawChat, instanceId);
+            const cleanChat = await this.mapApiPayloadToWhatsappChat(rawChat, instanceId);
             if (cleanChat) {
-                // Ensure the chat exists as a contact first
-                const chatContact = await this.mapApiPayloadToWhatsappContact({ id: cleanChat.chatId }, instanceId);
+                // Ensure the chat exists as a contact first with proper name resolution
+                let contactData = { id: cleanChat.chatId };
+                
+                // For individual chats, try to get existing contact information
+                if (!cleanChat.chatId.endsWith('@g.us')) {
+                    const existingContact = await storage.getWhatsappContact(cleanChat.chatId, instanceId);
+                    if (existingContact && existingContact.pushName) {
+                        contactData = {
+                            id: cleanChat.chatId,
+                            pushName: existingContact.pushName,
+                            verifiedName: existingContact.verifiedName,
+                            profilePicUrl: existingContact.profilePictureUrl
+                        };
+                    }
+                }
+                
+                const chatContact = await this.mapApiPayloadToWhatsappContact(contactData, instanceId);
                 if (chatContact) await storage.upsertWhatsappContact(chatContact);
 
                 // If it's a group, handle subject update from webhook data
@@ -435,7 +450,7 @@ export const WebhookApiAdapter = {
             if(chatContact) await storage.upsertWhatsappContact(chatContact);
             
             // Ensure chat record exists with Evolution API group name
-            const chatData = this.mapApiPayloadToWhatsappChat({ id: rawGroup.id, name: rawGroup.subject }, instanceId);
+            const chatData = await this.mapApiPayloadToWhatsappChat({ id: rawGroup.id, name: rawGroup.subject }, instanceId);
             if (chatData) await storage.upsertWhatsappChat(chatData);
 
             // Always update group with latest Evolution API data
@@ -1037,7 +1052,7 @@ export const WebhookApiAdapter = {
         };
     },
     
-    mapApiPayloadToWhatsappChat(rawChat: any, instanceId: string): Omit<WhatsappChats, 'createdAt' | 'updatedAt'> | null {
+    async mapApiPayloadToWhatsappChat(rawChat: any, instanceId: string): Promise<Omit<WhatsappChats, 'createdAt' | 'updatedAt'> | null> {
         const chatId = rawChat.id || rawChat.remoteJid;
         if (!chatId || typeof chatId !== 'string' || chatId.trim() === '') {
             return null;
@@ -1045,13 +1060,20 @@ export const WebhookApiAdapter = {
         
         // Use authentic group name when available, fallback to contact name or JID
         const isGroup = chatId.endsWith('@g.us');
-        let chatName = rawChat.name || rawChat.subject || rawChat.pushName;
+        let chatName;
         
         // For groups, prefer the subject field over other name fields
         if (isGroup) {
             chatName = rawChat.subject || rawChat.name || 'Group';
         } else {
-            chatName = rawChat.name || rawChat.pushName || chatId.split('@')[0];
+            // For individual chats, get the actual contact name instead of using sender info
+            const existingContact = await storage.getWhatsappContact(chatId, instanceId);
+            if (existingContact && existingContact.pushName) {
+                chatName = existingContact.pushName;
+            } else {
+                // Only use rawChat.name if it's actually for this chat, not sender info
+                chatName = rawChat.name || chatId.split('@')[0];
+            }
         }
         
         return {
