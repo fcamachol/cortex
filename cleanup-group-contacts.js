@@ -3,7 +3,8 @@
  * This preserves authentic group JIDs while fixing contact names
  */
 
-const { Client } = require('pg');
+import pkg from 'pg';
+const { Client } = pkg;
 
 async function cleanupGroupContacts() {
     const client = new Client({
