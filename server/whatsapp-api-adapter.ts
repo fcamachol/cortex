@@ -189,7 +189,66 @@ export const WebhookApiAdapter = {
             if (cleanContact) {
                 await storage.upsertWhatsappContact(cleanContact);
                 console.log(`✅ [${instanceId}] Contact upserted: ${cleanContact.jid}`);
+
+                // If this contact is a group, check for subject field and update group record
+                if (cleanContact.jid.endsWith('@g.us')) {
+                    await this.handleGroupSubjectFromContact(cleanContact.jid, rawContact, instanceId);
+                }
             }
+        }
+    },
+
+    /**
+     * Processes group subject updates from contacts.upsert webhook events
+     */
+    async handleGroupSubjectFromContact(groupJid: string, rawContact: any, instanceId: string): Promise<void> {
+        try {
+            // Extract subject from contact fields that might contain group names
+            let groupSubject = null;
+            
+            if (rawContact.subject && rawContact.subject !== 'Group Chat') {
+                groupSubject = rawContact.subject;
+            } else if (rawContact.name && rawContact.name !== 'Group Chat') {
+                groupSubject = rawContact.name;
+            } else if (rawContact.pushName && rawContact.pushName !== 'Group Chat') {
+                groupSubject = rawContact.pushName;
+            } else if (rawContact.verifiedName && rawContact.verifiedName !== 'Group Chat') {
+                groupSubject = rawContact.verifiedName;
+            }
+
+            if (groupSubject) {
+                // Check if this is a new subject or update needed
+                const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
+                if (!existingGroup || existingGroup.subject !== groupSubject) {
+                    // Update group record with authentic subject from contact webhook
+                    const groupData = {
+                        groupJid: groupJid,
+                        instanceId: instanceId,
+                        subject: groupSubject,
+                        ownerJid: rawContact.owner || null,
+                        description: rawContact.desc || null,
+                        creationTimestamp: rawContact.creation ? new Date(rawContact.creation * 1000) : null,
+                        isLocked: rawContact.restrict || false,
+                    };
+                    
+                    await storage.upsertWhatsappGroup(groupData);
+                    console.log(`✅ [${instanceId}] Group subject updated from contact webhook: ${groupJid} -> "${groupSubject}"`);
+                    
+                    // Update chat record name to match group subject
+                    const existingChat = await storage.getWhatsappChat(groupJid, instanceId);
+                    if (existingChat) {
+                        const updatedChat = {
+                            ...existingChat,
+                            name: groupSubject
+                        };
+                        await storage.upsertWhatsappChat(updatedChat);
+                    }
+                } else {
+                    console.log(`📝 [${instanceId}] Group ${groupJid} subject unchanged via contact: "${groupSubject}"`);
+                }
+            }
+        } catch (error) {
+            console.error(`❌ [${instanceId}] Error processing group subject from contact: ${error.message}`);
         }
     },
 
@@ -626,11 +685,17 @@ export const WebhookApiAdapter = {
 
         const instance = await storage.getInstanceById(instanceId);
         
+        // For groups, prefer subject field over other name fields
+        let contactName = rawContact.name || rawContact.pushName || rawContact.notify;
+        if (jid.endsWith('@g.us') && rawContact.subject) {
+            contactName = rawContact.subject;
+        }
+        
         return {
             jid: jid,
             instanceId: instanceId,
-            pushName: rawContact.name || rawContact.pushName || rawContact.notify,
-            verifiedName: rawContact.verifiedName,
+            pushName: contactName,
+            verifiedName: rawContact.verifiedName || (jid.endsWith('@g.us') ? rawContact.subject : undefined),
             profilePictureUrl: rawContact.profilePicUrl || rawContact.profilePictureUrl,
             isBusiness: rawContact.isBusiness || false,
             isMe: instance?.ownerJid === jid,
