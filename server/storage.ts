@@ -2,7 +2,7 @@ import { db } from "./db"; // Your Drizzle ORM instance
 import { sql, eq, desc, and, or, ilike } from "drizzle-orm";
 import {
     // App Schema
-    appUsers,
+    appUsers, workspaces, appSpaces, workspaceMembers,
     // WhatsApp Schema
     whatsappInstances, whatsappContacts, whatsappChats, whatsappMessages,
     whatsappGroups, whatsappGroupParticipants, whatsappMessageReactions,
@@ -10,6 +10,8 @@ import {
     tasks, contacts,
     // Actions Schema
     actionRules,
+    // CRM Schema
+    crmProjects, crmTasks, crmTaskChecklistItems,
     // Type Imports
     type AppUser, type InsertAppUser,
     type WhatsappInstance, type InsertWhatsappInstance,

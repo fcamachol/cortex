@@ -258,16 +258,22 @@ export const WebhookApiAdapter = {
                 return;
             }
 
-            // Since Evolution API group metadata endpoint may not be available,
-            // rely on group data from webhook events instead
+            // Check if group already has authentic subject from webhook events
             const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
-            if (existingGroup?.subject && existingGroup.subject !== 'Group') {
-                // Group already has authentic subject from webhook
+            if (existingGroup?.subject && existingGroup.subject !== 'Group' && existingGroup.subject !== 'New Group') {
+                // Group already has authentic subject from webhook - no API call needed
                 console.log(`✅ [${instanceId}] Group ${groupJid} already has authentic subject: ${existingGroup.subject}`);
                 return;
             }
 
-            // For new groups without Evolution API metadata, use fallback
+            // Evolution API metadata endpoint is unreliable, so we'll create a basic group
+            // and let webhook events update it with authentic data
+            console.log(`📝 [${instanceId}] Creating placeholder for group ${groupJid}, awaiting webhook data`);
+            await this.createGroupWithPlaceholder(groupJid, instanceId);
+            return;
+
+            // Legacy API fallback code (disabled due to 404 errors)
+            /*
             try {
                 const metadata = await evolutionApi.fetchGroupMetadata(instanceId, instance.apiKey, groupJid);
                 const realSubject = metadata?.subject || metadata?.name || 'Group';
@@ -300,6 +306,7 @@ export const WebhookApiAdapter = {
                 console.warn(`Failed to fetch group metadata for ${groupJid}:`, apiError.message);
                 await this.createGroupWithPlaceholder(groupJid, instanceId);
             }
+            */
             
         } catch (error) {
             console.error(`Error ensuring group with real subject:`, error);
