@@ -97,7 +97,12 @@ export function TaskBoard({
     return new Date(dateString).toLocaleDateString();
   };
 
-  const renderTask = (task: Task, index: number) => (
+  const renderTask = (task: Task, index: number) => {
+    if (!task || !task.task_id) {
+      return null;
+    }
+    
+    return (
     <Draggable key={task.task_id} draggableId={task.task_id.toString()} index={index}>
       {(provided, snapshot) => (
         <div
@@ -206,7 +211,8 @@ export function TaskBoard({
         </div>
       )}
     </Draggable>
-  );
+    );
+  };
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
@@ -254,4 +260,4 @@ export function TaskBoard({
       </div>
     </DragDropContext>
   );
-}
+};
