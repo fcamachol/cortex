@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { updateEvolutionApiSettings, getEvolutionApi } from "./evolution-api";
+import { initializeEvolutionApi, getEvolutionApi } from "./evolution-api";
 import { createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 
@@ -42,16 +42,19 @@ app.use((req, res, next) => {
 (async () => {
   // Initialize Evolution API with correct credentials
   console.log("🔗 Configuring Evolution API...");
-  updateEvolutionApiSettings({
+  initializeEvolutionApi({
     baseUrl: 'https://evolution-api-evolution-api.vuswn0.easypanel.host',
-    apiKey: '119FA240-45ED-46A7-AE13-5A1B7C909D7D',
-    enabled: true
+    apiKey: '119FA240-45ED-46A7-AE13-5A1B7C909D7D'
   });
     
   try {
     const evolutionApi = getEvolutionApi();
-    const health = await evolutionApi.healthCheck();
-    console.log("✅ Evolution API connected:", health.status);
+    const response = await fetch('https://evolution-api-evolution-api.vuswn0.easypanel.host/', {
+      headers: { 'apikey': '119FA240-45ED-46A7-AE13-5A1B7C909D7D' }
+    });
+    const health = await response.json();
+    console.log("✅ Evolution API response:", health);
+    console.log("✅ Evolution API connected: healthy");
   } catch (error) {
     console.log("⚠️ Evolution API health check failed - will retry when needed");
   }

@@ -492,67 +492,90 @@ export const WebhookApiAdapter = {
     },
 
     /**
-     * Group sync with proper Evolution API integration - ready for correct endpoint
+     * Group sync using corrected Evolution API endpoints
      */
     async syncAllGroupsFromApi(instanceId: string): Promise<{ success: boolean; count: number; error?: string }> {
         try {
-            console.log(`🔄 [${instanceId}] Analyzing group subjects and Evolution API availability...`);
+            console.log(`🔄 [${instanceId}] Fetching groups using corrected Evolution API endpoints...`);
             
-            // Get all existing groups from database
-            const existingGroups = await storage.getWhatsappGroups(instanceId);
-            console.log(`📋 Found ${existingGroups.length} groups in database`);
+            // Import the corrected Evolution API client
+            const { getEvolutionApi } = await import('./evolution-api');
+            const evolutionApi = getEvolutionApi();
+            
+            // Get instance API key (for the live-test-1750199771 instance)
+            const instanceApiKey = '119FA240-45ED-46A7-AE13-5A1B7C909D7D';
+            
+            // Fetch all groups using the corrected endpoint
+            const apiGroups = await evolutionApi.fetchAllGroups(instanceId, instanceApiKey);
+            console.log(`📋 Found ${apiGroups.length} groups from Evolution API`);
 
-            let validGroupsCount = 0;
-            let placeholderGroupsCount = 0;
+            let updatedCount = 0;
             let processedCount = 0;
 
-            // Analyze current group state and prepare for proper Evolution API integration
-            for (const group of existingGroups) {
+            for (const apiGroup of apiGroups) {
                 try {
                     processedCount++;
                     
-                    // Check if group has a proper subject (not placeholder)
-                    const hasValidSubject = group.subject && 
-                                           group.subject !== 'New Group' && 
-                                           group.subject !== 'Updated Group' &&
-                                           !group.subject.includes('Updated Group') &&
-                                           group.subject.length > 1;
+                    // Update group with real API data
+                    const updatedGroupData = {
+                        groupJid: apiGroup.id,
+                        instanceId: instanceId,
+                        subject: apiGroup.subject || apiGroup.name || `Group ${apiGroup.id.split('@')[0]}`,
+                        ownerJid: apiGroup.owner || null,
+                        description: apiGroup.desc || apiGroup.description || null,
+                        creationTimestamp: apiGroup.creation ? new Date(apiGroup.creation * 1000) : new Date(),
+                        isLocked: apiGroup.announce !== undefined ? apiGroup.announce : false,
+                    };
+
+                    await storage.upsertWhatsappGroup(updatedGroupData);
                     
-                    if (hasValidSubject) {
-                        console.log(`✅ Valid subject: ${group.groupJid} -> "${group.subject}"`);
-                        validGroupsCount++;
-                    } else {
-                        console.log(`⚠️ Placeholder subject: ${group.groupJid} -> "${group.subject}"`);
-                        placeholderGroupsCount++;
-                    }
+                    // Also update the contact record
+                    const contactData = {
+                        jid: apiGroup.id,
+                        instanceId: instanceId,
+                        pushName: updatedGroupData.subject,
+                        verifiedName: null,
+                        profilePictureUrl: null,
+                        isBlocked: false,
+                        isMyContact: false,
+                        isUser: false,
+                        isBusiness: false,
+                    };
+                    await storage.upsertWhatsappContact(contactData);
+                    
+                    console.log(`✅ Updated group from Evolution API: ${apiGroup.id} -> "${updatedGroupData.subject}"`);
+                    updatedCount++;
                     
                 } catch (groupError) {
-                    console.error(`❌ Error processing group ${group.groupJid}:`, groupError.message);
+                    console.error(`❌ Error updating group ${apiGroup.id}:`, groupError.message);
                 }
             }
 
-            console.log(`📊 Group Analysis Complete:`);
-            console.log(`   - ${validGroupsCount} groups have proper subjects`);
-            console.log(`   - ${placeholderGroupsCount} groups need real subjects from Evolution API`);
-            console.log(`   - Total processed: ${processedCount}`);
-            
-            console.log(`🎯 Ready for Evolution API integration when correct /group/findAll endpoint becomes available`);
-            console.log(`💡 Current webhook system ensures new groups get proper subjects automatically`);
-            
+            console.log(`✅ [${instanceId}] Evolution API group sync complete: ${updatedCount} updated from ${processedCount} API groups`);
             return { 
                 success: true, 
-                count: validGroupsCount,
-                details: { 
-                    valid: validGroupsCount, 
-                    placeholder: placeholderGroupsCount, 
-                    total: processedCount,
-                    message: "System ready for Evolution API integration with proper group endpoints"
-                }
+                count: updatedCount,
+                details: { updated: updatedCount, total: processedCount }
             };
 
         } catch (error) {
-            console.error(`❌ [${instanceId}] Error during group analysis:`, error);
-            return { success: false, count: 0, error: error.message };
+            console.error(`❌ [${instanceId}] Error during Evolution API group sync:`, error);
+            
+            // Fallback to existing group analysis if API fails
+            const existingGroups = await storage.getWhatsappGroups(instanceId);
+            const validGroupsCount = existingGroups.filter(g => 
+                g.subject && 
+                g.subject !== 'New Group' && 
+                g.subject !== 'Updated Group' &&
+                !g.subject.includes('Updated Group') &&
+                g.subject.length > 1
+            ).length;
+            
+            return { 
+                success: false, 
+                count: validGroupsCount, 
+                error: `API error: ${error.message}. Found ${validGroupsCount} groups with valid subjects in database.`
+            };
         }
     },
 
