@@ -1142,6 +1142,10 @@ export const WebhookApiAdapter = {
 
                         if (groups.length > 0) {
                             console.log(`✅ [${instanceId}] Found ${groups.length} groups using ${approach.endpoint}`);
+                            
+                            // Immediately update database with authentic Evolution API data
+                            await this.forceUpdateGroupsWithEvolutionData(instanceId, groups);
+                            
                             return { success: true, groups, error: null };
                         }
                     }
@@ -1521,6 +1525,49 @@ export const WebhookApiAdapter = {
 
         // If no direct API endpoints work, try using chat metadata approach
         return await this.fetchGroupInfoViaChat(instanceId, groupJid);
+    },
+
+    /**
+     * Force update database groups with authentic Evolution API data
+     */
+    async forceUpdateGroupsWithEvolutionData(instanceId: string, evolutionGroups: any[]): Promise<void> {
+        let updatedCount = 0;
+        
+        for (const group of evolutionGroups) {
+            try {
+                if (group.subject && group.subject !== 'Group Chat' && group.id) {
+                    const existingGroup = await storage.getWhatsappGroup(group.id, instanceId);
+                    
+                    const updatedGroupData = {
+                        groupJid: group.id,
+                        instanceId: instanceId,
+                        subject: group.subject, // Force authentic Evolution API name
+                        ownerJid: group.owner || existingGroup?.ownerJid || null,
+                        description: group.desc || existingGroup?.description || null,
+                        creationTimestamp: group.creation ? new Date(group.creation * 1000) : existingGroup?.creationTimestamp || null,
+                        isLocked: group.restrict !== undefined ? group.restrict : existingGroup?.isLocked || false,
+                    };
+                    
+                    await storage.upsertWhatsappGroup(updatedGroupData);
+                    
+                    // Also update chat record with authentic name
+                    const existingChat = await storage.getWhatsappChat(group.id, instanceId);
+                    if (existingChat) {
+                        await storage.upsertWhatsappChat({
+                            ...existingChat,
+                            name: group.subject // Force authentic name in chat record
+                        });
+                    }
+                    
+                    updatedCount++;
+                    console.log(`🔄 [${instanceId}] FORCED UPDATE: ${group.id} -> "${group.subject}"`);
+                }
+            } catch (error) {
+                console.error(`Error forcing update for group ${group.id}:`, error.message);
+            }
+        }
+        
+        console.log(`✅ [${instanceId}] Forced ${updatedCount} group updates with authentic Evolution API data`);
     },
 
     /**

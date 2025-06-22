@@ -2,7 +2,7 @@
  * Direct test of Evolution API group name updates
  */
 
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL;
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY;
@@ -14,7 +14,7 @@ async function testEvolutionGroupUpdate() {
     try {
         // Step 1: Fetch all groups from Evolution API
         console.log('\n1. Fetching groups from Evolution API...');
-        const groupsResponse = await fetch(`${EVOLUTION_API_URL}/group/fetchAllGroups/instance-1750433520122`, {
+        const groupsResponse = await fetch(`${EVOLUTION_API_URL}/group/fetchAllGroups/instance-1750433520122?getParticipants=false`, {
             headers: {
                 'apikey': EVOLUTION_API_KEY,
                 'Content-Type': 'application/json'
