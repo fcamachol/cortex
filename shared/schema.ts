@@ -20,14 +20,6 @@ export const providerTypeEnum = calendarSchema.enum("provider_type", ["google", 
 export const syncStatusTypeEnum = calendarSchema.enum("sync_status_type", ["active", "revoked", "error", "pending"]);
 export const attendeeResponseStatusEnum = calendarSchema.enum("attendee_response_status", ["needsAction", "declined", "tentative", "accepted"]);
 
-// Enums for CRM schema
-export const taskStatusEnum = crmSchema.enum("task_status", [
-  "pending", "in_progress", "completed", "cancelled", "to_do"
-]);
-export const taskPriorityEnum = crmSchema.enum("task_priority", [
-  "low", "medium", "high", "urgent"
-]);
-
 // Enums for WhatsApp schema
 export const chatTypeEnum = whatsappSchema.enum("chat_type", ["individual", "group"]);
 export const messageTypeEnum = whatsappSchema.enum("message_type", [
@@ -44,11 +36,11 @@ export const callOutcomeEnum = whatsappSchema.enum("call_outcome", [
 
 // WhatsApp Schema Tables
 export const whatsappInstances = whatsappSchema.table("instances", {
-  instanceName: varchar("instance_name", { length: 100 }).primaryKey(), // Primary key from webhook URL path
-  instanceId: uuid("instance_id"), // Evolution API generated UUID
+  instanceId: varchar("instance_id", { length: 100 }).primaryKey(),
   displayName: varchar("display_name", { length: 255 }).notNull(),
   ownerJid: varchar("owner_jid", { length: 100 }).unique(),
   clientId: uuid("client_id").notNull(), // FK to users table
+  apiKey: varchar("api_key", { length: 255 }),
   webhookUrl: varchar("webhook_url", { length: 255 }),
   isConnected: boolean("is_connected").default(false).notNull(),
   lastConnectionAt: timestamp("last_connection_at", { withTimezone: true }),
@@ -58,7 +50,7 @@ export const whatsappInstances = whatsappSchema.table("instances", {
 
 export const whatsappContacts = whatsappSchema.table("contacts", {
   jid: varchar("jid", { length: 100 }).notNull(),
-  instanceName: varchar("instance_id", { length: 100 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
   pushName: varchar("push_name", { length: 255 }),
   verifiedName: varchar("verified_name", { length: 255 }),
   profilePictureUrl: varchar("profile_picture_url", { length: 512 }),
@@ -70,13 +62,13 @@ export const whatsappContacts = whatsappSchema.table("contacts", {
 }, (table) => ({
   pk: {
     name: "contacts_pkey",
-    columns: [table.jid, table.instanceName]
+    columns: [table.jid, table.instanceId]
   }
 }));
 
 export const whatsappChats = whatsappSchema.table("chats", {
   chatId: varchar("chat_id", { length: 100 }).notNull(),
-  instanceName: varchar("instance_id", { length: 100 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
   type: chatTypeEnum("type").notNull(),
   unreadCount: integer("unread_count").default(0).notNull(),
   isArchived: boolean("is_archived").default(false).notNull(),
@@ -89,13 +81,13 @@ export const whatsappChats = whatsappSchema.table("chats", {
 }, (table) => ({
   pk: {
     name: "chats_pkey",
-    columns: [table.chatId, table.instanceName]
+    columns: [table.chatId, table.instanceId]
   }
 }));
 
 export const whatsappMessages = whatsappSchema.table("messages", {
   messageId: varchar("message_id", { length: 255 }).notNull(),
-  instanceName: varchar("instance_id", { length: 100 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
   chatId: varchar("chat_id", { length: 100 }).notNull(),
   senderJid: varchar("sender_jid", { length: 100 }).notNull(),
   fromMe: boolean("from_me").notNull(),
@@ -114,7 +106,7 @@ export const whatsappMessages = whatsappSchema.table("messages", {
 }, (table) => ({
   pk: {
     name: "messages_pkey",
-    columns: [table.messageId, table.instanceName]
+    columns: [table.messageId, table.instanceId]
   }
 }));
 
@@ -693,83 +685,6 @@ export type AppSpaceMember = typeof appSpaceMembers.$inferSelect;
 export type InsertAppSpaceMember = z.infer<typeof insertAppSpaceMemberSchema>;
 export type AppUserPreferences = typeof appUserPreferences.$inferSelect;
 export type InsertAppUserPreferences = z.infer<typeof insertAppUserPreferencesSchema>;
-
-// ========================
-// CRM SCHEMA TABLES
-// ========================
-
-// CRM Tasks table
-export const crmTasks = crmSchema.table("tasks", {
-  taskId: integer("task_id").primaryKey(),
-  instanceId: varchar("instance_id", { length: 100 }),
-  title: varchar("title", { length: 255 }).notNull(),
-  description: text("description"),
-  status: varchar("status", { length: 50 }).default("pending").notNull(),
-  dueDate: timestamp("due_date", { withTimezone: true }),
-  priority: varchar("priority", { length: 50 }).default("medium").notNull(),
-  projectId: integer("project_id"),
-  parentTaskId: integer("parent_task_id"),
-  triggeringMessageId: varchar("triggering_message_id", { length: 255 }),
-  assignedToUserId: uuid("assigned_to_user_id"),
-  relatedChatJid: varchar("related_chat_jid", { length: 100 }),
-  createdByUserId: uuid("created_by_user_id"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-  spaceId: integer("space_id"),
-});
-
-// CRM Projects table
-export const crmProjects = crmSchema.table("projects", {
-  projectId: uuid("project_id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").notNull().references(() => appUsers.userId),
-  workspaceId: uuid("workspace_id").references(() => appWorkspaces.workspaceId),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  status: varchar("status", { length: 50 }).default("active").notNull(),
-  startDate: timestamp("start_date", { withTimezone: true }),
-  endDate: timestamp("end_date", { withTimezone: true }),
-  metadata: jsonb("metadata"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
-
-// CRM Task Checklist Items table
-export const crmTaskChecklistItems = crmSchema.table("task_checklist_items", {
-  checklistItemId: uuid("checklist_item_id").primaryKey().defaultRandom(),
-  taskId: uuid("task_id").notNull().references(() => crmTasks.taskId),
-  title: varchar("title", { length: 255 }).notNull(),
-  isCompleted: boolean("is_completed").default(false).notNull(),
-  position: integer("position").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
-
-// CRM schema insert schemas
-export const insertCrmTaskSchema = createInsertSchema(crmTasks).omit({
-  taskId: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertCrmProjectSchema = createInsertSchema(crmProjects).omit({
-  projectId: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertCrmTaskChecklistItemSchema = createInsertSchema(crmTaskChecklistItems).omit({
-  checklistItemId: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-// CRM schema types
-export type CrmTask = typeof crmTasks.$inferSelect;
-export type InsertCrmTask = z.infer<typeof insertCrmTaskSchema>;
-export type CrmProject = typeof crmProjects.$inferSelect;
-export type InsertCrmProject = z.infer<typeof insertCrmProjectSchema>;
-export type CrmTaskChecklistItem = typeof crmTaskChecklistItems.$inferSelect;
-export type InsertCrmTaskChecklistItem = z.infer<typeof insertCrmTaskChecklistItemSchema>;
 
 // App schema relations
 export const appUsersRelations = relations(appUsers, ({ many, one }) => ({

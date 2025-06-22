@@ -75,12 +75,12 @@ export class InstanceManager {
             const instanceData = await createResponse.json();
             console.log(`✅ Instance created with webhook: ${instanceName}`);
 
-            // Step 2: Store instance in database with correct field mapping
+            // Step 2: Store instance in database
             const dbInstance = {
-                instanceName: instanceName, // Our database primary key (instance_name) - comes from URL/request
-                instanceId: instanceData.hash || null, // Evolution API unique hash (what was previously called api_key)
-                displayName: options.displayName || `WhatsApp Instance ${instanceName}`, // User-friendly display name
+                instanceId: instanceName,
+                displayName: options.displayName || instanceName,
                 clientId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42', // Default user ID
+                apiKey: apiKey,
                 webhookUrl: webhookUrl,
                 ownerJid: null, // Will be updated when connected
                 isConnected: false,

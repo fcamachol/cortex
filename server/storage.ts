@@ -58,13 +58,8 @@ class DatabaseStorage {
         return instance || null;
     }
 
-    async getInstanceByName(instanceName: string): Promise<WhatsappInstance | null> {
-        const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceName, instanceName));
-        return instance || null;
-    }
-
-    async getWhatsappInstance(instanceName: string): Promise<WhatsappInstance | null> {
-        const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceName, instanceName));
+    async getWhatsappInstance(instanceId: string): Promise<WhatsappInstance | null> {
+        const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceId, instanceId));
         return instance || null;
     }
     
@@ -125,30 +120,35 @@ class DatabaseStorage {
     }
 
     async upsertWhatsappInstance(instance: any): Promise<any> {
-        const [result] = await db.insert(whatsappInstances)
-            .values({
-                instanceName: instance.instanceName,
-                instanceId: instance.instanceId,
-                displayName: instance.displayName,
-                clientId: instance.clientId,
-                webhookUrl: instance.webhookUrl,
-                isConnected: instance.isConnected || false,
-                lastConnectionAt: instance.lastConnectionAt || null
-            })
-            .onConflictDoUpdate({
-                target: whatsappInstances.instanceName,
-                set: {
-                    instanceId: instance.instanceId,
-                    displayName: instance.displayName,
-                    webhookUrl: instance.webhookUrl,
-                    isConnected: instance.isConnected || false,
-                    lastConnectionAt: instance.lastConnectionAt || null,
-                    updatedAt: new Date()
-                }
-            })
-            .returning();
+        // Use raw SQL for now to handle the visibility field requirement
+        const result = await db.execute(sql`
+            INSERT INTO whatsapp.instances (
+                instance_id, display_name, client_id, api_key, webhook_url, 
+                is_connected, visibility, owner_jid, last_connection_at
+            )
+            VALUES (
+                ${instance.instanceId}, 
+                ${instance.displayName}, 
+                ${instance.clientId}, 
+                ${instance.apiKey}, 
+                ${instance.webhookUrl}, 
+                ${instance.isConnected || false}, 
+                'private', 
+                ${instance.ownerJid}, 
+                ${instance.lastConnectionAt}
+            )
+            ON CONFLICT (instance_id) DO UPDATE SET
+                display_name = EXCLUDED.display_name,
+                api_key = EXCLUDED.api_key,
+                webhook_url = EXCLUDED.webhook_url,
+                is_connected = EXCLUDED.is_connected,
+                owner_jid = EXCLUDED.owner_jid,
+                last_connection_at = EXCLUDED.last_connection_at,
+                updated_at = NOW()
+            RETURNING *
+        `);
         
-        return result;
+        return result.rows[0];
     }
 
     async upsertWhatsappContact(contact: InsertWhatsappContact): Promise<WhatsappContact> {
@@ -290,18 +290,16 @@ class DatabaseStorage {
 
     // Task management methods
     async getTasks(): Promise<any[]> {
-        const results = await db.select().from(crmTasks);
+        const results = await db.select().from(tasks);
         return results;
     }
 
     async getProjects(): Promise<any[]> {
-        const results = await db.select().from(crmProjects);
-        return results;
+        return [];
     }
 
     async getChecklistItems(): Promise<any[]> {
-        const results = await db.select().from(crmTaskChecklistItems);
-        return results;
+        return [];
     }
 
     // Calendar methods
