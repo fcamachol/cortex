@@ -27,6 +27,13 @@ export const WebhookApiAdapter = {
         const { event: eventType, data, sender } = event;
         console.log(`📨 [${instanceId}] Translating event: ${eventType}`);
         
+        // --- LOUD WEBHOOK DIAGNOSTICS FOR ALL EVENT TYPES ---
+        console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+        console.log(`!!!    WEBHOOK EVENT: ${eventType.toUpperCase().padEnd(25)} !!!`);
+        console.log(`!!!    INSTANCE: ${instanceId.padEnd(30)} !!!`);
+        console.log(`!!!    DATA TYPE: ${typeof data}                      !!!`);
+        console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+        
         // Debug logging for send.message events
         if (eventType === 'send.message') {
             console.log(`📤 Send message event data:`, JSON.stringify(data, null, 2));
