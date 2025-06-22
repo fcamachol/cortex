@@ -199,6 +199,16 @@ class DatabaseStorage {
         return result;
     }
 
+    async getWhatsappMessageById(messageId: string, instanceId: string): Promise<WhatsappMessages | undefined> {
+        const [result] = await db.select().from(whatsappMessages)
+            .where(and(
+                eq(whatsappMessages.messageId, messageId),
+                eq(whatsappMessages.instanceId, instanceId)
+            ))
+            .limit(1);
+        return result;
+    }
+
     async upsertWhatsappReaction(reaction: InsertWhatsappMessageReaction): Promise<WhatsappMessageReaction> {
         // Build the update object dynamically to avoid undefined values
         const updateSet: Partial<InsertWhatsappMessageReaction> = { timestamp: reaction.timestamp };

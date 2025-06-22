@@ -334,31 +334,35 @@ export const WebhookApiAdapter = {
         
         const reactorJid = rawReaction.key?.participant || sender || rawReaction.key?.remoteJid;
         
-        // Comprehensive timestamp validation to prevent RangeError: Invalid time value
+        // Handle both string and number timestamps from Evolution API
         let validTimestamp = new Date();
         const timestampMs = reactionMsg.senderTimestampMs;
         
         console.log(`🔍 Reaction timestamp debug - raw value: "${timestampMs}", type: ${typeof timestampMs}`);
         
-        // Only process if it's actually a valid number
-        if (typeof timestampMs === 'number' && 
-            !isNaN(timestampMs) && 
-            isFinite(timestampMs) && 
-            timestampMs > 0 && 
-            timestampMs < Number.MAX_SAFE_INTEGER) {
+        // Convert string timestamps to numbers and handle Evolution API millisecond format
+        let numericTimestamp: number | null = null;
+        if (typeof timestampMs === 'string' && /^\d+$/.test(timestampMs)) {
+            numericTimestamp = parseInt(timestampMs, 10);
+        } else if (typeof timestampMs === 'number') {
+            numericTimestamp = timestampMs;
+        }
+        
+        // Validate and use the numeric timestamp
+        if (numericTimestamp !== null && 
+            !isNaN(numericTimestamp) && 
+            isFinite(numericTimestamp) && 
+            numericTimestamp > 0) {
             try {
-                const testDate = new Date(timestampMs);
-                // Verify the date is valid and reasonable (not before 2000, not too far in future)
-                const minDate = new Date('2000-01-01').getTime();
-                const maxDate = new Date().getTime() + (365 * 24 * 60 * 60 * 1000); // 1 year from now
+                // Evolution API provides millisecond timestamps, use directly
+                const testDate = new Date(numericTimestamp);
                 
-                if (!isNaN(testDate.getTime()) && 
-                    testDate.getTime() >= minDate && 
-                    testDate.getTime() <= maxDate) {
+                // Verify the date is valid (basic sanity check)
+                if (!isNaN(testDate.getTime()) && testDate.getTime() > 946684800000) { // After year 2000
                     validTimestamp = testDate;
-                    console.log(`✅ Using valid timestamp: ${validTimestamp.toISOString()}`);
+                    console.log(`✅ Using Evolution API timestamp: ${validTimestamp.toISOString()}`);
                 } else {
-                    console.log(`⚠️ Timestamp out of reasonable range, using current time`);
+                    console.log(`⚠️ Timestamp validation failed, using current time`);
                 }
             } catch (error) {
                 console.log(`❌ Error creating date from timestamp, using current time:`, error.message);
