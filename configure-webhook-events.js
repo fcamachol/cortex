@@ -26,40 +26,71 @@ async function configureWebhookEvents() {
         console.log(`📡 Webhook URL: ${webhookUrl}`);
         console.log(`📋 Events: ${webhookConfig.events.join(', ')}`);
 
-        const response = await fetch(`${serverUrl}/instance/update-webhook/${instanceId}`, {
-            method: 'PUT',
-            headers: {
-                'apikey': apiKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(webhookConfig)
-        });
+        // Try different Evolution API endpoints for webhook configuration
+        const endpoints = [
+            `/webhook/set/${instanceId}`,
+            `/webhook/${instanceId}`,
+            `/${instanceId}/webhook`,
+            `/instance/${instanceId}/webhook`
+        ];
 
-        if (response.ok) {
-            const result = await response.json();
-            console.log('✅ Webhook configuration updated successfully:');
-            console.log(JSON.stringify(result, null, 2));
-        } else {
-            const error = await response.text();
-            console.error(`❌ Failed to update webhook configuration:`, error);
-            console.error(`Status: ${response.status} ${response.statusText}`);
+        let success = false;
+        for (const endpoint of endpoints) {
+            try {
+                console.log(`🔄 Trying endpoint: ${endpoint}`);
+                const response = await fetch(`${serverUrl}${endpoint}`, {
+                    method: 'PUT',
+                    headers: {
+                        'apikey': apiKey,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(webhookConfig)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('✅ Webhook configuration updated successfully:');
+                    console.log(JSON.stringify(result, null, 2));
+                    success = true;
+                    break;
+                } else {
+                    console.log(`❌ Endpoint ${endpoint} failed: ${response.status}`);
+                }
+            } catch (error) {
+                console.log(`❌ Error with endpoint ${endpoint}: ${error.message}`);
+            }
         }
 
-        // Also get current webhook status for verification
-        const statusResponse = await fetch(`${serverUrl}/instance/webhook/${instanceId}`, {
-            method: 'GET',
-            headers: {
-                'apikey': apiKey,
-                'Content-Type': 'application/json'
-            }
-        });
+        if (!success) {
+            console.log('⚠️ All webhook configuration endpoints failed, checking current status...');
+        }
 
-        if (statusResponse.ok) {
-            const status = await statusResponse.json();
-            console.log('\n📊 Current webhook configuration:');
-            console.log(JSON.stringify(status, null, 2));
-        } else {
-            console.log('⚠️ Could not retrieve current webhook status');
+        // Check current webhook status
+        const statusEndpoints = [
+            `/webhook/${instanceId}`,
+            `/${instanceId}/webhook/find`,
+            `/instance/${instanceId}/webhook/find`
+        ];
+
+        for (const endpoint of statusEndpoints) {
+            try {
+                const statusResponse = await fetch(`${serverUrl}${endpoint}`, {
+                    method: 'GET',
+                    headers: {
+                        'apikey': apiKey,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (statusResponse.ok) {
+                    const status = await statusResponse.json();
+                    console.log('\n📊 Current webhook configuration:');
+                    console.log(JSON.stringify(status, null, 2));
+                    break;
+                }
+            } catch (error) {
+                // Continue to next endpoint
+            }
         }
 
     } catch (error) {
