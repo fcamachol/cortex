@@ -81,7 +81,6 @@ export class InstanceManager {
                 instanceId: instanceData.instance?.instanceId || null, // Evolution API ID (instance_id) - from API response
                 displayName: options.displayName || `WhatsApp Instance ${instanceName}`, // User-friendly display name
                 clientId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42', // Default user ID
-                apiKey: apiKey,
                 webhookUrl: webhookUrl,
                 ownerJid: null, // Will be updated when connected
                 isConnected: false,
