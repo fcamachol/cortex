@@ -52,26 +52,26 @@ class DatabaseStorage {
     // =========================================================================
 
     async getInstanceById(instanceId: string): Promise<WhatsappInstance | null> {
-        const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instance_id, instanceId));
+        const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceId, instanceId));
         return instance || null;
     }
     
     async getWhatsappConversations(userId: string): Promise<any[]> {
         const results = await db.select({
-            chatId: whatsappChats.chat_id,
-            instanceId: whatsappChats.instance_id,
+            chatId: whatsappChats.chatId,
+            instanceId: whatsappChats.instanceId,
             type: whatsappChats.type,
-            unreadCount: whatsappChats.unread_count,
-            lastMessageTimestamp: whatsappChats.last_message_timestamp,
-            displayName: sql<string>`COALESCE(${whatsappGroups.subject}, ${whatsappContacts.push_name}, ${whatsappChats.chat_id})`,
-            profilePictureUrl: whatsappContacts.profile_picture_url,
+            unreadCount: whatsappChats.unreadCount,
+            lastMessageTimestamp: whatsappChats.lastMessageTimestamp,
+            displayName: sql<string>`COALESCE(${whatsappGroups.subject}, ${whatsappContacts.pushName}, ${whatsappChats.chatId})`,
+            profilePictureUrl: whatsappContacts.profilePictureUrl,
         })
         .from(whatsappChats)
-        .innerJoin(whatsappInstances, eq(whatsappChats.instance_id, whatsappInstances.instance_id))
-        .leftJoin(whatsappContacts, and(eq(whatsappChats.chat_id, whatsappContacts.jid), eq(whatsappChats.instance_id, whatsappContacts.instance_id)))
-        .leftJoin(whatsappGroups, and(eq(whatsappChats.chat_id, whatsappGroups.group_jid), eq(whatsappChats.instance_id, whatsappGroups.instance_id)))
-        .where(eq(whatsappInstances.creator_user_id, userId))
-        .orderBy(desc(sql`COALESCE(${whatsappChats.last_message_timestamp}, ${whatsappChats.created_at})`));
+        .innerJoin(whatsappInstances, eq(whatsappChats.instanceId, whatsappInstances.instanceId))
+        .leftJoin(whatsappContacts, and(eq(whatsappChats.chatId, whatsappContacts.jid), eq(whatsappChats.instanceId, whatsappContacts.instanceId)))
+        .leftJoin(whatsappGroups, and(eq(whatsappChats.chatId, whatsappGroups.groupJid), eq(whatsappChats.instanceId, whatsappGroups.instanceId)))
+        .where(eq(whatsappInstances.clientId, userId))
+        .orderBy(desc(sql`COALESCE(${whatsappChats.lastMessageTimestamp}, ${whatsappChats.createdAt})`));
 
         return results;
     }
@@ -79,32 +79,32 @@ class DatabaseStorage {
     async getWhatsappContacts(userId: string): Promise<WhatsappContact[]> {
         const results = await db.select({ contact: whatsappContacts })
             .from(whatsappContacts)
-            .innerJoin(whatsappInstances, eq(whatsappContacts.instance_id, whatsappInstances.instance_id))
+            .innerJoin(whatsappInstances, eq(whatsappContacts.instanceId, whatsappInstances.instanceId))
             .where(and(
-                eq(whatsappInstances.creator_user_id, userId),
-                eq(whatsappContacts.is_me, false)
+                eq(whatsappInstances.clientId, userId),
+                eq(whatsappContacts.isMe, false)
             ));
             
         return results.map(r => r.contact);
     }
     
     async getWhatsappGroups(instanceId: string): Promise<WhatsappGroup[]> {
-        return await db.select().from(whatsappGroups).where(eq(whatsappGroups.instance_id, instanceId));
+        return await db.select().from(whatsappGroups).where(eq(whatsappGroups.instanceId, instanceId));
     }
 
     async upsertWhatsappContact(contact: InsertWhatsappContact): Promise<WhatsappContact> {
-        // --- FIX: Build the update object dynamically to avoid undefined values ---
-        const updateSet: Partial<InsertWhatsappContact> = { last_updated_at: new Date() };
-        if (contact.push_name) updateSet.push_name = contact.push_name;
-        if (contact.profile_picture_url) updateSet.profile_picture_url = contact.profile_picture_url;
-        if (contact.verified_name) updateSet.verified_name = contact.verified_name;
-        if (typeof contact.is_business === 'boolean') updateSet.is_business = contact.is_business;
-        if (typeof contact.is_blocked === 'boolean') updateSet.is_blocked = contact.is_blocked;
+        // Build the update object dynamically to avoid undefined values
+        const updateSet: Partial<InsertWhatsappContact> = { lastUpdatedAt: new Date() };
+        if (contact.pushName) updateSet.pushName = contact.pushName;
+        if (contact.profilePictureUrl) updateSet.profilePictureUrl = contact.profilePictureUrl;
+        if (contact.verifiedName) updateSet.verifiedName = contact.verifiedName;
+        if (typeof contact.isBusiness === 'boolean') updateSet.isBusiness = contact.isBusiness;
+        if (typeof contact.isBlocked === 'boolean') updateSet.isBlocked = contact.isBlocked;
 
         const [result] = await db.insert(whatsappContacts)
             .values(contact)
             .onConflictDoUpdate({
-                target: [whatsappContacts.jid, whatsappContacts.instance_id],
+                target: [whatsappContacts.jid, whatsappContacts.instanceId],
                 set: updateSet
             })
             .returning();
@@ -115,11 +115,11 @@ class DatabaseStorage {
         const [result] = await db.insert(whatsappChats)
             .values(chat)
             .onConflictDoUpdate({
-                target: [whatsappChats.chat_id, whatsappChats.instance_id],
+                target: [whatsappChats.chatId, whatsappChats.instanceId],
                 set: {
-                    unread_count: chat.unread_count,
-                    last_message_timestamp: chat.last_message_timestamp,
-                    updated_at: new Date()
+                    unreadCount: chat.unreadCount,
+                    lastMessageTimestamp: chat.lastMessageTimestamp,
+                    updatedAt: new Date()
                 }
             })
             .returning();
@@ -130,12 +130,12 @@ class DatabaseStorage {
         const [result] = await db.insert(whatsappGroups)
             .values(group)
             .onConflictDoUpdate({
-                target: [whatsappGroups.group_jid, whatsappGroups.instance_id],
+                target: [whatsappGroups.groupJid, whatsappGroups.instanceId],
                 set: {
                     subject: group.subject,
                     description: group.description,
-                    owner_jid: group.owner_jid,
-                    updated_at: new Date()
+                    ownerJid: group.ownerJid,
+                    updatedAt: new Date()
                 }
             })
             .returning();
@@ -146,11 +146,11 @@ class DatabaseStorage {
         const [result] = await db.insert(whatsappMessages)
             .values(message)
             .onConflictDoUpdate({
-                target: [whatsappMessages.message_id, whatsappMessages.instance_id],
+                target: [whatsappMessages.messageId, whatsappMessages.instanceId],
                 set: {
                     content: message.content,
-                    is_edited: message.is_edited,
-                    last_edited_at: message.last_edited_at,
+                    isEdited: message.isEdited,
+                    lastEditedAt: message.lastEditedAt,
                 }
             })
             .returning();
@@ -174,22 +174,22 @@ class DatabaseStorage {
         const instance = await this.getInstanceById(instanceId);
         return {
             instanceId,
-            isConnected: instance?.is_connected || false,
-            status: instance?.is_connected ? 'connected' : 'disconnected'
+            isConnected: instance?.isConnected || false,
+            status: instance?.isConnected ? 'connected' : 'disconnected'
         };
     }
 
     async getWhatsappMessages(userId: string, instanceId: string, chatId: string, limit: number = 50): Promise<any[]> {
         let query = db.select().from(whatsappMessages)
-            .where(eq(whatsappMessages.instance_id, instanceId))
+            .where(eq(whatsappMessages.instanceId, instanceId))
             .orderBy(desc(whatsappMessages.timestamp))
             .limit(limit);
 
         if (chatId) {
             query = db.select().from(whatsappMessages)
                 .where(and(
-                    eq(whatsappMessages.instance_id, instanceId),
-                    eq(whatsappMessages.chat_id, chatId)
+                    eq(whatsappMessages.instanceId, instanceId),
+                    eq(whatsappMessages.chatId, chatId)
                 ))
                 .orderBy(desc(whatsappMessages.timestamp))
                 .limit(limit);
@@ -200,14 +200,14 @@ class DatabaseStorage {
     }
 
     async upsertWhatsappReaction(reaction: InsertWhatsappMessageReaction): Promise<WhatsappMessageReaction> {
-        // --- FIX: Build the update object dynamically to avoid undefined values ---
+        // Build the update object dynamically to avoid undefined values
         const updateSet: Partial<InsertWhatsappMessageReaction> = { timestamp: reaction.timestamp };
-        if (reaction.reaction_emoji) updateSet.reaction_emoji = reaction.reaction_emoji;
+        if (reaction.reactionEmoji) updateSet.reactionEmoji = reaction.reactionEmoji;
 
         const [result] = await db.insert(whatsappMessageReactions)
             .values(reaction)
             .onConflictDoUpdate({
-                target: [whatsappMessageReactions.message_id, whatsappMessageReactions.instance_id, whatsappMessageReactions.reactor_jid],
+                target: [whatsappMessageReactions.messageId, whatsappMessageReactions.instanceId, whatsappMessageReactions.reactorJid],
                 set: updateSet
             })
             .returning();
