@@ -64,34 +64,53 @@ export class GroupMetadataFetcher {
     private static async fetchGroupFromMultipleEndpoints(instanceId: string, apiKey: string, groupJid: string): Promise<any> {
         const evolutionApi = getEvolutionApi();
         
-        // Endpoint 1: Try group participants (known to work)
+        // Use the working groups endpoint that fetches all groups and find our specific group
         try {
-            const participantsData = await evolutionApi.fetchGroupParticipants(instanceId, apiKey, groupJid);
-            if (participantsData?.subject) {
-                return participantsData;
+            const response = await fetch(
+                `${evolutionApi.baseUrl}/group/fetchAllGroups/${instanceId}`,
+                {
+                    headers: {
+                        'apikey': apiKey,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+            
+            if (response.ok) {
+                const allGroupsData = await response.json();
+                if (allGroupsData?.groups) {
+                    const targetGroup = allGroupsData.groups.find((g: any) => g.id === groupJid);
+                    if (targetGroup?.subject) {
+                        console.log(`🔍 Found group ${groupJid} in all groups list: "${targetGroup.subject}"`);
+                        return targetGroup;
+                    }
+                }
             }
         } catch (error) {
-            console.debug(`Group participants endpoint failed for ${groupJid}:`, error.message);
+            console.debug(`All groups endpoint failed for ${groupJid}:`, error.message);
         }
 
-        // Endpoint 2: Try chat metadata
+        // Fallback: Try working group participants endpoint
         try {
-            const chatData = await evolutionApi.fetchChatMetadata(instanceId, apiKey, groupJid);
-            if (chatData?.name) {
-                return { subject: chatData.name, ...chatData };
+            const participantsResponse = await fetch(
+                `${evolutionApi.baseUrl}/group/participants/${instanceId}?groupJid=${encodeURIComponent(groupJid)}`,
+                {
+                    headers: {
+                        'apikey': apiKey,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+            
+            if (participantsResponse.ok) {
+                const participantsData = await participantsResponse.json();
+                if (participantsData?.subject) {
+                    console.log(`Found group ${groupJid} via participants endpoint: "${participantsData.subject}"`);
+                    return participantsData;
+                }
             }
         } catch (error) {
-            console.debug(`Chat metadata endpoint failed for ${groupJid}:`, error.message);
-        }
-
-        // Endpoint 3: Try direct group metadata
-        try {
-            const groupData = await evolutionApi.fetchGroupMetadata(instanceId, apiKey, groupJid);
-            if (groupData?.subject) {
-                return groupData;
-            }
-        } catch (error) {
-            console.debug(`Group metadata endpoint failed for ${groupJid}:`, error.message);
+            console.debug(`Group participants direct fetch failed for ${groupJid}:`, error.message);
         }
 
         return null;
