@@ -32,6 +32,8 @@ export const WebhookController = {
                 instanceId: instanceName
             };
 
+            console.log(`🎯 [${instanceName}] Processing webhook: ${eventType} -> ${standardizedEvent.event}`);
+
             // 3. Pass the raw payload to the next layer for processing asynchronously.
             // We don't `await` this, allowing the HTTP response to be sent instantly.
             WebhookApiAdapter.processIncomingEvent(instanceName, standardizedEvent);
