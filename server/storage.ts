@@ -131,9 +131,9 @@ class DatabaseStorage {
         const [result] = await db.insert(whatsappMessageReactions)
             .values(reaction)
             .onConflictDoUpdate({
-                target: [whatsappMessageReactions.message_id, whatsappMessageReactions.instance_id, whatsappMessageReactions.reactor_jid],
+                target: [whatsappMessageReactions.messageId, whatsappMessageReactions.instanceId, whatsappMessageReactions.reactorJid],
                 set: {
-                    reaction_emoji: reaction.reaction_emoji,
+                    reactionEmoji: reaction.reactionEmoji,
                     timestamp: reaction.timestamp
                 }
             })
@@ -144,7 +144,7 @@ class DatabaseStorage {
     async createGroupPlaceholderIfNeeded(groupJid: string, instanceId: string): Promise<void> {
         // This query attempts to insert a placeholder. If the group already exists,
         // the ON CONFLICT clause does nothing, preventing overwrites.
-        const [result] = await db.insert(whatsappGroups)
+        await db.insert(whatsappGroups)
             .values({
                 groupJid,
                 instanceId,
@@ -154,8 +154,82 @@ class DatabaseStorage {
             })
             .onConflictDoNothing({
                 target: [whatsappGroups.groupJid, whatsappGroups.instanceId]
-            })
-            .returning();
+            });
+    }
+
+    // =========================================================================
+    // LEGACY SUPPORT METHODS (for backward compatibility)
+    // =========================================================================
+
+    async getWhatsappConversations(userId: string): Promise<any[]> {
+        // Query chats with contact information for conversations view
+        const result = await db.select({
+            chatId: whatsappChats.chatId,
+            instanceId: whatsappChats.instanceId,
+            type: whatsappChats.type,
+            unreadCount: whatsappChats.unreadCount,
+            lastMessageTimestamp: whatsappChats.lastMessageTimestamp,
+            contactName: whatsappContacts.pushName,
+            contactProfilePicture: whatsappContacts.profilePictureUrl,
+            groupSubject: whatsappGroups.subject
+        })
+        .from(whatsappChats)
+        .leftJoin(whatsappContacts, and(
+            eq(whatsappContacts.jid, whatsappChats.chatId),
+            eq(whatsappContacts.instanceId, whatsappChats.instanceId)
+        ))
+        .leftJoin(whatsappGroups, and(
+            eq(whatsappGroups.groupJid, whatsappChats.chatId),
+            eq(whatsappGroups.instanceId, whatsappChats.instanceId)
+        ))
+        .orderBy(desc(whatsappChats.lastMessageTimestamp));
+        
+        return result;
+    }
+
+    async getConversationsWithLatestMessages(userId: string): Promise<any[]> {
+        // Get chats with their latest messages
+        return this.getWhatsappConversations(userId);
+    }
+
+    async getWhatsappInstances(userId: string): Promise<any[]> {
+        const result = await db.select().from(whatsappInstances);
+        return result;
+    }
+
+    async getInstanceStatus(instanceId: string): Promise<any> {
+        const instance = await this.getInstanceById(instanceId);
+        return {
+            instanceId,
+            isConnected: instance?.isConnected || false,
+            status: instance?.isConnected ? 'connected' : 'disconnected'
+        };
+    }
+
+    async getWhatsappMessages(userId: string, instanceId: string, chatId: string, limit: number = 50): Promise<any[]> {
+        let query = db.select().from(whatsappMessages)
+            .where(eq(whatsappMessages.instanceId, instanceId))
+            .orderBy(desc(whatsappMessages.timestamp))
+            .limit(limit);
+
+        if (chatId) {
+            query = db.select().from(whatsappMessages)
+                .where(and(
+                    eq(whatsappMessages.instanceId, instanceId),
+                    eq(whatsappMessages.chatId, chatId)
+                ))
+                .orderBy(desc(whatsappMessages.timestamp))
+                .limit(limit);
+        }
+
+        const result = await query;
+        return result;
+    }
+
+    async getWhatsappContacts(userId: string): Promise<any[]> {
+        const result = await db.select().from(whatsappContacts)
+            .orderBy(whatsappContacts.pushName);
+        return result;
     }
 }
 
