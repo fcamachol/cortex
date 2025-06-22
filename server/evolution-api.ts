@@ -152,7 +152,7 @@ export class EvolutionApi {
 
     async fetchGroupMetadata(instanceName: string, instanceApiKey: string, groupJid: string): Promise<any> {
         // Fetch detailed group metadata including authentic subject name
-        return this.makeRequest(`/group/metadata/${instanceName}`, 'POST', { 
+        return this.makeRequest(`/group/findGroupInfos/${instanceName}`, 'POST', { 
             groupJid: groupJid 
         }, instanceApiKey);
     }

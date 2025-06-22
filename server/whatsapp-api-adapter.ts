@@ -258,10 +258,19 @@ export const WebhookApiAdapter = {
                 return;
             }
 
-            // Fetch authentic group metadata from Evolution API
+            // Since Evolution API group metadata endpoint may not be available,
+            // rely on group data from webhook events instead
+            const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
+            if (existingGroup?.subject && existingGroup.subject !== 'Group') {
+                // Group already has authentic subject from webhook
+                console.log(`✅ [${instanceId}] Group ${groupJid} already has authentic subject: ${existingGroup.subject}`);
+                return;
+            }
+
+            // For new groups without Evolution API metadata, use fallback
             try {
                 const metadata = await evolutionApi.fetchGroupMetadata(instanceId, instance.apiKey, groupJid);
-                const realSubject = metadata?.subject || metadata?.name || 'Unknown Group';
+                const realSubject = metadata?.subject || metadata?.name || 'Group';
                 
                 // Update group record with authentic subject
                 const groupData = {

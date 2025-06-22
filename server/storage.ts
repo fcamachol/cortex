@@ -107,6 +107,16 @@ class DatabaseStorage {
         return chat || null;
     }
 
+    async getWhatsappGroup(groupJid: string, instanceId: string): Promise<WhatsappGroup | null> {
+        const [group] = await db.select().from(whatsappGroups).where(
+            and(
+                eq(whatsappGroups.groupJid, groupJid),
+                eq(whatsappGroups.instanceId, instanceId)
+            )
+        );
+        return group || null;
+    }
+
     async upsertWhatsappContact(contact: InsertWhatsappContact): Promise<WhatsappContact> {
         // Build the update object dynamically to avoid undefined values
         const updateSet: Partial<InsertWhatsappContact> = { lastUpdatedAt: new Date() };
