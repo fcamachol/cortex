@@ -70,10 +70,6 @@ export function TaskBoard({
   };
 
   const getTasksByStatus = (status: string) => {
-    if (status === 'to_do') {
-      // Include both 'to_do' and 'todo' in the To Do column
-      return tasks.filter(task => task.status === 'to_do' || task.status === 'todo');
-    }
     return tasks.filter(task => task.status === status);
   };
 
