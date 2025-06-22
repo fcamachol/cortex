@@ -31,11 +31,18 @@ export class EvolutionGroupUpdater {
             if (targetGroup?.subject && targetGroup.subject !== 'Group Chat') {
                 const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
                 
+                // Ensure owner contact exists before group creation to prevent foreign key constraint violations
+                const ownerJid = targetGroup.owner || (existingGroup?.ownerJid);
+                if (ownerJid) {
+                    const { WebhookApiAdapter } = await import('./whatsapp-api-adapter');
+                    await WebhookApiAdapter.ensureOwnerContactExists(ownerJid, instanceId);
+                }
+
                 const updatedGroupData = {
                     groupJid: groupJid,
                     instanceId: instanceId,
                     subject: targetGroup.subject,
-                    ownerJid: targetGroup.owner || (existingGroup?.ownerJid) || null,
+                    ownerJid: ownerJid || null,
                     description: targetGroup.desc || (existingGroup?.description) || null,
                     creationTimestamp: targetGroup.creation ? new Date(targetGroup.creation * 1000) : (existingGroup?.creationTimestamp) || null,
                     isLocked: targetGroup.restrict || (existingGroup?.isLocked) || false,

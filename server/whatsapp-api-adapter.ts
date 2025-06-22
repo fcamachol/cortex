@@ -468,7 +468,14 @@ export const WebhookApiAdapter = {
             // Always update group with latest Evolution API data
             const cleanGroup = this.mapApiPayloadToWhatsappGroup(rawGroup, instanceId);
             if (cleanGroup) {
-                await storage.upsertWhatsappGroup(cleanGroup);
+                // Ensure all dependencies exist before group creation
+                const dependenciesValid = await this.ensureGroupDependencies(cleanGroup, instanceId);
+                if (dependenciesValid) {
+                    await storage.upsertWhatsappGroup(cleanGroup);
+                } else {
+                    console.warn(`Skipping group creation due to dependency validation failure: ${groupJid}`);
+                    continue;
+                }
                 console.log(`🔄 [${instanceId}] Group updated with Evolution API data: ${groupJid} -> "${cleanGroup.subject}"`);
                 
                 // Process participants if available
@@ -530,7 +537,14 @@ export const WebhookApiAdapter = {
                 groupData.creationTimestamp = existingGroup.creationTimestamp;
             }
 
-            await storage.upsertWhatsappGroup(groupData);
+            // Ensure all dependencies exist before group update
+            const dependenciesValid = await this.ensureGroupDependencies(groupData, instanceId);
+            if (dependenciesValid) {
+                await storage.upsertWhatsappGroup(groupData);
+            } else {
+                console.warn(`Skipping group update due to dependency validation failure: ${groupJid}`);
+                return;
+            }
             console.log(`✅ [${instanceId}] Group updated with authentic subject from GROUP_UPDATE: ${groupJid} -> "${groupSubject}"`);
 
             // Update chat record to match group subject
