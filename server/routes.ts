@@ -707,6 +707,77 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Group management endpoints
+  app.get('/api/whatsapp/groups/:spaceId', async (req: Request, res: Response) => {
+    try {
+      const { spaceId } = req.params;
+      const groups = await storage.getGroupsBySpace(spaceId);
+      res.json(groups);
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+      res.status(500).json({ error: 'Failed to fetch groups' });
+    }
+  });
+
+  // Group sync endpoint
+  app.post('/api/whatsapp/groups/:instanceId/sync-from-api', async (req: Request, res: Response) => {
+    try {
+      const { instanceId } = req.params;
+      const { WebhookApiAdapter } = await import('./whatsapp-api-adapter.js');
+      
+      const result = await WebhookApiAdapter.syncAllGroupsFromApi(instanceId);
+      
+      res.json({
+        success: result.success,
+        message: `Successfully synced ${result.count} groups from Evolution API`,
+        count: result.count
+      });
+    } catch (error) {
+      console.error('Group sync error:', error);
+      res.status(500).json({ error: 'Failed to sync groups from Evolution API' });
+    }
+  });
+
+  // Update group settings
+  app.patch('/api/whatsapp/groups/:instanceId/:groupJid', async (req: Request, res: Response) => {
+    try {
+      const { instanceId, groupJid } = req.params;
+      const updates = req.body;
+      
+      // Use Evolution API to update group settings
+      const evolutionApi = getEvolutionApi();
+      const instanceApiKey = process.env.EVOLUTION_API_KEY;
+      
+      if (updates.subject) {
+        await evolutionApi.updateGroupSubject(instanceId, instanceApiKey, groupJid, updates.subject);
+      }
+      
+      if (updates.description !== undefined) {
+        await evolutionApi.updateGroupDescription(instanceId, instanceApiKey, groupJid, updates.description);
+      }
+      
+      if (updates.isAnnounce !== undefined || updates.isLocked !== undefined) {
+        const settings: any = {};
+        if (updates.isAnnounce !== undefined) settings.announce = updates.isAnnounce ? 'true' : 'false';
+        if (updates.isLocked !== undefined) settings.locked = updates.isLocked ? 'true' : 'false';
+        
+        await evolutionApi.updateGroupSettings(instanceId, instanceApiKey, groupJid, settings);
+      }
+      
+      // Update in database
+      await storage.upsertGroup({
+        instanceId,
+        jid: groupJid,
+        ...updates,
+      });
+      
+      res.json({ success: true, message: 'Group updated successfully' });
+    } catch (error) {
+      console.error('Error updating group:', error);
+      res.status(500).json({ error: 'Failed to update group' });
+    }
+  });
+
   // Evolution API webhook handlers - Use the new layered webhook controller
   app.post('/api/evolution/webhook/:instanceName/:eventType', async (req: Request, res: Response) => {
     await WebhookController.handleIncomingEvent(req, res);

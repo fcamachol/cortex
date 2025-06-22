@@ -312,6 +312,21 @@ class DatabaseStorage {
             });
     }
 
+    async getGroupsBySpace(spaceId: string): Promise<WhatsappGroup[]> {
+        // Get instances for this space first
+        const spaceInstances = await db.select()
+            .from(whatsappInstances)
+            .where(eq(whatsappInstances.spaceId, spaceId));
+        
+        if (spaceInstances.length === 0) {
+            return [];
+        }
+        
+        const instanceIds = spaceInstances.map(instance => instance.instanceId);
+        return db.select().from(whatsappGroups)
+            .where(sql`${whatsappGroups.instanceId} = ANY(${instanceIds})`);
+    }
+
     /**
      * Fetches all active action rules that match a specific trigger type and value.
      * @param triggerType - The type of trigger (e.g., 'reaction', 'hashtag').

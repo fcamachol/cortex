@@ -146,8 +146,29 @@ export class EvolutionApi {
     }
     
     async fetchAllGroups(instanceName: string, instanceApiKey: string): Promise<any[]> {
-        // CORRECTED: The documented endpoint for fetching all groups.
-        return this.makeRequest(`/group/findAll/${instanceName}`, 'GET', null, instanceApiKey);
+        // Try multiple possible endpoints for fetching groups
+        const endpoints = [
+            `/chat/findAll/${instanceName}`, // Get all chats, filter for groups
+            `/instance/connectionState/${instanceName}` // Fallback to check instance status
+        ];
+        
+        for (const endpoint of endpoints) {
+            try {
+                const result = await this.makeRequest(endpoint, 'GET', null, instanceApiKey);
+                
+                if (endpoint.includes('chat/findAll')) {
+                    // Filter only group chats (JIDs ending with @g.us)
+                    return Array.isArray(result) ? result.filter(chat => chat.id?.endsWith('@g.us')) : [];
+                }
+                
+                return Array.isArray(result) ? result : [];
+            } catch (error) {
+                console.warn(`⚠️ Evolution API endpoint ${endpoint} failed:`, error.message);
+                continue;
+            }
+        }
+        
+        return []; // Return empty array if all endpoints fail
     }
 
     async fetchGroupMetadata(instanceName: string, instanceApiKey: string, groupJid: string): Promise<any> {
