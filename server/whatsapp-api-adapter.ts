@@ -406,5 +406,57 @@ export const WebhookApiAdapter = {
         const msg = message.message;
         if (!msg) return '';
         return msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.videoMessage?.caption || '';
+    },
+
+    /**
+     * A one-time function to proactively sync all group names from the API.
+     * This can be called from a special admin route in your application to
+     * correct any placeholder names.
+     * @param instanceId The specific instance to sync.
+     * @returns An object indicating the success and count of synced groups.
+     */
+    async syncAllGroupSubjects(instanceId: string): Promise<{ success: boolean, count: number, error?: string }> {
+        try {
+            console.log(`🔄 [${instanceId}] Starting one-time sync for group subjects...`);
+            
+            // 1. Get instance details to make the API call
+            const instance = await storage.getInstanceById(instanceId);
+            if (!instance || !instance.evolutionApiUrl || !instance.apiKey) {
+                throw new Error(`Instance configuration not found for ${instanceId}`);
+            }
+
+            // 2. Proactively fetch all groups from the Evolution API
+            const response = await fetch(`${instance.evolutionApiUrl}/group/findAll/${instanceId}`, {
+                headers: { 'apikey': instance.apiKey }
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                throw new Error(`Evolution API error: ${response.status} - ${errorBody}`);
+            }
+
+            const groups = await response.json();
+            if (!Array.isArray(groups)) {
+                throw new Error('Unexpected response format from Evolution API.');
+            }
+
+            // 3. Loop through the results and update your database
+            let syncedCount = 0;
+            for (const rawGroup of groups) {
+                const cleanGroup = this.mapApiPayloadToWhatsappGroup(rawGroup, instanceId);
+                if (cleanGroup) {
+                    // The upsert logic will correctly UPDATE existing records
+                    await storage.upsertWhatsappGroup(cleanGroup);
+                    syncedCount++;
+                }
+            }
+
+            console.log(`✅ [${instanceId}] Successfully synced ${syncedCount} group subjects.`);
+            return { success: true, count: syncedCount };
+
+        } catch (error) {
+            console.error(`❌ [${instanceId}] Error during group sync:`, error);
+            return { success: false, count: 0, error: error.message };
+        }
     }
 };

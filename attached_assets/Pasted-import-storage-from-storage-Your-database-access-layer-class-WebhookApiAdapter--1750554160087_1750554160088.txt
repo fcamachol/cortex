@@ -1,0 +1,91 @@
+import { storage } from './storage'; // Your database access layer
+
+/**
+ * @class WebhookApiAdapter
+ * @description This contains the one-time sync function.
+ */
+export const WebhookApiAdapter = {
+
+    /**
+     * A one-time function to proactively sync all group names from the API.
+     * This can be called from a special admin route in your application to
+     * correct any placeholder names.
+     * @param instanceId The specific instance to sync.
+     * @returns An object indicating the success and count of synced groups.
+     */
+    async syncAllGroupSubjects(instanceId: string): Promise<{ success: boolean, count: number, error?: string }> {
+        try {
+            console.log(`🔄 [${instanceId}] Starting one-time sync for group subjects...`);
+            
+            // 1. Get instance details to make the API call
+            const instance = await storage.getInstanceById(instanceId);
+            if (!instance || !instance.evolutionApiUrl || !instance.apiKey) {
+                throw new Error(`Instance configuration not found for ${instanceId}`);
+            }
+
+            // 2. Proactively fetch all groups from the Evolution API
+            const response = await fetch(`${instance.evolutionApiUrl}/group/findAll/${instanceId}`, {
+                headers: { 'apikey': instance.apiKey }
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                throw new Error(`Evolution API error: ${response.status} - ${errorBody}`);
+            }
+
+            const groups = await response.json();
+            if (!Array.isArray(groups)) {
+                throw new Error('Unexpected response format from Evolution API.');
+            }
+
+            // 3. Loop through the results and update your database
+            for (const rawGroup of groups) {
+                const cleanGroup = this.mapApiPayloadToWhatsappGroup(rawGroup, instanceId);
+                if (cleanGroup) {
+                    // The upsert logic will correctly UPDATE existing records
+                    await storage.upsertWhatsappGroup(cleanGroup);
+                }
+            }
+
+            console.log(`✅ [${instanceId}] Successfully synced ${groups.length} group subjects.`);
+            return { success: true, count: groups.length };
+
+        } catch (error) {
+            console.error(`❌ [${instanceId}] Error during group sync:`, error);
+            return { success: false, count: 0, error: error.message };
+        }
+    },
+
+    // This is the existing mapping function used by the sync
+    mapApiPayloadToWhatsappGroup(rawGroup: any, instanceId: string): any | null {
+        if (!rawGroup.id) return null;
+        return {
+            group_jid: rawGroup.id,
+            instance_id: instanceId,
+            subject: rawGroup.subject,
+            owner_jid: rawGroup.owner,
+            description: rawGroup.desc,
+            creation_timestamp: rawGroup.creation ? new Date(rawGroup.creation * 1000) : undefined,
+            is_locked: rawGroup.announce || false,
+        };
+    },
+};
+
+/**
+ * HOW TO USE THIS:
+ *
+ * 1. Create a new, protected API route in your `server/routes.ts` file:
+ *
+ * app.post('/api/admin/sync-groups/:instanceId', async (req, res) => {
+ * // Add authentication/authorization to ensure only an admin can run this
+ * const { instanceId } = req.params;
+ * const result = await WebhookApiAdapter.syncAllGroupSubjects(instanceId);
+ * if (result.success) {
+ * res.status(200).json(result);
+ * } else {
+ * res.status(500).json(result);
+ * }
+ * });
+ *
+ * 2. Call this endpoint once from a tool like Postman or Insomnia to correct all the group names.
+ */
