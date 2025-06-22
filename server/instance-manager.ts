@@ -20,7 +20,9 @@ export class InstanceManager {
 
             console.log(`🚀 Creating new instance: ${instanceName}`);
 
-            // Step 1: Create the instance
+            // Step 1: Create the instance with integration
+            const webhookUrl = options.webhookUrl || `https://${process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000'}/api/evolution/webhook/${instanceName}`;
+            
             const createResponse = await fetch(`${evolutionApiUrl}/instance/create`, {
                 method: 'POST',
                 headers: {
@@ -29,8 +31,39 @@ export class InstanceManager {
                 },
                 body: JSON.stringify({
                     instanceName: instanceName,
+                    integration: "WHATSAPP-BAILEYS",
                     qrcode: options.qrcode ?? true,
-                    number: options.number
+                    webhook: {
+                        enabled: true,
+                        url: webhookUrl,
+                        webhookByEvents: true,
+                        webhookBase64: true,
+                        events: [
+                            "APPLICATION_STARTUP",
+                            "QRCODE_UPDATED", 
+                            "MESSAGES_SET",
+                            "MESSAGES_UPSERT",
+                            "MESSAGES_UPDATE", 
+                            "MESSAGES_DELETE",
+                            "SEND_MESSAGE",
+                            "CONTACTS_SET",
+                            "CONTACTS_UPSERT",
+                            "CONTACTS_UPDATE",
+                            "PRESENCE_UPDATE",
+                            "CHATS_SET", 
+                            "CHATS_UPSERT",
+                            "CHATS_UPDATE",
+                            "CHATS_DELETE",
+                            "GROUPS_UPSERT",
+                            "GROUP_UPDATE", 
+                            "GROUP_PARTICIPANTS_UPDATE",
+                            "CONNECTION_UPDATE",
+                            "CALL",
+                            "NEW_JWT_TOKEN",
+                            "TYPEBOT_START",
+                            "TYPEBOT_CHANGE_STATUS"
+                        ]
+                    }
                 })
             });
 
@@ -40,15 +73,9 @@ export class InstanceManager {
             }
 
             const instanceData = await createResponse.json();
-            console.log(`✅ Instance created: ${instanceName}`);
+            console.log(`✅ Instance created with webhook: ${instanceName}`);
 
-            // Step 2: Configure webhook with all required events
-            const defaultDomain = process.env.REPLIT_DOMAINS?.split(',')[0];
-            const webhookUrl = options.webhookUrl || `https://${defaultDomain || 'localhost:5000'}/api/evolution/webhook/${instanceName}`;
-            
-            await this.configureInstanceWebhook(instanceName, webhookUrl);
-
-            // Step 3: Store instance in database
+            // Step 2: Store instance in database
             const dbInstance = {
                 instanceId: instanceName,
                 name: options.displayName || instanceName,
