@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Dashboard from "@/pages/dashboard";
 import ActionsPage from "@/pages/actions";
+import GroupsPage from "@/pages/groups";
 import QRTestPage from "@/pages/qr-test";
 import { TasksPage } from "@/pages/TasksPage";
 import DatabaseViewer from "@/pages/DatabaseViewer";
@@ -20,6 +21,7 @@ function AuthenticatedRoutes() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/actions" component={ActionsPage} />
+      <Route path="/groups" component={GroupsPage} />
       <Route path="/tasks" component={TasksPage} />
       <Route path="/database" component={DatabaseViewer} />
       <Route path="/qr-test" component={QRTestPage} />

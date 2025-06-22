@@ -133,6 +133,7 @@ export interface IStorage {
   // WhatsApp groups
   createWhatsappGroup(group: InsertWhatsappGroup): Promise<WhatsappGroup>;
   getWhatsappGroup(userId: string, instanceId: string, groupJid: string): Promise<WhatsappGroup | undefined>;
+  getWhatsappGroups(userId: string, instanceId?: string): Promise<WhatsappGroup[]>;
   updateWhatsappGroup(userId: string, instanceId: string, groupJid: string, group: Partial<InsertWhatsappGroup>): Promise<WhatsappGroup>;
   upsertWhatsappGroup(group: InsertWhatsappGroup): Promise<WhatsappGroup>;
 
@@ -1109,6 +1110,35 @@ export class DatabaseStorage implements IStorage {
         eq(whatsappGroups.groupJid, groupJid)
       ));
     return result?.groups || undefined;
+  }
+
+  async getWhatsappGroups(userId: string, instanceId?: string): Promise<WhatsappGroup[]> {
+    let whereCondition = eq(whatsappInstances.clientId, userId);
+    
+    if (instanceId) {
+      whereCondition = and(
+        eq(whatsappInstances.clientId, userId),
+        eq(whatsappGroups.instanceId, instanceId)
+      );
+    }
+
+    const results = await db
+      .select({
+        groupJid: whatsappGroups.groupJid,
+        instanceId: whatsappGroups.instanceId,
+        subject: whatsappGroups.subject,
+        description: whatsappGroups.description,
+        ownerJid: whatsappGroups.ownerJid,
+        creationTimestamp: whatsappGroups.creationTimestamp,
+        isLocked: whatsappGroups.isLocked,
+        updatedAt: whatsappGroups.updatedAt
+      })
+      .from(whatsappGroups)
+      .innerJoin(whatsappInstances, eq(whatsappGroups.instanceId, whatsappInstances.instanceId))
+      .where(whereCondition)
+      .orderBy(whatsappGroups.updatedAt);
+      
+    return results;
   }
 
   async updateWhatsappGroup(userId: string, instanceId: string, groupJid: string, group: Partial<InsertWhatsappGroup>): Promise<WhatsappGroup> {
