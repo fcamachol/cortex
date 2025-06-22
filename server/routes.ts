@@ -223,16 +223,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.get('/api/whatsapp/groups/:instanceId', async (req: Request, res: Response) => {
-    try {
-      const { instanceId } = req.params;
-      const groups = await storage.getWhatsappGroups(instanceId);
-      res.json(groups);
-    } catch (error) {
-      console.error('Error fetching groups:', error);
-      res.status(500).json({ error: 'Failed to fetch groups' });
-    }
-  });
+  // Removed conflicting group endpoint - consolidated into main Evolution API endpoint below
 
   app.post('/api/whatsapp/groups/:instanceId/refresh-names', async (req: Request, res: Response) => {
     try {
@@ -707,7 +698,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Group management endpoints - Fetch groups from Evolution API with live participant data
+  // Main group management endpoint - Fetch groups from Evolution API with live participant data
   app.get('/api/whatsapp/groups/:spaceId', async (req: Request, res: Response) => {
     try {
       const { spaceId } = req.params;
@@ -759,6 +750,11 @@ export async function registerRoutes(app: Express): Promise<void> {
       await client.end();
       
       console.log(`Found ${result.rows.length} groups in database`);
+      
+      if (result.rows.length === 0) {
+        console.log('No groups found in database, returning empty array');
+        return res.json([]);
+      }
       
       // Enhance each group with live Evolution API participant data
       const enhancedGroups = await Promise.all(
