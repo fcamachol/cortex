@@ -628,6 +628,35 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Admin route for comprehensive group sync from Evolution API
+  app.post('/api/admin/sync-all-groups/:instanceId', async (req: Request, res: Response) => {
+    try {
+      const { instanceId } = req.params;
+      const { WebhookApiAdapter } = await import('./whatsapp-api-adapter.js');
+      
+      const result = await WebhookApiAdapter.syncAllGroupsFromApi(instanceId);
+      
+      if (result.success) {
+        res.status(200).json({
+          message: `Successfully synced ${result.count} groups from Evolution API`,
+          ...result
+        });
+      } else {
+        res.status(500).json({
+          message: 'Failed to sync groups from Evolution API',
+          ...result
+        });
+      }
+    } catch (error) {
+      console.error('Error in comprehensive group sync endpoint:', error);
+      res.status(500).json({ 
+        success: false, 
+        count: 0, 
+        error: error.message 
+      });
+    }
+  });
+
   // Evolution API webhook handlers - Use the new layered webhook controller
   app.post('/api/evolution/webhook/:instanceName/:eventType', async (req: Request, res: Response) => {
     await WebhookController.handleIncomingEvent(req, res);

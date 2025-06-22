@@ -489,5 +489,97 @@ export const WebhookApiAdapter = {
             console.error(`❌ [${instanceId}] Error during group sync:`, error);
             return { success: false, count: 0, error: error.message };
         }
+    },
+
+    /**
+     * Comprehensive group sync - fetches ALL groups from Evolution API and updates database
+     */
+    async syncAllGroupsFromApi(instanceId: string): Promise<{ success: boolean; count: number; error?: string }> {
+        try {
+            console.log(`🔄 [${instanceId}] Starting comprehensive group sync from Evolution API...`);
+            
+            // Fetch all groups from Evolution API
+            const apiKey = process.env.EVOLUTION_API_KEY || '119FA240-45ED-46A7-AE13-5A1B7C909D7D';
+            const apiUrl = process.env.EVOLUTION_API_URL || 'https://evolution-api-evolution-api.vuswn0.easypanel.host';
+            
+            const response = await fetch(`${apiUrl}/group/findAll/${instanceId}`, {
+                method: 'GET',
+                headers: {
+                    'apikey': apiKey,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Evolution API request failed: ${response.status} ${response.statusText}`);
+            }
+
+            const apiGroups = await response.json();
+            console.log(`📋 [${instanceId}] Found ${apiGroups.length} groups in Evolution API`);
+
+            let syncedCount = 0;
+            let createdCount = 0;
+            let updatedCount = 0;
+
+            for (const apiGroup of apiGroups) {
+                try {
+                    // Map API group data to our schema
+                    const groupData = {
+                        groupJid: apiGroup.id,
+                        instanceId: instanceId,
+                        subject: apiGroup.subject || 'Unnamed Group',
+                        ownerJid: apiGroup.owner || null,
+                        description: apiGroup.desc || null,
+                        creationTimestamp: apiGroup.creation ? new Date(apiGroup.creation * 1000) : null,
+                        isLocked: apiGroup.announce || false,
+                    };
+
+                    // Check if group already exists
+                    const existingGroup = await storage.getWhatsappGroup(apiGroup.id, instanceId);
+                    
+                    if (existingGroup) {
+                        // Update existing group with API data
+                        await storage.upsertWhatsappGroup(groupData);
+                        console.log(`🔄 Updated group: ${apiGroup.id} -> "${apiGroup.subject}"`);
+                        updatedCount++;
+                    } else {
+                        // Create new group from API data
+                        await storage.upsertWhatsappGroup(groupData);
+                        
+                        // Also ensure it exists as a contact
+                        const contactData = {
+                            jid: apiGroup.id,
+                            instanceId: instanceId,
+                            pushName: apiGroup.subject || 'Unnamed Group',
+                            verifiedName: null,
+                            profilePictureUrl: null,
+                            isBlocked: false,
+                            isMyContact: false,
+                            isUser: false,
+                            isBusiness: false,
+                        };
+                        await storage.upsertWhatsappContact(contactData);
+                        
+                        console.log(`✨ Created new group: ${apiGroup.id} -> "${apiGroup.subject}"`);
+                        createdCount++;
+                    }
+                    
+                    syncedCount++;
+                } catch (groupError) {
+                    console.error(`❌ Error syncing group ${apiGroup.id}:`, groupError.message);
+                }
+            }
+
+            console.log(`✅ [${instanceId}] Group sync complete: ${createdCount} created, ${updatedCount} updated, ${syncedCount} total`);
+            return { 
+                success: true, 
+                count: syncedCount,
+                details: { created: createdCount, updated: updatedCount }
+            };
+
+        } catch (error) {
+            console.error(`❌ [${instanceId}] Error during comprehensive group sync:`, error);
+            return { success: false, count: 0, error: error.message };
+        }
     }
 };
