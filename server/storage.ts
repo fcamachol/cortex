@@ -135,6 +135,7 @@ export interface IStorage {
   getWhatsappGroup(userId: string, instanceId: string, groupJid: string): Promise<WhatsappGroup | undefined>;
   updateWhatsappGroup(userId: string, instanceId: string, groupJid: string, group: Partial<InsertWhatsappGroup>): Promise<WhatsappGroup>;
   upsertWhatsappGroup(group: InsertWhatsappGroup): Promise<WhatsappGroup>;
+  getGroupsWithPlaceholderNames(instanceId: string): Promise<WhatsappGroup[]>;
 
   // WhatsApp group participants
   createWhatsappGroupParticipant(participant: InsertWhatsappGroupParticipant): Promise<WhatsappGroupParticipant>;
@@ -1133,6 +1134,20 @@ export class DatabaseStorage implements IStorage {
   async upsertWhatsappGroup(group: InsertWhatsappGroup): Promise<WhatsappGroup> {
     // Use the existing createWhatsappGroup function which already implements upsert logic
     return this.createWhatsappGroup(group);
+  }
+
+  async getGroupsWithPlaceholderNames(instanceId: string): Promise<WhatsappGroup[]> {
+    const results = await db
+      .select()
+      .from(whatsappGroups)
+      .where(and(
+        eq(whatsappGroups.instanceId, instanceId),
+        or(
+          eq(whatsappGroups.subject, 'New Group'),
+          eq(whatsappGroups.subject, 'Group')
+        )
+      ));
+    return results;
   }
 
   // WhatsApp group participants
