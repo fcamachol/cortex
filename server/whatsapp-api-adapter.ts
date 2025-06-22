@@ -1100,55 +1100,32 @@ export const WebhookApiAdapter = {
 
             console.log(`🔍 [${instanceId}] Attempting to fetch groups from Evolution API...`);
 
-            // Use the enhanced Evolution API client for group fetching
+            // Use direct Evolution API call (same approach as working webhook system)
             try {
-                console.log(`🔄 [${instanceId}] Using enhanced Evolution API group fetching...`);
-                const groups = await evolutionApi.fetchAllGroups(instanceId, instanceApiKey);
+                console.log(`🔄 [${instanceId}] Fetching groups using working endpoint...`);
                 
-                if (groups && groups.length > 0) {
-                    console.log(`✅ [${instanceId}] Successfully fetched ${groups.length} groups from Evolution API`);
+                const response = await fetch(`${process.env.EVOLUTION_API_URL}/group/fetchAllGroups/${instanceId}?getParticipants=false`, {
+                    method: 'GET',
+                    headers: {
+                        'apikey': process.env.EVOLUTION_API_KEY!,
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: 30000
+                });
+
+                if (response.ok) {
+                    const groups = await response.json();
+                    console.log(`✅ [${instanceId}] Found ${groups.length} groups via direct fetchAllGroups endpoint`);
                     
-                    // Process each group with enhanced metadata
-                    for (const group of groups) {
-                        try {
-                            // Use the new fetchGroupInfo method for detailed information
-                            const groupInfo = await evolutionApi.fetchGroupInfo(instanceId, instanceApiKey, group.id);
-                            
-                            await this.storage.upsertGroup({
-                                instanceId,
-                                jid: group.id,
-                                subject: groupInfo.subject || group.subject || 'Unknown Group',
-                                description: groupInfo.description || group.description || null,
-                                createdAt: group.createdAt || new Date(),
-                                participantCount: groupInfo.participants?.length || 0,
-                                isAnnounce: groupInfo.announce === true,
-                                isLocked: groupInfo.locked === true
-                            });
-                            
-                            console.log(`📝 [${instanceId}] Updated group: ${groupInfo.subject || group.subject}`);
-                            syncedCount++;
-                        } catch (groupError) {
-                            console.warn(`⚠️ [${instanceId}] Failed to fetch detailed info for group ${group.id}:`, groupError.message);
-                            
-                            // Fall back to basic group data
-                            await this.storage.upsertGroup({
-                                instanceId,
-                                jid: group.id,
-                                subject: group.subject || 'Unknown Group',
-                                description: group.description || null,
-                                createdAt: group.createdAt || new Date(),
-                                participantCount: 0,
-                                isAnnounce: false,
-                                isLocked: false
-                            });
-                            syncedCount++;
-                        }
+                    if (groups && groups.length > 0) {
+                        // Immediately update database with authentic Evolution API data
+                        await this.forceUpdateGroupsWithEvolutionData(instanceId, groups);
+                        
+                        return { success: true, groups, error: null };
                     }
-                    
-                    return { success: true, count: syncedCount };
                 }
             } catch (apiError) {
-                console.error(`❌ [${instanceId}] Enhanced Evolution API group fetch failed:`, apiError.message);
+                console.error(`❌ [${instanceId}] Direct Evolution API group fetch failed:`, apiError.message);
             }
 
             // Fallback to alternative approaches if enhanced API fails
