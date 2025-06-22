@@ -1057,7 +1057,7 @@ export const WebhookApiAdapter = {
 
     async mapApiPayloadToWhatsappContact(rawContact: any, instanceId: string): Promise<Omit<WhatsappContacts, 'firstSeenAt' | 'lastUpdatedAt'> | null> {
         const jid = rawContact.id || rawContact.remoteJid;
-        if (!jid) return null;
+        if (!jid || !instanceId) return null;
 
         const instance = await storage.getInstanceById(instanceId);
         
@@ -1074,6 +1074,11 @@ export const WebhookApiAdapter = {
                 // Fallback to generic group name for contact record
                 contactName = 'Group';
             }
+        }
+        
+        // Ensure we have a valid contact name
+        if (!contactName) {
+            contactName = jid.split('@')[0] || 'Contact';
         }
         
         return {
@@ -1186,10 +1191,17 @@ export const WebhookApiAdapter = {
             }
 
             // Ensure group contact record exists
-            const groupContact = this.mapApiPayloadToWhatsappContact({ id: groupData.groupJid }, instanceId);
-            if (groupContact) {
-                await storage.upsertWhatsappContact(groupContact);
-            }
+            const groupContact = {
+                jid: groupData.groupJid,
+                instanceId: instanceId,
+                pushName: groupData.subject || 'Group',
+                verifiedName: groupData.subject || 'Group',
+                profilePictureUrl: undefined,
+                isBusiness: false,
+                isMe: false,
+                isBlocked: false,
+            };
+            await storage.upsertWhatsappContact(groupContact);
 
             // Ensure group chat record exists
             const groupChat = await this.mapApiPayloadToWhatsappChat({ id: groupData.groupJid, subject: groupData.subject }, instanceId);
