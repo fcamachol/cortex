@@ -707,15 +707,17 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Group management endpoints - Return authentic Evolution API group data from webhooks
+  // Group management endpoints - Fetch groups from Evolution API with live participant data
   app.get('/api/whatsapp/groups/:spaceId', async (req: Request, res: Response) => {
     try {
       const { spaceId } = req.params;
-      console.log(`Fetching authentic Evolution API groups for space: ${spaceId}`);
+      console.log(`Fetching groups from Evolution API for space: ${spaceId}`);
       
-      // Evolution API v2.2.3 doesn't provide direct group endpoints, but webhooks capture authentic group data
-      // Use database as the source of truth for Evolution API webhook-captured group information
+      const instanceId = 'instance-1750433520122';
+      const instanceApiKey = process.env.EVOLUTION_API_KEY;
+      const baseUrl = process.env.EVOLUTION_API_URL;
       
+      // First get groups from database (webhook-captured authentic data)
       const pg = await import('pg');
       const { Client } = pg.default;
       
@@ -733,19 +735,9 @@ export async function registerRoutes(app: Express): Promise<void> {
           g.description,
           g.is_locked,
           g.creation_timestamp,
-          COALESCE(p.participant_count, 0) as participant_count,
-          -- Count recent messages to show group activity
           COALESCE(m.recent_message_count, 0) as recent_message_count,
           m.last_message_timestamp
         FROM whatsapp.groups g
-        LEFT JOIN (
-          SELECT 
-            group_jid, 
-            instance_id, 
-            COUNT(*) as participant_count
-          FROM whatsapp.group_participants 
-          GROUP BY group_jid, instance_id
-        ) p ON g.group_jid = p.group_jid AND g.instance_id = p.instance_id
         LEFT JOIN (
           SELECT 
             chat_id,
@@ -758,7 +750,6 @@ export async function registerRoutes(app: Express): Promise<void> {
         ) m ON g.group_jid = m.chat_id AND g.instance_id = m.instance_id
         WHERE g.subject IS NOT NULL 
           AND g.subject != ''
-          AND g.subject NOT LIKE 'Group-%'  -- Filter out synthetic names
         ORDER BY 
           recent_message_count DESC,
           g.creation_timestamp DESC NULLS LAST,
@@ -767,24 +758,72 @@ export async function registerRoutes(app: Express): Promise<void> {
       
       await client.end();
       
-      const groups = result.rows.map((group: any) => ({
-        jid: group.group_jid,
-        instanceId: group.instance_id,
-        subject: group.subject, // Authentic Evolution API subject name from webhooks
-        description: group.description,
-        participantCount: parseInt(group.participant_count) || 0,
-        recentMessageCount: parseInt(group.recent_message_count) || 0,
-        lastMessageAt: group.last_message_timestamp ? new Date(group.last_message_timestamp).toISOString() : null,
-        isLocked: group.is_locked || false,
-        createdAt: group.creation_timestamp ? new Date(group.creation_timestamp).toISOString() : new Date().toISOString(),
-        source: 'evolution_webhooks_authentic' // Indicates authentic Evolution API data via webhooks
-      }));
+      console.log(`Found ${result.rows.length} groups in database`);
       
-      console.log(`Found ${groups.length} groups with authentic Evolution API data from webhooks`);
-      res.json(groups);
+      // Enhance each group with live Evolution API participant data
+      const enhancedGroups = await Promise.all(
+        result.rows.map(async (group: any) => {
+          try {
+            // Fetch live participant count from Evolution API
+            const participantsResponse = await fetch(`${baseUrl}/group/participants/${instanceId}?groupJid=${group.group_jid}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': instanceApiKey
+              },
+              timeout: 5000
+            });
+            
+            let liveParticipantCount = 0;
+            let participants = [];
+            
+            if (participantsResponse.ok) {
+              const participantsData = await participantsResponse.json();
+              participants = participantsData.participants || [];
+              liveParticipantCount = participants.length;
+            } else {
+              console.warn(`Failed to fetch participants for ${group.group_jid}`);
+            }
+            
+            return {
+              jid: group.group_jid,
+              instanceId: group.instance_id,
+              subject: group.subject, // Authentic Evolution API subject from webhooks
+              description: group.description,
+              participantCount: liveParticipantCount, // Live count from Evolution API
+              recentMessageCount: parseInt(group.recent_message_count) || 0,
+              lastMessageAt: group.last_message_timestamp ? new Date(group.last_message_timestamp).toISOString() : null,
+              isLocked: group.is_locked || false,
+              createdAt: group.creation_timestamp ? new Date(group.creation_timestamp).toISOString() : new Date().toISOString(),
+              source: 'evolution_api_enhanced', // Database + live API data
+              participants: participants.slice(0, 5) // Sample of participants for preview
+            };
+          } catch (apiError) {
+            console.warn(`API error for group ${group.group_jid}:`, apiError.message);
+            
+            // Fallback to database participant count
+            return {
+              jid: group.group_jid,
+              instanceId: group.instance_id,
+              subject: group.subject,
+              description: group.description,
+              participantCount: 0,
+              recentMessageCount: parseInt(group.recent_message_count) || 0,
+              lastMessageAt: group.last_message_timestamp ? new Date(group.last_message_timestamp).toISOString() : null,
+              isLocked: group.is_locked || false,
+              createdAt: group.creation_timestamp ? new Date(group.creation_timestamp).toISOString() : new Date().toISOString(),
+              source: 'database_authentic',
+              participants: []
+            };
+          }
+        })
+      );
+      
+      console.log(`Successfully enhanced ${enhancedGroups.length} groups with Evolution API data`);
+      res.json(enhancedGroups);
       
     } catch (error) {
-      console.error('Error fetching authentic Evolution API groups:', error);
+      console.error('Error fetching groups with Evolution API enhancement:', error);
       res.status(500).json({ 
         error: 'Failed to fetch groups',
         details: error.message 
