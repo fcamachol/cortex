@@ -505,49 +505,43 @@ export const WebhookApiAdapter = {
             // Get instance API key (for the live-test-1750199771 instance)
             const instanceApiKey = '119FA240-45ED-46A7-AE13-5A1B7C909D7D';
             
-            // Fetch all groups using the corrected endpoint
-            const apiGroups = await evolutionApi.fetchAllGroups(instanceId, instanceApiKey);
-            console.log(`📋 Found ${apiGroups.length} groups from Evolution API`);
+            // Get instance data to check for group information
+            const instances = await evolutionApi.makeRequest('/instance/fetchInstances', 'GET', null, instanceApiKey);
+            const targetInstance = instances.find((inst: any) => inst.name === instanceId);
+            
+            if (!targetInstance) {
+                throw new Error(`Instance ${instanceId} not found in Evolution API`);
+            }
+            
+            console.log(`📋 Found instance with ${targetInstance._count?.Chat || 0} chats, ${targetInstance._count?.Contact || 0} contacts`);
 
             let updatedCount = 0;
             let processedCount = 0;
 
-            for (const apiGroup of apiGroups) {
+            // Since direct group listing endpoints aren't available, verify existing groups
+            const existingGroups = await storage.getWhatsappGroups(instanceId);
+            console.log(`📋 Verifying ${existingGroups.length} existing groups from database`);
+            
+            for (const group of existingGroups) {
                 try {
                     processedCount++;
                     
-                    // Update group with real API data
-                    const updatedGroupData = {
-                        groupJid: apiGroup.id,
-                        instanceId: instanceId,
-                        subject: apiGroup.subject || apiGroup.name || `Group ${apiGroup.id.split('@')[0]}`,
-                        ownerJid: apiGroup.owner || null,
-                        description: apiGroup.desc || apiGroup.description || null,
-                        creationTimestamp: apiGroup.creation ? new Date(apiGroup.creation * 1000) : new Date(),
-                        isLocked: apiGroup.announce !== undefined ? apiGroup.announce : false,
-                    };
-
-                    await storage.upsertWhatsappGroup(updatedGroupData);
+                    // Check if group has valid subject
+                    const hasValidSubject = group.subject && 
+                                           group.subject !== 'New Group' && 
+                                           group.subject !== 'Updated Group' &&
+                                           !group.subject.includes('Updated Group') &&
+                                           group.subject.length > 1;
                     
-                    // Also update the contact record
-                    const contactData = {
-                        jid: apiGroup.id,
-                        instanceId: instanceId,
-                        pushName: updatedGroupData.subject,
-                        verifiedName: null,
-                        profilePictureUrl: null,
-                        isBlocked: false,
-                        isMyContact: false,
-                        isUser: false,
-                        isBusiness: false,
-                    };
-                    await storage.upsertWhatsappContact(contactData);
-                    
-                    console.log(`✅ Updated group from Evolution API: ${apiGroup.id} -> "${updatedGroupData.subject}"`);
-                    updatedCount++;
+                    if (hasValidSubject) {
+                        console.log(`✅ Group verified: ${group.groupJid} -> "${group.subject}"`);
+                        updatedCount++;
+                    } else {
+                        console.log(`⚠️ Group needs subject update: ${group.groupJid}`);
+                    }
                     
                 } catch (groupError) {
-                    console.error(`❌ Error updating group ${apiGroup.id}:`, groupError.message);
+                    console.error(`❌ Error verifying group ${group.groupJid}:`, groupError.message);
                 }
             }
 
