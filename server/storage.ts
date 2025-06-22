@@ -327,19 +327,41 @@ class DatabaseStorage {
     }
 
     async updateTask(taskId: number, updates: any): Promise<any> {
-        const result = await db.execute(sql`
-            UPDATE crm.tasks 
-            SET 
-                status = COALESCE(${updates.status}, status),
-                priority = COALESCE(${updates.priority}, priority),
-                title = COALESCE(${updates.title}, title),
-                description = COALESCE(${updates.description}, description),
-                due_date = COALESCE(${updates.due_date}, due_date),
-                updated_at = NOW()
-            WHERE task_id = ${taskId}
-            RETURNING *
-        `);
+        // Build dynamic SET clause based on provided updates
+        const setFields = [];
+        const values = [];
         
+        if (updates.status !== undefined) {
+            setFields.push(`status = $${setFields.length + 2}`);
+            values.push(updates.status);
+        }
+        if (updates.priority !== undefined) {
+            setFields.push(`priority = $${setFields.length + 2}`);
+            values.push(updates.priority);
+        }
+        if (updates.title !== undefined) {
+            setFields.push(`title = $${setFields.length + 2}`);
+            values.push(updates.title);
+        }
+        if (updates.description !== undefined) {
+            setFields.push(`description = $${setFields.length + 2}`);
+            values.push(updates.description);
+        }
+        if (updates.due_date !== undefined) {
+            setFields.push(`due_date = $${setFields.length + 2}`);
+            values.push(updates.due_date);
+        }
+        
+        setFields.push('updated_at = NOW()');
+        
+        const query = `
+            UPDATE crm.tasks 
+            SET ${setFields.join(', ')}
+            WHERE task_id = $1
+            RETURNING *
+        `;
+        
+        const result = await db.execute(sql.raw(query, [taskId, ...values]));
         return result.rows[0];
     }
 

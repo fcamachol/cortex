@@ -50,8 +50,7 @@ interface StatusColumn {
 
 const statusColumns: StatusColumn[] = [
   { id: 'to_do', title: 'To Do', color: 'bg-slate-100' },
-  { id: 'in_progress', title: 'In Progress', color: 'bg-blue-100', includeStatuses: ['in_progress', 'pending'] },
-  { id: 'review', title: 'Review', color: 'bg-yellow-100' },
+  { id: 'in_progress', title: 'In Progress', color: 'bg-blue-100', includeStatuses: ['in_progress', 'pending', 'review'] },
   { id: 'done', title: 'Done', color: 'bg-green-100' }
 ];
 
