@@ -492,72 +492,55 @@ export const WebhookApiAdapter = {
     },
 
     /**
-     * Comprehensive group sync - fetches ALL groups from Evolution API and updates database
+     * Comprehensive group sync - fetches group info individually for each existing group
      */
     async syncAllGroupsFromApi(instanceId: string): Promise<{ success: boolean; count: number; error?: string }> {
         try {
             console.log(`🔄 [${instanceId}] Starting comprehensive group sync from Evolution API...`);
             
-            // Import and use the existing Evolution API client
-            const { getEvolutionApi } = await import('./evolution-api.js');
-            const api = getEvolutionApi();
-            
-            if (!api) {
-                throw new Error('Evolution API not configured. Please check EVOLUTION_API_KEY and EVOLUTION_API_URL environment variables.');
-            }
-
-            // Fetch all groups using the correct endpoint
-            const response = await fetch(`${process.env.EVOLUTION_API_URL}/group/findAll/${instanceId}`, {
-                method: 'GET',
-                headers: {
-                    'apikey': process.env.EVOLUTION_API_KEY!,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.log(`❌ Evolution API Error Response:`, errorText);
-                throw new Error(`Evolution API request failed: ${response.status} ${response.statusText} - ${errorText}`);
-            }
-
-            const apiGroups = await response.json();
-            console.log(`📋 [${instanceId}] Found ${apiGroups.length} groups in Evolution API`);
+            // Get all existing groups from database
+            const existingGroups = await storage.getWhatsappGroups(instanceId);
+            console.log(`📋 Found ${existingGroups.length} groups in database to sync`);
 
             let syncedCount = 0;
-            let createdCount = 0;
             let updatedCount = 0;
+            let errorCount = 0;
 
-            for (const apiGroup of apiGroups) {
+            for (const group of existingGroups) {
                 try {
-                    // Map API group data to our schema
-                    const groupData = {
-                        groupJid: apiGroup.id,
-                        instanceId: instanceId,
-                        subject: apiGroup.subject || 'Unnamed Group',
-                        ownerJid: apiGroup.owner || null,
-                        description: apiGroup.desc || null,
-                        creationTimestamp: apiGroup.creation ? new Date(apiGroup.creation * 1000) : null,
-                        isLocked: apiGroup.announce || false,
-                    };
+                    // Fetch individual group info from Evolution API
+                    const response = await fetch(`${process.env.EVOLUTION_API_URL}/group/fetchGroupInfo/${instanceId}`, {
+                        method: 'POST',
+                        headers: {
+                            'apikey': process.env.EVOLUTION_API_KEY!,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            groupJid: group.groupJid
+                        })
+                    });
 
-                    // Check if group already exists
-                    const existingGroup = await storage.getWhatsappGroup(apiGroup.id, instanceId);
-                    
-                    if (existingGroup) {
-                        // Update existing group with API data
-                        await storage.upsertWhatsappGroup(groupData);
-                        console.log(`🔄 Updated group: ${apiGroup.id} -> "${apiGroup.subject}"`);
-                        updatedCount++;
-                    } else {
-                        // Create new group from API data
-                        await storage.upsertWhatsappGroup(groupData);
+                    if (response.ok) {
+                        const apiGroupInfo = await response.json();
                         
-                        // Also ensure it exists as a contact
-                        const contactData = {
-                            jid: apiGroup.id,
+                        // Update group with real API data
+                        const updatedGroupData = {
+                            groupJid: group.groupJid,
                             instanceId: instanceId,
-                            pushName: apiGroup.subject || 'Unnamed Group',
+                            subject: apiGroupInfo.subject || group.subject,
+                            ownerJid: apiGroupInfo.owner || group.ownerJid,
+                            description: apiGroupInfo.desc || group.description,
+                            creationTimestamp: apiGroupInfo.creation ? new Date(apiGroupInfo.creation * 1000) : group.creationTimestamp,
+                            isLocked: apiGroupInfo.announce !== undefined ? apiGroupInfo.announce : group.isLocked,
+                        };
+
+                        await storage.upsertWhatsappGroup(updatedGroupData);
+                        
+                        // Also update the contact record
+                        const contactData = {
+                            jid: group.groupJid,
+                            instanceId: instanceId,
+                            pushName: apiGroupInfo.subject || group.subject,
                             verifiedName: null,
                             profilePictureUrl: null,
                             isBlocked: false,
@@ -567,21 +550,25 @@ export const WebhookApiAdapter = {
                         };
                         await storage.upsertWhatsappContact(contactData);
                         
-                        console.log(`✨ Created new group: ${apiGroup.id} -> "${apiGroup.subject}"`);
-                        createdCount++;
+                        console.log(`✅ Updated group: ${group.groupJid} -> "${apiGroupInfo.subject}"`);
+                        updatedCount++;
+                    } else {
+                        console.log(`⚠️ Could not fetch info for group: ${group.groupJid} (${response.status})`);
+                        errorCount++;
                     }
                     
                     syncedCount++;
                 } catch (groupError) {
-                    console.error(`❌ Error syncing group ${apiGroup.id}:`, groupError.message);
+                    console.error(`❌ Error syncing group ${group.groupJid}:`, groupError.message);
+                    errorCount++;
                 }
             }
 
-            console.log(`✅ [${instanceId}] Group sync complete: ${createdCount} created, ${updatedCount} updated, ${syncedCount} total`);
+            console.log(`✅ [${instanceId}] Group sync complete: ${updatedCount} updated, ${errorCount} errors, ${syncedCount} total processed`);
             return { 
                 success: true, 
-                count: syncedCount,
-                details: { created: createdCount, updated: updatedCount }
+                count: updatedCount,
+                details: { updated: updatedCount, errors: errorCount, total: syncedCount }
             };
 
         } catch (error) {

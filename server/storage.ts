@@ -1119,6 +1119,15 @@ export class DatabaseStorage implements IStorage {
     return result?.groups || undefined;
   }
 
+  async getWhatsappGroups(instanceId: string): Promise<WhatsappGroup[]> {
+    const results = await db
+      .select()
+      .from(whatsappGroups)
+      .where(eq(whatsappGroups.instanceId, instanceId))
+      .orderBy(desc(whatsappGroups.updatedAt));
+    return results;
+  }
+
   async updateWhatsappGroup(userId: string, instanceId: string, groupJid: string, group: Partial<InsertWhatsappGroup>): Promise<WhatsappGroup> {
     const [updatedGroup] = await db
       .update(whatsappGroups)
