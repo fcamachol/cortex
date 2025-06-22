@@ -1,0 +1,193 @@
+import { Request, Response } from 'express';
+import { storage } from './storage'; // Your database access layer
+import { SseManager } from './sse-manager'; // Your real-time notification manager
+import { ActionService } from './action-service'; // Your business logic engine
+import {
+    type WhatsappMessages,
+    type WhatsappContacts,
+    type WhatsappChats,
+    type WhatsappGroups,
+    type WhatsappCallLogs,
+    type WhatsappMessageReactions
+} from '@shared/schema';
+
+/**
+ * @class WebhookApiAdapter
+ * @description The "Translator" layer. Its only job is to take raw API payloads,
+ * map them into clean internal data objects, and then command the storage layer
+ * in the correct order to prevent data integrity errors.
+ */
+export const WebhookApiAdapter = {
+
+    /**
+     * Main entry point for all incoming webhooks from the Evolution API.
+     * This is designed for a SINGLE endpoint per instance. The "Webhook by Events"
+     * feature in the Evolution API should be turned OFF.
+     */
+    async processIncomingEvent(instanceId: string, event: any): Promise<void> {
+        // --- START DIAGNOSTIC LOG ---
+        console.log('--- RAW INCOMING WEBHOOK PAYLOAD ---');
+        console.log(JSON.stringify(event, null, 2));
+        // ---  END DIAGNOSTIC LOG  ---
+
+        const { event: eventType, data, sender } = event;
+        
+        if (!eventType) {
+            console.warn(`[${instanceId}] Received webhook with no event type. Discarding.`);
+            return;
+        }
+        
+        console.log(`📨 [${instanceId}] Translating event: ${eventType}`);
+
+        switch (eventType) {
+            case 'messages.upsert':
+                const potentialMessage = Array.isArray(data.messages) ? data.messages[0] : data;
+                if (potentialMessage?.message?.reactionMessage) {
+                    await this.handleReaction(instanceId, potentialMessage, sender);
+                } else {
+                    await this.handleMessageUpsert(instanceId, data);
+                }
+                break;
+            case 'messages.update':
+                if (data.updates && data.updates[0]?.message?.reactionMessage) {
+                     await this.handleReaction(instanceId, data.updates[0], sender);
+                } else {
+                    await this.handleMessageUpdate(instanceId, data);
+                }
+                break;
+            case 'contacts.upsert':
+            case 'contacts.update':
+                await this.handleContactsUpsert(instanceId, data);
+                break;
+            case 'chats.upsert':
+            case 'chats.update':
+                await this.handleChatsUpsert(instanceId, data);
+                break;
+            case 'groups.upsert':
+            case 'groups.update':
+                 await this.handleGroupsUpsert(instanceId, data);
+                 break;
+            case 'group.participants.update':
+                 await this.handleGroupParticipantsUpdate(instanceId, data);
+                 break;
+            case 'call':
+                await this.handleCall(instanceId, data);
+                break;
+            default:
+                console.log(`- Unhandled event type in adapter: ${eventType}`);
+        }
+    },
+
+    /**
+     * Dedicated handler for reaction events.
+     */
+    async handleReaction(instanceId: string, rawReaction: any, sender?: string): Promise<void> {
+        try {
+            const cleanReaction = this.mapApiPayloadToWhatsappReaction(rawReaction, instanceId, sender);
+            if (!cleanReaction) {
+                console.warn(`[${instanceId}] Could not process invalid reaction payload.`);
+                return;
+            }
+
+            await storage.upsertWhatsappReaction(cleanReaction);
+            console.log(`✅ [${instanceId}] Reaction stored: ${cleanReaction.reaction_emoji} on ${cleanReaction.message_id}`);
+            
+            SseManager.notifyClientsOfNewReaction(cleanReaction);
+            
+            ActionService.processReaction(cleanReaction);
+
+        } catch (error) {
+            console.error(`❌ Error processing reaction:`, error);
+        }
+    },
+
+    /**
+     * Handles new messages with a robust, sequential process.
+     */
+    async handleMessageUpsert(instanceId: string, data: any, sender?: string): Promise<void> {
+        const messages = Array.isArray(data.messages) ? data.messages : [data];
+        if (!messages[0]?.key) {
+            console.warn(`[${instanceId}] Invalid messages.upsert payload:`, data);
+            return;
+        }
+
+        for (const rawMessage of messages) {
+            try {
+                const cleanMessage = await this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
+                if (!cleanMessage) continue;
+
+                await this.ensureDependenciesForMessage(cleanMessage, rawMessage);
+                
+                const storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
+                console.log(`✅ [${instanceId}] Message stored: ${storedMessage.message_id}`);
+                
+                SseManager.notifyClientsOfNewMessage(storedMessage);
+                ActionService.processNewMessage(storedMessage);
+
+            } catch (error) {
+                console.error(`❌ Error processing message upsert for ${rawMessage.key?.id}:`, error);
+            }
+        }
+    },
+
+    /**
+     * Handles group creation and updates. This is the only function that should
+     * be trusted to set the group's subject.
+     */
+    async handleGroupsUpsert(instanceId: string, data: any[]): Promise<void> {
+        if (!Array.isArray(data)) return;
+        for (const rawGroup of data) {
+            const chatContact = await this.mapApiPayloadToWhatsappContact({ id: rawGroup.id }, instanceId);
+            if(chatContact) await storage.upsertWhatsappContact(chatContact);
+            
+            const chatData = this.mapApiPayloadToWhatsappChat({ id: rawGroup.id, name: rawGroup.subject }, instanceId);
+            if (chatData) await storage.upsertWhatsappChat(chatData);
+
+            const cleanGroup = this.mapApiPayloadToWhatsappGroup(rawGroup, instanceId);
+            if (cleanGroup) {
+                await storage.upsertWhatsappGroup(cleanGroup);
+                console.log(`✅ [${instanceId}] Group upserted with correct subject: ${cleanGroup.subject}`);
+            }
+        }
+    },
+
+    /**
+     * Guarantees that placeholder records exist before a message is inserted.
+     */
+    async ensureDependenciesForMessage(cleanMessage: WhatsappMessages, rawMessage: any): Promise<void> {
+        const senderContact = await this.mapApiPayloadToWhatsappContact({
+            id: cleanMessage.sender_jid,
+            pushName: rawMessage.pushName
+        }, cleanMessage.instance_id);
+        if (senderContact) await storage.upsertWhatsappContact(senderContact);
+
+        const isGroup = cleanMessage.chat_id.endsWith('@g.us');
+        
+        const chatContact = await this.mapApiPayloadToWhatsappContact({ id: cleanMessage.chat_id }, cleanMessage.instance_id);
+        if (chatContact) await storage.upsertWhatsappContact(chatContact);
+
+        const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chat_id }, cleanMessage.instance_id);
+        if (chatData) await storage.upsertWhatsappChat(chatData);
+
+        if (isGroup) {
+            await storage.createGroupPlaceholderIfNeeded(cleanMessage.chat_id, cleanMessage.instance_id);
+        }
+    },
+
+    // --- Data Mapping Functions ---
+
+    mapApiPayloadToWhatsappGroup(rawGroup: any, instanceId: string): Omit<WhatsappGroups, 'updated_at'> | null {
+        if (!rawGroup.id || !rawGroup.subject) return null;
+        return {
+            group_jid: rawGroup.id,
+            instance_id: instanceId,
+            subject: rawGroup.subject,
+            owner_jid: rawGroup.owner,
+            description: rawGroup.desc,
+            creation_timestamp: rawGroup.creation ? new Date(rawGroup.creation * 1000) : undefined,
+            is_locked: rawGroup.announce || false,
+        };
+    },
+
+    // ... other handlers and mapping functions ...
+};

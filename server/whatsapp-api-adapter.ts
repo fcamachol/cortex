@@ -184,13 +184,26 @@ export const WebhookApiAdapter = {
         }
     },
 
+    /**
+     * Handles group creation and updates. This is the only function that should
+     * be trusted to set the group's authentic subject name from Evolution API.
+     */
     async handleGroupsUpsert(instanceId: string, data: any[]): Promise<void> {
         if (!Array.isArray(data)) return;
         for (const rawGroup of data) {
+            // Ensure contact record exists for the group
+            const chatContact = await this.mapApiPayloadToWhatsappContact({ id: rawGroup.id }, instanceId);
+            if(chatContact) await storage.upsertWhatsappContact(chatContact);
+            
+            // Ensure chat record exists with authentic group name
+            const chatData = this.mapApiPayloadToWhatsappChat({ id: rawGroup.id, name: rawGroup.subject }, instanceId);
+            if (chatData) await storage.upsertWhatsappChat(chatData);
+
+            // Store group with authentic subject from Evolution API
             const cleanGroup = this.mapApiPayloadToWhatsappGroup(rawGroup, instanceId);
             if (cleanGroup) {
                 await storage.upsertWhatsappGroup(cleanGroup);
-                console.log(`✅ [${instanceId}] Group upserted with correct subject: ${cleanGroup.subject}`);
+                console.log(`✅ [${instanceId}] Group upserted with authentic subject: ${cleanGroup.subject}`);
             }
         }
     },
