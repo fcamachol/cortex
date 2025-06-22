@@ -1306,119 +1306,36 @@ export const WebhookApiAdapter = {
     },
 
     /**
-     * Fetch all groups using the new Evolution API endpoint with streaming approach
+     * Fetch specific group using individual group JID endpoint (eliminates bulk fetching)
      */
-    async fetchAllGroupsFromApi(instanceId: string): Promise<{ success: boolean; groups: any[]; error?: string }> {
+    async fetchSpecificGroupFromApi(instanceId: string, groupJid: string): Promise<{ success: boolean; group: any; error?: string }> {
         try {
             const instance = await storage.getWhatsappInstance(instanceId);
             
             if (!instance?.apiKey) {
-                return { success: false, groups: [], error: 'No API key found for instance' };
+                return { success: false, group: null, error: 'No API key found for instance' };
             }
 
-            console.log(`🔍 [${instanceId}] Attempting to fetch groups from Evolution API...`);
+            console.log(`🔍 [${instanceId}] Fetching specific group: ${groupJid}`);
 
-            // Use direct Evolution API call (same approach as working webhook system)
-            try {
-                console.log(`🔄 [${instanceId}] Fetching groups using working endpoint...`);
-                
-                const response = await fetch(`${process.env.EVOLUTION_API_URL}/group/fetchAllGroups/${instanceId}?getParticipants=true`, {
-                    method: 'GET',
-                    headers: {
-                        'apikey': process.env.EVOLUTION_API_KEY!,
-                        'Content-Type': 'application/json'
-                    },
-                    timeout: 30000
-                });
-
-                if (response.ok) {
-                    const groups = await response.json();
-                    console.log(`✅ [${instanceId}] Found ${groups.length} groups via direct fetchAllGroups endpoint`);
-                    
-                    if (groups && groups.length > 0) {
-                        // Immediately update database with authentic Evolution API data
-                        await this.forceUpdateGroupsWithEvolutionData(instanceId, groups);
-                        
-                        return { success: true, groups, error: null };
-                    }
-                }
-            } catch (apiError) {
-                console.error(`❌ [${instanceId}] Direct Evolution API group fetch failed:`, apiError.message);
+            // Use the specific group JID endpoint only
+            const groupInfo = await this.requestGroupMetadata(instanceId, groupJid);
+            
+            if (groupInfo) {
+                console.log(`✅ [${instanceId}] Found group via specific JID endpoint: ${groupInfo.subject}`);
+                return { success: true, group: groupInfo, error: null };
+            } else {
+                return { success: false, group: null, error: 'Group not found or inaccessible' };
             }
-
-            // Fallback to alternative approaches if enhanced API fails
-            const approaches = [
-                { endpoint: `/instance/fetchInstances`, timeout: 5000 },
-                { endpoint: `/chat/findChats/${instanceId}`, timeout: 8000 }
-            ];
-
-            for (const approach of approaches) {
-                try {
-                    console.log(`🔄 [${instanceId}] Trying ${approach.endpoint}...`);
-                    
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), approach.timeout);
-
-                    const response = await fetch(`${process.env.EVOLUTION_API_URL}${approach.endpoint}`, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'apikey': instance.apiKey
-                        },
-                        signal: controller.signal
-                    });
-
-                    clearTimeout(timeoutId);
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        
-                        // Process different response formats
-                        let groups = [];
-                        if (Array.isArray(data)) {
-                            groups = data.filter(item => item.id && item.id.endsWith('@g.us'));
-                        } else if (data.chats) {
-                            groups = data.chats.filter(chat => chat.id && chat.id.endsWith('@g.us'));
-                        } else if (approach.endpoint.includes('fetchInstances')) {
-                            // Find our instance in the list
-                            const targetInstance = Array.isArray(data) ? 
-                                data.find(inst => inst.name === instanceId) : 
-                                (data.name === instanceId ? data : null);
-                            
-                            if (targetInstance && targetInstance.Chat) {
-                                groups = targetInstance.Chat.filter(chat => chat.id && chat.id.endsWith('@g.us'));
-                            }
-                        }
-
-                        if (groups.length > 0) {
-                            console.log(`✅ [${instanceId}] Found ${groups.length} groups using ${approach.endpoint}`);
-                            
-                            // Immediately update database with authentic Evolution API data
-                            await this.forceUpdateGroupsWithEvolutionData(instanceId, groups);
-                            
-                            return { success: true, groups, error: null };
-                        }
-                    }
-                } catch (error) {
-                    if (error.name === 'AbortError') {
-                        console.log(`⏰ [${instanceId}] ${approach.endpoint} timed out`);
-                    } else {
-                        console.log(`❌ [${instanceId}] ${approach.endpoint} failed: ${error.message}`);
-                    }
-                    continue;
-                }
-            }
-
-            return { success: false, groups: [], error: 'All API endpoints failed or timed out' };
 
         } catch (error) {
-            console.error(`❌ [${instanceId}] Error in fetchAllGroupsFromApi:`, error.message);
-            return { success: false, groups: [], error: error.message };
+            console.error(`❌ [${instanceId}] Error fetching specific group ${groupJid}:`, error.message);
+            return { success: false, group: null, error: error.message };
         }
     },
 
     /**
-     * Sync groups using database-driven approach and selective API calls
+     * Sync groups using database-driven approach and selective API calls (no bulk fetching)
      */
     async syncAllGroupsFromApi(instanceId: string): Promise<{ success: boolean; count: number; error?: string }> {
         try {

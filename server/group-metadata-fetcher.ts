@@ -67,34 +67,30 @@ export class GroupMetadataFetcher {
     }
 
     /**
-     * Try multiple Evolution API endpoints to fetch group information
+     * Fetch specific group information using only individual group JID endpoint
      */
     private static async fetchGroupFromMultipleEndpoints(instanceId: string, apiKey: string, groupJid: string): Promise<any> {
-        const evolutionApi = getEvolutionApi();
-        
-        // Use the working Evolution API to fetch all groups and find our specific group
         try {
-            const allGroupsResponse = await evolutionApi.fetchAllGroups(instanceId, apiKey);
-            if (allGroupsResponse && Array.isArray(allGroupsResponse)) {
-                const targetGroup = allGroupsResponse.find((g: any) => g.id === groupJid);
-                if (targetGroup?.subject) {
-                    console.log(`🔍 Found group ${groupJid} in Evolution API: "${targetGroup.subject}"`);
-                    return targetGroup;
+            // Use the specific group JID endpoint only
+            const response = await fetch(`https://evolution-api-evolution-api.vuswn0.easypanel.host/group/findGroupInfos/${instanceId}?groupJid=${groupJid}`, {
+                method: 'GET',
+                headers: {
+                    'apikey': process.env.EVOLUTION_API_KEY || apiKey,
+                    'Content-Type': 'application/json'
                 }
-            }
-        } catch (error) {
-            console.debug(`Evolution API fetchAllGroups failed for ${groupJid}:`, error.message);
-        }
+            });
 
-        // Fallback: Try the working group participants endpoint directly
-        try {
-            const participantsData = await evolutionApi.fetchGroupParticipants(instanceId, apiKey, groupJid);
-            if (participantsData?.subject) {
-                console.log(`🔍 Found group ${groupJid} via participants: "${participantsData.subject}"`);
-                return participantsData;
+            if (response.ok) {
+                const groupData = await response.json();
+                if (groupData?.subject) {
+                    console.log(`🔍 Found group ${groupJid} via specific JID endpoint: "${groupData.subject}"`);
+                    return groupData;
+                }
+            } else {
+                console.warn(`Group JID endpoint failed for ${groupJid}: ${response.status}`);
             }
         } catch (error) {
-            console.debug(`Evolution API fetchGroupParticipants failed for ${groupJid}:`, error.message);
+            console.debug(`Specific group JID endpoint failed for ${groupJid}:`, error.message);
         }
 
         return null;
