@@ -33,6 +33,7 @@ export const WebhookApiAdapter = {
 
         switch (eventType) {
             case 'messages.upsert':
+            case 'MESSAGES_UPSERT':
                 const potentialMessage = Array.isArray(data.messages) ? data.messages[0] : data;
                 if (potentialMessage?.message?.reactionMessage) {
                     await this.handleReaction(instanceId, potentialMessage, sender);
@@ -41,6 +42,7 @@ export const WebhookApiAdapter = {
                 }
                 break;
             case 'messages.update':
+            case 'MESSAGES_UPDATE':
                 if (data.updates && data.updates[0]?.message?.reactionMessage) {
                      await this.handleReaction(instanceId, data.updates[0], sender);
                 } else {
@@ -49,17 +51,24 @@ export const WebhookApiAdapter = {
                 break;
             case 'contacts.upsert':
             case 'contacts.update':
+            case 'CONTACTS_UPSERT':
+            case 'CONTACTS_UPDATE':
                 await this.handleContactsUpsert(instanceId, data);
                 break;
             case 'chats.upsert':
             case 'chats.update':
+            case 'CHATS_UPSERT':
+            case 'CHATS_UPDATE':
                 await this.handleChatsUpsert(instanceId, data);
                 break;
             case 'groups.upsert':
             case 'groups.update':
+            case 'GROUPS_UPSERT':
+            case 'GROUP_UPDATE':
                  await this.handleGroupsUpsert(instanceId, data);
                  break;
             case 'group.participants.update':
+            case 'GROUP_PARTICIPANTS_UPDATE':
                  await this.handleGroupParticipantsUpdate(instanceId, data);
                  break;
             case 'call':
