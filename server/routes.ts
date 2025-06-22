@@ -539,19 +539,6 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.get('/api/whatsapp/groups', async (req: AuthRequest, res: Response) => {
-    try {
-      const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const { instanceId } = req.query;
-      
-      const groups = await storage.getWhatsappGroups(userId, instanceId as string);
-      res.json(groups);
-    } catch (error) {
-      console.error('Error fetching WhatsApp groups:', error);
-      res.status(500).json({ error: 'Failed to fetch WhatsApp groups' });
-    }
-  });
-
   app.post('/api/whatsapp/refresh-group-subjects/:instanceId', async (req: Request, res: Response) => {
     try {
       const { instanceId } = req.params;
