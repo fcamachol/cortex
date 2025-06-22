@@ -7,7 +7,7 @@ import {
     type WhatsappContacts,
     type WhatsappChats,
     type WhatsappGroups,
-    type WhatsappMessageUpdates
+    type WhatsappCallLogs
 } from '@shared/schema';
 
 /**
@@ -17,39 +17,6 @@ import {
  * in the correct order to prevent data integrity errors.
  */
 export const WebhookApiAdapter = {
-
-    /**
-     * Fetches group information from Evolution API to get actual group details
-     */
-    async fetchGroupInfo(instanceId: string, groupJid: string): Promise<any> {
-        try {
-            const baseUrl = process.env.EVOLUTION_API_URL || 'https://evolution-api-evolution-api.vuswn0.easypanel.host';
-            const apiKey = process.env.EVOLUTION_API_KEY || 'B6D711FCDE4D4FD5936544120E713976';
-            
-            const response = await fetch(`${baseUrl}/group/fetchAllGroups/${instanceId}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': apiKey
-                }
-            });
-            
-            if (response.ok) {
-                const groups = await response.json();
-                const targetGroup = groups.find((group: any) => group.id === groupJid);
-                if (targetGroup) {
-                    console.log(`✅ [${instanceId}] Fetched group info for: ${groupJid}`);
-                    return targetGroup;
-                }
-            }
-            
-            console.warn(`⚠️ [${instanceId}] Could not fetch group info for: ${groupJid}`);
-            return null;
-        } catch (error) {
-            console.error(`❌ [${instanceId}] Error fetching group info:`, error);
-            return null;
-        }
-    },
 
     /**
      * Main entry point for all webhook events.
@@ -245,8 +212,8 @@ export const WebhookApiAdapter = {
                     // Proactively create group placeholder if this is a group chat
                     if (newChat.type === 'group') {
                         try {
-                            // Fetch actual group information from Evolution API
-                            const groupInfo = await this.fetchGroupInfo(instanceId, newChat.chatId);
+                            // Get group information from multiple sources
+                            const groupInfo = await this.getGroupInfo(instanceId, newChat.chatId);
                             
                             const groupData = {
                                 groupJid: newChat.chatId,
@@ -254,7 +221,7 @@ export const WebhookApiAdapter = {
                                 subject: groupInfo?.subject || 'New Group',
                                 description: groupInfo?.desc || null,
                                 ownerJid: groupInfo?.owner || null,
-                                creationTimestamp: groupInfo?.creation ? new Date(groupInfo.creation * 1000) : new Date(),
+                                creationTimestamp: groupInfo?.creation ? new Date(groupInfo.creation) : new Date(),
                                 isLocked: groupInfo?.locked || false
                             };
                             
@@ -323,16 +290,21 @@ export const WebhookApiAdapter = {
                     // Proactively create group placeholder if this is a group chat
                     if (newChat.type === 'group') {
                         try {
-                            await storage.upsertWhatsappGroup({
+                            // Get group information from multiple sources
+                            const groupInfo = await this.getGroupInfo(cleanMessage.instanceId, newChat.chatId, rawMessage);
+                            
+                            const groupData = {
                                 groupJid: newChat.chatId,
                                 instanceId: newChat.instanceId,
-                                subject: 'New Group', // Temporary placeholder name
-                                description: null,
-                                ownerJid: null,
-                                creationTimestamp: new Date(),
-                                isLocked: false
-                            });
-                            console.log(`✅ [${cleanMessage.instanceId}] Auto-created group placeholder: ${newChat.chatId}`);
+                                subject: groupInfo?.subject || 'New Group',
+                                description: groupInfo?.desc || null,
+                                ownerJid: groupInfo?.owner || null,
+                                creationTimestamp: groupInfo?.creation ? new Date(groupInfo.creation) : new Date(),
+                                isLocked: groupInfo?.locked || false
+                            };
+                            
+                            await storage.upsertWhatsappGroup(groupData);
+                            console.log(`✅ [${cleanMessage.instanceId}] Auto-created group with subject: ${groupData.subject}`);
                         } catch (groupError) {
                             console.error(`❌ [${cleanMessage.instanceId}] Error creating group placeholder:`, groupError);
                         }
