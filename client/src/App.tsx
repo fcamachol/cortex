@@ -16,6 +16,7 @@ import SignupPage from "@/pages/SignupPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
+import { DragDropContext } from '@hello-pangea/dnd';
 
 function AuthenticatedRoutes() {
   return (
@@ -61,13 +62,24 @@ function Router() {
 }
 
 function App() {
+  const handleDragEnd = (result: any) => {
+    // Global drag handler - will be passed down to individual components
+    if (!result.destination) return;
+    
+    // Route to appropriate component handler based on droppableId
+    const event = new CustomEvent('globalDragEnd', { detail: result });
+    window.dispatchEvent(event);
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </DragDropContext>
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { useState, useEffect } from 'react';
+import { Droppable, Draggable } from '@hello-pangea/dnd';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -76,11 +76,28 @@ export function TaskBoard({
     if (!result.destination) return;
 
     const { draggableId, destination } = result;
+    
+    // Only handle task board drags
+    const statusIds = ['to_do', 'in_progress', 'review', 'done'];
+    if (!statusIds.includes(destination.droppableId)) {
+      return;
+    }
+
     const taskId = parseInt(draggableId);
     const newStatus = destination.droppableId;
 
     onStatusChange(taskId, newStatus);
   };
+
+  // Listen for global drag events from App.tsx
+  useEffect(() => {
+    const handleGlobalDragEnd = (event: any) => {
+      handleDragEnd(event.detail);
+    };
+
+    window.addEventListener('globalDragEnd', handleGlobalDragEnd);
+    return () => window.removeEventListener('globalDragEnd', handleGlobalDragEnd);
+  }, [tasks, onStatusChange]);
 
   const getPriorityColor = (priority?: string) => {
     switch (priority) {
@@ -209,9 +226,8 @@ export function TaskBoard({
   );
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="h-full overflow-auto">
-        <div className="flex gap-6 min-w-max p-4">
+    <div className="h-full overflow-auto">
+      <div className="flex gap-6 min-w-max p-4">
           {statusColumns.map((column) => (
             <div key={column.id} className="flex flex-col w-80 flex-shrink-0">
               <div className={`rounded-t-lg p-3 ${column.color}`}>
@@ -252,6 +268,5 @@ export function TaskBoard({
           ))}
         </div>
       </div>
-    </DragDropContext>
   );
 }
