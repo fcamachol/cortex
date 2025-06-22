@@ -1,0 +1,174 @@
+import { db } from "./db"; // Your Drizzle ORM instance
+import { sql, eq, desc, and, or, ilike } from "drizzle-orm";
+import {
+    // App Schema
+    appUsers, workspaces, spaces, channels, workspaceMembers, spaceMembers,
+    // WhatsApp Schema
+    whatsappInstances, whatsappContacts, whatsappChats, whatsappMessages,
+    whatsappMessageEditHistory, whatsappMessageMedia, whatsappMessageReactions,
+
+    whatsappMessageUpdates, whatsappGroups, whatsappGroupParticipants,
+    whatsappCallLogs,
+    // CRM Schema
+    crmProjects, crmTasks, crmTaskContacts, crmTaskMessageLinks,
+    crmTaskActivityLog, crmTaskChecklistItems,
+    // Actions Schema
+    actionsActionRules,
+    // Type Imports
+    type AppUser, type InsertAppUser,
+    type WhatsappInstance, type InsertWhatsappInstance,
+    type WhatsappContact, type InsertWhatsappContact,
+    type WhatsappChat, type InsertWhatsappChat,
+    type WhatsappMessage, type InsertWhatsappMessage,
+    type WhatsappGroup, type InsertWhatsappGroup,
+    type WhatsappGroupParticipant, type InsertWhatsappGroupParticipant,
+    type WhatsappMessageReaction, type InsertWhatsappMessageReaction
+} from "../shared/schema"; // Assuming a single, final schema definition file
+
+/**
+ * @class DatabaseStorage
+ * @description The "Warehouse Clerk" layer. Its only job is to execute SQL
+ * queries against the database using a shared connection pool. It abstracts all
+ * database interactions away from the rest of the application.
+ */
+class DatabaseStorage {
+
+    // =========================================================================
+    // APP SCHEMA METHODS
+    // =========================================================================
+
+    async getUserById(userId: string): Promise<AppUser | null> {
+        const [user] = await db.select().from(appUsers).where(eq(appUsers.user_id, userId));
+        return user || null;
+    }
+
+    async getUserByEmail(email: string): Promise<AppUser | null> {
+        const [user] = await db.select().from(appUsers).where(eq(appUsers.email, email.toLowerCase()));
+        return user || null;
+    }
+
+    // =========================================================================
+    // WHATSAPP SCHEMA METHODS
+    // =========================================================================
+
+    async getInstanceById(instanceId: string): Promise<WhatsappInstance | null> {
+        const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instance_id, instanceId));
+        return instance || null;
+    }
+
+    async upsertWhatsappContact(contact: InsertWhatsappContact): Promise<WhatsappContact> {
+        const [result] = await db.insert(whatsappContacts)
+            .values(contact)
+            .onConflictDoUpdate({
+                target: [whatsappContacts.jid, whatsappContacts.instance_id],
+                set: {
+                    push_name: contact.push_name,
+                    verified_name: contact.verified_name,
+                    profile_picture_url: contact.profile_picture_url,
+                    is_business: contact.is_business,
+                    is_me: contact.is_me,
+                    is_blocked: contact.is_blocked,
+                    last_updated_at: new Date()
+                }
+            })
+            .returning();
+        return result;
+    }
+
+    async upsertWhatsappChat(chat: InsertWhatsappChat): Promise<WhatsappChat> {
+        const [result] = await db.insert(whatsappChats)
+            .values(chat)
+            .onConflictDoUpdate({
+                target: [whatsappChats.chat_id, whatsappChats.instance_id],
+                set: {
+                    type: chat.type,
+                    unread_count: chat.unread_count,
+                    is_archived: chat.is_archived,
+                    is_pinned: chat.is_pinned,
+                    is_muted: chat.is_muted,
+                    mute_end_timestamp: chat.mute_end_timestamp,
+                    last_message_timestamp: chat.last_message_timestamp,
+                    updated_at: new Date()
+                }
+            })
+            .returning();
+        return result;
+    }
+    
+    async upsertWhatsappGroup(group: InsertWhatsappGroup): Promise<WhatsappGroup> {
+        const [result] = await db.insert(whatsappGroups)
+            .values(group)
+            .onConflictDoUpdate({
+                target: [whatsappGroups.group_jid, whatsappGroups.instance_id],
+                set: {
+                    // Only update the subject if it's not the generic placeholder
+                    subject: group.subject !== 'New Group' && group.subject !== 'Group' ? group.subject : sql`${whatsappGroups.subject}`,
+                    description: group.description,
+                    owner_jid: group.owner_jid,
+                    creation_timestamp: group.creation_timestamp,
+                    is_locked: group.is_locked,
+                    updated_at: new Date()
+                }
+            })
+            .returning();
+        return result;
+    }
+
+    async upsertWhatsappMessage(message: InsertWhatsappMessage): Promise<WhatsappMessage> {
+        const [result] = await db.insert(whatsappMessages)
+            .values(message)
+            .onConflictDoUpdate({
+                target: [whatsappMessages.message_id, whatsappMessages.instance_id],
+                set: {
+                    content: message.content,
+                    is_starred: message.is_starred,
+                    is_edited: message.is_edited,
+                    last_edited_at: message.last_edited_at,
+                    raw_api_payload: message.raw_api_payload
+                }
+            })
+            .returning();
+        return result;
+    }
+
+    async upsertWhatsappReaction(reaction: InsertWhatsappMessageReaction): Promise<WhatsappMessageReaction> {
+        const [result] = await db.insert(whatsappMessageReactions)
+            .values(reaction)
+            .onConflictDoUpdate({
+                target: [whatsappMessageReactions.message_id, whatsappMessageReactions.instance_id, whatsappMessageReactions.reactor_jid],
+                set: {
+                    reaction_emoji: reaction.reaction_emoji,
+                    timestamp: reaction.timestamp
+                }
+            })
+            .returning();
+        return result;
+    }
+    
+    async createGroupPlaceholderIfNeeded(groupJid: string, instanceId: string): Promise<void> {
+        // This query attempts to insert a placeholder. If the group already exists,
+        // the ON CONFLICT clause does nothing, preventing overwrites.
+        const sql = `
+            INSERT INTO whatsapp.groups (group_jid, instance_id, subject)
+            VALUES ($1, $2, 'Group')
+            ON CONFLICT (group_jid, instance_id) DO NOTHING;
+        `;
+        await db.execute(sql(sql, groupJid, instanceId));
+    }
+
+    // =========================================================================
+    // CRM SCHEMA METHODS
+    // =========================================================================
+
+    async getProjects(spaceId: number): Promise<any[]> {
+        return await db.select().from(crmProjects).where(eq(crmProjects.space_id, spaceId));
+    }
+
+    async getChecklistItems(taskId: number): Promise<any[]> {
+        return await db.select().from(crmTaskChecklistItems).where(eq(crmTaskChecklistItems.task_id, taskId));
+    }
+    
+    // ... other CRM-related functions (createTask, updateTaskStatus, etc.)
+}
+
+export const storage = new DatabaseStorage();
