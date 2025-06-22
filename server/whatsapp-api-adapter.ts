@@ -194,7 +194,7 @@ export const WebhookApiAdapter = {
     },
 
     /**
-     * Handles chat creation and updates, now with proactive group creation.
+     * Handles chat creation and updates, with enhanced group subject processing.
      */
     async handleChatsUpsert(instanceId: string, data: any): Promise<void> {
         const chats = Array.isArray(data.chats) ? data.chats : Array.isArray(data) ? data : [data];
@@ -207,15 +207,72 @@ export const WebhookApiAdapter = {
                 const chatContact = await this.mapApiPayloadToWhatsappContact({ id: cleanChat.chatId }, instanceId);
                 if (chatContact) await storage.upsertWhatsappContact(chatContact);
 
-                // If it's a group, fetch authentic subject from Evolution API
+                // If it's a group, handle subject update from webhook data
                 if (cleanChat.type === 'group') {
-                    await this.ensureGroupWithRealSubject(cleanChat.chatId, instanceId);
+                    await this.handleGroupSubjectFromChat(cleanChat.chatId, rawChat, instanceId);
                 }
 
                 // Now it's safe to save the chat
                 await storage.upsertWhatsappChat(cleanChat);
                 console.log(`✅ [${instanceId}] Chat upserted: ${cleanChat.chatId}`);
             }
+        }
+    },
+
+    /**
+     * Processes group subject updates from chat.update webhook events
+     */
+    async handleGroupSubjectFromChat(groupJid: string, rawChat: any, instanceId: string): Promise<void> {
+        try {
+            // Extract subject from various possible fields in chat update
+            let groupSubject = null;
+            
+            if (rawChat.subject && rawChat.subject !== 'Group Chat') {
+                groupSubject = rawChat.subject;
+            } else if (rawChat.name && rawChat.name !== 'Group Chat') {
+                groupSubject = rawChat.name;
+            } else if (rawChat.pushName && rawChat.pushName !== 'Group Chat') {
+                groupSubject = rawChat.pushName;
+            }
+
+            if (groupSubject) {
+                // Always update group subject from chat.update webhook (authoritative source)
+                const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
+                if (!existingGroup || existingGroup.subject !== groupSubject) {
+                    // Update group record with authentic subject from webhook
+                    const groupData = {
+                        groupJid: groupJid,
+                        instanceId: instanceId,
+                        subject: groupSubject,
+                        ownerJid: rawChat.owner || null,
+                        description: rawChat.desc || null,
+                        creationTimestamp: rawChat.creation ? new Date(rawChat.creation * 1000) : null,
+                        isLocked: rawChat.restrict || false,
+                    };
+                    
+                    await storage.upsertWhatsappGroup(groupData);
+                    console.log(`✅ [${instanceId}] Group subject updated from chat webhook: ${groupJid} -> "${groupSubject}"`);
+                    
+                    // Update chat record name to match group subject
+                    const existingChat = await storage.getWhatsappChat(groupJid, instanceId);
+                    if (existingChat) {
+                        const updatedChat = {
+                            ...existingChat,
+                            name: groupSubject
+                        };
+                        await storage.upsertWhatsappChat(updatedChat);
+                    }
+                } else {
+                    console.log(`📝 [${instanceId}] Group ${groupJid} subject unchanged: "${groupSubject}"`);
+                }
+            } else {
+                // No subject in chat update, ensure group placeholder exists
+                await this.ensureGroupWithRealSubject(groupJid, instanceId);
+            }
+        } catch (error) {
+            console.error(`❌ [${instanceId}] Error processing group subject from chat: ${error.message}`);
+            // Fallback to existing logic
+            await this.ensureGroupWithRealSubject(groupJid, instanceId);
         }
     },
 
