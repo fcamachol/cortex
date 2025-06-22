@@ -136,16 +136,65 @@ export class EvolutionApi {
      * This is a robust fallback for when /chat/findAll is unavailable.
      */
     async fetchAllGroups(instanceName: string, instanceApiKey: string): Promise<any[]> {
-        console.log(`🔄 [${instanceName}] Fetching groups using alternative method...`);
+        console.log(`🔄 [${instanceName}] Fetching groups using working endpoint...`);
+        
+        // Use the working group/fetchAllGroups endpoint directly with proper parameters
         try {
-            // Fetch the specific instance details, which might contain chat/group lists
-            const instances: any[] = await this.makeRequest(`/instance/fetchInstances`, 'GET', null, this.config.apiKey);
-            const targetInstance = instances.find((inst: any) => inst.instance.instanceName === instanceName);
+            const response = await this.makeRequest(
+                `/group/fetchAllGroups/${instanceName}?getParticipants=false`, 
+                'GET', 
+                null, 
+                instanceApiKey
+            );
+            
+            // Handle different response formats
+            let groups = [];
+            if (Array.isArray(response)) {
+                groups = response.filter(item => item.id && item.id.endsWith('@g.us'));
+            } else if (response.groups && Array.isArray(response.groups)) {
+                groups = response.groups.filter(item => item.id && item.id.endsWith('@g.us'));
+            } else if (response.data && Array.isArray(response.data)) {
+                groups = response.data.filter(item => item.id && item.id.endsWith('@g.us'));
+            }
+            
+            console.log(`✅ [${instanceName}] Found ${groups.length} groups via direct fetchAllGroups endpoint`);
+            return groups;
+            
+        } catch (error) {
+            console.log(`⚠️ [${instanceName}] Direct group fetch failed: ${error.message}`);
+        }
 
-            if (targetInstance && targetInstance.instance.chats) {
-                const groups = targetInstance.instance.chats.filter((chat: any) => chat.id.endsWith('@g.us'));
-                console.log(`✅ [${instanceName}] Found ${groups.length} groups via instance metadata.`);
-                return groups;
+        // Fallback: try the instance-based approach only if direct fetch fails
+        try {
+            const instances: any = await this.makeRequest(`/instance/fetchInstances`, 'GET', null, this.config.apiKey);
+            
+            if (!instances) {
+                console.log(`❌ [${instanceName}] No instances data received`);
+                return [];
+            }
+            
+            // Handle both array and object responses
+            let instanceList = Array.isArray(instances) ? instances : [instances];
+            
+            const targetInstance = instanceList.find((inst: any) => {
+                return inst && (
+                    (inst.instance?.instanceName === instanceName) ||
+                    (inst.instanceName === instanceName) ||
+                    (inst.name === instanceName)
+                );
+            });
+
+            if (targetInstance) {
+                let chats = targetInstance.instance?.chats || 
+                           targetInstance.chats || 
+                           targetInstance.Chat ||
+                           [];
+                
+                if (chats.length > 0) {
+                    const groups = chats.filter((chat: any) => chat.id && chat.id.endsWith('@g.us'));
+                    console.log(`✅ [${instanceName}] Found ${groups.length} groups via instance metadata`);
+                    return groups;
+                }
             }
             
             console.warn(`[${instanceName}] Could not find group list in instance metadata. Falling back to fetching all chats.`);
