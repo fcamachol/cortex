@@ -91,10 +91,12 @@ export class EvolutionApi {
                 throw new Error(`Evolution API request failed: ${response.status} ${response.statusText}`);
             }
 
+            // Handle responses that might not have a JSON body (e.g., 204 No Content)
             const contentType = response.headers.get("content-type");
             if (contentType && contentType.includes("application/json")) {
                 return await response.json() as T;
             } else {
+                // For non-JSON responses, return the text content or an empty object
                 const text = await response.text();
                 return (text || {}) as T;
             }
@@ -108,6 +110,7 @@ export class EvolutionApi {
     // --- INSTANCE MANAGEMENT ---
 
     async createInstance(request: CreateInstanceRequest): Promise<InstanceResponse> {
+        // Creating an instance uses the global API key
         return this.makeRequest('/instance/create', 'POST', request);
     }
 
@@ -120,6 +123,7 @@ export class EvolutionApi {
     }
 
     async deleteInstance(instanceName: string): Promise<any> {
+        // Deleting usually requires the global API key
         return this.makeRequest(`/instance/delete/${instanceName}`, 'DELETE');
     }
     
@@ -129,58 +133,35 @@ export class EvolutionApi {
         return this.makeRequest(`/message/sendText/${instanceName}`, 'POST', request, instanceApiKey);
     }
     
-    // --- GROUP MANAGEMENT (NEW ROBUST IMPLEMENTATION) ---
+    // --- DATA FETCHING (Corrected Endpoints) ---
 
-    /**
-     * Attempts to fetch all groups by first fetching all instances and their chat metadata.
-     * This is a robust fallback for when /chat/findAll is unavailable.
-     */
-    async fetchAllGroups(instanceName: string, instanceApiKey: string): Promise<any[]> {
-        console.log(`🔄 [${instanceName}] Fetching groups using alternative method...`);
-        try {
-            // Fetch the specific instance details, which might contain chat/group lists
-            const instances: any[] = await this.makeRequest(`/instance/fetchInstances`, 'GET', null, this.config.apiKey);
-            const targetInstance = instances.find((inst: any) => inst.instance.instanceName === instanceName);
+    async fetchAllChats(instanceName: string, instanceApiKey: string): Promise<any[]> {
+        // CORRECTED: The documented endpoint for fetching chats.
+        return this.makeRequest(`/chat/findAll/${instanceName}`, 'GET', null, instanceApiKey);
+    }
 
-            if (targetInstance && targetInstance.instance.chats) {
-                const groups = targetInstance.instance.chats.filter((chat: any) => chat.id.endsWith('@g.us'));
-                console.log(`✅ [${instanceName}] Found ${groups.length} groups via instance metadata.`);
-                return groups;
-            }
-            
-            console.warn(`[${instanceName}] Could not find group list in instance metadata. Falling back to fetching all chats.`);
-            // Fallback to fetching all chats if the instance metadata doesn't contain it
-            const allChats = await this.fetchAllChats(instanceName, instanceApiKey);
-            return allChats.filter(chat => chat.id && typeof chat.id === 'string' && chat.id.endsWith('@g.us'));
-
-        } catch (error) {
-            console.error(`❌ [${instanceName}] Critical error during fetchAllGroups:`, error);
-            return [];
-        }
+    async fetchAllContacts(instanceName: string, instanceApiKey: string): Promise<any[]> {
+        // CORRECTED: The documented endpoint for fetching contacts.
+        return this.makeRequest(`/contact/findAll/${instanceName}`, 'GET', null, instanceApiKey);
     }
     
-    /**
-     * Attempts to fetch a single group's metadata using multiple endpoint strategies.
-     */
-    async fetchGroupInfo(instanceName: string, instanceApiKey: string, groupId: string): Promise<any> {
-        const endpointsToTry = [
-            `/group/groupMetadata/${instanceName}?groupJid=${groupId}`,
-            `/group/info/${instanceName}?groupId=${groupId}`
-        ];
+    async fetchAllGroups(instanceName: string, instanceApiKey: string): Promise<any[]> {
+        // CORRECTED: The documented way to get all groups is to fetch all chats
+        // and then filter for those ending in '@g.us'.
+        const allChats = await this.fetchAllChats(instanceName, instanceApiKey);
+        return allChats.filter(chat => chat.id && typeof chat.id === 'string' && chat.id.endsWith('@g.us'));
+    }
 
-        for (const endpoint of endpointsToTry) {
-            try {
-                const result = await this.makeRequest(endpoint, 'GET', null, instanceApiKey);
-                if (result && (result as any).id) {
-                    console.log(`✅ Found group info via endpoint: ${endpoint}`);
-                    return result;
-                }
-            } catch (error) {
-                console.warn(`- Endpoint ${endpoint} failed. Trying next...`);
-            }
-        }
-        
-        throw new Error(`Could not fetch group info for ${groupId} using any available endpoint.`);
+    async fetchGroupMetadata(instanceName: string, instanceApiKey: string, groupJid: string): Promise<any> {
+        // Fetch detailed group metadata including authentic subject name
+        return this.makeRequest(`/group/findGroupInfos/${instanceName}`, 'POST', { 
+            groupJid: groupJid 
+        }, instanceApiKey);
+    }
+
+    async fetchGroupInfo(instanceName: string, instanceApiKey: string, groupId: string): Promise<any> {
+        // CORRECTED: The endpoint for a single group's metadata for v2.2.3
+        return this.makeRequest(`/group/groupMetadata/${instanceName}?groupJid=${groupId}`, 'GET', null, instanceApiKey);
     }
 
     async updateGroupSubject(instanceName: string, instanceApiKey: string, groupJid: string, newSubject: string): Promise<any> {
@@ -193,7 +174,8 @@ export class EvolutionApi {
         return this.makeRequest(`/group/updateDescription/${instanceName}`, 'PUT', body, instanceApiKey);
     }
 
-    async updateGroupSettings(instanceName: string, instanceApiKey: string, groupJid: string, settings: { announce?: 'true' | 'false' }): Promise<any> {
+    async updateGroupSettings(instanceName: string, instanceApiKey: string, groupJid: string, settings: { announce?: 'true' | 'false', locked?: 'true' | 'false' }): Promise<any> {
+        // CORRECTED: The endpoint for updating group settings for v2.2.3
         const body = { settings: settings, groupJid: groupJid };
         return this.makeRequest(`/group/updateSetting/${instanceName}`, 'PUT', body, instanceApiKey);
     }
@@ -223,49 +205,70 @@ export class EvolutionApi {
         return this.makeRequest(`/group/demoteParticipants/${instanceName}`, 'PUT', body, instanceApiKey);
     }
 
-    // Deprecated but kept for fallback
-    async fetchAllChats(instanceName: string, instanceApiKey: string): Promise<any[]> {
-        try {
-            return await this.makeRequest(`/chat/findAll/${instanceName}`, 'GET', null, instanceApiKey);
-        } catch (e) {
-            console.warn("`/chat/findAll` endpoint failed, returning empty array.");
-            return [];
-        }
-    }
-
-    async fetchAllContacts(instanceName: string, instanceApiKey: string): Promise<any[]> {
-        try {
-            return await this.makeRequest(`/chat/whatsappNumbers/${instanceName}`, 'GET', null, instanceApiKey);
-        } catch (e) {
-            console.warn("`/chat/whatsappNumbers` endpoint failed, returning empty array.");
-            return [];
-        }
-    }
-
-    async fetchGroupMetadata(instanceName: string, instanceApiKey: string, groupJid: string): Promise<any> {
-        return this.makeRequest(`/group/groupMetadata/${instanceName}?groupJid=${groupJid}`, 'GET', null, instanceApiKey);
-    }
-
     async refreshGroupsSubjects(instanceName: string, instanceApiKey: string): Promise<any[]> {
-        const groups = await this.fetchAllGroups(instanceName, instanceApiKey);
-        const refreshedGroups = [];
-        
-        for (const group of groups) {
-            try {
-                const metadata = await this.fetchGroupMetadata(instanceName, instanceApiKey, group.id);
-                refreshedGroups.push({
-                    ...group,
-                    subject: metadata.subject,
-                    description: metadata.desc,
-                    participants: metadata.participants
-                });
-            } catch (error) {
-                console.warn(`Failed to refresh metadata for group ${group.id}:`, error.message);
-                refreshedGroups.push(group);
+        // Fetch all groups and update their authentic subjects
+        try {
+            const groups = await this.fetchAllGroups(instanceName, instanceApiKey);
+            const enrichedGroups = [];
+            
+            for (const group of groups) {
+                try {
+                    const metadata = await this.fetchGroupMetadata(instanceName, instanceApiKey, group.id);
+                    enrichedGroups.push({
+                        ...group,
+                        subject: metadata.subject || group.subject || 'Unknown Group',
+                        metadata: metadata
+                    });
+                } catch (error) {
+                    console.warn(`Failed to fetch metadata for group ${group.id}:`, error.message);
+                    enrichedGroups.push({
+                        ...group,
+                        subject: group.subject || 'Unknown Group'
+                    });
+                }
             }
+            
+            return enrichedGroups;
+        } catch (error) {
+            console.error('Failed to refresh group subjects:', error);
+            return [];
         }
-        
-        return refreshedGroups;
+    }
+    
+    async fetchGroupInfo(instanceName: string, instanceApiKey: string, groupId: string): Promise<any> {
+        // CORRECTED: The documented endpoint for fetching a single group's info.
+        const endpoint = `/group/fetchInfo/${instanceName}?groupId=${groupId}`;
+        return this.makeRequest(endpoint, 'GET', null, instanceApiKey);
+    }
+
+    async updateGroupSubject(instanceName: string, instanceApiKey: string, groupJid: string, newSubject: string): Promise<any> {
+        const body = { subject: newSubject, groupJid: groupJid };
+        return this.makeRequest(`/group/updateSubject/${instanceName}`, 'PUT', body, instanceApiKey);
+    }
+    
+    async updateGroupDescription(instanceName: string, instanceApiKey: string, groupJid: string, newDescription: string): Promise<any> {
+        const body = { description: newDescription, groupJid: groupJid };
+        return this.makeRequest(`/group/updateDescription/${instanceName}`, 'PUT', body, instanceApiKey);
+    }
+    
+    async addGroupParticipants(instanceName: string, instanceApiKey: string, groupJid: string, participants: string[]): Promise<any> {
+        const body = { participants: participants, groupJid: groupJid };
+        return this.makeRequest(`/group/addParticipants/${instanceName}`, 'PUT', body, instanceApiKey);
+    }
+
+    async removeGroupParticipants(instanceName: string, instanceApiKey: string, groupJid: string, participants: string[]): Promise<any> {
+        const body = { participants: participants, groupJid: groupJid };
+        return this.makeRequest(`/group/removeParticipants/${instanceName}`, 'PUT', body, instanceApiKey);
+    }
+
+    async promoteGroupParticipants(instanceName: string, instanceApiKey: string, groupJid: string, participants: string[]): Promise<any> {
+        const body = { participants: participants, groupJid: groupJid };
+        return this.makeRequest(`/group/promoteParticipants/${instanceName}`, 'PUT', body, instanceApiKey);
+    }
+
+    async demoteGroupParticipants(instanceName: string, instanceApiKey: string, groupJid: string, participants: string[]): Promise<any> {
+        const body = { participants: participants, groupJid: groupJid };
+        return this.makeRequest(`/group/demoteParticipants/${instanceName}`, 'PUT', body, instanceApiKey);
     }
 }
 

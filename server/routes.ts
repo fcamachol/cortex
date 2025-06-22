@@ -707,76 +707,127 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Group management endpoints - Get groups with authentic Evolution API data
+  // Group management endpoints - Fetch groups directly from Evolution API
   app.get('/api/whatsapp/groups/:spaceId', async (req: Request, res: Response) => {
     try {
       const { spaceId } = req.params;
-      console.log(`Fetching groups for space: ${spaceId}`);
+      console.log(`Fetching groups directly from Evolution API for space: ${spaceId}`);
       
-      // Use direct database connection for reliable access to webhook-captured group data
-      const pg = await import('pg');
-      const { Client } = pg.default;
+      // Get instances for this space (for now, use default instance)
+      const instanceId = 'instance-1750433520122';
+      const instanceApiKey = process.env.EVOLUTION_API_KEY;
       
-      const client = new Client({
-        connectionString: process.env.DATABASE_URL
-      });
+      const evolutionApi = getEvolutionApi();
       
-      await client.connect();
+      // Use the new robust group fetching method
+      const apiGroups = await evolutionApi.fetchAllGroups(instanceId, instanceApiKey);
       
-      // Query groups with their authentic Evolution API subject names
-      const result = await client.query(`
-        SELECT 
-          g.group_jid,
-          g.instance_id,
-          g.subject,
-          g.description,
-          g.is_locked,
-          g.creation_timestamp,
-          COALESCE(p.participant_count, 0) as participant_count,
-          -- Check if group has recent activity based on creation time
-          CASE 
-            WHEN g.creation_timestamp > NOW() - INTERVAL '30 days' THEN true
-            ELSE false
-          END as is_recently_active
-        FROM whatsapp.groups g
-        LEFT JOIN (
+      console.log(`Evolution API returned ${apiGroups.length} groups`);
+      
+      // If no groups from API, fall back to database with clear indication
+      if (apiGroups.length === 0) {
+        console.log('No groups from Evolution API, falling back to database');
+        
+        const pg = await import('pg');
+        const { Client } = pg.default;
+        
+        const client = new Client({
+          connectionString: process.env.DATABASE_URL
+        });
+        
+        await client.connect();
+        
+        const result = await client.query(`
           SELECT 
-            group_jid, 
-            instance_id, 
-            COUNT(*) as participant_count
-          FROM whatsapp.group_participants 
-          GROUP BY group_jid, instance_id
-        ) p ON g.group_jid = p.group_jid AND g.instance_id = p.instance_id
-        WHERE g.subject IS NOT NULL 
-          AND g.subject != ''
-        ORDER BY 
-          g.creation_timestamp DESC NULLS LAST,
-          g.subject ASC
-      `);
+            g.group_jid,
+            g.instance_id,
+            g.subject,
+            g.description,
+            g.is_locked,
+            g.creation_timestamp,
+            COALESCE(p.participant_count, 0) as participant_count
+          FROM whatsapp.groups g
+          LEFT JOIN (
+            SELECT 
+              group_jid, 
+              instance_id, 
+              COUNT(*) as participant_count
+            FROM whatsapp.group_participants 
+            GROUP BY group_jid, instance_id
+          ) p ON g.group_jid = p.group_jid AND g.instance_id = p.instance_id
+          WHERE g.subject IS NOT NULL 
+            AND g.subject != ''
+          ORDER BY 
+            g.creation_timestamp DESC NULLS LAST,
+            g.subject ASC
+        `);
+        
+        await client.end();
+        
+        const dbGroups = result.rows.map((group: any) => ({
+          jid: group.group_jid,
+          instanceId: group.instance_id,
+          subject: group.subject,
+          description: group.description,
+          participantCount: parseInt(group.participant_count) || 0,
+          isAnnounce: false,
+          isLocked: group.is_locked || false,
+          createdAt: group.creation_timestamp ? new Date(group.creation_timestamp).toISOString() : new Date().toISOString(),
+          source: 'database_fallback'
+        }));
+        
+        console.log(`Returning ${dbGroups.length} groups from database fallback`);
+        return res.json(dbGroups);
+      }
       
-      await client.end();
+      // Process Evolution API groups with enhanced metadata
+      const enhancedGroups = await Promise.all(
+        apiGroups.map(async (group) => {
+          try {
+            // Try to get detailed group info
+            const groupInfo = await evolutionApi.fetchGroupInfo(instanceId, instanceApiKey, group.id);
+            
+            return {
+              jid: group.id,
+              instanceId: instanceId,
+              subject: groupInfo.subject || group.name || 'Unknown Group',
+              description: groupInfo.desc || groupInfo.description || null,
+              participantCount: groupInfo.participants ? groupInfo.participants.length : 0,
+              isAnnounce: groupInfo.announce || false,
+              isLocked: groupInfo.restrict || false,
+              createdAt: groupInfo.creation ? new Date(groupInfo.creation * 1000).toISOString() : new Date().toISOString(),
+              owner: groupInfo.owner || null,
+              profilePicture: groupInfo.picture || null,
+              source: 'evolution_api_direct'
+            };
+          } catch (metadataError) {
+            console.warn(`Failed to fetch metadata for group ${group.id}:`, metadataError.message);
+            
+            // Return basic group info if metadata fetch fails
+            return {
+              jid: group.id,
+              instanceId: instanceId,
+              subject: group.name || 'Unknown Group',
+              description: null,
+              participantCount: 0,
+              isAnnounce: false,
+              isLocked: false,
+              createdAt: new Date().toISOString(),
+              owner: null,
+              profilePicture: null,
+              source: 'evolution_api_basic'
+            };
+          }
+        })
+      );
       
-      const groups = result.rows.map((group: any) => ({
-        jid: group.group_jid,
-        instanceId: group.instance_id,
-        subject: group.subject, // Authentic Evolution API subject name
-        description: group.description,
-        participantCount: parseInt(group.participant_count) || 0,
-        isAnnounce: false, // Would need to be captured from webhooks
-        isLocked: group.is_locked || false,
-        createdAt: group.creation_timestamp ? new Date(group.creation_timestamp).toISOString() : new Date().toISOString(),
-        lastActivity: group.last_activity ? new Date(group.last_activity).toISOString() : null,
-        isRecentlyActive: group.is_recently_active || false,
-        source: 'evolution_webhooks' // Indicates data comes from authentic Evolution API
-      }));
-      
-      console.log(`Found ${groups.length} groups with authentic Evolution API data`);
-      res.json(groups);
+      console.log(`Successfully processed ${enhancedGroups.length} groups from Evolution API`);
+      res.json(enhancedGroups);
       
     } catch (error) {
-      console.error('Error fetching groups with Evolution API data:', error);
+      console.error('Error fetching groups from Evolution API:', error);
       res.status(500).json({ 
-        error: 'Failed to fetch groups',
+        error: 'Failed to fetch groups from Evolution API',
         details: error.message 
       });
     }
