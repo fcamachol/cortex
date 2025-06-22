@@ -127,30 +127,21 @@ class DatabaseStorage {
     async upsertWhatsappInstance(instance: any): Promise<any> {
         // Map fields correctly: instanceName -> instance_name (PK), instanceId -> instance_id (Evolution API ID)
         const result = await db.execute(sql`
-            INSERT INTO whatsapp.instances (
-                instance_name, owner_jid, client_id, webhook_url, 
-                is_connected, last_connection_at, display_name, visibility, 
-                creator_user_id, instance_id
+            INSERT INTO whatsapp_instances (
+                instance_name, instance_id, display_name, status, webhook_url
             )
             VALUES (
                 ${instance.instanceName}, 
-                ${instance.ownerJid}, 
-                ${instance.clientId}, 
-                ${instance.webhookUrl}, 
-                ${instance.isConnected || false}, 
-                ${instance.lastConnectionAt},
+                ${instance.instanceId},
                 ${instance.displayName}, 
-                'private'::whatsapp.instance_visibility, 
-                ${instance.clientId},
-                ${instance.instanceId}
+                'connecting'::instance_status,
+                ${instance.webhookUrl}
             )
             ON CONFLICT (instance_name) DO UPDATE SET
                 instance_id = EXCLUDED.instance_id,
                 display_name = EXCLUDED.display_name,
                 webhook_url = EXCLUDED.webhook_url,
-                is_connected = EXCLUDED.is_connected,
-                owner_jid = EXCLUDED.owner_jid,
-                last_connection_at = EXCLUDED.last_connection_at,
+                status = EXCLUDED.status,
                 updated_at = NOW()
             RETURNING *
         `);
