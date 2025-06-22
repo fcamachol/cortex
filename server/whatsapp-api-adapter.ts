@@ -7,7 +7,8 @@ import {
     type WhatsappContacts,
     type WhatsappChats,
     type WhatsappGroups,
-    type WhatsappCallLogs
+    type WhatsappCallLogs,
+    type WhatsappMessageReactions
 } from '@shared/schema';
 
 /**
@@ -27,10 +28,19 @@ export const WebhookApiAdapter = {
 
         switch (eventType) {
             case 'messages.upsert':
-                await this.handleMessageUpsert(instanceId, data, sender);
+                const potentialMessage = Array.isArray(data.messages) ? data.messages[0] : data;
+                if (potentialMessage?.message?.reactionMessage) {
+                    await this.handleReaction(instanceId, potentialMessage, sender);
+                } else {
+                    await this.handleMessageUpsert(instanceId, data);
+                }
                 break;
             case 'messages.update':
-                await this.handleMessageUpdate(instanceId, data);
+                if (data.updates && data.updates[0]?.message?.reactionMessage) {
+                     await this.handleReaction(instanceId, data.updates[0], sender);
+                } else {
+                    await this.handleMessageUpdate(instanceId, data);
+                }
                 break;
             case 'contacts.upsert':
             case 'contacts.update':
@@ -44,7 +54,7 @@ export const WebhookApiAdapter = {
             case 'groups.update':
                  await this.handleGroupsUpsert(instanceId, data);
                  break;
-            case 'group.participants.update': // NEW: Handle participant changes
+            case 'group.participants.update':
                  await this.handleGroupParticipantsUpdate(instanceId, data);
                  break;
             case 'call':
@@ -56,7 +66,30 @@ export const WebhookApiAdapter = {
     },
 
     /**
-     * Handles new messages with a robust, sequential process to prevent race conditions.
+     * NEW: Dedicated handler for reaction events.
+     */
+    async handleReaction(instanceId: string, rawReaction: any, sender?: string): Promise<void> {
+        try {
+            const cleanReaction = this.mapApiPayloadToWhatsappReaction(rawReaction, instanceId, sender);
+            if (!cleanReaction) {
+                console.warn(`[${instanceId}] Could not process invalid reaction payload.`);
+                return;
+            }
+
+            await storage.upsertWhatsappMessageReaction(cleanReaction);
+            console.log(`✅ [${instanceId}] Reaction stored: ${cleanReaction.reactionEmoji} on ${cleanReaction.messageId}`);
+            
+            SseManager.notifyClientsOfNewReaction(cleanReaction);
+            
+            ActionService.processReaction(cleanReaction);
+
+        } catch (error) {
+            console.error(`❌ Error processing reaction:`, error);
+        }
+    },
+
+    /**
+     * Handles new messages with a robust, sequential process.
      */
     async handleMessageUpsert(instanceId: string, data: any, sender?: string): Promise<void> {
         const messages = Array.isArray(data.messages) ? data.messages : [data];
@@ -84,9 +117,6 @@ export const WebhookApiAdapter = {
         }
     },
     
-    /**
-     * Handles message status updates (sent, delivered, read).
-     */
     async handleMessageUpdate(instanceId: string, data: any): Promise<void> {
         if (!data || !Array.isArray(data.updates)) return;
         for (const update of data.updates) {
@@ -104,9 +134,6 @@ export const WebhookApiAdapter = {
         }
     },
 
-    /**
-     * Handles contact creation and updates.
-     */
     async handleContactsUpsert(instanceId: string, data: any): Promise<void> {
         const contacts = Array.isArray(data.contacts) ? data.contacts : Array.isArray(data) ? data : [data];
         if (!contacts || contacts.length === 0) return;
@@ -121,7 +148,7 @@ export const WebhookApiAdapter = {
     },
 
     /**
-     * Handles chat creation and updates.
+     * Handles chat creation and updates, now with proactive group creation.
      */
     async handleChatsUpsert(instanceId: string, data: any): Promise<void> {
         const chats = Array.isArray(data.chats) ? data.chats : Array.isArray(data) ? data : [data];
@@ -130,15 +157,31 @@ export const WebhookApiAdapter = {
         for (const rawChat of chats) {
             const cleanChat = this.mapApiPayloadToWhatsappChat(rawChat, instanceId);
             if (cleanChat) {
+                // Ensure the chat exists as a contact first
+                const chatContact = await this.mapApiPayloadToWhatsappContact({ id: cleanChat.chatId }, instanceId);
+                if (chatContact) await storage.upsertWhatsappContact(chatContact);
+
+                // If it's a group, ensure the group record exists
+                if (cleanChat.type === 'group') {
+                    const groupData = {
+                        groupJid: cleanChat.chatId,
+                        instanceId: instanceId,
+                        subject: rawChat.name || 'Group', // Use name from chat if available
+                        ownerJid: null,
+                        description: null,
+                        creationTimestamp: null,
+                        isLocked: false,
+                    };
+                    await storage.upsertWhatsappGroup(groupData);
+                }
+
+                // Now it's safe to save the chat
                 await storage.upsertWhatsappChat(cleanChat);
                 console.log(`✅ [${instanceId}] Chat upserted: ${cleanChat.chatId}`);
             }
         }
     },
 
-    /**
-     * Handles group creation and updates.
-     */
     async handleGroupsUpsert(instanceId: string, data: any[]): Promise<void> {
         if (!Array.isArray(data)) return;
         for (const rawGroup of data) {
@@ -150,9 +193,6 @@ export const WebhookApiAdapter = {
         }
     },
     
-    /**
-     * NEW: Handles changes in group participants (add, remove, promote, demote).
-     */
     async handleGroupParticipantsUpdate(instanceId: string, data: any): Promise<void> {
         if (!data?.id || !data.participants || !Array.isArray(data.participants) || !data.action) {
             console.warn(`[${instanceId}] Invalid group.participants.update payload:`, data);
@@ -169,7 +209,7 @@ export const WebhookApiAdapter = {
                         groupJid: groupJid,
                         participantJid: participantJid,
                         instanceId: instanceId,
-                        isAdmin: false, // Default to non-admin
+                        isAdmin: false,
                         isSuperAdmin: false
                     });
                 } else if (action === 'remove') {
@@ -185,9 +225,6 @@ export const WebhookApiAdapter = {
         }
     },
     
-    /**
-     * Handles incoming call events.
-     */
     async handleCall(instanceId: string, data: any[]): Promise<void> {
         if (!Array.isArray(data)) return;
         for (const rawCall of data) {
@@ -199,10 +236,6 @@ export const WebhookApiAdapter = {
         }
     },
 
-    /**
-     * Guarantees that the contact, chat, AND group (if applicable) records exist
-     * before a message is inserted. This prevents all foreign key violations.
-     */
     async ensureDependenciesForMessage(cleanMessage: WhatsappMessages, rawMessage: any): Promise<void> {
         const senderContact = await this.mapApiPayloadToWhatsappContact({
             id: cleanMessage.senderJid,
@@ -234,6 +267,20 @@ export const WebhookApiAdapter = {
 
     // --- Data Mapping Functions ---
 
+    mapApiPayloadToWhatsappReaction(rawReaction: any, instanceId: string, sender?: string): Omit<WhatsappMessageReactions, 'reactionId'> | null {
+        const reactionMsg = rawReaction.message?.reactionMessage;
+        if (!reactionMsg?.key?.id) return null;
+        const reactorJid = rawReaction.key?.participant || sender || rawReaction.key?.remoteJid;
+        return {
+            messageId: reactionMsg.key.id,
+            instanceId: instanceId,
+            reactorJid: reactorJid,
+            reactionEmoji: reactionMsg.text || '',
+            fromMe: rawReaction.key.fromMe || false,
+            timestamp: new Date(reactionMsg.senderTimestampMs || Date.now())
+        };
+    },
+    
     async mapApiPayloadToWhatsappMessage(rawMessage: any, instanceId: string): Promise<Omit<WhatsappMessages, 'createdAt'> | null> {
         if (!rawMessage.key?.id || !rawMessage.key?.remoteJid) return null;
         const timestamp = rawMessage.messageTimestamp;
