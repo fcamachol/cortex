@@ -7,6 +7,7 @@ import ContactModule from "@/components/contacts/contact-module";
 import CalendarModule from "@/components/calendar/calendar-module";
 import IntegrationModule from "@/components/integrations/integration-module";
 import { ActionsDashboard } from "@/components/actions/actions-dashboard";
+import GroupsPage from "@/pages/groups";
 import SimpleDBViewer from "@/pages/SimpleDBViewer";
 import { useQuery } from "@tanstack/react-query";
 

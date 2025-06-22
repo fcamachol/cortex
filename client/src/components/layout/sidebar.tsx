@@ -108,6 +108,13 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
       badgeColor: "bg-purple-500"
     },
     {
+      id: "groups",
+      label: "Groups",
+      icon: Users,
+      badge: null,
+      badgeColor: null
+    },
+    {
       id: "integrations",
       label: "Integrations",
       icon: Plug,
