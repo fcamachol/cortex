@@ -2,15 +2,13 @@ import { db } from "./db"; // Your Drizzle ORM instance
 import { sql, eq, desc, and, or, ilike } from "drizzle-orm";
 import {
     // App Schema
-    appUsers,
+    appUsers, workspaces, spaces, workspaceMembers,
     // WhatsApp Schema
     whatsappInstances, whatsappContacts, whatsappChats, whatsappMessages,
     whatsappGroups, whatsappGroupParticipants, whatsappMessageReactions,
-    // Legacy Schema
-    tasks, contacts,
-    // Actions Schema
-    actionRules,
-    // Type Imports
+    // CRM Schema
+    crmProjects, crmTasks, crmTaskChecklistItems,
+    // Type Imports from your single source of truth schema file
     type AppUser, type InsertAppUser,
     type WhatsappInstance, type InsertWhatsappInstance,
     type WhatsappContact, type InsertWhatsappContact,
@@ -19,7 +17,7 @@ import {
     type WhatsappGroup, type InsertWhatsappGroup,
     type WhatsappGroupParticipant, type InsertWhatsappGroupParticipant,
     type WhatsappMessageReaction, type InsertWhatsappMessageReaction
-} from "../shared/schema"; // Assuming a single, final schema definition file
+} from "../shared/schema";
 
 /**
  * @class DatabaseStorage
@@ -34,7 +32,7 @@ class DatabaseStorage {
     // =========================================================================
 
     async getUserById(userId: string): Promise<AppUser | null> {
-        const [user] = await db.select().from(appUsers).where(eq(appUsers.userId, userId));
+        const [user] = await db.select().from(appUsers).where(eq(appUsers.user_id, userId));
         return user || null;
     }
 
@@ -44,7 +42,17 @@ class DatabaseStorage {
     }
     
     async getSpacesForUser(userId: string): Promise<any[]> {
-        return [];
+        const results = await db.select()
+            .from(spaces)
+            .leftJoin(workspaceMembers, eq(spaces.workspace_id, workspaceMembers.workspace_id))
+            .where(or(
+                eq(spaces.creator_user_id, userId),
+                eq(workspaceMembers.user_id, userId)
+            ))
+            .groupBy(spaces.space_id)
+            .orderBy(spaces.display_order);
+            
+        return results.map(r => r.spaces);
     }
 
     // =========================================================================
@@ -54,6 +62,14 @@ class DatabaseStorage {
     async getInstanceById(instanceId: string): Promise<WhatsappInstance | null> {
         const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instance_id, instanceId));
         return instance || null;
+    }
+
+    async getWhatsappInstances(userId: string): Promise<WhatsappInstance[]> {
+        // This logic assumes client_id in whatsapp.instances is the user_id.
+        // This might need adjustment based on your final workspace/user link.
+        const results = await db.select().from(whatsappInstances)
+            .where(eq(whatsappInstances.creator_user_id, userId));
+        return results;
     }
     
     async getWhatsappConversations(userId: string): Promise<any[]> {
@@ -77,18 +93,19 @@ class DatabaseStorage {
     }
     
     async getWhatsappContacts(userId: string): Promise<WhatsappContact[]> {
-        const results = await db.select().from(whatsappContacts);
-        return results;
+        const results = await db.select({ contact: whatsappContacts })
+            .from(whatsappContacts)
+            .innerJoin(whatsappInstances, eq(whatsappContacts.instance_id, whatsappInstances.instance_id))
+            .where(and(
+                eq(whatsappInstances.creator_user_id, userId),
+                eq(whatsappContacts.is_me, false)
+            ));
+            
+        return results.map(r => r.contact);
     }
-
-    async getWhatsappGroups(instanceId?: string): Promise<WhatsappGroup[]> {
-        if (instanceId) {
-            const results = await db.select().from(whatsappGroups)
-                .where(eq(whatsappGroups.instanceId, instanceId));
-            return results;
-        }
-        const results = await db.select().from(whatsappGroups);
-        return results;
+    
+    async getWhatsappGroups(instanceId: string): Promise<WhatsappGroup[]> {
+        return await db.select().from(whatsappGroups).where(eq(whatsappGroups.instance_id, instanceId));
     }
 
     async upsertWhatsappContact(contact: InsertWhatsappContact): Promise<WhatsappContact> {
@@ -151,50 +168,8 @@ class DatabaseStorage {
             .returning();
         return result;
     }
-
-    // =========================================================================
-    // ADDITIONAL REQUIRED METHODS
-    // =========================================================================
-
-    async getConversationsWithLatestMessages(userId: string): Promise<any[]> {
-        return this.getWhatsappConversations(userId);
-    }
-
-    async getWhatsappInstances(userId: string): Promise<any[]> {
-        const results = await db.select().from(whatsappInstances);
-        return results;
-    }
-
-    async getInstanceStatus(instanceId: string): Promise<any> {
-        const instance = await this.getInstanceById(instanceId);
-        return {
-            instanceId,
-            isConnected: instance?.isConnected || false,
-            status: instance?.isConnected ? 'connected' : 'disconnected'
-        };
-    }
-
-    async getWhatsappMessages(userId: string, instanceId: string, chatId: string, limit: number = 50): Promise<any[]> {
-        let query = db.select().from(whatsappMessages)
-            .where(eq(whatsappMessages.instanceId, instanceId))
-            .orderBy(desc(whatsappMessages.timestamp))
-            .limit(limit);
-
-        if (chatId) {
-            query = db.select().from(whatsappMessages)
-                .where(and(
-                    eq(whatsappMessages.instanceId, instanceId),
-                    eq(whatsappMessages.chatId, chatId)
-                ))
-                .orderBy(desc(whatsappMessages.timestamp))
-                .limit(limit);
-        }
-
-        const result = await query;
-        return result;
-    }
-
-    // Reaction methods for webhook processing
+    
+    // --- NEW: Function to save reactions ---
     async upsertWhatsappReaction(reaction: InsertWhatsappMessageReaction): Promise<WhatsappMessageReaction> {
         const [result] = await db.insert(whatsappMessageReactions)
             .values(reaction)
@@ -208,67 +183,26 @@ class DatabaseStorage {
             .returning();
         return result;
     }
-
-    // Alias for backward compatibility with existing webhook code
-    async upsertWhatsappMessageReaction(reaction: InsertWhatsappMessageReaction): Promise<WhatsappMessageReaction> {
-        return this.upsertWhatsappReaction(reaction);
-    }
-
-    // Task management methods
-    async getTasks(): Promise<any[]> {
-        const results = await db.select().from(tasks);
-        return results;
-    }
-
-    async getProjects(): Promise<any[]> {
-        return [];
-    }
-
-    async getChecklistItems(): Promise<any[]> {
-        return [];
-    }
-
-    // Calendar methods
-    async getCalendarEvents(): Promise<any[]> {
-        return [];
-    }
-
-    async createCalendarEvent(eventData: any): Promise<any> {
-        return { id: 'placeholder', ...eventData };
-    }
-
-    async updateCalendarEvent(id: string, eventData: any): Promise<any> {
-        return { id, ...eventData };
-    }
-
-    async deleteCalendarEvent(id: string): Promise<void> {
-        // Implementation
-    }
-
-    async getCalendarProviders(): Promise<any[]> {
-        return [];
-    }
-
-    // Action rules methods
-    async getActionRules(userId: string): Promise<any[]> {
-        const results = await db.select().from(actionRules);
-        return results;
-    }
-
-    // Group placeholder creation
+    
     async createGroupPlaceholderIfNeeded(groupJid: string, instanceId: string): Promise<void> {
         await db.insert(whatsappGroups)
-            .values({
-                groupJid,
-                instanceId,
-                subject: 'Group',
-                createdAt: new Date(),
-                updatedAt: new Date()
-            })
-            .onConflictDoNothing({
-                target: [whatsappGroups.groupJid, whatsappGroups.instanceId]
-            });
+            .values({ group_jid: groupJid, instance_id: instanceId, subject: 'New Group' })
+            .onConflictDoNothing();
     }
+
+    // =========================================================================
+    // CRM SCHEMA METHODS
+    // =========================================================================
+
+    async getProjects(spaceId: number): Promise<any[]> {
+        return await db.select().from(crmProjects).where(eq(crmProjects.space_id, spaceId));
+    }
+
+    async getChecklistItems(taskId: number): Promise<any[]> {
+        return await db.select().from(crmTaskChecklistItems).where(eq(crmTaskChecklistItems.task_id, taskId));
+    }
+    
+    // ... Implement other CRM functions as needed
 }
 
 export const storage = new DatabaseStorage();
