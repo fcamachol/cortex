@@ -155,10 +155,8 @@ export const WebhookApiAdapter = {
                 
                 // Proactively update group data if this is a group message
                 if (cleanMessage.chatId.endsWith('@g.us')) {
-                    const { GroupMetadataFetcher } = await import('./group-metadata-fetcher');
-                    setTimeout(async () => {
-                        await GroupMetadataFetcher.updateGroupFromEvolutionApi(cleanMessage.chatId, instanceId);
-                    }, 500);
+                    const { EvolutionGroupUpdater } = await import('./evolution-group-updater');
+                    EvolutionGroupUpdater.handleGroupActivity(cleanMessage.chatId, instanceId);
                 }
                 
                 const storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
