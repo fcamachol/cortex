@@ -41,7 +41,6 @@ export const whatsappInstances = whatsappSchema.table("instances", {
   displayName: varchar("display_name", { length: 255 }).notNull(),
   ownerJid: varchar("owner_jid", { length: 100 }).unique(),
   clientId: uuid("client_id").notNull(), // FK to users table
-  apiKey: varchar("api_key", { length: 255 }),
   webhookUrl: varchar("webhook_url", { length: 255 }),
   isConnected: boolean("is_connected").default(false).notNull(),
   lastConnectionAt: timestamp("last_connection_at", { withTimezone: true }),
