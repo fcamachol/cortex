@@ -700,24 +700,22 @@ export type InsertAppUserPreferences = z.infer<typeof insertAppUserPreferencesSc
 
 // CRM Tasks table
 export const crmTasks = crmSchema.table("tasks", {
-  taskId: uuid("task_id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").notNull().references(() => appUsers.userId),
-  workspaceId: uuid("workspace_id").references(() => appWorkspaces.workspaceId),
-  spaceId: integer("space_id").references(() => appSpaces.spaceId),
+  taskId: integer("task_id").primaryKey(),
+  instanceId: varchar("instance_id", { length: 100 }),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
-  status: taskStatusEnum("status").default("pending").notNull(),
-  priority: taskPriorityEnum("priority").default("medium").notNull(),
+  status: varchar("status", { length: 50 }).default("pending").notNull(),
   dueDate: timestamp("due_date", { withTimezone: true }),
-  completedAt: timestamp("completed_at", { withTimezone: true }),
-  assignedTo: uuid("assigned_to").references(() => appUsers.userId),
-  tags: varchar("tags", { length: 100 }).array(),
-  metadata: jsonb("metadata"),
-  relatedChatJid: varchar("related_chat_jid", { length: 100 }),
+  priority: varchar("priority", { length: 50 }).default("medium").notNull(),
+  projectId: integer("project_id"),
+  parentTaskId: integer("parent_task_id"),
   triggeringMessageId: varchar("triggering_message_id", { length: 255 }),
-  instanceId: varchar("instance_id", { length: 100 }),
+  assignedToUserId: uuid("assigned_to_user_id"),
+  relatedChatJid: varchar("related_chat_jid", { length: 100 }),
+  createdByUserId: uuid("created_by_user_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  spaceId: integer("space_id"),
 });
 
 // CRM Projects table
