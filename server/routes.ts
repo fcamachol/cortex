@@ -223,6 +223,17 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.get('/api/whatsapp/groups/:instanceId', async (req: Request, res: Response) => {
+    try {
+      const { instanceId } = req.params;
+      const groups = await storage.getWhatsappGroups(instanceId);
+      res.json(groups);
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+      res.status(500).json({ error: 'Failed to fetch groups' });
+    }
+  });
+
   app.get('/api/whatsapp/chat-messages', async (req: Request, res: Response) => {
     try {
       const { chatId, instanceId, userId, limit = '100' } = req.query;
