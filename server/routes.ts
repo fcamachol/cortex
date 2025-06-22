@@ -290,6 +290,23 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.get('/api/whatsapp/groups/:groupJid/participants', async (req: Request, res: Response) => {
+    try {
+      const { groupJid } = req.params;
+      const { instanceId } = req.query;
+      
+      if (!instanceId) {
+        return res.status(400).json({ error: 'instanceId is required' });
+      }
+
+      const participants = await storage.getGroupParticipants(groupJid, instanceId as string);
+      res.json(participants);
+    } catch (error) {
+      console.error('Error fetching group participants:', error);
+      res.status(500).json({ error: 'Failed to fetch participants' });
+    }
+  });
+
   app.get('/api/whatsapp/chat-messages', async (req: Request, res: Response) => {
     try {
       const { chatId, instanceId, userId, limit = '100' } = req.query;

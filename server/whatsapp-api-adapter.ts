@@ -422,6 +422,11 @@ export const WebhookApiAdapter = {
                 await storage.upsertWhatsappGroup(cleanGroup);
                 console.log(`🔄 [${instanceId}] Group updated with Evolution API data: ${groupJid} -> "${cleanGroup.subject}"`);
                 
+                // Process participants if available
+                if (rawGroup.participants && Array.isArray(rawGroup.participants)) {
+                    await this.processGroupParticipants(instanceId, groupJid, rawGroup.participants);
+                }
+                
                 // Broadcast real-time update if subject changed
                 if (existingGroup && existingGroup.subject !== cleanGroup.subject) {
                     const { GroupRealtimeManager } = await import('./group-realtime-manager');
@@ -684,6 +689,38 @@ export const WebhookApiAdapter = {
         }
     },
     
+    /**
+     * Process group participants from Evolution API data
+     */
+    async processGroupParticipants(instanceId: string, groupJid: string, participants: any[]): Promise<void> {
+        if (!participants || !Array.isArray(participants)) return;
+        
+        let processedCount = 0;
+        for (const participant of participants) {
+            try {
+                const participantJid = participant.id || participant.jid;
+                if (!participantJid) continue;
+
+                const participantData = {
+                    groupJid: groupJid,
+                    participantJid: participantJid,
+                    instanceId: instanceId,
+                    isAdmin: participant.admin === 'admin' || participant.isAdmin || false,
+                    isSuperAdmin: participant.admin === 'superadmin' || participant.isSuperAdmin || false
+                };
+
+                await storage.upsertGroupParticipant(participantData);
+                processedCount++;
+            } catch (error) {
+                console.error(`❌ Error processing participant ${participant.id || 'unknown'}:`, error);
+            }
+        }
+        
+        if (processedCount > 0) {
+            console.log(`👥 [${instanceId}] Processed ${processedCount} participants for group ${groupJid}`);
+        }
+    },
+
     async handleGroupParticipantsUpdate(instanceId: string, data: any): Promise<void> {
         if (!data?.id || !data.participants || !Array.isArray(data.participants) || !data.action) {
             console.warn(`[${instanceId}] Invalid group.participants.update payload:`, data);
@@ -1104,7 +1141,7 @@ export const WebhookApiAdapter = {
             try {
                 console.log(`🔄 [${instanceId}] Fetching groups using working endpoint...`);
                 
-                const response = await fetch(`${process.env.EVOLUTION_API_URL}/group/fetchAllGroups/${instanceId}?getParticipants=false`, {
+                const response = await fetch(`${process.env.EVOLUTION_API_URL}/group/fetchAllGroups/${instanceId}?getParticipants=true`, {
                     method: 'GET',
                     headers: {
                         'apikey': process.env.EVOLUTION_API_KEY!,
