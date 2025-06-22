@@ -125,28 +125,30 @@ class DatabaseStorage {
     }
 
     async upsertWhatsappInstance(instance: any): Promise<any> {
-        // Map fields correctly: instanceName -> instance_name (PK), instanceId -> instance_id (Evolution API ID)
-        const result = await db.execute(sql`
-            INSERT INTO whatsapp_instances (
-                instance_name, instance_id, display_name, status, webhook_url
-            )
-            VALUES (
-                ${instance.instanceName}, 
-                ${instance.instanceId},
-                ${instance.displayName}, 
-                'connecting'::instance_status,
-                ${instance.webhookUrl}
-            )
-            ON CONFLICT (instance_name) DO UPDATE SET
-                instance_id = EXCLUDED.instance_id,
-                display_name = EXCLUDED.display_name,
-                webhook_url = EXCLUDED.webhook_url,
-                status = EXCLUDED.status,
-                updated_at = NOW()
-            RETURNING *
-        `);
+        const [result] = await db.insert(whatsappInstances)
+            .values({
+                instanceName: instance.instanceName,
+                instanceId: instance.instanceId,
+                displayName: instance.displayName,
+                clientId: instance.clientId,
+                webhookUrl: instance.webhookUrl,
+                isConnected: instance.isConnected || false,
+                lastConnectionAt: instance.lastConnectionAt || null
+            })
+            .onConflictDoUpdate({
+                target: whatsappInstances.instanceName,
+                set: {
+                    instanceId: instance.instanceId,
+                    displayName: instance.displayName,
+                    webhookUrl: instance.webhookUrl,
+                    isConnected: instance.isConnected || false,
+                    lastConnectionAt: instance.lastConnectionAt || null,
+                    updatedAt: new Date()
+                }
+            })
+            .returning();
         
-        return result.rows[0];
+        return result;
     }
 
     async upsertWhatsappContact(contact: InsertWhatsappContact): Promise<WhatsappContact> {
