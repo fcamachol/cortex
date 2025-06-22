@@ -25,6 +25,11 @@ export const WebhookApiAdapter = {
     async processIncomingEvent(instanceId: string, event: any): Promise<void> {
         const { event: eventType, data, sender } = event;
         console.log(`📨 [${instanceId}] Translating event: ${eventType}`);
+        
+        // Debug logging for send.message events
+        if (eventType === 'send.message') {
+            console.log(`📤 Send message event data:`, JSON.stringify(data, null, 2));
+        }
 
         switch (eventType) {
             case 'messages.upsert':
@@ -73,9 +78,14 @@ export const WebhookApiAdapter = {
      */
     async handleSendMessage(instanceId: string, data: any): Promise<void> {
         try {
+            console.log(`📤 [${instanceId}] Processing send.message event:`, JSON.stringify(data, null, 2));
+            
             // Map the sent message data to our internal format
             const cleanMessage = await this.mapSentMessageToWhatsappMessage(data, instanceId);
-            if (!cleanMessage) return;
+            if (!cleanMessage) {
+                console.warn(`[${instanceId}] Could not map sent message data:`, data);
+                return;
+            }
 
             await this.ensureDependenciesForMessage(cleanMessage, data);
             
