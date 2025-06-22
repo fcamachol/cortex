@@ -123,20 +123,22 @@ class DatabaseStorage {
         // Map fields correctly: instanceName -> instance_name (PK), instanceId -> instance_id (Evolution API ID)
         const result = await db.execute(sql`
             INSERT INTO whatsapp.instances (
-                instance_name, instance_id, display_name, client_id, api_key, webhook_url, 
-                is_connected, visibility, owner_jid, last_connection_at
+                instance_name, owner_jid, client_id, api_key, webhook_url, 
+                is_connected, last_connection_at, display_name, visibility, 
+                creator_user_id, instance_id
             )
             VALUES (
                 ${instance.instanceName}, 
-                ${instance.instanceId}, 
-                ${instance.displayName}, 
+                ${instance.ownerJid}, 
                 ${instance.clientId}, 
                 ${instance.apiKey}, 
                 ${instance.webhookUrl}, 
                 ${instance.isConnected || false}, 
-                'private', 
-                ${instance.ownerJid}, 
-                ${instance.lastConnectionAt}
+                ${instance.lastConnectionAt},
+                ${instance.displayName}, 
+                'private'::whatsapp.instance_visibility, 
+                ${instance.clientId},
+                ${instance.instanceId}
             )
             ON CONFLICT (instance_name) DO UPDATE SET
                 instance_id = EXCLUDED.instance_id,
