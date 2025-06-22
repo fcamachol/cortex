@@ -94,6 +94,13 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
       badgeColor: "bg-gray-500"
     },
     {
+      id: "groups",
+      label: "Groups",
+      icon: Users,
+      badge: "46",
+      badgeColor: "bg-blue-500"
+    },
+    {
       id: "calendar",
       label: "Calendar",
       icon: Calendar,

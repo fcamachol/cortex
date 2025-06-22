@@ -323,8 +323,17 @@ class DatabaseStorage {
         }
         
         const instanceIds = spaceInstances.map(instance => instance.instanceId);
+        
+        // Use OR condition for each instance ID
+        if (instanceIds.length === 1) {
+            return db.select().from(whatsappGroups)
+                .where(eq(whatsappGroups.instanceId, instanceIds[0]));
+        }
+        
+        // For multiple instances, use OR conditions
+        const conditions = instanceIds.map(id => eq(whatsappGroups.instanceId, id));
         return db.select().from(whatsappGroups)
-            .where(sql`${whatsappGroups.instanceId} = ANY(${instanceIds})`);
+            .where(or(...conditions));
     }
 
     /**
