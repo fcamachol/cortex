@@ -313,6 +313,61 @@ export const WebhookApiAdapter = {
         };
         await storage.upsertWhatsappGroup(groupData);
     },
+
+    /**
+     * Bulk refresh all group chat names with authentic subjects from Evolution API
+     */
+    async refreshAllGroupNames(instanceId: string): Promise<void> {
+        try {
+            const evolutionApi = getEvolutionApi();
+            const instance = await storage.getWhatsappInstance(instanceId);
+            
+            if (!instance?.apiKey) {
+                console.warn(`No API key found for instance ${instanceId}, skipping group refresh`);
+                return;
+            }
+
+            console.log(`🔄 Refreshing group names for instance ${instanceId}...`);
+
+            // Fetch all groups with authentic subjects from Evolution API
+            const enrichedGroups = await evolutionApi.refreshGroupsSubjects(instanceId, instance.apiKey);
+            
+            for (const group of enrichedGroups) {
+                try {
+                    // Update group record with authentic subject
+                    const groupData = {
+                        groupJid: group.id,
+                        instanceId: instanceId,
+                        subject: group.subject,
+                        ownerJid: group.owner || null,
+                        description: group.desc || null,
+                        creationTimestamp: group.creation ? new Date(group.creation * 1000) : null,
+                        isLocked: group.restrict || false,
+                    };
+                    await storage.upsertWhatsappGroup(groupData);
+
+                    // Update corresponding chat record with authentic name
+                    const existingChat = await storage.getWhatsappChat(group.id, instanceId);
+                    if (existingChat) {
+                        const updatedChat = {
+                            ...existingChat,
+                            name: group.subject
+                        };
+                        await storage.upsertWhatsappChat(updatedChat);
+                    }
+
+                    console.log(`✅ Updated group ${group.id}: ${group.subject}`);
+                } catch (error) {
+                    console.error(`Failed to update group ${group.id}:`, error.message);
+                }
+            }
+
+            console.log(`🎉 Group name refresh completed for ${enrichedGroups.length} groups`);
+            
+        } catch (error) {
+            console.error(`Error refreshing group names for ${instanceId}:`, error);
+        }
+    },
     
     async handleGroupParticipantsUpdate(instanceId: string, data: any): Promise<void> {
         if (!data?.id || !data.participants || !Array.isArray(data.participants) || !data.action) {

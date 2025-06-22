@@ -234,6 +234,19 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.post('/api/whatsapp/groups/:instanceId/refresh-names', async (req: Request, res: Response) => {
+    try {
+      const { instanceId } = req.params;
+      const { WebhookApiAdapter } = await import('./whatsapp-api-adapter');
+      
+      await WebhookApiAdapter.refreshAllGroupNames(instanceId);
+      res.json({ success: true, message: 'Group names refresh initiated' });
+    } catch (error) {
+      console.error('Error refreshing group names:', error);
+      res.status(500).json({ error: 'Failed to refresh group names' });
+    }
+  });
+
   app.get('/api/whatsapp/chat-messages', async (req: Request, res: Response) => {
     try {
       const { chatId, instanceId, userId, limit = '100' } = req.query;

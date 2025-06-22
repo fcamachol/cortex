@@ -55,6 +55,11 @@ class DatabaseStorage {
         const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceId, instanceId));
         return instance || null;
     }
+
+    async getWhatsappInstance(instanceId: string): Promise<WhatsappInstance | null> {
+        const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceId, instanceId));
+        return instance || null;
+    }
     
     async getWhatsappConversations(userId: string): Promise<any[]> {
         const results = await db.select({
@@ -90,6 +95,16 @@ class DatabaseStorage {
     
     async getWhatsappGroups(instanceId: string): Promise<WhatsappGroup[]> {
         return await db.select().from(whatsappGroups).where(eq(whatsappGroups.instanceId, instanceId));
+    }
+
+    async getWhatsappChat(chatId: string, instanceId: string): Promise<WhatsappChat | null> {
+        const [chat] = await db.select().from(whatsappChats).where(
+            and(
+                eq(whatsappChats.chatId, chatId),
+                eq(whatsappChats.instanceId, instanceId)
+            )
+        );
+        return chat || null;
     }
 
     async upsertWhatsappContact(contact: InsertWhatsappContact): Promise<WhatsappContact> {
