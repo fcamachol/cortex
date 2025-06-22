@@ -456,6 +456,17 @@ class DatabaseStorage {
             ));
     }
 
+    async getWhatsappContact(jid: string, instanceId: string): Promise<WhatsappContact | undefined> {
+        const [result] = await db.select()
+            .from(whatsappContacts)
+            .where(and(
+                eq(whatsappContacts.jid, jid),
+                eq(whatsappContacts.instanceId, instanceId)
+            ))
+            .limit(1);
+        return result;
+    }
+
     // =========================================================================
     // PATTERN-BASED QUERY METHODS FOR CLEANUP OPERATIONS
     // =========================================================================
