@@ -20,6 +20,14 @@ export const providerTypeEnum = calendarSchema.enum("provider_type", ["google", 
 export const syncStatusTypeEnum = calendarSchema.enum("sync_status_type", ["active", "revoked", "error", "pending"]);
 export const attendeeResponseStatusEnum = calendarSchema.enum("attendee_response_status", ["needsAction", "declined", "tentative", "accepted"]);
 
+// Enums for CRM schema
+export const taskStatusEnum = crmSchema.enum("task_status", [
+  "pending", "in_progress", "completed", "cancelled", "to_do"
+]);
+export const taskPriorityEnum = crmSchema.enum("task_priority", [
+  "low", "medium", "high", "urgent"
+]);
+
 // Enums for WhatsApp schema
 export const chatTypeEnum = whatsappSchema.enum("chat_type", ["individual", "group"]);
 export const messageTypeEnum = whatsappSchema.enum("message_type", [
@@ -685,6 +693,85 @@ export type AppSpaceMember = typeof appSpaceMembers.$inferSelect;
 export type InsertAppSpaceMember = z.infer<typeof insertAppSpaceMemberSchema>;
 export type AppUserPreferences = typeof appUserPreferences.$inferSelect;
 export type InsertAppUserPreferences = z.infer<typeof insertAppUserPreferencesSchema>;
+
+// ========================
+// CRM SCHEMA TABLES
+// ========================
+
+// CRM Tasks table
+export const crmTasks = crmSchema.table("tasks", {
+  taskId: uuid("task_id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => appUsers.userId),
+  workspaceId: uuid("workspace_id").references(() => appWorkspaces.workspaceId),
+  spaceId: integer("space_id").references(() => appSpaces.spaceId),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  status: taskStatusEnum("status").default("pending").notNull(),
+  priority: taskPriorityEnum("priority").default("medium").notNull(),
+  dueDate: timestamp("due_date", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  assignedTo: uuid("assigned_to").references(() => appUsers.userId),
+  tags: varchar("tags", { length: 100 }).array(),
+  metadata: jsonb("metadata"),
+  relatedChatJid: varchar("related_chat_jid", { length: 100 }),
+  triggeringMessageId: varchar("triggering_message_id", { length: 255 }),
+  instanceId: varchar("instance_id", { length: 100 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// CRM Projects table
+export const crmProjects = crmSchema.table("projects", {
+  projectId: uuid("project_id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => appUsers.userId),
+  workspaceId: uuid("workspace_id").references(() => appWorkspaces.workspaceId),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 50 }).default("active").notNull(),
+  startDate: timestamp("start_date", { withTimezone: true }),
+  endDate: timestamp("end_date", { withTimezone: true }),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// CRM Task Checklist Items table
+export const crmTaskChecklistItems = crmSchema.table("task_checklist_items", {
+  checklistItemId: uuid("checklist_item_id").primaryKey().defaultRandom(),
+  taskId: uuid("task_id").notNull().references(() => crmTasks.taskId),
+  title: varchar("title", { length: 255 }).notNull(),
+  isCompleted: boolean("is_completed").default(false).notNull(),
+  position: integer("position").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// CRM schema insert schemas
+export const insertCrmTaskSchema = createInsertSchema(crmTasks).omit({
+  taskId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrmProjectSchema = createInsertSchema(crmProjects).omit({
+  projectId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrmTaskChecklistItemSchema = createInsertSchema(crmTaskChecklistItems).omit({
+  checklistItemId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// CRM schema types
+export type CrmTask = typeof crmTasks.$inferSelect;
+export type InsertCrmTask = z.infer<typeof insertCrmTaskSchema>;
+export type CrmProject = typeof crmProjects.$inferSelect;
+export type InsertCrmProject = z.infer<typeof insertCrmProjectSchema>;
+export type CrmTaskChecklistItem = typeof crmTaskChecklistItems.$inferSelect;
+export type InsertCrmTaskChecklistItem = z.infer<typeof insertCrmTaskChecklistItemSchema>;
 
 // App schema relations
 export const appUsersRelations = relations(appUsers, ({ many, one }) => ({

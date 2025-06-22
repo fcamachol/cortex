@@ -290,16 +290,18 @@ class DatabaseStorage {
 
     // Task management methods
     async getTasks(): Promise<any[]> {
-        const results = await db.select().from(tasks);
+        const results = await db.select().from(crmTasks);
         return results;
     }
 
     async getProjects(): Promise<any[]> {
-        return [];
+        const results = await db.select().from(crmProjects);
+        return results;
     }
 
     async getChecklistItems(): Promise<any[]> {
-        return [];
+        const results = await db.select().from(crmTaskChecklistItems);
+        return results;
     }
 
     // Calendar methods
