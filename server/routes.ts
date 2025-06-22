@@ -707,50 +707,101 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Group management endpoints
+  // Group management endpoints - Fetch groups from Evolution API
   app.get('/api/whatsapp/groups/:spaceId', async (req: Request, res: Response) => {
     try {
       const { spaceId } = req.params;
       
-      // Use pg directly for reliable database access
-      const pg = await import('pg');
-      const { Client } = pg.default;
+      // Get instances for this space (for now, use default instance)
+      const instanceId = 'instance-1750433520122';
+      const instanceApiKey = process.env.EVOLUTION_API_KEY;
       
-      const client = new Client({
-        connectionString: process.env.DATABASE_URL
-      });
+      console.log(`Fetching groups from Evolution API for instance: ${instanceId}`);
       
-      await client.connect();
+      // Since standard endpoints aren't available, try alternative approaches
+      const baseUrl = process.env.EVOLUTION_API_URL;
       
-      const result = await client.query(`
-        SELECT g.group_jid, g.instance_id, g.subject, g.description, g.is_locked, g.creation_timestamp,
-               COALESCE(p.participant_count, 0) as participant_count
-        FROM whatsapp.groups g
-        LEFT JOIN (
-          SELECT group_jid, instance_id, COUNT(*) as participant_count
-          FROM whatsapp.group_participants 
-          GROUP BY group_jid, instance_id
-        ) p ON g.group_jid = p.group_jid AND g.instance_id = p.instance_id
-        ORDER BY g.subject
-      `);
+      // Try different possible endpoints for this API version
+      const endpoints = [
+        `/chat/findChats/${instanceId}`,
+        `/message/findMessages/${instanceId}`,
+        `/contact/findContacts/${instanceId}`,
+        `/instance/fetchInstances`
+      ];
       
-      await client.end();
+      let groupData = [];
       
-      const groups = result.rows.map((group: any) => ({
-        jid: group.group_jid,
-        instanceId: group.instance_id,
-        subject: group.subject || 'Unknown Group',
-        description: group.description,
-        participantCount: parseInt(group.participant_count) || 0,
-        isAnnounce: false,
-        isLocked: group.is_locked || false,
-        createdAt: group.creation_timestamp ? new Date(group.creation_timestamp).toISOString() : new Date().toISOString(),
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`Trying endpoint: ${endpoint}`);
+          
+          const response = await fetch(`${baseUrl}${endpoint}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': instanceApiKey
+            },
+            timeout: 10000
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log(`Endpoint ${endpoint} returned:`, typeof data, Array.isArray(data) ? data.length : 'non-array');
+            
+            // If we get an array, check for group-like data
+            if (Array.isArray(data)) {
+              const potentialGroups = data.filter(item => 
+                item.id?.endsWith?.('@g.us') || 
+                item.jid?.endsWith?.('@g.us') ||
+                item.remoteJid?.endsWith?.('@g.us')
+              );
+              
+              if (potentialGroups.length > 0) {
+                console.log(`Found ${potentialGroups.length} potential groups from ${endpoint}`);
+                groupData = potentialGroups;
+                break;
+              }
+            }
+          }
+        } catch (endpointError) {
+          console.log(`Endpoint ${endpoint} failed:`, endpointError.message);
+        }
+      }
+      
+      // If no groups found from API, return message explaining the situation
+      if (groupData.length === 0) {
+        return res.json({
+          message: "Groups endpoint not available on this Evolution API version",
+          apiVersion: "2.2.3",
+          suggestion: "Groups are being captured via webhooks in the database",
+          availableEndpoints: endpoints.map(e => e.replace(`/${instanceId}`, '/{instance}'))
+        });
+      }
+      
+      // Process found group data
+      const groups = groupData.map(group => ({
+        jid: group.id || group.jid || group.remoteJid,
+        instanceId: instanceId,
+        subject: group.subject || group.name || 'Unknown Group',
+        description: group.description || null,
+        participantCount: group.participants?.length || 0,
+        isAnnounce: group.announce || false,
+        isLocked: group.restrict || false,
+        createdAt: group.creation ? new Date(group.creation * 1000).toISOString() : new Date().toISOString(),
+        owner: group.owner || null,
+        profilePicture: group.picture || null
       }));
       
+      console.log(`Successfully processed ${groups.length} groups from Evolution API`);
       res.json(groups);
+      
     } catch (error) {
-      console.error('Error fetching groups:', error);
-      res.status(500).json({ error: 'Failed to fetch groups' });
+      console.error('Error fetching groups from Evolution API:', error);
+      res.status(500).json({ 
+        error: 'Failed to fetch groups from Evolution API',
+        details: error.message,
+        apiVersion: "2.2.3"
+      });
     }
   });
 
