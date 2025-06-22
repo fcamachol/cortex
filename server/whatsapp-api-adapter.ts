@@ -261,8 +261,26 @@ export const WebhookApiAdapter = {
             const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chatId }, cleanMessage.instanceId);
             if (chatData && chatData.chatId) {
                 try {
-                    await storage.upsertWhatsappChat(chatData);
+                    const newChat = await storage.upsertWhatsappChat(chatData);
                     console.log(`✅ [${cleanMessage.instanceId}] Auto-created chat: ${cleanMessage.chatId}`);
+                    
+                    // Proactively create group placeholder if this is a group chat
+                    if (newChat.type === 'group') {
+                        try {
+                            await storage.upsertWhatsappGroup({
+                                groupJid: newChat.chatId,
+                                instanceId: newChat.instanceId,
+                                subject: 'New Group', // Temporary placeholder name
+                                description: null,
+                                ownerJid: null,
+                                creationTimestamp: new Date(),
+                                isLocked: false
+                            });
+                            console.log(`✅ [${cleanMessage.instanceId}] Auto-created group placeholder: ${newChat.chatId}`);
+                        } catch (groupError) {
+                            console.error(`❌ [${cleanMessage.instanceId}] Error creating group placeholder:`, groupError);
+                        }
+                    }
                 } catch (error) {
                     console.error(`❌ [${cleanMessage.instanceId}] Error creating chat:`, error);
                 }
