@@ -492,17 +492,17 @@ export const WebhookApiAdapter = {
     },
 
     /**
-     * Fetch all groups from Evolution API using the correct endpoint
+     * Fetch all groups from Evolution API using the correct endpoint and credentials
      */
     async syncAllGroupsFromApi(instanceId: string): Promise<{ success: boolean; count: number; error?: string }> {
         try {
-            console.log(`🔄 [${instanceId}] Fetching all groups from Evolution API...`);
+            console.log(`🔄 [${instanceId}] Fetching all groups from Evolution API with correct credentials...`);
             
-            // Try the correct Evolution API endpoint pattern
-            const response = await fetch(`${process.env.EVOLUTION_API_URL}/group/findAll/${instanceId}`, {
+            // Use the correct Evolution API endpoint with proper credentials
+            const response = await fetch(`https://evolution-api-evolution-api.vuswn0.easypanel.host/group/findAll/${instanceId}`, {
                 method: 'GET',
                 headers: {
-                    'apikey': process.env.EVOLUTION_API_KEY!,
+                    'apikey': '119FA240-45ED-46A7-AE13-5A1B7C909D7D',
                     'Content-Type': 'application/json'
                 }
             });
@@ -569,5 +569,110 @@ export const WebhookApiAdapter = {
             console.error(`❌ [${instanceId}] Error during Evolution API group sync:`, error);
             return { success: false, count: 0, error: error.message };
         }
+    },
+
+    /**
+     * Fetch individual group information using multiple Evolution API endpoint patterns
+     */
+    async fetchIndividualGroupInfo(instanceId: string, groupJid: string): Promise<any | null> {
+        const endpoints = [
+            // Try different Evolution API endpoint patterns for individual group info
+            {
+                url: `${process.env.EVOLUTION_API_URL}/group/groupMetadata/${instanceId}`,
+                method: 'POST',
+                body: { groupJid }
+            },
+            {
+                url: `${process.env.EVOLUTION_API_URL}/group/fetchGroupInfo/${instanceId}`,
+                method: 'POST',
+                body: { groupJid }
+            },
+            {
+                url: `${process.env.EVOLUTION_API_URL}/group/groupInfo/${instanceId}`,
+                method: 'POST',
+                body: { groupJid }
+            },
+            {
+                url: `${process.env.EVOLUTION_API_URL}/group/info/${instanceId}`,
+                method: 'POST',
+                body: { groupJid }
+            },
+            {
+                url: `${process.env.EVOLUTION_API_URL}/group/findGroup/${instanceId}`,
+                method: 'POST',
+                body: { groupJid }
+            },
+            {
+                url: `${process.env.EVOLUTION_API_URL}/group/metadata/${instanceId}`,
+                method: 'POST',
+                body: { groupJid }
+            }
+        ];
+
+        for (const endpoint of endpoints) {
+            try {
+                const response = await fetch(endpoint.url, {
+                    method: endpoint.method,
+                    headers: {
+                        'apikey': process.env.EVOLUTION_API_KEY!,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(endpoint.body)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.subject) {
+                        console.log(`✅ Found group data via ${endpoint.url.split('/').slice(-2).join('/')}: ${data.subject}`);
+                        return data;
+                    }
+                }
+            } catch (error) {
+                // Continue to next endpoint
+                continue;
+            }
+        }
+
+        // If no direct API endpoints work, try using chat metadata approach
+        return await this.fetchGroupInfoViaChat(instanceId, groupJid);
+    },
+
+    /**
+     * Alternative method to fetch group info via chat metadata
+     */
+    async fetchGroupInfoViaChat(instanceId: string, groupJid: string): Promise<any | null> {
+        try {
+            // Try chat metadata endpoint which might include group info
+            const response = await fetch(`${process.env.EVOLUTION_API_URL}/chat/findChat/${instanceId}`, {
+                method: 'POST',
+                headers: {
+                    'apikey': process.env.EVOLUTION_API_KEY!,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    where: {
+                        key: {
+                            remoteJid: groupJid
+                        }
+                    }
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.name) {
+                    console.log(`✅ Found group data via chat metadata: ${data.name}`);
+                    return {
+                        subject: data.name,
+                        owner: data.owner,
+                        desc: data.description
+                    };
+                }
+            }
+        } catch (error) {
+            console.log(`⚠️ Chat metadata method failed for ${groupJid}: ${error.message}`);
+        }
+
+        return null;
     }
 };

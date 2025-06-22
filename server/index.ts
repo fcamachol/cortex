@@ -40,24 +40,20 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialize Evolution API with environment credentials
-  if (process.env.EVOLUTION_API_URL && process.env.EVOLUTION_API_KEY) {
-    console.log("🔗 Configuring Evolution API...");
-    updateEvolutionApiSettings({
-      baseUrl: process.env.EVOLUTION_API_URL.replace(/\/$/, ''),
-      apiKey: process.env.EVOLUTION_API_KEY,
-      enabled: true
-    });
+  // Initialize Evolution API with correct credentials
+  console.log("🔗 Configuring Evolution API...");
+  updateEvolutionApiSettings({
+    baseUrl: 'https://evolution-api-evolution-api.vuswn0.easypanel.host',
+    apiKey: '119FA240-45ED-46A7-AE13-5A1B7C909D7D',
+    enabled: true
+  });
     
-    try {
-      const evolutionApi = getEvolutionApi();
-      const health = await evolutionApi.healthCheck();
-      console.log("✅ Evolution API connected:", health.status);
-    } catch (error) {
-      console.log("⚠️ Evolution API health check failed - will retry when needed");
-    }
-  } else {
-    console.log("⚠️ Evolution API credentials not found in environment");
+  try {
+    const evolutionApi = getEvolutionApi();
+    const health = await evolutionApi.healthCheck();
+    console.log("✅ Evolution API connected:", health.status);
+  } catch (error) {
+    console.log("⚠️ Evolution API health check failed - will retry when needed");
   }
 
   await registerRoutes(app);
