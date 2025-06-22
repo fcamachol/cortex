@@ -711,24 +711,32 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/api/whatsapp/groups/:spaceId', async (req: Request, res: Response) => {
     try {
       const { spaceId } = req.params;
-      console.log(`[API] Fetching groups for space: ${spaceId}`);
       
-      // Direct database query for groups
-      const { db } = await import('./db');
-      const { sql } = await import('drizzle-orm');
+      // Use pg directly for reliable database access
+      const pg = await import('pg');
+      const { Client } = pg.default;
       
-      const groupsRaw = await db.execute(sql`
+      const client = new Client({
+        connectionString: process.env.DATABASE_URL
+      });
+      
+      await client.connect();
+      
+      const result = await client.query(`
         SELECT g.group_jid, g.instance_id, g.subject, g.description, g.is_locked, g.creation_timestamp,
-               COUNT(p.participant_jid) as participant_count
+               COALESCE(p.participant_count, 0) as participant_count
         FROM whatsapp.groups g
-        LEFT JOIN whatsapp.group_participants p ON g.group_jid = p.group_jid AND g.instance_id = p.instance_id
-        GROUP BY g.group_jid, g.instance_id, g.subject, g.description, g.is_locked, g.creation_timestamp
+        LEFT JOIN (
+          SELECT group_jid, instance_id, COUNT(*) as participant_count
+          FROM whatsapp.group_participants 
+          GROUP BY group_jid, instance_id
+        ) p ON g.group_jid = p.group_jid AND g.instance_id = p.instance_id
         ORDER BY g.subject
       `);
       
-      console.log(`[API] Found ${groupsRaw.length} groups in database`);
+      await client.end();
       
-      const groups = groupsRaw.map((group: any) => ({
+      const groups = result.rows.map((group: any) => ({
         jid: group.group_jid,
         instanceId: group.instance_id,
         subject: group.subject || 'Unknown Group',
@@ -739,7 +747,6 @@ export async function registerRoutes(app: Express): Promise<void> {
         createdAt: group.creation_timestamp ? new Date(group.creation_timestamp).toISOString() : new Date().toISOString(),
       }));
       
-      console.log(`[API] Returning ${groups.length} mapped groups`);
       res.json(groups);
     } catch (error) {
       console.error('Error fetching groups:', error);
