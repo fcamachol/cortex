@@ -226,7 +226,17 @@ class DatabaseStorage {
 
     async getWhatsappInstances(userId: string): Promise<any[]> {
         const results = await db.select().from(whatsappInstances);
-        return results;
+        
+        // Map the database fields to the format expected by the frontend
+        return results.map(instance => ({
+            instanceId: instance.instanceName, // Use instance_name as the instanceId for task filtering
+            instanceName: instance.instanceName,
+            displayName: instance.displayName,
+            apiKey: instance.apiKey,
+            phoneNumber: instance.phoneNumber,
+            isConnected: instance.isConnected,
+            createdAt: instance.createdAt
+        }));
     }
 
     async getInstanceStatus(instanceId: string): Promise<any> {
