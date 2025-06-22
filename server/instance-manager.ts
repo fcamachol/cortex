@@ -29,10 +29,8 @@ export class InstanceManager {
                 },
                 body: JSON.stringify({
                     instanceName: instanceName,
-                    token: apiKey,
                     qrcode: options.qrcode ?? true,
-                    number: options.number,
-                    displayName: options.displayName || instanceName
+                    number: options.number
                 })
             });
 
