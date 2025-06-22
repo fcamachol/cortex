@@ -1645,58 +1645,31 @@ export const WebhookApiAdapter = {
     },
 
     /**
-     * Request group metadata from Evolution API using available endpoints
+     * Request group metadata from Evolution API using the specific group JID endpoint
      */
     async requestGroupMetadata(instanceId: string, groupJid: string): Promise<any | null> {
-        const endpoints = [
-            // Try Evolution API endpoints that might return group metadata
-            {
-                url: `https://evolution-api-evolution-api.vuswn0.easypanel.host/group/participants/${instanceId}`,
-                method: 'POST',
-                body: { groupJid }
-            },
-            {
-                url: `https://evolution-api-evolution-api.vuswn0.easypanel.host/group/inviteCode/${instanceId}`,
-                method: 'POST',
-                body: { groupJid }
-            },
-            {
-                url: `https://evolution-api-evolution-api.vuswn0.easypanel.host/chat/findChat/${instanceId}`,
-                method: 'POST',
-                body: { where: { key: { remoteJid: groupJid } } }
-            }
-        ];
-
-        for (const endpoint of endpoints) {
-            try {
-                const response = await fetch(endpoint.url, {
-                    method: endpoint.method,
-                    headers: {
-                        'apikey': '119FA240-45ED-46A7-AE13-5A1B7C909D7D',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(endpoint.body)
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    // Extract group information from different response structures
-                    if (data && data.subject) {
-                        return data;
-                    } else if (data && data.name) {
-                        return { subject: data.name, owner: data.owner, desc: data.description };
-                    } else if (data && Array.isArray(data) && data.length > 0 && data[0].subject) {
-                        return data[0];
-                    }
+        try {
+            // Use the specific group JID endpoint you provided
+            const response = await fetch(`https://evolution-api-evolution-api.vuswn0.easypanel.host/group/findGroupInfos/${instanceId}?groupJid=${groupJid}`, {
+                method: 'GET',
+                headers: {
+                    'apikey': process.env.EVOLUTION_API_KEY || '119FA240-45ED-46A7-AE13-5A1B7C909D7D',
+                    'Content-Type': 'application/json'
                 }
-            } catch (error) {
-                // Continue to next endpoint
-                continue;
-            }
-        }
+            });
 
-        return null;
+            if (response.ok) {
+                const data = await response.json();
+                console.log(`✅ [${instanceId}] Group metadata received for ${groupJid}:`, JSON.stringify(data, null, 2));
+                return data;
+            } else {
+                console.warn(`⚠️ [${instanceId}] Group metadata request failed for ${groupJid}: ${response.status}`);
+                return null;
+            }
+        } catch (error) {
+            console.warn(`❌ [${instanceId}] Error requesting group metadata for ${groupJid}:`, error.message);
+            return null;
+        }
     },
 
     /**
