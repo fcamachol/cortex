@@ -349,6 +349,61 @@ class DatabaseStorage {
             return [];
         }
     }
+
+    // =========================================================================
+    // GROUP PARTICIPANT METHODS
+    // =========================================================================
+
+    async upsertGroupParticipant(participant: InsertWhatsappGroupParticipant): Promise<WhatsappGroupParticipant> {
+        const [result] = await db.insert(whatsappGroupParticipants)
+            .values({
+                ...participant,
+                joinedAt: participant.joinedAt || new Date(),
+                updatedAt: new Date()
+            })
+            .onConflictDoUpdate({
+                target: [whatsappGroupParticipants.groupJid, whatsappGroupParticipants.participantJid, whatsappGroupParticipants.instanceId],
+                set: {
+                    isAdmin: participant.isAdmin,
+                    isSuperAdmin: participant.isSuperAdmin,
+                    updatedAt: new Date()
+                }
+            })
+            .returning();
+        return result;
+    }
+
+    async removeGroupParticipant(groupJid: string, participantJid: string, instanceId: string): Promise<void> {
+        await db.delete(whatsappGroupParticipants)
+            .where(and(
+                eq(whatsappGroupParticipants.groupJid, groupJid),
+                eq(whatsappGroupParticipants.participantJid, participantJid),
+                eq(whatsappGroupParticipants.instanceId, instanceId)
+            ));
+    }
+
+    async updateGroupParticipantRole(groupJid: string, participantJid: string, instanceId: string, isAdmin: boolean): Promise<void> {
+        await db.update(whatsappGroupParticipants)
+            .set({
+                isAdmin: isAdmin,
+                isSuperAdmin: false, // Reset super admin when demoting
+                updatedAt: new Date()
+            })
+            .where(and(
+                eq(whatsappGroupParticipants.groupJid, groupJid),
+                eq(whatsappGroupParticipants.participantJid, participantJid),
+                eq(whatsappGroupParticipants.instanceId, instanceId)
+            ));
+    }
+
+    async getGroupParticipants(groupJid: string, instanceId: string): Promise<WhatsappGroupParticipant[]> {
+        return await db.select()
+            .from(whatsappGroupParticipants)
+            .where(and(
+                eq(whatsappGroupParticipants.groupJid, groupJid),
+                eq(whatsappGroupParticipants.instanceId, instanceId)
+            ));
+    }
 }
 
 export const storage = new DatabaseStorage();
