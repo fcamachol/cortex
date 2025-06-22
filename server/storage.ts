@@ -225,18 +225,19 @@ class DatabaseStorage {
     }
 
     async getWhatsappInstances(userId: string): Promise<any[]> {
-        const results = await db.select().from(whatsappInstances);
+        const results = await db.execute(sql`
+            SELECT 
+                instance_name as "instanceId",
+                instance_name as "instanceName", 
+                display_name as "displayName",
+                api_key as "apiKey",
+                is_connected as "isConnected",
+                created_at as "createdAt"
+            FROM whatsapp.instances 
+            ORDER BY created_at DESC
+        `);
         
-        // Map the database fields to the format expected by the frontend
-        return results.map(instance => ({
-            instanceId: instance.instanceName, // Use instance_name as the instanceId for task filtering
-            instanceName: instance.instanceName,
-            displayName: instance.displayName,
-            apiKey: instance.apiKey,
-            phoneNumber: instance.phoneNumber,
-            isConnected: instance.isConnected,
-            createdAt: instance.createdAt
-        }));
+        return results.rows;
     }
 
     async getInstanceStatus(instanceId: string): Promise<any> {
@@ -300,8 +301,29 @@ class DatabaseStorage {
 
     // Task management methods
     async getTasks(): Promise<any[]> {
-        const results = await db.select().from(crmTasks);
-        return results;
+        const results = await db.execute(sql`
+            SELECT 
+                task_id,
+                title,
+                description,
+                status,
+                priority,
+                due_date,
+                project_id,
+                parent_task_id,
+                instance_id,
+                triggering_message_id,
+                assigned_to_user_id,
+                related_chat_jid,
+                created_by_user_id,
+                created_at,
+                updated_at,
+                space_id
+            FROM crm.tasks 
+            ORDER BY created_at DESC
+        `);
+        
+        return results.rows;
     }
 
     async getProjects(): Promise<any[]> {
