@@ -327,47 +327,19 @@ class DatabaseStorage {
     }
 
     async updateTask(taskId: number, updates: any): Promise<any> {
-        // Build dynamic SET clause based on provided updates
-        const setFields = [];
-        const values = [taskId]; // Start with taskId as $1
-        let paramIndex = 2; // Next parameter will be $2
-        
-        if (updates.status !== undefined) {
-            setFields.push(`status = $${paramIndex}`);
-            values.push(updates.status);
-            paramIndex++;
-        }
-        if (updates.priority !== undefined) {
-            setFields.push(`priority = $${paramIndex}`);
-            values.push(updates.priority);
-            paramIndex++;
-        }
-        if (updates.title !== undefined) {
-            setFields.push(`title = $${paramIndex}`);
-            values.push(updates.title);
-            paramIndex++;
-        }
-        if (updates.description !== undefined) {
-            setFields.push(`description = $${paramIndex}`);
-            values.push(updates.description);
-            paramIndex++;
-        }
-        if (updates.due_date !== undefined) {
-            setFields.push(`due_date = $${paramIndex}`);
-            values.push(updates.due_date);
-            paramIndex++;
-        }
-        
-        setFields.push('updated_at = NOW()');
-        
-        const query = `
+        const result = await db.execute(sql`
             UPDATE crm.tasks 
-            SET ${setFields.join(', ')}
-            WHERE task_id = $1
+            SET 
+                status = COALESCE(${updates.status || null}, status),
+                priority = COALESCE(${updates.priority || null}, priority),
+                title = COALESCE(${updates.title || null}, title),
+                description = COALESCE(${updates.description || null}, description),
+                due_date = COALESCE(${updates.due_date || null}, due_date),
+                updated_at = NOW()
+            WHERE task_id = ${taskId}
             RETURNING *
-        `;
+        `);
         
-        const result = await db.execute(sql.raw(query, values));
         return result.rows[0];
     }
 
