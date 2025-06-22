@@ -1,0 +1,72 @@
+// =============================================================================
+// FILE: storage.ts (Additions)
+// PURPOSE: Adds the missing database functions to handle WhatsApp groups.
+// =============================================================================
+
+// This assumes you have a shared `query` function connected to your database pool.
+
+/**
+ * Creates a new WhatsApp group record or updates it if it already exists.
+ * This is crucial for handling `groups.upsert` and `groups.update` events.
+ * @param groupData - A clean group object matching the `whatsapp.groups` table schema.
+ */
+async function upsertWhatsappGroup(groupData: any): Promise<void> {
+    const sql = `
+        INSERT INTO whatsapp.groups (
+            group_jid, instance_id, subject, owner_jid, description, 
+            creation_timestamp, is_locked, updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+        ON CONFLICT (group_jid, instance_id)
+        DO UPDATE SET
+            subject = EXCLUDED.subject,
+            owner_jid = EXCLUDED.owner_jid,
+            description = EXCLUDED.description,
+            is_locked = EXCLUDED.is_locked,
+            updated_at = NOW();
+    `;
+    const values = [
+        groupData.group_jid,
+        groupData.instance_id,
+        groupData.subject,
+        groupData.owner_jid,
+        groupData.description,
+        groupData.creation_timestamp,
+        groupData.is_locked
+    ];
+    await query(sql, values);
+}
+
+
+/**
+ * Creates or updates a record linking a participant to a group.
+ * @param participantData - An object containing the group and participant details.
+ */
+async function upsertGroupParticipant(participantData: any): Promise<void> {
+    const sql = `
+        INSERT INTO whatsapp.group_participants (
+            group_jid, participant_jid, instance_id, is_admin, is_super_admin
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (group_jid, participant_jid, instance_id)
+        DO UPDATE SET
+            is_admin = EXCLUDED.is_admin,
+            is_super_admin = EXCLUDED.is_super_admin;
+    `;
+    const values = [
+        participantData.group_jid,
+        participantData.participant_jid,
+        participantData.instance_id,
+        participantData.is_admin,
+        participantData.is_super_admin
+    ];
+    await query(sql, values);
+}
+
+
+// Make sure to export the new functions from your main storage object:
+export const storage = {
+    // ... all your other existing storage functions
+    upsertWhatsappGroup,
+    upsertGroupParticipant,
+};

@@ -1,0 +1,47 @@
+12:11:49 AM [express] GET /api/whatsapp/chat-messages 200 in 177ms :: [{"messageId":"3EB000F3CF2845E8…
+📨 [instance-1750433520122] Translating event: messages.upsert
+📨 [instance-1750433520122] Processing 1 message(s), type: reactionMessage
+🎭 [instance-1750433520122] Reaction message details: {
+  "reactionMessage": {
+    "key": {
+      "remoteJid": "5215579188699@s.whatsapp.net",
+      "fromMe": true,
+      "id": "3A324B6846C7BFB55CAC"
+    },
+    "text": "❤️",
+    "senderTimestampMs": "1750551148079"
+  }
+}
+🎭 [instance-1750433520122] Processing reaction: ❤️ on message 3A324B6846C7BFB55CAC
+12:12:29 AM [express] POST /api/evolution/webhook/instance-1750433520122/messages-upsert 200 in 0ms :…
+📨 [instance-1750433520122] Translating event: contacts.update
+12:12:29 AM [express] POST /api/evolution/webhook/instance-1750433520122/contacts-update 200 in 0ms :…
+❌ Error storing reaction: error: insert or update on table "message_reactions" violates foreign key constraint "fk_message"
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.upsertWhatsappMessageReaction (/home/runner/workspace/server/storage.ts:885:32) {
+  length: 314,
+  severity: 'ERROR',
+  code: '23503',
+  detail: 'Key (message_id, instance_id)=(3A324B6846C7BFB55CAC, instance-1750433520122) is not present in table "messages".',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'whatsapp',
+  table: 'message_reactions',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'fk_message',
+  file: 'ri_triggers.c',
+  line: '2608',
+  routine: 'ri_ReportViolation'
+}
+🔍 Retrieved message for reaction: 3A324B6846C7BFB55CAC undefined
+✅ [instance-1750433520122] Contact upserted: 5215579188699@s.whatsapp.net
+🧠 ActionService processing trigger: reaction -> ❤️
+🔍 Debug: Found 0 rules for reaction:❤️:instance-1750433520122
+🔍 Rules data: []
+📭 No matching action rules found for reaction: ❤️
