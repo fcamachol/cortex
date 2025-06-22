@@ -980,9 +980,92 @@ export const WebhookApiAdapter = {
     },
 
     /**
-     * Group sync using corrected Evolution API endpoints
+     * Fetch all groups using the new Evolution API endpoint
+     */
+    async fetchAllGroupsFromApi(instanceId: string): Promise<{ success: boolean; groups: any[]; error?: string }> {
+        try {
+            const evolutionApi = getEvolutionApi();
+            const instance = await storage.getWhatsappInstance(instanceId);
+            
+            if (!instance?.apiKey) {
+                return { success: false, groups: [], error: 'No API key found for instance' };
+            }
+
+            console.log(`🔍 [${instanceId}] Fetching all groups from Evolution API...`);
+
+            // Use the new fetchAllGroups endpoint
+            const response = await fetch(`${process.env.EVOLUTION_API_URL}/group/fetchAllGroups/${instanceId}?getParticipants=false`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': instance.apiKey
+                },
+                timeout: 30000 // 30 second timeout
+            });
+
+            if (!response.ok) {
+                throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+            }
+
+            const groups = await response.json();
+            console.log(`✅ [${instanceId}] Fetched ${groups.length} groups from Evolution API`);
+
+            return { success: true, groups: groups || [], error: null };
+
+        } catch (error) {
+            console.error(`❌ [${instanceId}] Error fetching groups from API:`, error.message);
+            return { success: false, groups: [], error: error.message };
+        }
+    },
+
+    /**
+     * Sync all groups using the new fetchAllGroups endpoint 
      */
     async syncAllGroupsFromApi(instanceId: string): Promise<{ success: boolean; count: number; error?: string }> {
+        try {
+            const result = await this.fetchAllGroupsFromApi(instanceId);
+            
+            if (!result.success) {
+                return { success: false, count: 0, error: result.error };
+            }
+
+            let syncedCount = 0;
+            
+            for (const group of result.groups) {
+                try {
+                    // Process each group through the standard webhook handler
+                    const cleanGroup = this.mapApiPayloadToWhatsappGroup(group, instanceId);
+                    if (cleanGroup) {
+                        await storage.upsertWhatsappGroup(cleanGroup);
+                        
+                        // Also ensure contact and chat records exist
+                        const contactData = await this.mapApiPayloadToWhatsappContact({ id: group.id }, instanceId);
+                        if (contactData) await storage.upsertWhatsappContact(contactData);
+                        
+                        const chatData = this.mapApiPayloadToWhatsappChat({ id: group.id, name: group.subject }, instanceId);
+                        if (chatData) await storage.upsertWhatsappChat(chatData);
+                        
+                        syncedCount++;
+                        console.log(`✅ [${instanceId}] Synced group: ${group.subject || group.id}`);
+                    }
+                } catch (error) {
+                    console.error(`❌ [${instanceId}] Error syncing group ${group.id}:`, error.message);
+                }
+            }
+
+            console.log(`🎉 [${instanceId}] Group sync completed: ${syncedCount}/${result.groups.length} groups synced`);
+            return { success: true, count: syncedCount, error: null };
+
+        } catch (error) {
+            console.error(`❌ [${instanceId}] Error in group sync:`, error.message);
+            return { success: false, count: 0, error: error.message };
+        }
+    },
+
+    /**
+     * Legacy group sync method (kept for compatibility)
+     */
+    async syncAllGroupsFromApiLegacy(instanceId: string): Promise<{ success: boolean; count: number; error?: string }> {
         try {
             console.log(`🔄 [${instanceId}] Fetching groups using corrected Evolution API endpoints...`);
             

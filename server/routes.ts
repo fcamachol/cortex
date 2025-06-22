@@ -247,6 +247,32 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.post('/api/whatsapp/groups/:instanceId/sync-from-api', async (req: Request, res: Response) => {
+    try {
+      const { instanceId } = req.params;
+      const { WebhookApiAdapter } = await import('./whatsapp-api-adapter');
+      
+      console.log(`🔄 Starting group sync from Evolution API for instance: ${instanceId}`);
+      const result = await WebhookApiAdapter.syncAllGroupsFromApi(instanceId);
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: `Successfully synced ${result.count} groups from Evolution API`,
+          count: result.count 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          error: result.error || 'Failed to sync groups from API' 
+        });
+      }
+    } catch (error) {
+      console.error('Error syncing groups from API:', error);
+      res.status(500).json({ error: 'Failed to sync groups from API' });
+    }
+  });
+
   app.get('/api/whatsapp/chat-messages', async (req: Request, res: Response) => {
     try {
       const { chatId, instanceId, userId, limit = '100' } = req.query;
