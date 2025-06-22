@@ -19,6 +19,39 @@ import {
 export const WebhookApiAdapter = {
 
     /**
+     * Fetches group information from Evolution API to get actual group details
+     */
+    async fetchGroupInfo(instanceId: string, groupJid: string): Promise<any> {
+        try {
+            const baseUrl = process.env.EVOLUTION_API_URL || 'https://evolution-api-evolution-api.vuswn0.easypanel.host';
+            const apiKey = process.env.EVOLUTION_API_KEY || 'B6D711FCDE4D4FD5936544120E713976';
+            
+            const response = await fetch(`${baseUrl}/group/fetchAllGroups/${instanceId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': apiKey
+                }
+            });
+            
+            if (response.ok) {
+                const groups = await response.json();
+                const targetGroup = groups.find((group: any) => group.id === groupJid);
+                if (targetGroup) {
+                    console.log(`✅ [${instanceId}] Fetched group info for: ${groupJid}`);
+                    return targetGroup;
+                }
+            }
+            
+            console.warn(`⚠️ [${instanceId}] Could not fetch group info for: ${groupJid}`);
+            return null;
+        } catch (error) {
+            console.error(`❌ [${instanceId}] Error fetching group info:`, error);
+            return null;
+        }
+    },
+
+    /**
      * Main entry point for all webhook events.
      */
     async processIncomingEvent(instanceId: string, event: any): Promise<void> {
@@ -206,8 +239,31 @@ export const WebhookApiAdapter = {
             try {
                 const cleanChat = this.mapApiPayloadToWhatsappChat(rawChat, instanceId);
                 if (cleanChat && cleanChat.chatId) {
-                    await storage.upsertWhatsappChat(cleanChat);
+                    const newChat = await storage.upsertWhatsappChat(cleanChat);
                     console.log(`✅ [${instanceId}] Chat upserted: ${cleanChat.chatId}`);
+                    
+                    // Proactively create group placeholder if this is a group chat
+                    if (newChat.type === 'group') {
+                        try {
+                            // Fetch actual group information from Evolution API
+                            const groupInfo = await this.fetchGroupInfo(instanceId, newChat.chatId);
+                            
+                            const groupData = {
+                                groupJid: newChat.chatId,
+                                instanceId: newChat.instanceId,
+                                subject: groupInfo?.subject || 'New Group',
+                                description: groupInfo?.desc || null,
+                                ownerJid: groupInfo?.owner || null,
+                                creationTimestamp: groupInfo?.creation ? new Date(groupInfo.creation * 1000) : new Date(),
+                                isLocked: groupInfo?.locked || false
+                            };
+                            
+                            await storage.upsertWhatsappGroup(groupData);
+                            console.log(`✅ [${instanceId}] Auto-created group with subject: ${groupData.subject}`);
+                        } catch (groupError) {
+                            console.error(`❌ [${instanceId}] Error creating group placeholder:`, groupError);
+                        }
+                    }
                 } else {
                     console.warn(`⚠️ [${instanceId}] Skipping chat with missing or invalid ID:`, rawChat);
                 }
