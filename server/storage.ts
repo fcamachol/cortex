@@ -1743,7 +1743,7 @@ export class DatabaseStorage implements IStorage {
   async createTask(taskData: any): Promise<any> {
     try {
       // Use simplified raw SQL for CRM tasks table
-      const instanceId = taskData.instanceId || 'instance-1750433520122';
+      const instanceId = taskData.instanceId || 'live-test-1750199771';
       const title = taskData.title || 'Automated Task';
       const description = taskData.description || 'Task created from WhatsApp reaction';
       const status = taskData.status || 'pending';
