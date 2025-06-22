@@ -736,15 +736,23 @@ export const WebhookApiAdapter = {
     },
 
     async ensureDependenciesForMessage(cleanMessage: WhatsappMessages, rawMessage: any): Promise<void> {
-        const senderContact = await this.mapApiPayloadToWhatsappContact({
-            id: cleanMessage.senderJid,
-            pushName: rawMessage.pushName
-        }, cleanMessage.instanceId);
-        if (senderContact) await storage.upsertWhatsappContact(senderContact);
-
         const isGroup = cleanMessage.chatId.endsWith('@g.us');
         
-        const chatContact = await this.mapApiPayloadToWhatsappContact({ id: cleanMessage.chatId }, cleanMessage.instanceId);
+        // Only create sender contact if it's different from chat (group messages)
+        if (isGroup && cleanMessage.senderJid !== cleanMessage.chatId && !cleanMessage.senderJid.endsWith('@g.us')) {
+            const senderContact = await this.mapApiPayloadToWhatsappContact({
+                id: cleanMessage.senderJid,
+                pushName: rawMessage.pushName
+            }, cleanMessage.instanceId);
+            if (senderContact) await storage.upsertWhatsappContact(senderContact);
+        }
+        
+        // Create chat contact record - for groups this should use group subject
+        const chatContact = await this.mapApiPayloadToWhatsappContact({ 
+            id: cleanMessage.chatId,
+            // Don't pass individual user pushName for group contacts
+            pushName: isGroup ? undefined : rawMessage.pushName
+        }, cleanMessage.instanceId);
         if (chatContact) await storage.upsertWhatsappContact(chatContact);
 
         const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chatId }, cleanMessage.instanceId);
