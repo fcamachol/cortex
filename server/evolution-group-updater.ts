@@ -3,7 +3,7 @@ import { getEvolutionApi } from './evolution-api';
 
 export class EvolutionGroupUpdater {
     /**
-     * Update specific group using the working Evolution API endpoints
+     * Update specific group using only the individual group JID endpoint
      */
     static async updateSingleGroupFromEvolution(groupJid: string, instanceId: string): Promise<boolean> {
         try {
@@ -13,20 +13,19 @@ export class EvolutionGroupUpdater {
                 return false;
             }
 
-            const evolutionApi = getEvolutionApi();
-            
-            // Fetch all groups and find the target group
-            const allGroups = await evolutionApi.fetchAllGroups(instanceId, instance.apiKey);
-            
-            // Handle different response formats
-            let groups: any[] = [];
-            if (Array.isArray(allGroups)) {
-                groups = allGroups;
-            } else if (allGroups?.groups && Array.isArray(allGroups.groups)) {
-                groups = allGroups.groups;
-            }
+            // Use the specific group JID endpoint only
+            const response = await fetch(`https://evolution-api-evolution-api.vuswn0.easypanel.host/group/findGroupInfos/${instanceId}?groupJid=${groupJid}`, {
+                method: 'GET',
+                headers: {
+                    'apikey': process.env.EVOLUTION_API_KEY || instance.apiKey,
+                    'Content-Type': 'application/json'
+                }
+            });
 
-            const targetGroup = groups.find((g: any) => g.id === groupJid);
+            let targetGroup = null;
+            if (response.ok) {
+                targetGroup = await response.json();
+            }
             
             if (targetGroup?.subject && targetGroup.subject !== 'Group Chat') {
                 const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
