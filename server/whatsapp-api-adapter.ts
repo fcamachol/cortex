@@ -1662,5 +1662,95 @@ export const WebhookApiAdapter = {
         }
 
         return null;
+    },
+
+    /**
+     * Cleans up contact records with incorrect data while preserving authentic group JIDs
+     * Fixes contacts that have individual user names for group JIDs
+     */
+    async cleanupIncorrectGroupContactData(instanceId: string): Promise<{ success: boolean; cleaned: number; error?: string }> {
+        try {
+            console.log(`🧹 [${instanceId}] Starting cleanup of incorrect group contact data...`);
+            
+            // Get all group contacts (JIDs ending with @g.us)
+            const groupContacts = await storage.getContactsByPattern(instanceId, '%@g.us');
+            
+            // Get all authentic groups from Evolution API
+            const { success, groups } = await this.fetchAllGroupsFromApi(instanceId);
+            if (!success) {
+                return { success: false, cleaned: 0, error: 'Failed to fetch authentic group data' };
+            }
+            
+            // Create a map of group JID to authentic subject
+            const authenticGroupMap = new Map();
+            groups.forEach(group => {
+                if (group.id && group.subject) {
+                    authenticGroupMap.set(group.id, group.subject);
+                }
+            });
+            
+            let cleanedCount = 0;
+            
+            // Process each group contact
+            for (const contact of groupContacts) {
+                const authenticSubject = authenticGroupMap.get(contact.jid);
+                
+                if (authenticSubject) {
+                    // Check if contact has wrong data (individual user name instead of group subject)
+                    const hasIncorrectData = (
+                        !contact.pushName || 
+                        contact.pushName !== authenticSubject ||
+                        contact.pushName.length < 3 ||
+                        contact.pushName === 'Group' ||
+                        contact.pushName === 'New Group'
+                    );
+                    
+                    if (hasIncorrectData) {
+                        // Update with authentic group subject
+                        const correctedContactData = {
+                            jid: contact.jid,
+                            instanceId: instanceId,
+                            pushName: authenticSubject,
+                            verifiedName: null,
+                            profilePictureUrl: contact.profilePictureUrl,
+                            isBlocked: false,
+                            isMyContact: false,
+                            isUser: false,
+                            isBusiness: false,
+                        };
+                        
+                        await storage.upsertWhatsappContact(correctedContactData);
+                        console.log(`✅ [${instanceId}] Fixed group contact: ${contact.jid} -> "${authenticSubject}"`);
+                        cleanedCount++;
+                    }
+                } else {
+                    // Group doesn't exist in Evolution API - keep JID but mark as inactive
+                    if (contact.pushName && contact.pushName !== 'Inactive Group') {
+                        const inactiveContactData = {
+                            jid: contact.jid,
+                            instanceId: instanceId,
+                            pushName: 'Inactive Group',
+                            verifiedName: null,
+                            profilePictureUrl: null,
+                            isBlocked: false,
+                            isMyContact: false,
+                            isUser: false,
+                            isBusiness: false,
+                        };
+                        
+                        await storage.upsertWhatsappContact(inactiveContactData);
+                        console.log(`⚠️ [${instanceId}] Marked inactive group: ${contact.jid}`);
+                        cleanedCount++;
+                    }
+                }
+            }
+            
+            console.log(`✅ [${instanceId}] Cleanup completed. Fixed ${cleanedCount} group contact records`);
+            return { success: true, cleaned: cleanedCount };
+            
+        } catch (error) {
+            console.error(`❌ [${instanceId}] Error during contact cleanup:`, error);
+            return { success: false, cleaned: 0, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
     }
 };

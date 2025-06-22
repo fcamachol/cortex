@@ -264,6 +264,32 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.post('/api/whatsapp/groups/:instanceId/cleanup-contact-data', async (req: Request, res: Response) => {
+    try {
+      const { instanceId } = req.params;
+      const { WebhookApiAdapter } = await import('./whatsapp-api-adapter');
+      
+      console.log(`🧹 Starting cleanup of incorrect group contact data for instance: ${instanceId}`);
+      const result = await WebhookApiAdapter.cleanupIncorrectGroupContactData(instanceId);
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: `Successfully cleaned ${result.cleaned} contact records`,
+          cleaned: result.cleaned 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          error: result.error || 'Unknown error occurred' 
+        });
+      }
+    } catch (error) {
+      console.error('Error cleaning up contact data:', error);
+      res.status(500).json({ error: 'Failed to cleanup contact data' });
+    }
+  });
+
   app.get('/api/whatsapp/chat-messages', async (req: Request, res: Response) => {
     try {
       const { chatId, instanceId, userId, limit = '100' } = req.query;
