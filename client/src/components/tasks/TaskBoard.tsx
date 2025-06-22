@@ -41,7 +41,14 @@ interface TaskBoardProps {
   onTaskClick: (task: Task) => void;
 }
 
-const statusColumns = [
+interface StatusColumn {
+  id: string;
+  title: string;
+  color: string;
+  includeStatuses?: string[];
+}
+
+const statusColumns: StatusColumn[] = [
   { id: 'to_do', title: 'To Do', color: 'bg-slate-100' },
   { id: 'in_progress', title: 'In Progress', color: 'bg-blue-100', includeStatuses: ['in_progress', 'pending'] },
   { id: 'review', title: 'Review', color: 'bg-yellow-100' },
