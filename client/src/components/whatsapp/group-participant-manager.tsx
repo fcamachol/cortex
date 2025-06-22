@@ -33,7 +33,7 @@ export function GroupParticipantManager({ instanceId, groupJid }: GroupParticipa
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch group information and participants
+  // Fetch group information and participants - no polling
   const { data: groupInfo, isLoading, error } = useQuery<GroupInfo>({
     queryKey: ['/api/whatsapp/groups', instanceId, groupJid],
     queryFn: async () => {
@@ -41,7 +41,9 @@ export function GroupParticipantManager({ instanceId, groupJid }: GroupParticipa
       if (!response.ok) throw new Error('Failed to fetch group info');
       return response.json();
     },
-    refetchInterval: 5000, // Poll every 5 seconds for real-time updates
+    refetchInterval: false, // Disable polling - use webhook events for updates
+    refetchOnWindowFocus: false, // Don't refetch on focus
+    staleTime: Infinity, // Keep data fresh - updates come via webhooks
   });
 
   // Webhook-based system - real-time updates handled via polling

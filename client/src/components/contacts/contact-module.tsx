@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,9 +15,42 @@ export default function ContactModule() {
   // Mock user ID - in real app this would come from auth context
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
 
+  const queryClient = useQueryClient();
+
+  // Fetch contacts once on load - no polling
   const { data: contacts = [], isLoading } = useQuery<any[]>({
-    queryKey: [`/api/contacts/${userId}`, searchQuery],
+    queryKey: [`/api/contacts/${userId}`],
+    refetchInterval: false, // Disable polling completely
+    refetchOnWindowFocus: false, // Don't refetch on focus
+    staleTime: Infinity, // Keep data fresh indefinitely - updates come via SSE
   });
+
+  // Setup SSE connection for real-time contact updates
+  useEffect(() => {
+    const eventSource = new EventSource('/api/events');
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        // Handle contact-related events
+        if (data.type === 'new_contact' || data.type === 'contact_updated') {
+          // Invalidate and refetch contacts when contact data changes
+          queryClient.invalidateQueries({ queryKey: [`/api/contacts/${userId}`] });
+        }
+      } catch (error) {
+        console.warn('Error parsing SSE message:', error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE connection error:', error);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [queryClient, userId]);
 
   const filteredContacts = contacts.filter((contact: any) => {
     const matchesSearch = contact.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||

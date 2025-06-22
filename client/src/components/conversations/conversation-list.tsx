@@ -48,11 +48,12 @@ export default function ConversationList({ selectedConversation, onSelectConvers
     staleTime: 300000, // Cache for 5 minutes
   });
 
-  // Also fetch contacts for display names
+  // Also fetch contacts for display names - no polling
   const { data: contacts = [] } = useQuery<any[]>({
     queryKey: [`/api/contacts/${userId}`],
-    refetchInterval: false, // Disable polling
-    staleTime: 600000, // Cache for 10 minutes - contacts change rarely
+    refetchInterval: false, // Disable polling completely
+    refetchOnWindowFocus: false, // Don't refetch on focus
+    staleTime: Infinity, // Keep data fresh - updates come via SSE
   });
 
   // Fetch recent messages to show latest message per conversation

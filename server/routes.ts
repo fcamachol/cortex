@@ -603,7 +603,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post('/api/admin/sync-groups/:instanceId', async (req: Request, res: Response) => {
     try {
       const { instanceId } = req.params;
-      const { WebhookApiAdapter } = require('./whatsapp-api-adapter');
+      const { WebhookApiAdapter } = await import('./whatsapp-api-adapter.js');
       
       const result = await WebhookApiAdapter.syncAllGroupSubjects(instanceId);
       
