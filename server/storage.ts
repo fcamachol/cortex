@@ -120,13 +120,14 @@ class DatabaseStorage {
     }
 
     async upsertWhatsappInstance(instance: any): Promise<any> {
-        // Use raw SQL for now to handle the visibility field requirement
+        // Map fields correctly: instanceName -> instance_name (PK), instanceId -> instance_id (Evolution API ID)
         const result = await db.execute(sql`
             INSERT INTO whatsapp.instances (
-                instance_id, display_name, client_id, api_key, webhook_url, 
+                instance_name, instance_id, display_name, client_id, api_key, webhook_url, 
                 is_connected, visibility, owner_jid, last_connection_at
             )
             VALUES (
+                ${instance.instanceName}, 
                 ${instance.instanceId}, 
                 ${instance.displayName}, 
                 ${instance.clientId}, 
@@ -137,7 +138,8 @@ class DatabaseStorage {
                 ${instance.ownerJid}, 
                 ${instance.lastConnectionAt}
             )
-            ON CONFLICT (instance_id) DO UPDATE SET
+            ON CONFLICT (instance_name) DO UPDATE SET
+                instance_id = EXCLUDED.instance_id,
                 display_name = EXCLUDED.display_name,
                 api_key = EXCLUDED.api_key,
                 webhook_url = EXCLUDED.webhook_url,
