@@ -225,23 +225,23 @@ export const WebhookApiAdapter = {
             
             // Always update with incoming Evolution API data when available
             if (rawContact.subject && rawContact.subject !== 'Group Chat' && rawContact.subject.trim() !== '') {
-                // Ensure owner contact exists before group creation
-                const ownerJid = rawContact.owner || (existingGroup?.ownerJid);
-                if (ownerJid) {
-                    await this.ensureOwnerContactExists(ownerJid, instanceId);
-                }
-                
                 const groupData = {
                     groupJid: groupJid,
                     instanceId: instanceId,
                     subject: rawContact.subject,
-                    ownerJid: ownerJid || null,
+                    ownerJid: rawContact.owner || (existingGroup?.ownerJid) || null,
                     description: rawContact.desc || (existingGroup?.description) || null,
                     creationTimestamp: rawContact.creation ? new Date(rawContact.creation * 1000) : (existingGroup?.creationTimestamp) || null,
                     isLocked: rawContact.restrict || (existingGroup?.isLocked) || false,
                 };
                 
-                await storage.upsertWhatsappGroup(groupData);
+                // Ensure all dependencies exist before group creation
+                const dependenciesValid = await this.ensureGroupDependencies(groupData, instanceId);
+                if (dependenciesValid) {
+                    await storage.upsertWhatsappGroup(groupData);
+                } else {
+                    console.warn(`Skipping group creation due to dependency validation failure: ${groupJid}`);
+                }
                 console.log(`🔄 [${instanceId}] Group subject updated from Evolution API: ${groupJid} -> "${rawContact.subject}"`);
                 
                 // Broadcast real-time update if subject changed
@@ -411,11 +411,6 @@ export const WebhookApiAdapter = {
                 if (groupSubject) {
                     const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
                     if (!existingGroup || existingGroup.subject !== groupSubject) {
-                        // Ensure owner contact exists before group creation
-                        if (rawChat.owner) {
-                            await this.ensureOwnerContactExists(rawChat.owner, instanceId);
-                        }
-                        
                         const groupData = {
                             groupJid: groupJid,
                             instanceId: instanceId,
@@ -426,7 +421,13 @@ export const WebhookApiAdapter = {
                             isLocked: rawChat.restrict || false,
                         };
                         
-                        await storage.upsertWhatsappGroup(groupData);
+                        // Ensure all dependencies exist before group creation
+                        const dependenciesValid = await this.ensureGroupDependencies(groupData, instanceId);
+                        if (dependenciesValid) {
+                            await storage.upsertWhatsappGroup(groupData);
+                        } else {
+                            console.warn(`Skipping group creation due to dependency validation failure: ${groupJid}`);
+                        }
                         console.log(`✅ [${instanceId}] Group subject updated from chat webhook (fallback): ${groupJid} -> "${groupSubject}"`);
                     }
                 } else {
@@ -870,7 +871,11 @@ export const WebhookApiAdapter = {
         if (chatContact) await storage.upsertWhatsappContact(chatContact);
 
         const chatData = await this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chatId }, cleanMessage.instanceId);
-        if (chatData) await storage.upsertWhatsappChat(chatData);
+        if (chatData && chatData.chatId && chatData.instanceId) {
+            await storage.upsertWhatsappChat(chatData);
+        } else {
+            console.warn(`Skipping chat creation due to invalid data: chatId=${chatData?.chatId}, instanceId=${chatData?.instanceId}`);
+        }
 
         if (isGroup) {
             // For groups, proactively update with latest Evolution API data
@@ -1070,7 +1075,8 @@ export const WebhookApiAdapter = {
     
     async mapApiPayloadToWhatsappChat(rawChat: any, instanceId: string): Promise<Omit<WhatsappChats, 'createdAt' | 'updatedAt'> | null> {
         const chatId = rawChat.id || rawChat.remoteJid;
-        if (!chatId || typeof chatId !== 'string' || chatId.trim() === '') {
+        if (!chatId || typeof chatId !== 'string' || chatId.trim() === '' || !instanceId || typeof instanceId !== 'string' || instanceId.trim() === '') {
+            console.warn(`Invalid chat data - chatId: ${chatId}, instanceId: ${instanceId}`);
             return null;
         }
         
@@ -1123,7 +1129,7 @@ export const WebhookApiAdapter = {
      * Ensures owner contact exists before group creation/update to prevent foreign key errors
      */
     async ensureOwnerContactExists(ownerJid: string, instanceId: string): Promise<void> {
-        if (!ownerJid) return;
+        if (!ownerJid || !instanceId) return;
         
         try {
             const existingContact = await storage.getWhatsappContact(ownerJid, instanceId);
@@ -1136,6 +1142,41 @@ export const WebhookApiAdapter = {
             }
         } catch (error) {
             console.warn(`Failed to ensure owner contact exists: ${ownerJid}`, error.message);
+        }
+    },
+
+    /**
+     * Comprehensive dependency validation and creation for group operations
+     */
+    async ensureGroupDependencies(groupData: any, instanceId: string): Promise<boolean> {
+        try {
+            // Validate required fields
+            if (!groupData.groupJid || !instanceId) {
+                console.warn(`Invalid group data - groupJid: ${groupData.groupJid}, instanceId: ${instanceId}`);
+                return false;
+            }
+
+            // Ensure owner contact exists if specified
+            if (groupData.ownerJid) {
+                await this.ensureOwnerContactExists(groupData.ownerJid, instanceId);
+            }
+
+            // Ensure group contact record exists
+            const groupContact = this.mapApiPayloadToWhatsappContact({ id: groupData.groupJid }, instanceId);
+            if (groupContact) {
+                await storage.upsertWhatsappContact(groupContact);
+            }
+
+            // Ensure group chat record exists
+            const groupChat = await this.mapApiPayloadToWhatsappChat({ id: groupData.groupJid, subject: groupData.subject }, instanceId);
+            if (groupChat) {
+                await storage.upsertWhatsappChat(groupChat);
+            }
+
+            return true;
+        } catch (error) {
+            console.error(`Failed to ensure group dependencies: ${error.message}`);
+            return false;
         }
     },
     
