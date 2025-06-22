@@ -15,13 +15,16 @@ export class GroupRealtimeManager {
   static async broadcastGroupUpdate(update: GroupUpdate): Promise<void> {
     try {
       const sseManager = getSseManager();
-      const message = {
-        type: 'group_update',
-        data: update
-      };
-
-      // Broadcast to all connected SSE clients
-      sseManager.broadcast(message);
+      
+      // Use the correct SSE notification method
+      sseManager.notifyClientsOfGroupUpdate({
+        groupJid: update.groupJid,
+        instanceId: update.instanceId,
+        subject: update.data.newSubject,
+        oldSubject: update.data.oldSubject,
+        type: update.type,
+        timestamp: update.timestamp
+      });
       
       console.log(`📡 [${update.instanceId}] Broadcasting group update: ${update.type} for ${update.groupJid}`);
     } catch (error) {

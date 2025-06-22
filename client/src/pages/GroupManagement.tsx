@@ -45,13 +45,25 @@ export function GroupManagement({ spaceId }: GroupManagementProps) {
         const data = JSON.parse(event.data);
         
         if (data.type === 'group_update') {
-          const update = data.data;
+          const update = data.payload;
           
-          // Show toast notification for group changes
+          // Immediately update the groups list in the cache
+          queryClient.setQueryData(['/api/whatsapp/groups', spaceId], (oldData: Group[] | undefined) => {
+            if (!oldData) return oldData;
+            
+            return oldData.map(group => 
+              group.jid === update.groupJid 
+                ? { ...group, subject: update.subject }
+                : group
+            );
+          });
+          
+          // Show toast notification for group name changes
           if (update.type === 'subject_changed') {
             toast({
               title: "Group Name Updated",
-              description: `"${update.data.oldSubject}" → "${update.data.newSubject}"`,
+              description: `"${update.oldSubject}" is now "${update.subject}"`,
+              duration: 4000,
             });
           } else if (update.type === 'participants_changed') {
             const action = update.data.action;

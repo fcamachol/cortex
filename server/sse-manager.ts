@@ -157,5 +157,45 @@ export const SseManager = {
                 sseConnections.delete(clientId);
             }
         }
+    },
+
+    /**
+     * Pushes a group update to all connected clients for immediate UI refresh.
+     * This function should be called when group names change from Evolution API.
+     */
+    notifyClientsOfGroupUpdate(groupUpdate: any) {
+        if (sseConnections.size === 0) {
+            return; // No clients to notify
+        }
+        
+        console.log(`📡 Notifying ${sseConnections.size} connected clients of group update: ${groupUpdate.subject}`);
+        
+        const groupData = JSON.stringify({
+            type: 'group_update',
+            payload: groupUpdate
+        });
+
+        // Send the event to all connected clients
+        for (const [clientId, res] of sseConnections.entries()) {
+            try {
+                res.write(`data: ${groupData}\n\n`);
+            } catch (error) {
+                console.error(`📡 Error sending to client ${clientId}:`, error);
+                // Remove broken connection
+                sseConnections.delete(clientId);
+            }
+        }
     }
 };
+
+// Export the SseManager for compatibility
+export const getSseManager = () => SseManager;
+
+/**
+ * @function setupSSE
+ * @description Sets up the SSE endpoint to be used in Express routes.
+ * Call this function from your main routes file to handle SSE connections.
+ */
+export function setupSSE(req: Request, res: Response) {
+    SseManager.handleNewConnection(req, res);
+}
