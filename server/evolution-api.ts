@@ -178,8 +178,8 @@ export class EvolutionApi {
             
             const targetInstance = instanceList.find((inst: any) => {
                 return inst && (
-                    (inst.instance?.instanceName === instanceName) ||
-                    (inst.instanceName === instanceName) ||
+                    (inst.instance?.instance_id === instanceName) ||
+                    (inst.instance_id === instanceName) ||
                     (inst.name === instanceName)
                 );
             });
