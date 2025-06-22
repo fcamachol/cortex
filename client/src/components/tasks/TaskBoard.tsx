@@ -43,6 +43,8 @@ interface TaskBoardProps {
 
 const statusColumns = [
   { id: 'to_do', title: 'To Do', color: 'bg-slate-100' },
+  { id: 'pending', title: 'Pending', color: 'bg-gray-100' },
+  { id: 'todo', title: 'Todo', color: 'bg-slate-100' },
   { id: 'in_progress', title: 'In Progress', color: 'bg-blue-100' },
   { id: 'review', title: 'Review', color: 'bg-yellow-100' },
   { id: 'done', title: 'Done', color: 'bg-green-100' }
