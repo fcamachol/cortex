@@ -144,14 +144,14 @@ export function TasksPage() {
   const { data: tasks, isLoading: tasksLoading } = useQuery({
     queryKey: ['/api/crm/tasks'],
     select: (data) => {
-      // Debug: Log raw task data to see what we're receiving
+      // Debug: Log all task data to see what we're receiving
+      console.log('Total tasks in frontend:', data.length);
       const tasksWithJid = data.filter((task: any) => task.related_chat_jid);
-      console.log('Tasks with JID in frontend:', tasksWithJid.length, tasksWithJid.map((t: any) => ({
-        id: t.task_id,
-        title: t.title,
-        jid: t.related_chat_jid
-      })));
+      const tasksWithoutJid = data.filter((task: any) => !task.related_chat_jid);
+      console.log('Tasks with JID:', tasksWithJid.length);
+      console.log('Tasks without JID:', tasksWithoutJid.length);
       
+      // Return ALL tasks, not just those with JID
       return transformTasksData(data);
     },
     refetchInterval: false, // Disable polling - use SSE for updates
