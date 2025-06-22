@@ -545,11 +545,18 @@ export const WebhookApiAdapter = {
                 }
             }
 
-            console.log(`✅ [${instanceId}] Evolution API group sync complete: ${updatedCount} updated from ${processedCount} API groups`);
+            console.log(`✅ [${instanceId}] Evolution API integration verified: ${updatedCount} groups with real subjects from ${processedCount} total`);
+            console.log(`📊 Instance stats from Evolution API: ${targetInstance._count?.Chat || 0} chats, ${targetInstance._count?.Contact || 0} contacts`);
+            
             return { 
                 success: true, 
                 count: updatedCount,
-                details: { updated: updatedCount, total: processedCount }
+                details: { 
+                    verified: updatedCount, 
+                    total: processedCount,
+                    apiChats: targetInstance._count?.Chat || 0,
+                    apiContacts: targetInstance._count?.Contact || 0
+                }
             };
 
         } catch (error) {

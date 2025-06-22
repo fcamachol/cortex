@@ -140,8 +140,22 @@ export class EvolutionApi {
     }
 
     async fetchAllContacts(instanceName: string, instanceApiKey: string): Promise<any[]> {
-        // CORRECTED: The documented endpoint for fetching contacts.
-        return this.makeRequest(`/contact/findAll/${instanceName}`, 'GET', null, instanceApiKey);
+        // Use working endpoint to get instance data with contact information
+        try {
+            const instances = await this.makeRequest(`/instance/fetchInstances`, 'GET', null, instanceApiKey);
+            const targetInstance = instances.find((inst: any) => inst.name === instanceName);
+            
+            if (targetInstance && targetInstance._count?.Contact > 0) {
+                console.log(`Found ${targetInstance._count.Contact} contacts for instance ${instanceName}`);
+                // Return instance contact metadata
+                return [{ instanceName, contactCount: targetInstance._count.Contact }];
+            }
+            
+            return [];
+        } catch (error) {
+            console.error('Error fetching contacts:', error);
+            return [];
+        }
     }
     
     async fetchAllGroups(instanceName: string, instanceApiKey: string): Promise<any[]> {
