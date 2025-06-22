@@ -44,7 +44,6 @@ interface TaskBoardProps {
 const statusColumns = [
   { id: 'to_do', title: 'To Do', color: 'bg-slate-100' },
   { id: 'pending', title: 'Pending', color: 'bg-gray-100' },
-  { id: 'todo', title: 'Todo', color: 'bg-slate-100' },
   { id: 'in_progress', title: 'In Progress', color: 'bg-blue-100' },
   { id: 'review', title: 'Review', color: 'bg-yellow-100' },
   { id: 'done', title: 'Done', color: 'bg-green-100' }
@@ -71,6 +70,10 @@ export function TaskBoard({
   };
 
   const getTasksByStatus = (status: string) => {
+    if (status === 'to_do') {
+      // Include both 'to_do' and 'todo' in the To Do column
+      return tasks.filter(task => task.status === 'to_do' || task.status === 'todo');
+    }
     return tasks.filter(task => task.status === status);
   };
 
