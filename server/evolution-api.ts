@@ -295,26 +295,76 @@ export class EvolutionApi {
         return this.makeRequest(`/group/groupMetadata/${instanceName}?groupJid=${groupJid}`, 'GET', null, instanceApiKey);
     }
 
-    async refreshGroupsSubjects(instanceName: string, instanceApiKey: string): Promise<any[]> {
-        const groups = await this.fetchAllGroups(instanceName, instanceApiKey);
-        const refreshedGroups = [];
+    async refreshGroupsSubjects(instanceName: string, instanceApiKey: string): Promise<number> {
+        console.log(`🔄 [${instanceName}] Starting direct group subjects refresh with working endpoint...`);
         
-        for (const group of groups) {
-            try {
-                const metadata = await this.fetchGroupMetadata(instanceName, instanceApiKey, group.id);
-                refreshedGroups.push({
-                    ...group,
-                    subject: metadata.subject,
-                    description: metadata.desc,
-                    participants: metadata.participants
-                });
-            } catch (error) {
-                console.warn(`Failed to refresh metadata for group ${group.id}:`, error.message);
-                refreshedGroups.push(group);
+        try {
+            // Use the working direct endpoint that successfully retrieves authentic group names
+            const response = await this.makeRequest(
+                `/group/fetchAllGroups/${instanceName}?getParticipants=false`, 
+                'GET', 
+                null, 
+                instanceApiKey
+            );
+            
+            // Handle different response formats
+            let groups = [];
+            if (Array.isArray(response)) {
+                groups = response.filter(item => item.id && item.id.endsWith('@g.us'));
+            } else if (response.groups && Array.isArray(response.groups)) {
+                groups = response.groups.filter(item => item.id && item.id.endsWith('@g.us'));
+            } else if (response.data && Array.isArray(response.data)) {
+                groups = response.data.filter(item => item.id && item.id.endsWith('@g.us'));
             }
+            
+            console.log(`📊 [${instanceName}] Found ${groups.length} groups from Evolution API`);
+            
+            if (groups.length === 0) {
+                console.log(`❌ [${instanceName}] No groups found for refresh`);
+                return 0;
+            }
+
+            let updateCount = 0;
+            for (const group of groups) {
+                if (group.subject && group.subject !== 'Group Chat' && group.id) {
+                    try {
+                        // Force update with authentic Evolution API data
+                        const groupData = {
+                            groupJid: group.id,
+                            instanceId: instanceName,
+                            subject: group.subject,
+                            ownerJid: group.owner || null,
+                            description: group.desc || null,
+                            creationTimestamp: group.creation ? new Date(group.creation * 1000) : null,
+                            isLocked: group.restrict || false,
+                        };
+
+                        await storage.upsertWhatsappGroup(groupData);
+                        
+                        // Also update chat record with authentic name
+                        const existingChat = await storage.getWhatsappChat(group.id, instanceName);
+                        if (existingChat) {
+                            await storage.upsertWhatsappChat({
+                                ...existingChat,
+                                name: group.subject // Force authentic name
+                            });
+                        }
+                        
+                        updateCount++;
+                        console.log(`✅ [${instanceName}] FORCED UPDATE: ${group.id} -> "${group.subject}"`);
+                    } catch (error) {
+                        console.error(`❌ [${instanceName}] Failed to update group ${group.id}:`, error.message);
+                    }
+                }
+            }
+
+            console.log(`🎉 [${instanceName}] Successfully forced ${updateCount} group updates with authentic Evolution API data`);
+            return updateCount;
+            
+        } catch (error) {
+            console.error(`❌ [${instanceName}] Direct group refresh failed:`, error.message);
+            return 0;
         }
-        
-        return refreshedGroups;
     }
 }
 
