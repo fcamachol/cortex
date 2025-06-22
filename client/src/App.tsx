@@ -8,7 +8,7 @@ import Dashboard from "@/pages/dashboard";
 import ActionsPage from "@/pages/actions";
 import QRTestPage from "@/pages/qr-test";
 import { TasksPage } from "@/pages/TasksPage";
-import DatabaseViewer from "@/pages/DatabaseViewer";
+import DatabaseViewer from "@/pages/database-viewer";
 import { GroupManagement } from "@/pages/GroupManagement";
 import { RealtimeMonitor } from "@/pages/RealtimeMonitor";
 import LoginPage from "@/pages/LoginPage";

@@ -2,11 +2,12 @@ import { Express, Request, Response, NextFunction } from 'express';
 import { storage } from './storage';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { appUsers } from '../shared/schema';
 import { nanoid } from 'nanoid';
 import { WebhookController } from './webhook-controller';
 import { SseManager } from './sse-manager';
+import { db } from './db';
 
 function formatToE164(phoneNumber: string): string {
   let cleaned = phoneNumber.replace(/\D/g, '');
@@ -538,6 +539,124 @@ export async function registerRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error('Error creating calendar event:', error);
       res.status(500).json({ error: 'Failed to create calendar event' });
+    }
+  });
+
+  // Database overview endpoints
+  app.get('/api/database/overview', async (req, res) => {
+    try {
+      const tableData = await db.execute(sql`
+        SELECT 
+          schemaname as schema, 
+          tablename as table, 
+          schemaname || '.' || tablename as full_name
+        FROM pg_tables 
+        WHERE schemaname IN ('app', 'whatsapp', 'crm') 
+        ORDER BY schemaname, tablename
+      `);
+      res.json(tableData.rows);
+    } catch (error) {
+      console.error('Error fetching database overview:', error);
+      res.status(500).json({ error: 'Failed to fetch database overview' });
+    }
+  });
+
+  app.get('/api/database/whatsapp-summary', async (req, res) => {
+    try {
+      const instances = await db.execute(sql`
+        SELECT instance_id, display_name, is_connected, created_at 
+        FROM whatsapp.instances 
+        ORDER BY created_at DESC 
+        LIMIT 10
+      `);
+      
+      const messageCount = await db.execute(sql`
+        SELECT COUNT(*) as count FROM whatsapp.messages
+      `);
+      
+      const contactCount = await db.execute(sql`
+        SELECT COUNT(*) as count FROM whatsapp.contacts
+      `);
+
+      const tableCount = await db.execute(sql`
+        SELECT COUNT(*) as count 
+        FROM pg_tables 
+        WHERE schemaname = 'whatsapp'
+      `);
+
+      res.json({
+        instances: instances.rows,
+        message_count: messageCount.rows[0]?.count || 0,
+        contact_count: contactCount.rows[0]?.count || 0,
+        total_tables: tableCount.rows[0]?.count || 0,
+        total_records: (parseInt(messageCount.rows[0]?.count || '0') + parseInt(contactCount.rows[0]?.count || '0'))
+      });
+    } catch (error) {
+      console.error('Error fetching WhatsApp summary:', error);
+      res.status(500).json({ error: 'Failed to fetch WhatsApp summary' });
+    }
+  });
+
+  app.get('/api/database/crm-summary', async (req, res) => {
+    try {
+      const taskCount = await db.execute(sql`
+        SELECT COUNT(*) as count FROM crm.tasks
+      `);
+      
+      const projectCount = await db.execute(sql`
+        SELECT COUNT(*) as count FROM crm.projects
+      `);
+
+      const tableCount = await db.execute(sql`
+        SELECT COUNT(*) as count 
+        FROM pg_tables 
+        WHERE schemaname = 'crm'
+      `);
+
+      res.json({
+        task_count: taskCount.rows[0]?.count || 0,
+        project_count: projectCount.rows[0]?.count || 0,
+        total_tables: tableCount.rows[0]?.count || 0,
+        total_records: (parseInt(taskCount.rows[0]?.count || '0') + parseInt(projectCount.rows[0]?.count || '0'))
+      });
+    } catch (error) {
+      console.error('Error fetching CRM summary:', error);
+      res.status(500).json({ error: 'Failed to fetch CRM summary' });
+    }
+  });
+
+  app.get('/api/database/app-summary', async (req, res) => {
+    try {
+      const users = await db.execute(sql`
+        SELECT user_id, email, full_name, created_at 
+        FROM app.users 
+        ORDER BY created_at DESC
+      `);
+      
+      const userCount = await db.execute(sql`
+        SELECT COUNT(*) as count FROM app.users
+      `);
+
+      const workspaceCount = await db.execute(sql`
+        SELECT COUNT(*) as count FROM app.workspaces
+      `);
+
+      const tableCount = await db.execute(sql`
+        SELECT COUNT(*) as count 
+        FROM pg_tables 
+        WHERE schemaname = 'app'
+      `);
+
+      res.json({
+        users: users.rows,
+        user_count: userCount.rows[0]?.count || 0,
+        workspace_count: workspaceCount.rows[0]?.count || 0,
+        total_tables: tableCount.rows[0]?.count || 0,
+        total_records: (parseInt(userCount.rows[0]?.count || '0') + parseInt(workspaceCount.rows[0]?.count || '0'))
+      });
+    } catch (error) {
+      console.error('Error fetching App summary:', error);
+      res.status(500).json({ error: 'Failed to fetch App summary' });
     }
   });
 
