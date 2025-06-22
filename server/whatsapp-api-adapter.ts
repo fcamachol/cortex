@@ -225,11 +225,17 @@ export const WebhookApiAdapter = {
             
             // Always update with incoming Evolution API data when available
             if (rawContact.subject && rawContact.subject !== 'Group Chat' && rawContact.subject.trim() !== '') {
+                // Ensure owner contact exists before group creation
+                const ownerJid = rawContact.owner || (existingGroup?.ownerJid);
+                if (ownerJid) {
+                    await this.ensureOwnerContactExists(ownerJid, instanceId);
+                }
+                
                 const groupData = {
                     groupJid: groupJid,
                     instanceId: instanceId,
                     subject: rawContact.subject,
-                    ownerJid: rawContact.owner || (existingGroup?.ownerJid) || null,
+                    ownerJid: ownerJid || null,
                     description: rawContact.desc || (existingGroup?.description) || null,
                     creationTimestamp: rawContact.creation ? new Date(rawContact.creation * 1000) : (existingGroup?.creationTimestamp) || null,
                     isLocked: rawContact.restrict || (existingGroup?.isLocked) || false,
@@ -405,6 +411,11 @@ export const WebhookApiAdapter = {
                 if (groupSubject) {
                     const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
                     if (!existingGroup || existingGroup.subject !== groupSubject) {
+                        // Ensure owner contact exists before group creation
+                        if (rawChat.owner) {
+                            await this.ensureOwnerContactExists(rawChat.owner, instanceId);
+                        }
+                        
                         const groupData = {
                             groupJid: groupJid,
                             instanceId: instanceId,
@@ -664,6 +675,11 @@ export const WebhookApiAdapter = {
             
             for (const group of enrichedGroups) {
                 try {
+                    // Ensure owner contact exists before group creation
+                    if (group.owner) {
+                        await this.ensureOwnerContactExists(group.owner, instanceId);
+                    }
+                    
                     // Update group record with authentic subject
                     const groupData = {
                         groupJid: group.id,
@@ -853,7 +869,7 @@ export const WebhookApiAdapter = {
         }, cleanMessage.instanceId);
         if (chatContact) await storage.upsertWhatsappContact(chatContact);
 
-        const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chatId }, cleanMessage.instanceId);
+        const chatData = await this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chatId }, cleanMessage.instanceId);
         if (chatData) await storage.upsertWhatsappChat(chatData);
 
         if (isGroup) {
@@ -1101,6 +1117,26 @@ export const WebhookApiAdapter = {
             creationTimestamp: rawGroup.creation ? new Date(rawGroup.creation * 1000) : undefined,
             isLocked: rawGroup.announce || false,
         };
+    },
+
+    /**
+     * Ensures owner contact exists before group creation/update to prevent foreign key errors
+     */
+    async ensureOwnerContactExists(ownerJid: string, instanceId: string): Promise<void> {
+        if (!ownerJid) return;
+        
+        try {
+            const existingContact = await storage.getWhatsappContact(ownerJid, instanceId);
+            if (!existingContact) {
+                const ownerContact = this.mapApiPayloadToWhatsappContact({ id: ownerJid }, instanceId);
+                if (ownerContact) {
+                    await storage.upsertWhatsappContact(ownerContact);
+                    console.log(`✅ Created owner contact for foreign key constraint: ${ownerJid}`);
+                }
+            }
+        } catch (error) {
+            console.warn(`Failed to ensure owner contact exists: ${ownerJid}`, error.message);
+        }
     },
     
     mapApiPayloadToWhatsappCallLog(rawCall: any, instanceId: string): Omit<WhatsappCallLogs, 'createdAt' | 'updatedAt'> | null {

@@ -21,11 +21,19 @@ export class GroupMetadataFetcher {
             if (groupData?.subject && groupData.subject !== 'Group Chat') {
                 const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
                 
+                // Ensure owner contact exists before group creation to prevent foreign key constraint violations
+                const ownerJid = groupData.owner || (existingGroup?.ownerJid);
+                if (ownerJid) {
+                    // Import the adapter function to create owner contact
+                    const { WebhookApiAdapter } = await import('./whatsapp-api-adapter');
+                    await WebhookApiAdapter.ensureOwnerContactExists(ownerJid, instanceId);
+                }
+                
                 const updatedGroupData = {
                     groupJid: groupJid,
                     instanceId: instanceId,
                     subject: groupData.subject,
-                    ownerJid: groupData.owner || (existingGroup?.ownerJid) || null,
+                    ownerJid: ownerJid || null,
                     description: groupData.desc || (existingGroup?.description) || null,
                     creationTimestamp: groupData.creation ? new Date(groupData.creation * 1000) : (existingGroup?.creationTimestamp) || null,
                     isLocked: groupData.restrict || (existingGroup?.isLocked) || false,
