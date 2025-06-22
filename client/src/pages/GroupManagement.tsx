@@ -34,6 +34,58 @@ export function GroupManagement({ spaceId }: GroupManagementProps) {
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
 
+  // Setup real-time group updates via SSE
+  useEffect(() => {
+    if (!spaceId) return;
+
+    const eventSource = new EventSource('/api/sse');
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'group_update') {
+          const update = data.data;
+          
+          // Show toast notification for group changes
+          if (update.type === 'subject_changed') {
+            toast({
+              title: "Group Name Updated",
+              description: `"${update.data.oldSubject}" → "${update.data.newSubject}"`,
+            });
+          } else if (update.type === 'participants_changed') {
+            const action = update.data.action;
+            const count = update.data.participants.length;
+            toast({
+              title: "Group Members Updated",
+              description: `${count} member(s) ${action === 'add' ? 'added' : action === 'remove' ? 'removed' : action}`,
+            });
+          } else if (update.type === 'description_changed') {
+            toast({
+              title: "Group Description Updated",
+              description: "Group description has been changed",
+            });
+          }
+
+          // Refresh groups data to show latest changes
+          queryClient.invalidateQueries({ 
+            queryKey: ['/api/whatsapp/groups', spaceId] 
+          });
+        }
+      } catch (error) {
+        console.error('Error processing SSE message:', error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE connection error:', error);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [spaceId, toast, queryClient]);
+
   // Fetch groups for the space
   const { data: groups = [], isLoading } = useQuery<Group[]>({
     queryKey: ['/api/whatsapp/groups', spaceId],

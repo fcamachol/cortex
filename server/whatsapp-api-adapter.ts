@@ -427,6 +427,11 @@ export const WebhookApiAdapter = {
                 return;
             }
 
+            // Get existing group to detect changes
+            const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
+            const oldSubject = existingGroup?.subject || '';
+            const oldDescription = existingGroup?.description || '';
+
             // Update group with authentic subject from Evolution API
             const groupData = {
                 groupJid: groupJid,
@@ -436,8 +441,6 @@ export const WebhookApiAdapter = {
                 isLocked: data.restrict || false,
             };
 
-            // Get existing group to preserve other fields
-            const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
             if (existingGroup) {
                 groupData.ownerJid = existingGroup.ownerJid;
                 groupData.creationTimestamp = existingGroup.creationTimestamp;
@@ -453,6 +456,28 @@ export const WebhookApiAdapter = {
                 if (updatedChatData) {
                     await storage.upsertWhatsappChat(updatedChatData);
                 }
+            }
+
+            // Broadcast real-time updates to connected clients
+            const { GroupRealtimeManager } = await import('./group-realtime-manager');
+            
+            // Handle subject changes
+            if (oldSubject !== groupSubject) {
+                await GroupRealtimeManager.handleSubjectChange(groupJid, instanceId, oldSubject, groupSubject);
+            }
+
+            // Handle description changes
+            const newDescription = data.desc || '';
+            if (oldDescription !== newDescription) {
+                await GroupRealtimeManager.handleDescriptionChange(groupJid, instanceId, oldDescription, newDescription);
+            }
+
+            // Handle settings changes
+            if (data.restrict !== undefined || data.announce !== undefined) {
+                await GroupRealtimeManager.handleSettingsChange(groupJid, instanceId, {
+                    isLocked: data.restrict || false,
+                    isAnnounce: data.announce || false
+                });
             }
 
         } catch (error) {
@@ -631,6 +656,14 @@ export const WebhookApiAdapter = {
             } catch (error) {
                 console.error(`❌ Error processing participant ${participantJid} for action ${action}:`, error);
             }
+        }
+
+        // Broadcast real-time participant changes to connected clients
+        try {
+            const { GroupRealtimeManager } = await import('./group-realtime-manager');
+            await GroupRealtimeManager.handleParticipantsChange(groupJid, instanceId, action, participants);
+        } catch (error) {
+            console.error('Error broadcasting participant changes:', error);
         }
     },
     
