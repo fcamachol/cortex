@@ -91,12 +91,10 @@ export class EvolutionApi {
                 throw new Error(`Evolution API request failed: ${response.status} ${response.statusText}`);
             }
 
-            // Handle responses that might not have a JSON body (e.g., 204 No Content)
             const contentType = response.headers.get("content-type");
             if (contentType && contentType.includes("application/json")) {
                 return await response.json() as T;
             } else {
-                // For non-JSON responses, return the text content or an empty object
                 const text = await response.text();
                 return (text || {}) as T;
             }
@@ -110,7 +108,6 @@ export class EvolutionApi {
     // --- INSTANCE MANAGEMENT ---
 
     async createInstance(request: CreateInstanceRequest): Promise<InstanceResponse> {
-        // Creating an instance uses the global API key
         return this.makeRequest('/instance/create', 'POST', request);
     }
 
@@ -123,7 +120,6 @@ export class EvolutionApi {
     }
 
     async deleteInstance(instanceName: string): Promise<any> {
-        // Deleting usually requires the global API key
         return this.makeRequest(`/instance/delete/${instanceName}`, 'DELETE');
     }
     
@@ -133,30 +129,22 @@ export class EvolutionApi {
         return this.makeRequest(`/message/sendText/${instanceName}`, 'POST', request, instanceApiKey);
     }
     
-    // --- DATA FETCHING (Corrected Endpoints) ---
+    // --- DATA FETCHING ---
 
     async fetchAllChats(instanceName: string, instanceApiKey: string): Promise<any[]> {
-        // CORRECTED: The documented endpoint for fetching chats.
         return this.makeRequest(`/chat/findAll/${instanceName}`, 'GET', null, instanceApiKey);
     }
 
     async fetchAllContacts(instanceName: string, instanceApiKey: string): Promise<any[]> {
-        // CORRECTED: The documented endpoint for fetching contacts.
         return this.makeRequest(`/contact/findAll/${instanceName}`, 'GET', null, instanceApiKey);
     }
     
+    // --- GROUP MANAGEMENT ---
+
     async fetchAllGroups(instanceName: string, instanceApiKey: string): Promise<any[]> {
-        // CORRECTED: The documented endpoint for fetching all groups.
         return this.makeRequest(`/group/findAll/${instanceName}`, 'GET', null, instanceApiKey);
     }
-
-    async fetchGroupMetadata(instanceName: string, instanceApiKey: string, groupJid: string): Promise<any> {
-        // Fetch detailed group metadata including authentic subject name
-        return this.makeRequest(`/group/findGroupInfos/${instanceName}`, 'POST', { 
-            groupJid: groupJid 
-        }, instanceApiKey);
-    }
-
+    
     async fetchGroupInfo(instanceName: string, instanceApiKey: string, groupId: string): Promise<any> {
         // CORRECTED: The documented endpoint for fetching a single group's info.
         return this.makeRequest(`/group/info/${instanceName}?groupId=${groupId}`, 'GET', null, instanceApiKey);
@@ -181,72 +169,6 @@ export class EvolutionApi {
     async updateGroupProfilePicture(instanceName: string, instanceApiKey: string, groupJid: string, imageUrl: string): Promise<any> {
         const body = { url: imageUrl, groupJid: groupJid };
         return this.makeRequest(`/group/updateProfilePicture/${instanceName}`, 'PUT', body, instanceApiKey);
-    }
-    
-    async addGroupParticipants(instanceName: string, instanceApiKey: string, groupJid: string, participants: string[]): Promise<any> {
-        const body = { participants: participants, groupJid: groupJid };
-        return this.makeRequest(`/group/addParticipants/${instanceName}`, 'PUT', body, instanceApiKey);
-    }
-
-    async removeGroupParticipants(instanceName: string, instanceApiKey: string, groupJid: string, participants: string[]): Promise<any> {
-        const body = { participants: participants, groupJid: groupJid };
-        return this.makeRequest(`/group/removeParticipants/${instanceName}`, 'PUT', body, instanceApiKey);
-    }
-
-    async promoteGroupParticipants(instanceName: string, instanceApiKey: string, groupJid: string, participants: string[]): Promise<any> {
-        const body = { participants: participants, groupJid: groupJid };
-        return this.makeRequest(`/group/promoteParticipants/${instanceName}`, 'PUT', body, instanceApiKey);
-    }
-
-    async demoteGroupParticipants(instanceName: string, instanceApiKey: string, groupJid: string, participants: string[]): Promise<any> {
-        const body = { participants: participants, groupJid: groupJid };
-        return this.makeRequest(`/group/demoteParticipants/${instanceName}`, 'PUT', body, instanceApiKey);
-    }
-
-    async refreshGroupsSubjects(instanceName: string, instanceApiKey: string): Promise<any[]> {
-        // Fetch all groups and update their authentic subjects
-        try {
-            const groups = await this.fetchAllGroups(instanceName, instanceApiKey);
-            const enrichedGroups = [];
-            
-            for (const group of groups) {
-                try {
-                    const metadata = await this.fetchGroupMetadata(instanceName, instanceApiKey, group.id);
-                    enrichedGroups.push({
-                        ...group,
-                        subject: metadata.subject || group.subject || 'Unknown Group',
-                        metadata: metadata
-                    });
-                } catch (error) {
-                    console.warn(`Failed to fetch metadata for group ${group.id}:`, error.message);
-                    enrichedGroups.push({
-                        ...group,
-                        subject: group.subject || 'Unknown Group'
-                    });
-                }
-            }
-            
-            return enrichedGroups;
-        } catch (error) {
-            console.error('Failed to refresh group subjects:', error);
-            return [];
-        }
-    }
-    
-    async fetchGroupInfo(instanceName: string, instanceApiKey: string, groupId: string): Promise<any> {
-        // CORRECTED: The documented endpoint for fetching a single group's info.
-        const endpoint = `/group/fetchInfo/${instanceName}?groupId=${groupId}`;
-        return this.makeRequest(endpoint, 'GET', null, instanceApiKey);
-    }
-
-    async updateGroupSubject(instanceName: string, instanceApiKey: string, groupJid: string, newSubject: string): Promise<any> {
-        const body = { subject: newSubject, groupJid: groupJid };
-        return this.makeRequest(`/group/updateSubject/${instanceName}`, 'PUT', body, instanceApiKey);
-    }
-    
-    async updateGroupDescription(instanceName: string, instanceApiKey: string, groupJid: string, newDescription: string): Promise<any> {
-        const body = { description: newDescription, groupJid: groupJid };
-        return this.makeRequest(`/group/updateDescription/${instanceName}`, 'PUT', body, instanceApiKey);
     }
     
     async addGroupParticipants(instanceName: string, instanceApiKey: string, groupJid: string, participants: string[]): Promise<any> {

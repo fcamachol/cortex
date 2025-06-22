@@ -992,7 +992,58 @@ export const WebhookApiAdapter = {
 
             console.log(`🔍 [${instanceId}] Attempting to fetch groups from Evolution API...`);
 
-            // Try alternative approaches since fetchAllGroups is unreliable
+            // Use the enhanced Evolution API client for group fetching
+            try {
+                console.log(`🔄 [${instanceId}] Using enhanced Evolution API group fetching...`);
+                const groups = await evolutionApi.fetchAllGroups(instanceId, instanceApiKey);
+                
+                if (groups && groups.length > 0) {
+                    console.log(`✅ [${instanceId}] Successfully fetched ${groups.length} groups from Evolution API`);
+                    
+                    // Process each group with enhanced metadata
+                    for (const group of groups) {
+                        try {
+                            // Use the new fetchGroupInfo method for detailed information
+                            const groupInfo = await evolutionApi.fetchGroupInfo(instanceId, instanceApiKey, group.id);
+                            
+                            await this.storage.upsertGroup({
+                                instanceId,
+                                jid: group.id,
+                                subject: groupInfo.subject || group.subject || 'Unknown Group',
+                                description: groupInfo.description || group.description || null,
+                                createdAt: group.createdAt || new Date(),
+                                participantCount: groupInfo.participants?.length || 0,
+                                isAnnounce: groupInfo.announce === true,
+                                isLocked: groupInfo.locked === true
+                            });
+                            
+                            console.log(`📝 [${instanceId}] Updated group: ${groupInfo.subject || group.subject}`);
+                            syncedCount++;
+                        } catch (groupError) {
+                            console.warn(`⚠️ [${instanceId}] Failed to fetch detailed info for group ${group.id}:`, groupError.message);
+                            
+                            // Fall back to basic group data
+                            await this.storage.upsertGroup({
+                                instanceId,
+                                jid: group.id,
+                                subject: group.subject || 'Unknown Group',
+                                description: group.description || null,
+                                createdAt: group.createdAt || new Date(),
+                                participantCount: 0,
+                                isAnnounce: false,
+                                isLocked: false
+                            });
+                            syncedCount++;
+                        }
+                    }
+                    
+                    return { success: true, count: syncedCount };
+                }
+            } catch (apiError) {
+                console.error(`❌ [${instanceId}] Enhanced Evolution API group fetch failed:`, apiError.message);
+            }
+
+            // Fallback to alternative approaches if enhanced API fails
             const approaches = [
                 { endpoint: `/instance/fetchInstances`, timeout: 5000 },
                 { endpoint: `/chat/findChats/${instanceId}`, timeout: 8000 }
