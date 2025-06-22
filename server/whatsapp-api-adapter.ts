@@ -498,24 +498,26 @@ export const WebhookApiAdapter = {
         try {
             console.log(`🔄 [${instanceId}] Starting comprehensive group sync from Evolution API...`);
             
-            // Fetch all groups from Evolution API
-            const apiKey = process.env.EVOLUTION_API_KEY;
-            const apiUrl = process.env.EVOLUTION_API_URL;
+            // Import and use the existing Evolution API client
+            const { getEvolutionApi } = await import('./evolution-api.js');
+            const api = getEvolutionApi();
             
-            if (!apiKey || !apiUrl) {
-                throw new Error('Evolution API credentials not configured. Please set EVOLUTION_API_KEY and EVOLUTION_API_URL.');
+            if (!api) {
+                throw new Error('Evolution API not configured. Please check EVOLUTION_API_KEY and EVOLUTION_API_URL environment variables.');
             }
-            
-            const response = await fetch(`${apiUrl}/group/fetchAllGroups/${instanceId}`, {
+
+            // Fetch all groups using proper API client
+            const response = await fetch(`${process.env.EVOLUTION_API_URL}/group/fetchAllGroups/${instanceId}`, {
                 method: 'GET',
                 headers: {
-                    'apikey': apiKey,
+                    'apikey': process.env.EVOLUTION_API_KEY!,
                     'Content-Type': 'application/json'
                 }
             });
 
             if (!response.ok) {
-                throw new Error(`Evolution API request failed: ${response.status} ${response.statusText}`);
+                const errorText = await response.text();
+                throw new Error(`Evolution API request failed: ${response.status} ${response.statusText} - ${errorText}`);
             }
 
             const apiGroups = await response.json();
