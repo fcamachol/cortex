@@ -455,6 +455,61 @@ class DatabaseStorage {
                 eq(whatsappGroupParticipants.instanceId, instanceId)
             ));
     }
+
+    // =========================================================================
+    // PATTERN-BASED QUERY METHODS FOR CLEANUP OPERATIONS
+    // =========================================================================
+
+    async getContactsByPattern(instanceId: string, jidPattern: string): Promise<WhatsappContact[]> {
+        return await db.select()
+            .from(whatsappContacts)
+            .where(and(
+                eq(whatsappContacts.instanceId, instanceId),
+                ilike(whatsappContacts.jid, jidPattern)
+            ));
+    }
+
+    async getChatsByPattern(instanceId: string, chatIdPattern: string): Promise<WhatsappChat[]> {
+        return await db.select()
+            .from(whatsappChats)
+            .where(and(
+                eq(whatsappChats.instanceId, instanceId),
+                ilike(whatsappChats.chatId, chatIdPattern)
+            ));
+    }
+
+    async getGroupsByPattern(instanceId: string, groupJidPattern: string): Promise<WhatsappGroup[]> {
+        return await db.select()
+            .from(whatsappGroups)
+            .where(and(
+                eq(whatsappGroups.instanceId, instanceId),
+                ilike(whatsappGroups.groupJid, groupJidPattern)
+            ));
+    }
+
+    async deleteWhatsappContact(jid: string, instanceId: string): Promise<void> {
+        await db.delete(whatsappContacts)
+            .where(and(
+                eq(whatsappContacts.jid, jid),
+                eq(whatsappContacts.instanceId, instanceId)
+            ));
+    }
+
+    async deleteWhatsappChat(chatId: string, instanceId: string): Promise<void> {
+        await db.delete(whatsappChats)
+            .where(and(
+                eq(whatsappChats.chatId, chatId),
+                eq(whatsappChats.instanceId, instanceId)
+            ));
+    }
+
+    async deleteWhatsappGroup(groupJid: string, instanceId: string): Promise<void> {
+        await db.delete(whatsappGroups)
+            .where(and(
+                eq(whatsappGroups.groupJid, groupJid),
+                eq(whatsappGroups.instanceId, instanceId)
+            ));
+    }
 }
 
 export const storage = new DatabaseStorage();

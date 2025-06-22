@@ -1666,7 +1666,7 @@ export const WebhookApiAdapter = {
 
     /**
      * Cleans up contact records with incorrect data while preserving authentic group JIDs
-     * Fixes contacts that have individual user names for group JIDs
+     * Syncs group contact names with authentic group subjects from database
      */
     async cleanupIncorrectGroupContactData(instanceId: string): Promise<{ success: boolean; cleaned: number; error?: string }> {
         try {
@@ -1674,18 +1674,17 @@ export const WebhookApiAdapter = {
             
             // Get all group contacts (JIDs ending with @g.us)
             const groupContacts = await storage.getContactsByPattern(instanceId, '%@g.us');
+            console.log(`📋 [${instanceId}] Found ${groupContacts.length} group contacts to analyze`);
             
-            // Get all authentic groups from Evolution API
-            const { success, groups } = await this.fetchAllGroupsFromApi(instanceId);
-            if (!success) {
-                return { success: false, cleaned: 0, error: 'Failed to fetch authentic group data' };
-            }
+            // Get all groups from database
+            const existingGroups = await storage.getWhatsappGroups(instanceId);
+            console.log(`📋 [${instanceId}] Found ${existingGroups.length} groups in database`);
             
             // Create a map of group JID to authentic subject
             const authenticGroupMap = new Map();
-            groups.forEach(group => {
-                if (group.id && group.subject) {
-                    authenticGroupMap.set(group.id, group.subject);
+            existingGroups.forEach(group => {
+                if (group.groupJid && group.subject && group.subject.length > 2) {
+                    authenticGroupMap.set(group.groupJid, group.subject);
                 }
             });
             
@@ -1702,11 +1701,12 @@ export const WebhookApiAdapter = {
                         contact.pushName !== authenticSubject ||
                         contact.pushName.length < 3 ||
                         contact.pushName === 'Group' ||
-                        contact.pushName === 'New Group'
+                        contact.pushName === 'New Group' ||
+                        contact.pushName === 'Inactive Group'
                     );
                     
                     if (hasIncorrectData) {
-                        // Update with authentic group subject
+                        // Update with authentic group subject from database
                         const correctedContactData = {
                             jid: contact.jid,
                             instanceId: instanceId,
@@ -1724,12 +1724,12 @@ export const WebhookApiAdapter = {
                         cleanedCount++;
                     }
                 } else {
-                    // Group doesn't exist in Evolution API - keep JID but mark as inactive
-                    if (contact.pushName && contact.pushName !== 'Inactive Group') {
-                        const inactiveContactData = {
+                    // Group doesn't exist in database - preserve JID but mark as unknown
+                    if (contact.pushName && contact.pushName !== 'Unknown Group') {
+                        const unknownContactData = {
                             jid: contact.jid,
                             instanceId: instanceId,
-                            pushName: 'Inactive Group',
+                            pushName: 'Unknown Group',
                             verifiedName: null,
                             profilePictureUrl: null,
                             isBlocked: false,
@@ -1738,8 +1738,8 @@ export const WebhookApiAdapter = {
                             isBusiness: false,
                         };
                         
-                        await storage.upsertWhatsappContact(inactiveContactData);
-                        console.log(`⚠️ [${instanceId}] Marked inactive group: ${contact.jid}`);
+                        await storage.upsertWhatsappContact(unknownContactData);
+                        console.log(`⚠️ [${instanceId}] Marked unknown group: ${contact.jid}`);
                         cleanedCount++;
                     }
                 }
