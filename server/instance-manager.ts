@@ -78,7 +78,7 @@ export class InstanceManager {
             // Step 2: Store instance in database with correct field mapping
             const dbInstance = {
                 instanceName: instanceName, // Our database primary key (instance_name) - comes from URL/request
-                instanceId: instanceData.instance?.instanceId || null, // Evolution API ID (instance_id) - from API response
+                instanceId: instanceData.hash || null, // Evolution API unique hash (what was previously called api_key)
                 displayName: options.displayName || `WhatsApp Instance ${instanceName}`, // User-friendly display name
                 clientId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42', // Default user ID
                 webhookUrl: webhookUrl,
