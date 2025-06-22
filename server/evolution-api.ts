@@ -204,8 +204,8 @@ export class EvolutionApi {
     }
     
     async addGroupParticipants(instanceName: string, instanceApiKey: string, groupJid: string, participants: string[]): Promise<any> {
-        const body = { participants: participants, groupJid: groupJid };
-        return this.makeRequest(`/group/addParticipants/${instanceName}`, 'PUT', body, instanceApiKey);
+        const body = { participants: participants };
+        return this.makeRequest(`/group/addParticipants/${instanceName}?groupId=${groupJid}`, 'POST', body, instanceApiKey);
     }
 
     async removeGroupParticipants(instanceName: string, instanceApiKey: string, groupJid: string, participants: string[]): Promise<any> {

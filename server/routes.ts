@@ -756,64 +756,74 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.json([]);
       }
       
-      // Enhance each group with live Evolution API participant data
-      const enhancedGroups = await Promise.all(
-        result.rows.map(async (group: any) => {
-          try {
-            // Fetch live participant count from Evolution API
-            const participantsResponse = await fetch(`${baseUrl}/group/participants/${instanceId}?groupJid=${group.group_jid}`, {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': instanceApiKey
-              },
-              timeout: 5000
-            });
-            
-            let liveParticipantCount = 0;
-            let participants = [];
-            
-            if (participantsResponse.ok) {
-              const participantsData = await participantsResponse.json();
-              participants = participantsData.participants || [];
-              liveParticipantCount = participants.length;
-            } else {
-              console.warn(`Failed to fetch participants for ${group.group_jid}`);
+      // Optimize: Process groups in batches for better performance
+      const batchSize = 10;
+      const enhancedGroups = [];
+      
+      for (let i = 0; i < result.rows.length; i += batchSize) {
+        const batch = result.rows.slice(i, i + batchSize);
+        
+        const batchResults = await Promise.all(
+          batch.map(async (group: any) => {
+            try {
+              // Fetch live participant count from Evolution API
+              const participantsResponse = await fetch(`${baseUrl}/group/participants/${instanceId}?groupJid=${group.group_jid}`, {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': instanceApiKey
+                },
+                timeout: 3000 // Reduced timeout for better performance
+              });
+              
+              let liveParticipantCount = 0;
+              let participants = [];
+              
+              if (participantsResponse.ok) {
+                const participantsData = await participantsResponse.json();
+                participants = participantsData.participants || [];
+                liveParticipantCount = participants.length;
+              }
+              
+              return {
+                jid: group.group_jid,
+                instanceId: group.instance_id,
+                subject: group.subject, // Authentic Evolution API subject from webhooks
+                description: group.description,
+                participantCount: liveParticipantCount, // Live count from Evolution API
+                recentMessageCount: parseInt(group.recent_message_count) || 0,
+                lastMessageAt: group.last_message_timestamp ? new Date(group.last_message_timestamp).toISOString() : null,
+                isLocked: group.is_locked || false,
+                createdAt: group.creation_timestamp ? new Date(group.creation_timestamp).toISOString() : new Date().toISOString(),
+                source: 'evolution_api_enhanced', // Database + live API data
+                participants: participants.slice(0, 3) // Limited sample for performance
+              };
+            } catch (apiError) {
+              // Fallback to database data only
+              return {
+                jid: group.group_jid,
+                instanceId: group.instance_id,
+                subject: group.subject,
+                description: group.description,
+                participantCount: 0,
+                recentMessageCount: parseInt(group.recent_message_count) || 0,
+                lastMessageAt: group.last_message_timestamp ? new Date(group.last_message_timestamp).toISOString() : null,
+                isLocked: group.is_locked || false,
+                createdAt: group.creation_timestamp ? new Date(group.creation_timestamp).toISOString() : new Date().toISOString(),
+                source: 'database_authentic',
+                participants: []
+              };
             }
-            
-            return {
-              jid: group.group_jid,
-              instanceId: group.instance_id,
-              subject: group.subject, // Authentic Evolution API subject from webhooks
-              description: group.description,
-              participantCount: liveParticipantCount, // Live count from Evolution API
-              recentMessageCount: parseInt(group.recent_message_count) || 0,
-              lastMessageAt: group.last_message_timestamp ? new Date(group.last_message_timestamp).toISOString() : null,
-              isLocked: group.is_locked || false,
-              createdAt: group.creation_timestamp ? new Date(group.creation_timestamp).toISOString() : new Date().toISOString(),
-              source: 'evolution_api_enhanced', // Database + live API data
-              participants: participants.slice(0, 5) // Sample of participants for preview
-            };
-          } catch (apiError) {
-            console.warn(`API error for group ${group.group_jid}:`, apiError.message);
-            
-            // Fallback to database participant count
-            return {
-              jid: group.group_jid,
-              instanceId: group.instance_id,
-              subject: group.subject,
-              description: group.description,
-              participantCount: 0,
-              recentMessageCount: parseInt(group.recent_message_count) || 0,
-              lastMessageAt: group.last_message_timestamp ? new Date(group.last_message_timestamp).toISOString() : null,
-              isLocked: group.is_locked || false,
-              createdAt: group.creation_timestamp ? new Date(group.creation_timestamp).toISOString() : new Date().toISOString(),
-              source: 'database_authentic',
-              participants: []
-            };
-          }
-        })
-      );
+          })
+        );
+        
+        enhancedGroups.push(...batchResults);
+        
+        // Small delay between batches to avoid overwhelming the API
+        if (i + batchSize < result.rows.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
       
       console.log(`Successfully enhanced ${enhancedGroups.length} groups with Evolution API data`);
       res.json(enhancedGroups);
@@ -822,6 +832,43 @@ export async function registerRoutes(app: Express): Promise<void> {
       console.error('Error fetching groups with Evolution API enhancement:', error);
       res.status(500).json({ 
         error: 'Failed to fetch groups',
+        details: error.message 
+      });
+    }
+  });
+
+  // Force group metadata refresh using the "Forced Update" trigger method
+  app.post('/api/whatsapp/groups/:instanceId/force-metadata/:groupJid', async (req: Request, res: Response) => {
+    try {
+      const { instanceId, groupJid } = req.params;
+      console.log(`🔄 Force metadata refresh requested for group: ${groupJid}`);
+      
+      const { createGroupMetadataFetcher } = await import('./group-metadata-fetcher');
+      const instanceApiKey = process.env.EVOLUTION_API_KEY;
+      
+      const fetcher = createGroupMetadataFetcher(instanceId, instanceApiKey);
+      const result = await fetcher.populateGroupInfo(groupJid);
+      
+      if (result.success) {
+        res.json({
+          success: true,
+          method: result.method,
+          message: result.method === 'forced_update_trigger' 
+            ? 'Forced update trigger sent - waiting for webhook to populate metadata'
+            : 'Group metadata retrieved directly',
+          data: result.data
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: 'Failed to populate group metadata using any available method'
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error in force metadata refresh:', error);
+      res.status(500).json({ 
+        error: 'Failed to force group metadata refresh',
         details: error.message 
       });
     }
