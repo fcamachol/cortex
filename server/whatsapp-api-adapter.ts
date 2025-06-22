@@ -446,6 +446,14 @@ export const WebhookApiAdapter = {
      * Handles group update events with authentic subject changes from Evolution API
      */
     async handleGroupUpdate(instanceId: string, data: any): Promise<void> {
+        // --- LOUD DIAGNOSTIC LOG ---
+        console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+        console.log('!!!      GROUP.UPDATE WEBHOOK WAS CALLED      !!!');
+        console.log(`!!!  GROUP ID: ${data?.id || 'UNKNOWN'}              !!!`);
+        console.log(`!!!  SUBJECT: ${data?.subject || 'UNKNOWN'}          !!!`);
+        console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+        // ---------------------------
+        
         try {
             if (!data?.id || !data.id.endsWith('@g.us')) {
                 console.warn(`[${instanceId}] Invalid group.update payload:`, data);
