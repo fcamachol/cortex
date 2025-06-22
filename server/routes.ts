@@ -711,11 +711,32 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/api/whatsapp/groups/:spaceId', async (req: Request, res: Response) => {
     try {
       const { spaceId } = req.params;
+      console.log(`[API] Fetching groups for space: ${spaceId}`);
+      
       const groups = await storage.getGroupsBySpace(spaceId);
+      console.log(`[API] Storage returned ${groups.length} groups`);
+      
       res.json(groups);
     } catch (error) {
       console.error('Error fetching groups:', error);
       res.status(500).json({ error: 'Failed to fetch groups' });
+    }
+  });
+
+  // Direct database test endpoint
+  app.get('/api/test/groups', async (req: Request, res: Response) => {
+    try {
+      const { db } = await import('./db');
+      const { whatsappGroups } = await import('../shared/schema');
+      
+      const result = await db.select().from(whatsappGroups).limit(5);
+      res.json({
+        count: result.length,
+        sample: result
+      });
+    } catch (error) {
+      console.error('Database test error:', error);
+      res.status(500).json({ error: 'Database test failed' });
     }
   });
 

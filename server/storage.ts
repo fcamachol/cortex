@@ -312,22 +312,55 @@ class DatabaseStorage {
             });
     }
 
-    async getGroupsBySpace(spaceId: string): Promise<WhatsappGroup[]> {
-        // For now, return all groups since instance-space mapping needs to be established
-        // This matches the space ID being used in the frontend
-        const groups = await db.select().from(whatsappGroups);
-        
-        // Map the database columns to the expected format
-        return groups.map(group => ({
-            jid: group.groupJid,
-            instanceId: group.instanceId,
-            subject: group.subject || 'Unknown Group',
-            description: group.description,
-            participantCount: 0, // Will be populated from participants table if needed
-            isAnnounce: group.isLocked || false,
-            isLocked: group.isLocked || false,
-            createdAt: group.creationTimestamp?.toISOString() || new Date().toISOString(),
-        }));
+    async getGroupsBySpace(spaceId: string): Promise<any[]> {
+        try {
+            console.log(`[Storage] Fetching groups for space: ${spaceId}`);
+            
+            // Execute direct SQL query to verify database connection
+            const groupsRaw = await db.execute(sql`
+                SELECT group_jid, instance_id, subject, description, is_locked, creation_timestamp 
+                FROM whatsapp.groups 
+                ORDER BY subject
+            `);
+            
+            console.log(`[Storage] Raw query returned ${groupsRaw.length} rows`);
+            
+            if (groupsRaw.length === 0) {
+                console.log('[Storage] No groups found in database');
+                return [];
+            }
+            
+            // Get participant counts
+            const participantCounts = await db.execute(sql`
+                SELECT group_jid, COUNT(*) as count 
+                FROM whatsapp.group_participants 
+                GROUP BY group_jid
+            `);
+            
+            const participantMap = new Map(
+                participantCounts.map((p: any) => [p.group_jid, parseInt(p.count)])
+            );
+            
+            // Map to expected format
+            const mappedGroups = groupsRaw.map((group: any) => ({
+                jid: group.group_jid,
+                instanceId: group.instance_id,
+                subject: group.subject || 'Unknown Group',
+                description: group.description,
+                participantCount: participantMap.get(group.group_jid) || 0,
+                isAnnounce: false,
+                isLocked: group.is_locked || false,
+                createdAt: group.creation_timestamp ? new Date(group.creation_timestamp).toISOString() : new Date().toISOString(),
+            }));
+            
+            console.log(`[Storage] Returning ${mappedGroups.length} mapped groups`);
+            console.log(`[Storage] Sample group:`, mappedGroups[0]);
+            
+            return mappedGroups;
+        } catch (error) {
+            console.error('[Storage] Error fetching groups:', error);
+            return [];
+        }
     }
 
     /**
