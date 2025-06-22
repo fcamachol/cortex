@@ -506,8 +506,8 @@ export const WebhookApiAdapter = {
                 throw new Error('Evolution API not configured. Please check EVOLUTION_API_KEY and EVOLUTION_API_URL environment variables.');
             }
 
-            // Fetch all groups using proper API client
-            const response = await fetch(`${process.env.EVOLUTION_API_URL}/group/fetchAllGroups/${instanceId}`, {
+            // Fetch all groups using the correct endpoint
+            const response = await fetch(`${process.env.EVOLUTION_API_URL}/group/findAll/${instanceId}`, {
                 method: 'GET',
                 headers: {
                     'apikey': process.env.EVOLUTION_API_KEY!,
@@ -517,6 +517,7 @@ export const WebhookApiAdapter = {
 
             if (!response.ok) {
                 const errorText = await response.text();
+                console.log(`❌ Evolution API Error Response:`, errorText);
                 throw new Error(`Evolution API request failed: ${response.status} ${response.statusText} - ${errorText}`);
             }
 
