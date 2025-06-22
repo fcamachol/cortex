@@ -143,6 +143,12 @@ export interface IStorage {
   getWhatsappGroupParticipants(userId: string, instanceId: string, groupJid: string): Promise<WhatsappGroupParticipant[]>;
   deleteWhatsappGroupParticipant(userId: string, instanceId: string, groupJid: string, participantJid: string): Promise<void>;
   clearWhatsappGroupParticipants(userId: string, instanceId: string, groupJid: string): Promise<void>;
+  upsertGroupParticipant(participant: InsertWhatsappGroupParticipant): Promise<WhatsappGroupParticipant>;
+  removeGroupParticipant(groupJid: string, participantJid: string, instanceId: string): Promise<void>;
+  updateGroupParticipantRole(groupJid: string, participantJid: string, instanceId: string, isAdmin: boolean): Promise<void>;
+  
+  // WhatsApp call logs
+  upsertCallLog(callLog: InsertWhatsappCallLog): Promise<WhatsappCallLog>;
 
   // Calendar integration
   getCalendarAccount(userId: string): Promise<CalendarAccount | undefined>;
@@ -1198,6 +1204,61 @@ export class DatabaseStorage implements IStorage {
         eq(whatsappGroupParticipants.instanceId, instanceId),
         eq(whatsappGroupParticipants.groupJid, groupJid)
       ));
+  }
+
+  async upsertGroupParticipant(participant: InsertWhatsappGroupParticipant): Promise<WhatsappGroupParticipant> {
+    const [upsertedParticipant] = await db
+      .insert(whatsappGroupParticipants)
+      .values(participant)
+      .onConflictDoUpdate({
+        target: [whatsappGroupParticipants.groupJid, whatsappGroupParticipants.participantJid, whatsappGroupParticipants.instanceId],
+        set: {
+          isAdmin: participant.isAdmin,
+          isSuperAdmin: participant.isSuperAdmin
+        }
+      })
+      .returning();
+    return upsertedParticipant;
+  }
+
+  async removeGroupParticipant(groupJid: string, participantJid: string, instanceId: string): Promise<void> {
+    await db
+      .delete(whatsappGroupParticipants)
+      .where(and(
+        eq(whatsappGroupParticipants.groupJid, groupJid),
+        eq(whatsappGroupParticipants.participantJid, participantJid),
+        eq(whatsappGroupParticipants.instanceId, instanceId)
+      ));
+  }
+
+  async updateGroupParticipantRole(groupJid: string, participantJid: string, instanceId: string, isAdmin: boolean): Promise<void> {
+    await db
+      .update(whatsappGroupParticipants)
+      .set({ 
+        isAdmin: isAdmin,
+        isSuperAdmin: false // Reset super admin when changing role
+      })
+      .where(and(
+        eq(whatsappGroupParticipants.groupJid, groupJid),
+        eq(whatsappGroupParticipants.participantJid, participantJid),
+        eq(whatsappGroupParticipants.instanceId, instanceId)
+      ));
+  }
+
+  async upsertCallLog(callLog: InsertWhatsappCallLog): Promise<WhatsappCallLog> {
+    const [upsertedCallLog] = await db
+      .insert(whatsappCallLogs)
+      .values(callLog)
+      .onConflictDoUpdate({
+        target: [whatsappCallLogs.callLogId, whatsappCallLogs.instanceId],
+        set: {
+          outcome: callLog.outcome,
+          durationSeconds: callLog.durationSeconds,
+          updatedAt: new Date()
+        }
+      })
+      .returning();
+    return upsertedCallLog;
   }
 
   // Legacy compatibility methods

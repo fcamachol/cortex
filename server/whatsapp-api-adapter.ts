@@ -44,6 +44,12 @@ export const WebhookApiAdapter = {
             case 'groups.update':
                  await this.handleGroupsUpsert(instanceId, data);
                  break;
+            case 'group.participants.update': // NEW: Handle participant changes
+                 await this.handleGroupParticipantsUpdate(instanceId, data);
+                 break;
+            case 'call':
+                await this.handleCall(instanceId, data);
+                break;
             default:
                 console.log(`- Unhandled event type in adapter: ${eventType}`);
         }
@@ -53,76 +59,15 @@ export const WebhookApiAdapter = {
      * Handles new messages with a robust, sequential process to prevent race conditions.
      */
     async handleMessageUpsert(instanceId: string, data: any, sender?: string): Promise<void> {
-        // Handle webhook payload structure based on your mapping
-        let messages = [];
-        
-        // Check for direct message data structure from Evolution API
-        if (data.key && data.messageType) {
-            // Single message format - the data object itself contains the message
-            messages = [data];
-        } else if (data.messages && Array.isArray(data.messages)) {
-            // Old format with messages array
-            messages = data.messages;
-        } else {
-            console.warn(`[${instanceId}] No valid message structure found, skipping processing`);
-            return;
-        }
-
+        const messages = Array.isArray(data.messages) ? data.messages : [data];
         if (!messages[0]?.key) {
-            console.warn(`[${instanceId}] Message missing key field, skipping processing`);
+            console.warn(`[${instanceId}] Invalid messages.upsert payload:`, data);
             return;
-        }
-
-        console.log(`📨 [${instanceId}] Processing ${messages.length} message(s), type: ${messages[0].messageType}`);
-        
-        // Debug reaction messages
-        if (messages[0].messageType === 'reactionMessage') {
-            console.log(`🎭 [${instanceId}] Reaction message details:`, JSON.stringify(messages[0].message, null, 2));
         }
 
         for (const rawMessage of messages) {
             try {
-                // Handle reaction messages specially
-                if (rawMessage.messageType === 'reactionMessage' && rawMessage.message?.reactionMessage) {
-                    const reactionData = {
-                        messageId: rawMessage.message.reactionMessage.key?.id,
-                        instanceId: instanceId,
-                        reactorJid: rawMessage.key.participant || rawMessage.key.remoteJid,
-                        reactionEmoji: rawMessage.message.reactionMessage.text,
-                        timestamp: new Date(rawMessage.messageTimestamp * 1000),
-                        fromMe: rawMessage.key.fromMe || false
-                    };
-                    
-                    console.log(`🎭 [${instanceId}] Processing reaction: ${reactionData.reactionEmoji} on message ${reactionData.messageId}`);
-                    
-                    // Create contact if needed for reaction sender
-                    const senderContactData = {
-                        jid: reactionData.reactorJid,
-                        instanceId: instanceId,
-                        pushName: rawMessage.pushName || null,
-                        verifiedName: null,
-                        profilePictureUrl: null,
-                        isBusiness: false,
-                        isMe: reactionData.fromMe,
-                        isBlocked: false,
-                        firstSeenAt: new Date(),
-                        lastUpdatedAt: new Date()
-                    };
-                    
-                    try {
-                        await storage.upsertWhatsappContact(senderContactData);
-                    } catch (error) {
-                        console.error(`❌ [${instanceId}] Error creating contact for reaction:`, error);
-                    }
-                    
-                    // Process reaction through action service
-                    ActionService.processReaction(reactionData);
-                    return; // Skip regular message processing for reactions
-                }
-
-                // Regular message processing
                 const cleanMessage = await this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
-                console.log(`🔍 [${instanceId}] Mapped message data:`, JSON.stringify(cleanMessage, null, 2));
                 if (!cleanMessage) continue;
 
                 await this.ensureDependenciesForMessage(cleanMessage, rawMessage);
@@ -143,15 +88,14 @@ export const WebhookApiAdapter = {
      * Handles message status updates (sent, delivered, read).
      */
     async handleMessageUpdate(instanceId: string, data: any): Promise<void> {
-        console.log('📝 Translating message update...');
         if (!data || !Array.isArray(data.updates)) return;
         for (const update of data.updates) {
              const messageId = update.key?.id;
              const status = this.mapMessageStatus(update.status);
              if(messageId && status) {
                  await storage.createWhatsappMessageUpdate({
-                     message_id: messageId,
-                     instance_id: instanceId,
+                     messageId: messageId,
+                     instanceId: instanceId,
                      status: status,
                      timestamp: new Date()
                  });
@@ -168,74 +112,26 @@ export const WebhookApiAdapter = {
         if (!contacts || contacts.length === 0) return;
 
         for (const rawContact of contacts) {
-            try {
-                const cleanContact = await this.mapApiPayloadToWhatsappContact(rawContact, instanceId);
-                if (cleanContact && cleanContact.jid) {
-                    await storage.upsertWhatsappContact(cleanContact);
-                    console.log(`✅ [${instanceId}] Contact upserted: ${cleanContact.jid}`);
-                } else {
-                    console.warn(`⚠️ [${instanceId}] Skipping contact with missing JID:`, rawContact);
-                }
-            } catch (error) {
-                console.error(`❌ [${instanceId}] Error processing contact:`, error);
+            const cleanContact = await this.mapApiPayloadToWhatsappContact(rawContact, instanceId);
+            if (cleanContact) {
+                await storage.upsertWhatsappContact(cleanContact);
+                console.log(`✅ [${instanceId}] Contact upserted: ${cleanContact.jid}`);
             }
         }
     },
 
     /**
-     * Handles chat creation and updates with robust payload parsing.
+     * Handles chat creation and updates.
      */
     async handleChatsUpsert(instanceId: string, data: any): Promise<void> {
-        // Robustly find the array of chats from inconsistent API payloads
-        let chats: any[] = [];
-        if (Array.isArray(data)) {
-            chats = data;
-        } else if (data && Array.isArray(data.chats)) {
-            chats = data.chats;
-        } else if (data && (data.id || data.remoteJid)) {
-            // Handle cases where a single chat object is sent directly
-            chats = [data];
-        }
-
-        if (chats.length === 0) {
-            console.warn(`[${instanceId}] No valid chats found in chats.upsert/update payload.`);
-            return;
-        }
+        const chats = Array.isArray(data.chats) ? data.chats : Array.isArray(data) ? data : [data];
+        if (!chats || chats.length === 0) return;
         
         for (const rawChat of chats) {
-            try {
-                const cleanChat = this.mapApiPayloadToWhatsappChat(rawChat, instanceId);
-                if (cleanChat && cleanChat.chatId) {
-                    const newChat = await storage.upsertWhatsappChat(cleanChat);
-                    console.log(`✅ [${instanceId}] Chat upserted: ${cleanChat.chatId}`);
-                    
-                    // Proactively create group placeholder if this is a group chat
-                    if (newChat.type === 'group') {
-                        try {
-                            // Get group information from multiple sources
-                            const groupInfo = await this.getGroupInfo(instanceId, newChat.chatId);
-                            
-                            const groupData = {
-                                groupJid: newChat.chatId,
-                                instanceId: newChat.instanceId,
-                                subject: groupInfo?.subject || 'New Group',
-                                description: groupInfo?.desc || null,
-                                ownerJid: groupInfo?.owner || null,
-                                creationTimestamp: groupInfo?.creation ? new Date(groupInfo.creation) : new Date(),
-                                isLocked: groupInfo?.locked || false
-                            };
-                            
-                            await storage.upsertWhatsappGroup(groupData);
-                            console.log(`✅ [${instanceId}] Auto-created group with subject: ${groupData.subject}`);
-                        } catch (groupError) {
-                            console.error(`❌ [${instanceId}] Error creating group placeholder:`, groupError);
-                        }
-                    }
-                } else {
-                    console.warn(`⚠️ [${instanceId}] Skipping chat with missing or invalid ID:`, rawChat);
-                }
-            } catch (error) {
-                console.error(`❌ [${instanceId}] Error processing chat:`, error);
+            const cleanChat = this.mapApiPayloadToWhatsappChat(rawChat, instanceId);
+            if (cleanChat) {
+                await storage.upsertWhatsappChat(cleanChat);
+                console.log(`✅ [${instanceId}] Chat upserted: ${cleanChat.chatId}`);
             }
         }
     },
@@ -253,111 +149,107 @@ export const WebhookApiAdapter = {
             }
         }
     },
-
+    
     /**
-     * Guarantees that the contact and chat related to a message exist in the DB.
+     * NEW: Handles changes in group participants (add, remove, promote, demote).
      */
-    async ensureDependenciesForMessage(cleanMessage: WhatsappMessages, rawMessage: any): Promise<void> {
-        // Create contact for message sender using proper field structure
-        const senderContactData = {
-            jid: cleanMessage.senderJid,
-            instanceId: cleanMessage.instanceId,
-            pushName: rawMessage.pushName || null,
-            verifiedName: null,
-            profilePictureUrl: null,
-            isBusiness: false,
-            isMe: cleanMessage.fromMe,
-            isBlocked: false,
-            firstSeenAt: new Date(),
-            lastUpdatedAt: new Date()
-        };
-        
-        try {
-            await storage.upsertWhatsappContact(senderContactData);
-            console.log(`✅ [${cleanMessage.instanceId}] Auto-created contact: ${cleanMessage.senderJid}`);
-        } catch (error) {
-            console.error(`❌ [${cleanMessage.instanceId}] Error creating contact:`, error);
+    async handleGroupParticipantsUpdate(instanceId: string, data: any): Promise<void> {
+        if (!data?.id || !data.participants || !Array.isArray(data.participants) || !data.action) {
+            console.warn(`[${instanceId}] Invalid group.participants.update payload:`, data);
+            return;
         }
 
-        // Create chat if it doesn't exist
-        if (cleanMessage.chatId) {
-            const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chatId }, cleanMessage.instanceId);
-            if (chatData && chatData.chatId) {
-                try {
-                    const newChat = await storage.upsertWhatsappChat(chatData);
-                    console.log(`✅ [${cleanMessage.instanceId}] Auto-created chat: ${cleanMessage.chatId}`);
-                    
-                    // Proactively create group placeholder if this is a group chat
-                    if (newChat.type === 'group') {
-                        try {
-                            // Get group information from multiple sources
-                            const groupInfo = await this.getGroupInfo(cleanMessage.instanceId, newChat.chatId, rawMessage);
-                            
-                            const groupData = {
-                                groupJid: newChat.chatId,
-                                instanceId: newChat.instanceId,
-                                subject: groupInfo?.subject || 'New Group',
-                                description: groupInfo?.desc || null,
-                                ownerJid: groupInfo?.owner || null,
-                                creationTimestamp: groupInfo?.creation ? new Date(groupInfo.creation) : new Date(),
-                                isLocked: groupInfo?.locked || false
-                            };
-                            
-                            await storage.upsertWhatsappGroup(groupData);
-                            console.log(`✅ [${cleanMessage.instanceId}] Auto-created group with subject: ${groupData.subject}`);
-                        } catch (groupError) {
-                            console.error(`❌ [${cleanMessage.instanceId}] Error creating group placeholder:`, groupError);
-                        }
-                    }
-                } catch (error) {
-                    console.error(`❌ [${cleanMessage.instanceId}] Error creating chat:`, error);
+        const { id: groupJid, participants, action } = data;
+        console.log(`👥 [${instanceId}] Group participants update for ${groupJid}: ${action}`);
+
+        for (const participantJid of participants) {
+            try {
+                if (action === 'add') {
+                    await storage.upsertGroupParticipant({
+                        groupJid: groupJid,
+                        participantJid: participantJid,
+                        instanceId: instanceId,
+                        isAdmin: false, // Default to non-admin
+                        isSuperAdmin: false
+                    });
+                } else if (action === 'remove') {
+                    await storage.removeGroupParticipant(groupJid, participantJid, instanceId);
+                } else if (action === 'promote') {
+                    await storage.updateGroupParticipantRole(groupJid, participantJid, instanceId, true);
+                } else if (action === 'demote') {
+                    await storage.updateGroupParticipantRole(groupJid, participantJid, instanceId, false);
                 }
+            } catch (error) {
+                console.error(`❌ Error processing participant ${participantJid} for action ${action}:`, error);
             }
         }
     },
     
+    /**
+     * Handles incoming call events.
+     */
+    async handleCall(instanceId: string, data: any[]): Promise<void> {
+        if (!Array.isArray(data)) return;
+        for (const rawCall of data) {
+            const cleanCallLog = this.mapApiPayloadToWhatsappCallLog(rawCall, instanceId);
+            if (cleanCallLog) {
+                await storage.upsertCallLog(cleanCallLog);
+                console.log(`📞 [${instanceId}] Call log stored: ${cleanCallLog.callLogId}`);
+            }
+        }
+    },
 
+    /**
+     * Guarantees that the contact, chat, AND group (if applicable) records exist
+     * before a message is inserted. This prevents all foreign key violations.
+     */
+    async ensureDependenciesForMessage(cleanMessage: WhatsappMessages, rawMessage: any): Promise<void> {
+        const senderContact = await this.mapApiPayloadToWhatsappContact({
+            id: cleanMessage.senderJid,
+            pushName: rawMessage.pushName
+        }, cleanMessage.instanceId);
+        if (senderContact) await storage.upsertWhatsappContact(senderContact);
+
+        const isGroup = cleanMessage.chatId.endsWith('@g.us');
+        
+        const chatContact = await this.mapApiPayloadToWhatsappContact({ id: cleanMessage.chatId }, cleanMessage.instanceId);
+        if (chatContact) await storage.upsertWhatsappContact(chatContact);
+
+        const chatData = this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chatId, name: rawMessage.pushName }, cleanMessage.instanceId);
+        if (chatData) await storage.upsertWhatsappChat(chatData);
+
+        if (isGroup) {
+            const groupData = {
+                groupJid: cleanMessage.chatId,
+                instanceId: cleanMessage.instanceId,
+                subject: rawMessage.pushName || 'Group',
+                ownerJid: null,
+                description: null,
+                creationTimestamp: null,
+                isLocked: false,
+            };
+            await storage.upsertWhatsappGroup(groupData);
+        }
+    },
 
     // --- Data Mapping Functions ---
 
-    async mapApiPayloadToWhatsappMessage(rawMessage: any, instanceId: string): Promise<Omit<WhatsappMessages, 'created_at'> | null> {
-        console.log(`🔍 [${instanceId}] Raw message structure:`, JSON.stringify(rawMessage, null, 2));
-        if (!rawMessage.key?.id || !rawMessage.key?.remoteJid) {
-            console.warn(`Missing required fields - id: ${rawMessage.key?.id}, remoteJid: ${rawMessage.key?.remoteJid}`);
-            return null;
-        }
+    async mapApiPayloadToWhatsappMessage(rawMessage: any, instanceId: string): Promise<Omit<WhatsappMessages, 'createdAt'> | null> {
+        if (!rawMessage.key?.id || !rawMessage.key?.remoteJid) return null;
         const timestamp = rawMessage.messageTimestamp;
 
-        const getMessageType = (type?: string): WhatsappMessages['message_type'] => {
-            // Direct message type mappings
+        const getMessageType = (type?: string): WhatsappMessages['messageType'] => {
+            const validTypes: WhatsappMessages['messageType'][] = ['text', 'image', 'video', 'audio', 'document', 'sticker', 'location', 'contact_card', 'contact_card_multi', 'order', 'revoked', 'unsupported', 'reaction', 'call_log', 'edited_message'];
             if (type === 'conversation') return 'text';
-            if (type === 'reactionMessage') return 'reaction';
-            if (type === 'audioMessage') return 'audio';
-            if (type === 'imageMessage') return 'image';
-            if (type === 'videoMessage') return 'video';
-            if (type === 'documentMessage') return 'document';
-            if (type === 'stickerMessage') return 'sticker';
-            if (type === 'locationMessage') return 'location';
-            if (type === 'contactMessage') return 'contact_card';
-            
+            if (type && validTypes.includes(type as any)) return type as WhatsappMessages['messageType'];
             return 'unsupported';
-        };
-
-        // Determine the correct sender JID
-        const getSenderJid = (): string => {
-            // For group messages, participant field contains the actual sender
-            if (rawMessage.key.participant) {
-                return rawMessage.key.participant;
-            }
-            // For direct messages, use remoteJid
-            return rawMessage.key.remoteJid;
         };
 
         return {
             messageId: rawMessage.key.id,
             instanceId: instanceId,
             chatId: rawMessage.key.remoteJid,
-            senderJid: getSenderJid(),
+            senderJid: rawMessage.key.participant || rawMessage.key.remoteJid,
             fromMe: rawMessage.key.fromMe || false,
             messageType: getMessageType(rawMessage.messageType),
             content: this.extractMessageContent(rawMessage),
@@ -375,12 +267,9 @@ export const WebhookApiAdapter = {
         };
     },
 
-    async mapApiPayloadToWhatsappContact(rawContact: any, instanceId: string): Promise<Omit<WhatsappContacts, 'first_seen_at' | 'last_updated_at'> | null> {
+    async mapApiPayloadToWhatsappContact(rawContact: any, instanceId: string): Promise<Omit<WhatsappContacts, 'firstSeenAt' | 'lastUpdatedAt'> | null> {
         const jid = rawContact.id || rawContact.remoteJid;
-        if (!jid) {
-            console.warn(`⚠️ [${instanceId}] Contact missing JID - id: ${rawContact.id}, remoteJid: ${rawContact.remoteJid}`);
-            return null;
-        }
+        if (!jid) return null;
 
         const instance = await storage.getInstanceById(instanceId);
         
@@ -393,14 +282,11 @@ export const WebhookApiAdapter = {
             isBusiness: rawContact.isBusiness || false,
             isMe: instance?.ownerJid === jid,
             isBlocked: rawContact.isBlocked || false,
-            firstSeenAt: new Date(),
-            lastUpdatedAt: new Date()
         };
     },
     
-    mapApiPayloadToWhatsappChat(rawChat: any, instanceId: string): Omit<WhatsappChats, 'created_at' | 'updated_at'> | null {
+    mapApiPayloadToWhatsappChat(rawChat: any, instanceId: string): Omit<WhatsappChats, 'createdAt' | 'updatedAt'> | null {
         const chatId = rawChat.id || rawChat.remoteJid;
-        // Add guard against empty or null chatIds
         if (!chatId || typeof chatId !== 'string' || chatId.trim() === '') {
             return null;
         }
@@ -418,7 +304,7 @@ export const WebhookApiAdapter = {
         };
     },
 
-    mapApiPayloadToWhatsappGroup(rawGroup: any, instanceId: string): any | null {
+    mapApiPayloadToWhatsappGroup(rawGroup: any, instanceId: string): Omit<WhatsappGroups, 'updatedAt'> | null {
         if (!rawGroup.id) return null;
         return {
             groupJid: rawGroup.id,
@@ -426,13 +312,36 @@ export const WebhookApiAdapter = {
             subject: rawGroup.subject,
             ownerJid: rawGroup.owner,
             description: rawGroup.desc,
-            creationTimestamp: rawGroup.creation ? new Date(rawGroup.creation * 1000) : new Date(),
-            isLocked: rawGroup.locked || false,
+            creationTimestamp: rawGroup.creation ? new Date(rawGroup.creation * 1000) : undefined,
+            isLocked: rawGroup.announce || false,
         };
     },
     
-    mapMessageStatus(apiStatus: string): WhatsappMessageUpdates['status'] | null {
-        const statusMap: { [key: string]: WhatsappMessageUpdates['status'] } = {
+    mapApiPayloadToWhatsappCallLog(rawCall: any, instanceId: string): Omit<WhatsappCallLogs, 'createdAt' | 'updatedAt'> | null {
+        if (!rawCall.id) return null;
+
+        const mapOutcome = (status: string): WhatsappCallLogs['outcome'] => {
+            if (status === 'accept') return 'answered';
+            if (status === 'reject' || status === 'decline') return 'declined';
+            if (status === 'miss' || status === 'timeout') return 'missed';
+            return 'missed';
+        }
+
+        return {
+            callLogId: rawCall.id,
+            instanceId: instanceId,
+            chatId: rawCall.chatId,
+            fromJid: rawCall.from,
+            fromMe: rawCall.fromMe || false,
+            startTimestamp: new Date(rawCall.date),
+            isVideoCall: rawCall.isVideo || false,
+            durationSeconds: rawCall.duration,
+            outcome: mapOutcome(rawCall.status),
+        };
+    },
+    
+    mapMessageStatus(apiStatus: string): any | null {
+        const statusMap: { [key: string]: string } = {
             'ERROR': 'error',
             'PENDING': 'pending',
             'SERVER_ACK': 'sent',
@@ -446,21 +355,6 @@ export const WebhookApiAdapter = {
     extractMessageContent(message: any): string {
         const msg = message.message;
         if (!msg) return '';
-        
-        // Handle reaction messages
-        if (msg.reactionMessage) {
-            return `[Reaction: ${msg.reactionMessage.text}]`;
-        }
-        
-        // Handle media messages with specific content
-        if (msg.audioMessage) return '[Audio]';
-        if (msg.imageMessage) return msg.imageMessage.caption || '[Image]';
-        if (msg.videoMessage) return msg.videoMessage.caption || '[Video]';
-        if (msg.documentMessage) return msg.documentMessage.title || '[Document]';
-        if (msg.stickerMessage) return '[Sticker]';
-        if (msg.locationMessage) return '[Location]';
-        if (msg.contactMessage) return '[Contact]';
-        
-        return msg.conversation || msg.extendedTextMessage?.text || '[Media]';
+        return msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.videoMessage?.caption || '';
     }
 };
