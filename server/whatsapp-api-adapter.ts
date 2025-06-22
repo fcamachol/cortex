@@ -492,167 +492,82 @@ export const WebhookApiAdapter = {
     },
 
     /**
-     * Fetch actual group information from Evolution API using individual group metadata calls
+     * Fetch all groups from Evolution API using the correct endpoint
      */
     async syncAllGroupsFromApi(instanceId: string): Promise<{ success: boolean; count: number; error?: string }> {
         try {
-            console.log(`🔄 [${instanceId}] Starting real group sync from Evolution API...`);
+            console.log(`🔄 [${instanceId}] Fetching all groups from Evolution API...`);
             
-            // Get all existing groups from database
-            const existingGroups = await storage.getWhatsappGroups(instanceId);
-            console.log(`📋 Found ${existingGroups.length} groups in database to sync`);
-
-            let updatedCount = 0;
-            let processedCount = 0;
-            let errorCount = 0;
-
-            for (const group of existingGroups) {
-                try {
-                    processedCount++;
-                    
-                    // Try multiple Evolution API endpoint patterns to fetch group metadata
-                    const groupInfo = await this.fetchGroupInfoFromApi(instanceId, group.groupJid);
-                    
-                    if (groupInfo && groupInfo.subject) {
-                        // Update group with real API data
-                        const updatedGroupData = {
-                            groupJid: group.groupJid,
-                            instanceId: instanceId,
-                            subject: groupInfo.subject,
-                            ownerJid: groupInfo.owner || group.ownerJid,
-                            description: groupInfo.desc || group.description,
-                            creationTimestamp: groupInfo.creation ? new Date(groupInfo.creation * 1000) : group.creationTimestamp,
-                            isLocked: groupInfo.announce !== undefined ? groupInfo.announce : group.isLocked,
-                        };
-
-                        await storage.upsertWhatsappGroup(updatedGroupData);
-                        
-                        // Also update the contact record
-                        const contactData = {
-                            jid: group.groupJid,
-                            instanceId: instanceId,
-                            pushName: groupInfo.subject,
-                            verifiedName: null,
-                            profilePictureUrl: null,
-                            isBlocked: false,
-                            isMyContact: false,
-                            isUser: false,
-                            isBusiness: false,
-                        };
-                        await storage.upsertWhatsappContact(contactData);
-                        
-                        console.log(`✅ Updated group from API: ${group.groupJid} -> "${groupInfo.subject}"`);
-                        updatedCount++;
-                    } else {
-                        console.log(`⚠️ No API data available for group: ${group.groupJid}`);
-                        errorCount++;
-                    }
-                    
-                } catch (groupError) {
-                    console.error(`❌ Error syncing group ${group.groupJid}:`, groupError.message);
-                    errorCount++;
-                }
-            }
-
-            console.log(`✅ [${instanceId}] Real group sync complete: ${updatedCount} updated, ${errorCount} errors, ${processedCount} total processed`);
-            return { 
-                success: true, 
-                count: updatedCount,
-                details: { updated: updatedCount, errors: errorCount, total: processedCount }
-            };
-
-        } catch (error) {
-            console.error(`❌ [${instanceId}] Error during real group sync:`, error);
-            return { success: false, count: 0, error: error.message };
-        }
-    },
-
-    /**
-     * Fetch group information from Evolution API using multiple endpoint attempts
-     */
-    async fetchGroupInfoFromApi(instanceId: string, groupJid: string): Promise<any | null> {
-        const endpoints = [
-            // Try different Evolution API endpoint patterns
-            {
-                url: `${process.env.EVOLUTION_API_URL}/group/metadata/${instanceId}`,
-                method: 'POST',
-                body: { groupJid }
-            },
-            {
-                url: `${process.env.EVOLUTION_API_URL}/group/info/${instanceId}`,
-                method: 'POST', 
-                body: { groupJid }
-            },
-            {
-                url: `${process.env.EVOLUTION_API_URL}/group/fetch/${instanceId}`,
-                method: 'POST',
-                body: { groupJid }
-            },
-            {
-                url: `${process.env.EVOLUTION_API_URL}/group/findGroup/${instanceId}`,
-                method: 'POST',
-                body: { groupJid }
-            }
-        ];
-
-        for (const endpoint of endpoints) {
-            try {
-                const response = await fetch(endpoint.url, {
-                    method: endpoint.method,
-                    headers: {
-                        'apikey': process.env.EVOLUTION_API_KEY!,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(endpoint.body)
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log(`✅ Found group data via ${endpoint.url.split('/').slice(-2).join('/')}: ${data.subject}`);
-                    return data;
-                }
-            } catch (error) {
-                // Continue to next endpoint
-                continue;
-            }
-        }
-
-        // If no API endpoints work, try using WhatsApp Web scraping method
-        return await this.fetchGroupInfoViaWebScraping(instanceId, groupJid);
-    },
-
-    /**
-     * Alternative method to fetch group info via WhatsApp Web automation
-     */
-    async fetchGroupInfoViaWebScraping(instanceId: string, groupJid: string): Promise<any | null> {
-        try {
-            // Use Evolution API's WhatsApp Web automation to get group info
-            const response = await fetch(`${process.env.EVOLUTION_API_URL}/chat/whatsappNumbers/${instanceId}`, {
-                method: 'POST',
+            // Try the correct Evolution API endpoint pattern
+            const response = await fetch(`${process.env.EVOLUTION_API_URL}/group/findAll/${instanceId}`, {
+                method: 'GET',
                 headers: {
                     'apikey': process.env.EVOLUTION_API_KEY!,
                     'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    numbers: [groupJid]
-                })
+                }
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                const groupData = data.find((item: any) => item.jid === groupJid);
-                if (groupData && groupData.name) {
-                    return {
-                        subject: groupData.name,
-                        owner: groupData.owner,
-                        desc: groupData.description
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error(`❌ Evolution API error:`, errorData);
+                throw new Error(`Evolution API request failed: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
+            }
+
+            const apiGroups = await response.json();
+            console.log(`📋 Found ${apiGroups.length} groups from Evolution API`);
+
+            let updatedCount = 0;
+            let processedCount = 0;
+
+            for (const apiGroup of apiGroups) {
+                try {
+                    processedCount++;
+                    
+                    // Update group with real API data
+                    const updatedGroupData = {
+                        groupJid: apiGroup.id,
+                        instanceId: instanceId,
+                        subject: apiGroup.subject,
+                        ownerJid: apiGroup.owner || null,
+                        description: apiGroup.desc || null,
+                        creationTimestamp: apiGroup.creation ? new Date(apiGroup.creation * 1000) : new Date(),
+                        isLocked: apiGroup.announce !== undefined ? apiGroup.announce : false,
                     };
+
+                    await storage.upsertWhatsappGroup(updatedGroupData);
+                    
+                    // Also update the contact record
+                    const contactData = {
+                        jid: apiGroup.id,
+                        instanceId: instanceId,
+                        pushName: apiGroup.subject,
+                        verifiedName: null,
+                        profilePictureUrl: null,
+                        isBlocked: false,
+                        isMyContact: false,
+                        isUser: false,
+                        isBusiness: false,
+                    };
+                    await storage.upsertWhatsappContact(contactData);
+                    
+                    console.log(`✅ Updated group from API: ${apiGroup.id} -> "${apiGroup.subject}"`);
+                    updatedCount++;
+                    
+                } catch (groupError) {
+                    console.error(`❌ Error updating group ${apiGroup.id}:`, groupError.message);
                 }
             }
-        } catch (error) {
-            console.log(`⚠️ Web scraping method failed for ${groupJid}: ${error.message}`);
-        }
 
-        return null;
+            console.log(`✅ [${instanceId}] Real group sync complete: ${updatedCount} updated from ${processedCount} API groups`);
+            return { 
+                success: true, 
+                count: updatedCount,
+                details: { updated: updatedCount, total: processedCount }
+            };
+
+        } catch (error) {
+            console.error(`❌ [${instanceId}] Error during Evolution API group sync:`, error);
+            return { success: false, count: 0, error: error.message };
+        }
     }
 };
