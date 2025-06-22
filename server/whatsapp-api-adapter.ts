@@ -318,10 +318,8 @@ export const WebhookApiAdapter = {
      */
     async handleGroupSubjectFromChat(groupJid: string, rawChat: any, instanceId: string): Promise<void> {
         try {
-            // Log the complete chat.update payload to examine available group name data
-            console.log(`🔍 [${instanceId}] Examining chat.update payload for group ${groupJid}:`);
-            console.log(`📋 Raw chat data:`, JSON.stringify(rawChat, null, 2));
-            console.log(`📋 Available fields:`, Object.keys(rawChat));
+            // Real Evolution API chat.update events typically only contain remoteJid and instanceId
+            // Group name data is not included - we fetch it from Evolution API instead
             
             // Check if this is definitively a group using the isGroup flag
             if (rawChat.isGroup === true && rawChat.name) {
