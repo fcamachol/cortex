@@ -200,60 +200,75 @@ export const WebhookApiAdapter = {
 
     /**
      * Processes group subject updates from contacts.upsert webhook events
+     * Only updates if we have authentic group subject data, not individual contact names
      */
     async handleGroupSubjectFromContact(groupJid: string, rawContact: any, instanceId: string): Promise<void> {
         try {
-            // Extract subject from contact fields that might contain group names
+            const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
+            
+            // If group already has an authentic subject and this contact update doesn't have 
+            // explicit group subject data, don't overwrite with contact display names
+            if (existingGroup && existingGroup.subject && existingGroup.subject !== 'Group') {
+                // Only update if we have explicit subject field, not pushName/name which could be contact names
+                if (rawContact.subject && rawContact.subject !== 'Group Chat' && rawContact.subject.trim() !== '') {
+                    if (existingGroup.subject !== rawContact.subject) {
+                        const groupData = {
+                            groupJid: groupJid,
+                            instanceId: instanceId,
+                            subject: rawContact.subject,
+                            ownerJid: rawContact.owner || existingGroup.ownerJid,
+                            description: rawContact.desc || existingGroup.description,
+                            creationTimestamp: rawContact.creation ? new Date(rawContact.creation * 1000) : existingGroup.creationTimestamp,
+                            isLocked: rawContact.restrict || existingGroup.isLocked,
+                        };
+                        
+                        await storage.upsertWhatsappGroup(groupData);
+                        console.log(`✅ [${instanceId}] Group subject updated from explicit contact subject: ${groupJid} -> "${rawContact.subject}"`);
+                    }
+                } else {
+                    console.log(`📝 [${instanceId}] Preserving existing group subject "${existingGroup.subject}" for ${groupJid}, ignoring contact display name`);
+                }
+                return;
+            }
+
+            // For new groups or groups with placeholder subjects, try to extract authentic subject
             let groupSubject = null;
             
             // Priority order for extracting group subject from contact data
             if (rawContact.subject && rawContact.subject !== 'Group Chat' && rawContact.subject.trim() !== '') {
                 groupSubject = rawContact.subject;
-                console.log(`📝 [${instanceId}] Found subject field in contact: "${groupSubject}"`);
-            } else if (rawContact.name && rawContact.name !== 'Group Chat' && rawContact.name.trim() !== '') {
+                console.log(`📝 [${instanceId}] Found explicit subject field in contact: "${groupSubject}"`);
+            } else if (rawContact.name && rawContact.name !== 'Group Chat' && rawContact.name.trim() !== '' && !existingGroup) {
+                // Only use name field if no existing group (could be authentic group name)
                 groupSubject = rawContact.name;
-                console.log(`📝 [${instanceId}] Found name field in contact: "${groupSubject}"`);
-            } else if (rawContact.pushName && rawContact.pushName !== 'Group Chat' && rawContact.pushName.trim() !== '') {
-                groupSubject = rawContact.pushName;
-                console.log(`📝 [${instanceId}] Found pushName field in contact: "${groupSubject}"`);
-            } else if (rawContact.verifiedName && rawContact.verifiedName !== 'Group Chat' && rawContact.verifiedName.trim() !== '') {
-                groupSubject = rawContact.verifiedName;
-                console.log(`📝 [${instanceId}] Found verifiedName field in contact: "${groupSubject}"`);
+                console.log(`📝 [${instanceId}] Found name field in contact for new group: "${groupSubject}"`);
             } else {
-                // No subject found in this contact update
-                console.log(`📝 [${instanceId}] No subject fields found in contact update for ${groupJid}`);
+                console.log(`📝 [${instanceId}] No reliable group subject found in contact update for ${groupJid}`);
                 return;
             }
 
             if (groupSubject) {
-                // Check if this is a new subject or update needed
-                const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
-                if (!existingGroup || existingGroup.subject !== groupSubject) {
-                    // Update group record with authentic subject from contact webhook
-                    const groupData = {
-                        groupJid: groupJid,
-                        instanceId: instanceId,
-                        subject: groupSubject,
-                        ownerJid: rawContact.owner || null,
-                        description: rawContact.desc || null,
-                        creationTimestamp: rawContact.creation ? new Date(rawContact.creation * 1000) : null,
-                        isLocked: rawContact.restrict || false,
+                const groupData = {
+                    groupJid: groupJid,
+                    instanceId: instanceId,
+                    subject: groupSubject,
+                    ownerJid: rawContact.owner || null,
+                    description: rawContact.desc || null,
+                    creationTimestamp: rawContact.creation ? new Date(rawContact.creation * 1000) : null,
+                    isLocked: rawContact.restrict || false,
+                };
+                
+                await storage.upsertWhatsappGroup(groupData);
+                console.log(`✅ [${instanceId}] Group subject set from contact webhook: ${groupJid} -> "${groupSubject}"`);
+                
+                // Update chat record name to match group subject
+                const existingChat = await storage.getWhatsappChat(groupJid, instanceId);
+                if (existingChat) {
+                    const updatedChat = {
+                        ...existingChat,
+                        name: groupSubject
                     };
-                    
-                    await storage.upsertWhatsappGroup(groupData);
-                    console.log(`✅ [${instanceId}] Group subject updated from contact webhook: ${groupJid} -> "${groupSubject}"`);
-                    
-                    // Update chat record name to match group subject
-                    const existingChat = await storage.getWhatsappChat(groupJid, instanceId);
-                    if (existingChat) {
-                        const updatedChat = {
-                            ...existingChat,
-                            name: groupSubject
-                        };
-                        await storage.upsertWhatsappChat(updatedChat);
-                    }
-                } else {
-                    console.log(`📝 [${instanceId}] Group ${groupJid} subject unchanged via contact: "${groupSubject}"`);
+                    await storage.upsertWhatsappChat(updatedChat);
                 }
             }
         } catch (error) {
