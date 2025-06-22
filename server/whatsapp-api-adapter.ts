@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { storage } from './storage'; // Your database access layer
 import { SseManager } from './sse-manager'; // Your real-time notification manager
 import { ActionService } from './action-service'; // Your business logic engine
+import { getEvolutionApi } from './evolution-api'; // Evolution API client
 import {
     type WhatsappMessages,
     type WhatsappContacts,
@@ -206,20 +207,9 @@ export const WebhookApiAdapter = {
                 const chatContact = await this.mapApiPayloadToWhatsappContact({ id: cleanChat.chatId }, instanceId);
                 if (chatContact) await storage.upsertWhatsappContact(chatContact);
 
-                // If it's a group, ensure the group record exists
+                // If it's a group, fetch authentic subject from Evolution API
                 if (cleanChat.type === 'group') {
-                    const groupData = {
-                        groupJid: cleanChat.chatId,
-                        instanceId: instanceId,
-                        // Always use placeholder for groups created via chat events
-                        // Actual group subjects should come from dedicated group.upsert events
-                        subject: 'New Group',
-                        ownerJid: null,
-                        description: null,
-                        creationTimestamp: null,
-                        isLocked: false,
-                    };
-                    await storage.upsertWhatsappGroup(groupData);
+                    await this.ensureGroupWithRealSubject(cleanChat.chatId, instanceId);
                 }
 
                 // Now it's safe to save the chat
@@ -251,6 +241,77 @@ export const WebhookApiAdapter = {
                 console.log(`✅ [${instanceId}] Group upserted with authentic subject: ${cleanGroup.subject}`);
             }
         }
+    },
+
+    /**
+     * Ensures a group has its authentic subject name from Evolution API
+     */
+    async ensureGroupWithRealSubject(groupJid: string, instanceId: string): Promise<void> {
+        try {
+            const evolutionApi = getEvolutionApi();
+            
+            // Get instance credentials for API calls
+            const instance = await storage.getWhatsappInstance(instanceId);
+            if (!instance?.apiKey) {
+                console.warn(`No API key found for instance ${instanceId}, using placeholder group name`);
+                await this.createGroupWithPlaceholder(groupJid, instanceId);
+                return;
+            }
+
+            // Fetch authentic group metadata from Evolution API
+            try {
+                const metadata = await evolutionApi.fetchGroupMetadata(instanceId, instance.apiKey, groupJid);
+                const realSubject = metadata?.subject || metadata?.name || 'Unknown Group';
+                
+                // Update group record with authentic subject
+                const groupData = {
+                    groupJid: groupJid,
+                    instanceId: instanceId,
+                    subject: realSubject,
+                    ownerJid: metadata?.owner || null,
+                    description: metadata?.desc || null,
+                    creationTimestamp: metadata?.creation ? new Date(metadata.creation * 1000) : null,
+                    isLocked: metadata?.restrict || false,
+                };
+                await storage.upsertWhatsappGroup(groupData);
+
+                // Update chat record with authentic name
+                const existingChat = await storage.getWhatsappChat(groupJid, instanceId);
+                if (existingChat) {
+                    const updatedChat = {
+                        ...existingChat,
+                        name: realSubject
+                    };
+                    await storage.upsertWhatsappChat(updatedChat);
+                }
+
+                console.log(`✅ [${instanceId}] Group ${groupJid} updated with authentic subject: ${realSubject}`);
+                
+            } catch (apiError) {
+                console.warn(`Failed to fetch group metadata for ${groupJid}:`, apiError.message);
+                await this.createGroupWithPlaceholder(groupJid, instanceId);
+            }
+            
+        } catch (error) {
+            console.error(`Error ensuring group with real subject:`, error);
+            await this.createGroupWithPlaceholder(groupJid, instanceId);
+        }
+    },
+
+    /**
+     * Creates group with placeholder when authentic data is unavailable
+     */
+    async createGroupWithPlaceholder(groupJid: string, instanceId: string): Promise<void> {
+        const groupData = {
+            groupJid: groupJid,
+            instanceId: instanceId,
+            subject: 'Group',
+            ownerJid: null,
+            description: null,
+            creationTimestamp: null,
+            isLocked: false,
+        };
+        await storage.upsertWhatsappGroup(groupData);
     },
     
     async handleGroupParticipantsUpdate(instanceId: string, data: any): Promise<void> {
@@ -312,17 +373,8 @@ export const WebhookApiAdapter = {
         if (chatData) await storage.upsertWhatsappChat(chatData);
 
         if (isGroup) {
-            // ** FIX: Use a generic name for the placeholder, not the sender's pushName **
-            const groupData = {
-                groupJid: cleanMessage.chatId,
-                instanceId: cleanMessage.instanceId,
-                subject: 'New Group', // A safe placeholder
-                ownerJid: null,
-                description: null,
-                creationTimestamp: null,
-                isLocked: false,
-            };
-            await storage.upsertWhatsappGroup(groupData);
+            // For groups, fetch authentic subject from Evolution API
+            await this.ensureGroupWithRealSubject(cleanMessage.chatId, cleanMessage.instanceId);
         }
     },
 
@@ -464,10 +516,22 @@ export const WebhookApiAdapter = {
             return null;
         }
         
+        // Use authentic group name when available, fallback to contact name or JID
+        const isGroup = chatId.endsWith('@g.us');
+        let chatName = rawChat.name || rawChat.subject || rawChat.pushName;
+        
+        // For groups, prefer the subject field over other name fields
+        if (isGroup) {
+            chatName = rawChat.subject || rawChat.name || 'Group';
+        } else {
+            chatName = rawChat.name || rawChat.pushName || chatId.split('@')[0];
+        }
+        
         return {
             chatId: chatId,
             instanceId: instanceId,
-            type: chatId.endsWith('@g.us') ? 'group' : 'individual',
+            name: chatName,
+            type: isGroup ? 'group' : 'individual',
             unreadCount: rawChat.unreadCount || 0,
             isArchived: rawChat.archived || false,
             isPinned: rawChat.pinned ? true : false,

@@ -149,6 +149,43 @@ export class EvolutionApi {
         // CORRECTED: The documented endpoint for fetching all groups.
         return this.makeRequest(`/group/findAll/${instanceName}`, 'GET', null, instanceApiKey);
     }
+
+    async fetchGroupMetadata(instanceName: string, instanceApiKey: string, groupJid: string): Promise<any> {
+        // Fetch detailed group metadata including authentic subject name
+        return this.makeRequest(`/group/metadata/${instanceName}`, 'POST', { 
+            groupJid: groupJid 
+        }, instanceApiKey);
+    }
+
+    async refreshGroupsSubjects(instanceName: string, instanceApiKey: string): Promise<any[]> {
+        // Fetch all groups and update their authentic subjects
+        try {
+            const groups = await this.fetchAllGroups(instanceName, instanceApiKey);
+            const enrichedGroups = [];
+            
+            for (const group of groups) {
+                try {
+                    const metadata = await this.fetchGroupMetadata(instanceName, instanceApiKey, group.id);
+                    enrichedGroups.push({
+                        ...group,
+                        subject: metadata.subject || group.subject || 'Unknown Group',
+                        metadata: metadata
+                    });
+                } catch (error) {
+                    console.warn(`Failed to fetch metadata for group ${group.id}:`, error.message);
+                    enrichedGroups.push({
+                        ...group,
+                        subject: group.subject || 'Unknown Group'
+                    });
+                }
+            }
+            
+            return enrichedGroups;
+        } catch (error) {
+            console.error('Failed to refresh group subjects:', error);
+            return [];
+        }
+    }
     
     async fetchGroupInfo(instanceName: string, instanceApiKey: string, groupId: string): Promise<any> {
         // CORRECTED: The documented endpoint for fetching a single group's info.
