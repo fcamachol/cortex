@@ -60,8 +60,33 @@ export const WebhookApiAdapter = {
             case 'call':
                 await this.handleCall(instanceId, data);
                 break;
+            case 'send.message':
+                await this.handleSendMessage(instanceId, data);
+                break;
             default:
                 console.log(`- Unhandled event type in adapter: ${eventType}`);
+        }
+    },
+
+    /**
+     * Handles outgoing messages sent via Evolution API to store them and trigger SSE notifications.
+     */
+    async handleSendMessage(instanceId: string, data: any): Promise<void> {
+        try {
+            // Map the sent message data to our internal format
+            const cleanMessage = await this.mapSentMessageToWhatsappMessage(data, instanceId);
+            if (!cleanMessage) return;
+
+            await this.ensureDependenciesForMessage(cleanMessage, data);
+            
+            const storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
+            console.log(`✅ [${instanceId}] Sent message stored: ${storedMessage.messageId}`);
+            
+            SseManager.notifyClientsOfNewMessage(storedMessage);
+            ActionService.processNewMessage(storedMessage);
+
+        } catch (error) {
+            console.error(`❌ Error processing sent message for ${data.key?.id}:`, error);
         }
     },
 
@@ -329,6 +354,32 @@ export const WebhookApiAdapter = {
             reactionEmoji: reactionMsg.text || '',
             fromMe: rawReaction.key.fromMe || false,
             timestamp: validTimestamp
+        };
+    },
+
+    async mapSentMessageToWhatsappMessage(sentData: any, instanceId: string): Promise<Omit<WhatsappMessages, 'createdAt'> | null> {
+        if (!sentData.key?.id || !sentData.key?.remoteJid) return null;
+        
+        const timestamp = sentData.messageTimestamp;
+        const messageContent = sentData.message?.conversation || sentData.message?.extendedTextMessage?.text || '';
+
+        return {
+            messageId: sentData.key.id,
+            instanceId: instanceId,
+            chatId: sentData.key.remoteJid,
+            senderJid: sentData.key.remoteJid, // For sent messages, sender is the chat itself
+            fromMe: true, // Always true for sent messages
+            messageType: 'text', // Most sent messages are text
+            content: messageContent,
+            timestamp: timestamp && typeof timestamp === 'number' ? new Date(timestamp * 1000) : new Date(),
+            quotedMessageId: null,
+            isForwarded: false,
+            forwardingScore: 0,
+            isStarred: false,
+            isEdited: false,
+            lastEditedAt: undefined,
+            sourcePlatform: sentData.source || 'evolution_api',
+            rawApiPayload: sentData,
         };
     },
     

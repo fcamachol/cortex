@@ -111,7 +111,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
         const data = JSON.parse(event.data);
         
         if (data.type === 'new_message') {
-          const newMessage = data.message;
+          const newMessage = data.payload;
           
           // Only process messages for the current conversation
           if (newMessage.chatId === conversationId && newMessage.instanceId === instanceId) {
