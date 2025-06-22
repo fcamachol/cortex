@@ -226,7 +226,7 @@ export const WebhookApiAdapter = {
             const cleanGroup = this.mapApiPayloadToWhatsappGroup(rawGroup, instanceId);
             if (cleanGroup) {
                 await storage.upsertWhatsappGroup(cleanGroup);
-                console.log(`✅ [${instanceId}] Group upserted: ${cleanGroup.group_jid}`);
+                console.log(`✅ [${instanceId}] Group upserted: ${cleanGroup.groupJid}`);
             }
         }
     },
@@ -372,16 +372,16 @@ export const WebhookApiAdapter = {
         };
     },
 
-    mapApiPayloadToWhatsappGroup(rawGroup: any, instanceId: string): Omit<WhatsappGroups, 'updated_at'> | null {
+    mapApiPayloadToWhatsappGroup(rawGroup: any, instanceId: string): any | null {
         if (!rawGroup.id) return null;
         return {
-            group_jid: rawGroup.id,
-            instance_id: instanceId,
+            groupJid: rawGroup.id,
+            instanceId: instanceId,
             subject: rawGroup.subject,
-            owner_jid: rawGroup.owner,
+            ownerJid: rawGroup.owner,
             description: rawGroup.desc,
-            creation_timestamp: rawGroup.creation ? new Date(rawGroup.creation * 1000) : undefined,
-            is_locked: rawGroup.announce || false,
+            creationTimestamp: rawGroup.creation ? new Date(rawGroup.creation * 1000) : new Date(),
+            isLocked: rawGroup.locked || false,
         };
     },
     
