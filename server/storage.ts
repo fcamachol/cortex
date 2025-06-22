@@ -326,6 +326,23 @@ class DatabaseStorage {
         return results.rows;
     }
 
+    async updateTask(taskId: number, updates: any): Promise<any> {
+        const result = await db.execute(sql`
+            UPDATE crm.tasks 
+            SET 
+                status = COALESCE(${updates.status}, status),
+                priority = COALESCE(${updates.priority}, priority),
+                title = COALESCE(${updates.title}, title),
+                description = COALESCE(${updates.description}, description),
+                due_date = COALESCE(${updates.due_date}, due_date),
+                updated_at = NOW()
+            WHERE task_id = ${taskId}
+            RETURNING *
+        `);
+        
+        return result.rows[0];
+    }
+
     async getProjects(): Promise<any[]> {
         return [];
     }

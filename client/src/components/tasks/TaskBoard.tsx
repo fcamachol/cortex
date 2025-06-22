@@ -43,8 +43,7 @@ interface TaskBoardProps {
 
 const statusColumns = [
   { id: 'to_do', title: 'To Do', color: 'bg-slate-100' },
-  { id: 'pending', title: 'Pending', color: 'bg-gray-100' },
-  { id: 'in_progress', title: 'In Progress', color: 'bg-blue-100' },
+  { id: 'in_progress', title: 'In Progress', color: 'bg-blue-100', includeStatuses: ['in_progress', 'pending'] },
   { id: 'review', title: 'Review', color: 'bg-yellow-100' },
   { id: 'done', title: 'Done', color: 'bg-green-100' }
 ];
@@ -69,8 +68,12 @@ export function TaskBoard({
     setExpandedTasks(newExpanded);
   };
 
-  const getTasksByStatus = (status: string) => {
-    return tasks.filter(task => task.status === status);
+  const getTasksByStatus = (columnId: string) => {
+    const column = statusColumns.find(col => col.id === columnId);
+    if (column && column.includeStatuses) {
+      return tasks.filter(task => column.includeStatuses!.includes(task.status));
+    }
+    return tasks.filter(task => task.status === columnId);
   };
 
   const handleDragEnd = (result: any) => {

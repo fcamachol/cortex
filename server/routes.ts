@@ -491,6 +491,19 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.patch('/api/crm/tasks/:taskId', async (req: Request, res: Response) => {
+    try {
+      const { taskId } = req.params;
+      const updates = req.body;
+      
+      const updatedTask = await storage.updateTask(parseInt(taskId), updates);
+      res.json(updatedTask);
+    } catch (error) {
+      console.error('Error updating task:', error);
+      res.status(500).json({ error: 'Failed to update task' });
+    }
+  });
+
   app.get('/api/crm/projects', async (req: Request, res: Response) => {
     try {
       const projects = await storage.getProjects();
