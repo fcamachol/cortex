@@ -517,11 +517,15 @@ export const WebhookApiAdapter = {
             // Don't skip API calls based on existing database data
             console.log(`🔄 [${instanceId}] Preparing to fetch latest group data for ${groupJid} from Evolution API`);
 
-            // Evolution API metadata endpoint is unreliable, so we'll create a basic group
-            // and let webhook events update it with authentic data
-            console.log(`📝 [${instanceId}] Creating placeholder for group ${groupJid}, awaiting webhook data`);
-            await this.createGroupWithPlaceholder(groupJid, instanceId);
-            return;
+            // Use the new proactive group metadata fetcher
+            const { GroupMetadataFetcher } = await import('./group-metadata-fetcher');
+            const success = await GroupMetadataFetcher.updateGroupFromEvolutionApi(groupJid, instanceId);
+            
+            if (!success) {
+                // Fallback: create placeholder if all API attempts fail
+                console.log(`📝 [${instanceId}] Creating placeholder for group ${groupJid}, will retry with API data later`);
+                await this.createGroupWithPlaceholder(groupJid, instanceId);
+            }
 
             // Legacy API fallback code (disabled due to 404 errors)
             /*
@@ -703,8 +707,9 @@ export const WebhookApiAdapter = {
         if (chatData) await storage.upsertWhatsappChat(chatData);
 
         if (isGroup) {
-            // For groups, fetch authentic subject from Evolution API
-            await this.ensureGroupWithRealSubject(cleanMessage.chatId, cleanMessage.instanceId);
+            // For groups, proactively update with latest Evolution API data
+            const { GroupMetadataFetcher } = await import('./group-metadata-fetcher');
+            GroupMetadataFetcher.handleGroupActivity(cleanMessage.chatId, cleanMessage.instanceId);
         }
     },
 

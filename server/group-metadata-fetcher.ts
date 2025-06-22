@@ -1,178 +1,134 @@
 import { getEvolutionApi } from './evolution-api';
-
-interface GroupMetadataFetcher {
-  instanceId: string;
-  instanceApiKey: string;
-  instanceNumber?: string;
-}
+import { storage } from './storage';
 
 export class GroupMetadataFetcher {
-  private instanceId: string;
-  private instanceApiKey: string;
-  private instanceNumber?: string;
+    /**
+     * Proactively fetch and update group metadata from Evolution API
+     */
+    static async updateGroupFromEvolutionApi(groupJid: string, instanceId: string): Promise<boolean> {
+        try {
+            const evolutionApi = getEvolutionApi();
+            const instance = await storage.getWhatsappInstance(instanceId);
+            
+            if (!instance?.apiKey) {
+                console.warn(`No API key found for instance ${instanceId}`);
+                return false;
+            }
 
-  constructor(config: GroupMetadataFetcher) {
-    this.instanceId = config.instanceId;
-    this.instanceApiKey = config.instanceApiKey;
-    this.instanceNumber = config.instanceNumber;
-  }
-
-  /**
-   * Method A: Direct Fetch (try first)
-   * Attempts to get group metadata directly from available endpoints
-   */
-  async directFetch(groupJid: string): Promise<any> {
-    console.log(`🔍 [${this.instanceId}] Attempting direct fetch for group: ${groupJid}`);
-    
-    try {
-      const evolutionApi = getEvolutionApi();
-      
-      // Try participants endpoint (we know this works)
-      const participantsResponse = await evolutionApi.fetchGroupInfo(this.instanceId, this.instanceApiKey, groupJid);
-      
-      if (participantsResponse) {
-        console.log(`✅ [${this.instanceId}] Direct fetch successful for ${groupJid}`);
-        return participantsResponse;
-      }
-    } catch (error) {
-      console.log(`❌ [${this.instanceId}] Direct fetch failed for ${groupJid}: ${error.message}`);
+            // Try multiple Evolution API endpoints to get group information
+            const groupData = await this.fetchGroupFromMultipleEndpoints(instanceId, instance.apiKey, groupJid);
+            
+            if (groupData?.subject && groupData.subject !== 'Group Chat') {
+                const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
+                
+                const updatedGroupData = {
+                    groupJid: groupJid,
+                    instanceId: instanceId,
+                    subject: groupData.subject,
+                    ownerJid: groupData.owner || (existingGroup?.ownerJid) || null,
+                    description: groupData.desc || (existingGroup?.description) || null,
+                    creationTimestamp: groupData.creation ? new Date(groupData.creation * 1000) : (existingGroup?.creationTimestamp) || null,
+                    isLocked: groupData.restrict || (existingGroup?.isLocked) || false,
+                };
+                
+                await storage.upsertWhatsappGroup(updatedGroupData);
+                
+                // Update chat record to match
+                const existingChat = await storage.getWhatsappChat(groupJid, instanceId);
+                if (existingChat) {
+                    const updatedChat = { ...existingChat, name: groupData.subject };
+                    await storage.upsertWhatsappChat(updatedChat);
+                }
+                
+                console.log(`🔄 [${instanceId}] Group updated from Evolution API: ${groupJid} -> "${groupData.subject}"`);
+                
+                // Broadcast real-time update if subject changed
+                if (existingGroup && existingGroup.subject !== groupData.subject) {
+                    const { GroupRealtimeManager } = await import('./group-realtime-manager');
+                    await GroupRealtimeManager.handleSubjectChange(groupJid, instanceId, existingGroup.subject || '', groupData.subject);
+                }
+                
+                return true;
+            }
+            
+            return false;
+        } catch (error) {
+            console.warn(`Failed to update group ${groupJid} from Evolution API:`, error.message);
+            return false;
+        }
     }
-    
-    return null;
-  }
 
-  /**
-   * Method B: Forced Update Trigger
-   * Forces a groups.update webhook by adding an existing member back to the group
-   */
-  async forcedUpdateTrigger(groupJid: string): Promise<boolean> {
-    console.log(`🔄 [${this.instanceId}] Attempting forced update trigger for group: ${groupJid}`);
-    
-    try {
-      const evolutionApi = getEvolutionApi();
-      
-      // First, get the instance's own number if we don't have it
-      if (!this.instanceNumber) {
-        await this.fetchInstanceNumber();
-      }
-      
-      if (!this.instanceNumber) {
-        console.log(`❌ [${this.instanceId}] Cannot perform forced update - no instance number available`);
-        return false;
-      }
-
-      // Try to get current participants first
-      let participantsToAdd = [this.instanceNumber];
-      
-      try {
-        const baseUrl = process.env.EVOLUTION_API_URL;
-        const participantsResponse = await fetch(`${baseUrl}/group/participants/${this.instanceId}?groupJid=${groupJid}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': this.instanceApiKey
-          },
-          timeout: 5000
-        });
+    /**
+     * Try multiple Evolution API endpoints to fetch group information
+     */
+    private static async fetchGroupFromMultipleEndpoints(instanceId: string, apiKey: string, groupJid: string): Promise<any> {
+        const evolutionApi = getEvolutionApi();
         
-        if (participantsResponse.ok) {
-          const participantsData = await participantsResponse.json();
-          const participants = participantsData.participants || [];
-          
-          if (participants.length > 0) {
-            // Use an existing participant instead of instance number
-            participantsToAdd = [participants[0].id];
-            console.log(`📋 [${this.instanceId}] Using existing participant for forced update: ${participants[0].id}`);
-          }
+        // Endpoint 1: Try group participants (known to work)
+        try {
+            const participantsData = await evolutionApi.fetchGroupParticipants(instanceId, apiKey, groupJid);
+            if (participantsData?.subject) {
+                return participantsData;
+            }
+        } catch (error) {
+            console.debug(`Group participants endpoint failed for ${groupJid}:`, error.message);
         }
-      } catch (participantError) {
-        console.log(`⚠️ [${this.instanceId}] Could not fetch participants, using instance number`);
-      }
 
-      // Perform the forced update trigger
-      console.log(`🎯 [${this.instanceId}] Triggering forced update by adding participant: ${participantsToAdd[0]}`);
-      
-      await evolutionApi.addGroupParticipants(this.instanceId, this.instanceApiKey, groupJid, participantsToAdd);
-      
-      console.log(`✅ [${this.instanceId}] Forced update trigger sent for ${groupJid}`);
-      console.log(`📡 [${this.instanceId}] Waiting for groups.update webhook to populate metadata...`);
-      
-      return true;
-      
-    } catch (error) {
-      console.log(`❌ [${this.instanceId}] Forced update trigger failed for ${groupJid}: ${error.message}`);
-      return false;
+        // Endpoint 2: Try chat metadata
+        try {
+            const chatData = await evolutionApi.fetchChatMetadata(instanceId, apiKey, groupJid);
+            if (chatData?.name) {
+                return { subject: chatData.name, ...chatData };
+            }
+        } catch (error) {
+            console.debug(`Chat metadata endpoint failed for ${groupJid}:`, error.message);
+        }
+
+        // Endpoint 3: Try direct group metadata
+        try {
+            const groupData = await evolutionApi.fetchGroupMetadata(instanceId, apiKey, groupJid);
+            if (groupData?.subject) {
+                return groupData;
+            }
+        } catch (error) {
+            console.debug(`Group metadata endpoint failed for ${groupJid}:`, error.message);
+        }
+
+        return null;
     }
-  }
 
-  /**
-   * Fetch the instance's own WhatsApp number
-   */
-  private async fetchInstanceNumber(): Promise<void> {
-    try {
-      const baseUrl = process.env.EVOLUTION_API_URL;
-      const response = await fetch(`${baseUrl}/instance/fetchInstances`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': process.env.EVOLUTION_API_KEY
-        }
-      });
-
-      if (response.ok) {
-        const instances = await response.json();
-        const targetInstance = instances.find((inst: any) => inst.name === this.instanceId);
+    /**
+     * Batch update multiple groups from Evolution API
+     */
+    static async batchUpdateGroups(instanceId: string, groupJids: string[]): Promise<number> {
+        let successCount = 0;
         
-        if (targetInstance && targetInstance.number) {
-          this.instanceNumber = `${targetInstance.number}@s.whatsapp.net`;
-          console.log(`📱 [${this.instanceId}] Instance number found: ${this.instanceNumber}`);
-        } else if (targetInstance && targetInstance.ownerJid) {
-          this.instanceNumber = targetInstance.ownerJid;
-          console.log(`📱 [${this.instanceId}] Instance owner JID found: ${this.instanceNumber}`);
+        for (const groupJid of groupJids) {
+            try {
+                const success = await this.updateGroupFromEvolutionApi(groupJid, instanceId);
+                if (success) {
+                    successCount++;
+                }
+                
+                // Small delay to prevent API rate limiting
+                await new Promise(resolve => setTimeout(resolve, 100));
+            } catch (error) {
+                console.error(`Error updating group ${groupJid}:`, error.message);
+            }
         }
-      }
-    } catch (error) {
-      console.log(`⚠️ [${this.instanceId}] Could not fetch instance number: ${error.message}`);
-    }
-  }
-
-  /**
-   * Main method: Try direct fetch first, then forced update if needed
-   */
-  async populateGroupInfo(groupJid: string): Promise<{ success: boolean; method: string; data?: any }> {
-    console.log(`🚀 [${this.instanceId}] Starting group metadata population for: ${groupJid}`);
-    
-    // Method A: Try direct fetch first
-    const directResult = await this.directFetch(groupJid);
-    if (directResult) {
-      return {
-        success: true,
-        method: 'direct_fetch',
-        data: directResult
-      };
+        
+        console.log(`✅ Successfully updated ${successCount}/${groupJids.length} groups from Evolution API`);
+        return successCount;
     }
 
-    // Method B: Use forced update trigger
-    const forcedResult = await this.forcedUpdateTrigger(groupJid);
-    if (forcedResult) {
-      return {
-        success: true,
-        method: 'forced_update_trigger',
-        data: null // Data will come via webhook
-      };
+    /**
+     * Monitor webhook activity and trigger group updates
+     */
+    static async handleGroupActivity(groupJid: string, instanceId: string): Promise<void> {
+        // When we detect group activity (messages, participant changes, etc),
+        // proactively fetch the latest group information from Evolution API
+        setTimeout(async () => {
+            await this.updateGroupFromEvolutionApi(groupJid, instanceId);
+        }, 1000); // Small delay to let webhook processing complete
     }
-
-    return {
-      success: false,
-      method: 'none',
-      data: null
-    };
-  }
-}
-
-export function createGroupMetadataFetcher(instanceId: string, instanceApiKey: string): GroupMetadataFetcher {
-  return new GroupMetadataFetcher({
-    instanceId,
-    instanceApiKey
-  });
 }
