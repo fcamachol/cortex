@@ -63,10 +63,12 @@ export const WebhookApiAdapter = {
                 await this.handleChatsUpsert(instanceId, data);
                 break;
             case 'groups.upsert':
-            case 'groups.update':
             case 'GROUPS_UPSERT':
-            case 'GROUP_UPDATE':
                  await this.handleGroupsUpsert(instanceId, data);
+                 break;
+            case 'groups.update':
+            case 'GROUP_UPDATE':
+                 await this.handleGroupUpdate(instanceId, data);
                  break;
             case 'group.participants.update':
             case 'GROUP_PARTICIPANTS_UPDATE':
@@ -404,6 +406,57 @@ export const WebhookApiAdapter = {
                 await storage.upsertWhatsappGroup(cleanGroup);
                 console.log(`✅ [${instanceId}] Group upserted with authentic subject: ${cleanGroup.subject}`);
             }
+        }
+    },
+
+    /**
+     * Handles group update events with authentic subject changes from Evolution API
+     */
+    async handleGroupUpdate(instanceId: string, data: any): Promise<void> {
+        try {
+            if (!data?.id || !data.id.endsWith('@g.us')) {
+                console.warn(`[${instanceId}] Invalid group.update payload:`, data);
+                return;
+            }
+
+            const groupJid = data.id;
+            const groupSubject = data.subject;
+
+            if (!groupSubject || groupSubject === 'Group Chat') {
+                console.log(`📝 [${instanceId}] No valid subject in group.update for ${groupJid}`);
+                return;
+            }
+
+            // Update group with authentic subject from Evolution API
+            const groupData = {
+                groupJid: groupJid,
+                instanceId: instanceId,
+                subject: groupSubject,
+                description: data.desc || null,
+                isLocked: data.restrict || false,
+            };
+
+            // Get existing group to preserve other fields
+            const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
+            if (existingGroup) {
+                groupData.ownerJid = existingGroup.ownerJid;
+                groupData.creationTimestamp = existingGroup.creationTimestamp;
+            }
+
+            await storage.upsertWhatsappGroup(groupData);
+            console.log(`✅ [${instanceId}] Group updated with authentic subject from GROUP_UPDATE: ${groupJid} -> "${groupSubject}"`);
+
+            // Update chat record to match group subject
+            const existingChat = await storage.getWhatsappChat(groupJid, instanceId);
+            if (existingChat) {
+                const updatedChatData = this.mapApiPayloadToWhatsappChat({ id: groupJid, name: groupSubject }, instanceId);
+                if (updatedChatData) {
+                    await storage.upsertWhatsappChat(updatedChatData);
+                }
+            }
+
+        } catch (error) {
+            console.error(`❌ [${instanceId}] Error processing group.update:`, error.message);
         }
     },
 
