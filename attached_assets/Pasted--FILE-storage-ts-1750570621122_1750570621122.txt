@@ -1,0 +1,58 @@
+// =============================================================================
+// FILE: storage.ts (Addition)
+// PURPOSE: Adds the missing database function to find automation rules.
+//          This code should be added to your existing DatabaseStorage class.
+// =============================================================================
+
+// This assumes you have a shared `query` function and have imported the necessary
+// Drizzle ORM functions (and, eq) and schema tables (actionsActionRules).
+
+/**
+ * Fetches all active action rules that match a specific trigger type and value.
+ * @param triggerType - The type of trigger (e.g., 'reaction', 'hashtag').
+ * @param triggerValue - The specific value of the trigger (e.g., '✅', '#task').
+ * @param instanceId - The instance where the trigger occurred.
+ * @returns An array of matching action rule records.
+ */
+async function getActionRulesByTrigger(triggerType: string, triggerValue: string, instanceId: string): Promise<any[]> {
+    try {
+        // This query finds all active rules for the given instance that match
+        // the trigger type and have a trigger_conditions JSONB that contains the trigger value.
+        // This is a flexible way to check for a matching emoji or hashtag.
+        const rules = await db.select()
+            .from(actionsActionRules)
+            .where(and(
+                eq(actionsActionRules.is_active, true),
+                eq(actionsActionRules.trigger_type, triggerType as any),
+                // This JSONB query checks if the 'emoji' or 'hashtag' key exists with the correct value.
+                // Note: The specific JSON path `$.emoji` or `$.hashtag` might need adjustment
+                // depending on the exact structure you decide to store in trigger_conditions.
+                // For now, we assume a simple structure like `{"emoji": "✅"}`.
+                sql`trigger_conditions ->> 'emoji' = ${triggerValue} OR trigger_conditions ->> 'hashtag' = ${triggerValue}`
+            ));
+
+        // Further filter by instance if the rule has instance filters
+        return rules.filter(rule => {
+            if (!rule.instance_filters) return true; // Rule applies to all instances
+            const filters = rule.instance_filters as any;
+            if (Array.isArray(filters.include) && filters.include.length > 0) {
+                return filters.include.includes(instanceId);
+            }
+            if (Array.isArray(filters.exclude) && filters.exclude.length > 0) {
+                return !filters.exclude.includes(instanceId);
+            }
+            return true;
+        });
+
+    } catch (error) {
+        console.error('Error fetching action rules by trigger:', error);
+        return [];
+    }
+}
+
+
+// Make sure to export the new function from your main storage object:
+export const storage = {
+    // ... all your other existing storage functions
+    getActionRulesByTrigger,
+};
