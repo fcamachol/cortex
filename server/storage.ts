@@ -284,6 +284,44 @@ class DatabaseStorage {
                 target: [whatsappGroups.groupJid, whatsappGroups.instanceId]
             });
     }
+
+    /**
+     * Fetches all active action rules that match a specific trigger type and value.
+     * @param triggerType - The type of trigger (e.g., 'reaction', 'hashtag').
+     * @param triggerValue - The specific value of the trigger (e.g., '✅', '#task').
+     * @param instanceId - The instance where the trigger occurred.
+     * @returns An array of matching action rule records.
+     */
+    async getActionRulesByTrigger(triggerType: string, triggerValue: string, instanceId: string): Promise<any[]> {
+        try {
+            // Find all active rules for the given instance that match the trigger type
+            const rules = await db.select()
+                .from(actionRules)
+                .where(and(
+                    eq(actionRules.isActive, true),
+                    eq(actionRules.triggerType, triggerType as any),
+                    // Check if the trigger_conditions JSONB contains the trigger value
+                    sql`trigger_conditions ->> 'emoji' = ${triggerValue} OR trigger_conditions ->> 'hashtag' = ${triggerValue}`
+                ));
+
+            // Filter by instance if the rule has instance filters
+            return rules.filter(rule => {
+                if (!rule.instanceFilters) return true; // Rule applies to all instances
+                const filters = rule.instanceFilters as any;
+                if (Array.isArray(filters.include) && filters.include.length > 0) {
+                    return filters.include.includes(instanceId);
+                }
+                if (Array.isArray(filters.exclude) && filters.exclude.length > 0) {
+                    return !filters.exclude.includes(instanceId);
+                }
+                return true;
+            });
+
+        } catch (error) {
+            console.error('Error fetching action rules by trigger:', error);
+            return [];
+        }
+    }
 }
 
 export const storage = new DatabaseStorage();
