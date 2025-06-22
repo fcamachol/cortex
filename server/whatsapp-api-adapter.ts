@@ -66,6 +66,7 @@ export const WebhookApiAdapter = {
                 await this.handleCall(instanceId, data);
                 break;
             case 'send.message':
+            case 'SEND_MESSAGE':
                 await this.handleSendMessage(instanceId, data);
                 break;
             default:
