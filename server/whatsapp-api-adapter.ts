@@ -499,10 +499,14 @@ export const WebhookApiAdapter = {
             console.log(`🔄 [${instanceId}] Starting comprehensive group sync from Evolution API...`);
             
             // Fetch all groups from Evolution API
-            const apiKey = process.env.EVOLUTION_API_KEY || '119FA240-45ED-46A7-AE13-5A1B7C909D7D';
-            const apiUrl = process.env.EVOLUTION_API_URL || 'https://evolution-api-evolution-api.vuswn0.easypanel.host';
+            const apiKey = process.env.EVOLUTION_API_KEY;
+            const apiUrl = process.env.EVOLUTION_API_URL;
             
-            const response = await fetch(`${apiUrl}/group/findAll/${instanceId}`, {
+            if (!apiKey || !apiUrl) {
+                throw new Error('Evolution API credentials not configured. Please set EVOLUTION_API_KEY and EVOLUTION_API_URL.');
+            }
+            
+            const response = await fetch(`${apiUrl}/group/fetchAllGroups/${instanceId}`, {
                 method: 'GET',
                 headers: {
                     'apikey': apiKey,
