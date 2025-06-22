@@ -992,11 +992,10 @@ export const WebhookApiAdapter = {
 
             console.log(`🔍 [${instanceId}] Attempting to fetch groups from Evolution API...`);
 
-            // Try multiple approaches to get group data
+            // Try alternative approaches since fetchAllGroups is unreliable
             const approaches = [
-                { endpoint: `/group/fetchAllGroups/${instanceId}?getParticipants=false`, timeout: 15000 },
-                { endpoint: `/chat/findChats/${instanceId}`, timeout: 10000 },
-                { endpoint: `/instance/fetchInstances`, timeout: 5000 }
+                { endpoint: `/instance/fetchInstances`, timeout: 5000 },
+                { endpoint: `/chat/findChats/${instanceId}`, timeout: 8000 }
             ];
 
             for (const approach of approaches) {
@@ -1061,41 +1060,71 @@ export const WebhookApiAdapter = {
     },
 
     /**
-     * Sync all groups using the new fetchAllGroups endpoint 
+     * Sync groups using database-driven approach and selective API calls
      */
     async syncAllGroupsFromApi(instanceId: string): Promise<{ success: boolean; count: number; error?: string }> {
         try {
-            const result = await this.fetchAllGroupsFromApi(instanceId);
+            console.log(`🔄 [${instanceId}] Starting intelligent group sync...`);
             
-            if (!result.success) {
-                return { success: false, count: 0, error: result.error };
+            // First, get existing groups from database that need authentic subjects
+            const existingGroups = await storage.getWhatsappGroups(instanceId);
+            const groupsNeedingSync = existingGroups.filter(group => 
+                !group.subject || 
+                group.subject === 'Group' || 
+                group.subject === 'New Group' ||
+                group.subject.length < 2
+            );
+
+            console.log(`📊 [${instanceId}] Found ${groupsNeedingSync.length} groups needing sync out of ${existingGroups.length} total`);
+
+            if (groupsNeedingSync.length === 0) {
+                console.log(`✅ [${instanceId}] All groups already have authentic subjects`);
+                return { success: true, count: 0, error: null };
             }
 
+            // Try to fetch a subset of group data using faster endpoints
             let syncedCount = 0;
-            
-            for (const group of result.groups) {
-                try {
-                    // Process each group through the standard webhook handler
-                    const cleanGroup = this.mapApiPayloadToWhatsappGroup(group, instanceId);
-                    if (cleanGroup) {
-                        await storage.upsertWhatsappGroup(cleanGroup);
+            const batchSize = 5; // Process groups in small batches
+
+            for (let i = 0; i < groupsNeedingSync.length; i += batchSize) {
+                const batch = groupsNeedingSync.slice(i, i + batchSize);
+                console.log(`🔄 [${instanceId}] Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(groupsNeedingSync.length/batchSize)}`);
+
+                for (const group of batch) {
+                    try {
+                        // Try to get individual group metadata
+                        const groupInfo = await this.requestGroupMetadata(instanceId, group.groupJid);
                         
-                        // Also ensure contact and chat records exist
-                        const contactData = await this.mapApiPayloadToWhatsappContact({ id: group.id }, instanceId);
-                        if (contactData) await storage.upsertWhatsappContact(contactData);
-                        
-                        const chatData = this.mapApiPayloadToWhatsappChat({ id: group.id, name: group.subject }, instanceId);
-                        if (chatData) await storage.upsertWhatsappChat(chatData);
-                        
-                        syncedCount++;
-                        console.log(`✅ [${instanceId}] Synced group: ${group.subject || group.id}`);
+                        if (groupInfo && groupInfo.subject && groupInfo.subject !== 'Group Chat') {
+                            const updatedGroupData = {
+                                groupJid: group.groupJid,
+                                instanceId: instanceId,
+                                subject: groupInfo.subject,
+                                ownerJid: groupInfo.owner || group.ownerJid,
+                                description: groupInfo.desc || group.description,
+                                creationTimestamp: groupInfo.creation ? new Date(groupInfo.creation * 1000) : group.creationTimestamp,
+                                isLocked: groupInfo.restrict !== undefined ? groupInfo.restrict : group.isLocked,
+                            };
+
+                            await storage.upsertWhatsappGroup(updatedGroupData);
+                            syncedCount++;
+                            console.log(`✅ [${instanceId}] Updated group: ${groupInfo.subject}`);
+                        } else {
+                            // Keep existing placeholder for webhook updates
+                            console.log(`📝 [${instanceId}] Keeping placeholder for ${group.groupJid}, awaiting webhook data`);
+                        }
+                    } catch (error) {
+                        console.log(`⚠️ [${instanceId}] Could not fetch metadata for ${group.groupJid}: ${error.message}`);
                     }
-                } catch (error) {
-                    console.error(`❌ [${instanceId}] Error syncing group ${group.id}:`, error.message);
+                }
+
+                // Small delay between batches to avoid overwhelming the API
+                if (i + batchSize < groupsNeedingSync.length) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 }
             }
 
-            console.log(`🎉 [${instanceId}] Group sync completed: ${syncedCount}/${result.groups.length} groups synced`);
+            console.log(`🎉 [${instanceId}] Group sync completed: ${syncedCount}/${groupsNeedingSync.length} groups updated`);
             return { success: true, count: syncedCount, error: null };
 
         } catch (error) {
