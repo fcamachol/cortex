@@ -58,8 +58,10 @@ export const WebhookApiAdapter = {
                 break;
             case 'chats.upsert':
             case 'chats.update':
+            case 'chats.delete':
             case 'CHATS_UPSERT':
             case 'CHATS_UPDATE':
+            case 'CHATS_DELETE':
                 await this.handleChatsUpsert(instanceId, data);
                 break;
             case 'groups.upsert':
@@ -291,6 +293,13 @@ export const WebhookApiAdapter = {
      * Handles chat creation and updates, with enhanced group subject processing.
      */
     async handleChatsUpsert(instanceId: string, data: any): Promise<void> {
+        // --- LOUD DIAGNOSTIC LOG ---
+        console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+        console.log('!!!       CHATS.UPSERT WEBHOOK WAS CALLED     !!!');
+        console.log(`!!!  DATA TYPE: ${typeof data}                    !!!`);
+        console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+        // ---------------------------
+        
         const chats = Array.isArray(data.chats) ? data.chats : Array.isArray(data) ? data : [data];
         if (!chats || chats.length === 0) return;
         
