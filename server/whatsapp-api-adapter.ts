@@ -206,14 +206,23 @@ export const WebhookApiAdapter = {
             // Extract subject from contact fields that might contain group names
             let groupSubject = null;
             
-            if (rawContact.subject && rawContact.subject !== 'Group Chat') {
+            // Priority order for extracting group subject from contact data
+            if (rawContact.subject && rawContact.subject !== 'Group Chat' && rawContact.subject.trim() !== '') {
                 groupSubject = rawContact.subject;
-            } else if (rawContact.name && rawContact.name !== 'Group Chat') {
+                console.log(`📝 [${instanceId}] Found subject field in contact: "${groupSubject}"`);
+            } else if (rawContact.name && rawContact.name !== 'Group Chat' && rawContact.name.trim() !== '') {
                 groupSubject = rawContact.name;
-            } else if (rawContact.pushName && rawContact.pushName !== 'Group Chat') {
+                console.log(`📝 [${instanceId}] Found name field in contact: "${groupSubject}"`);
+            } else if (rawContact.pushName && rawContact.pushName !== 'Group Chat' && rawContact.pushName.trim() !== '') {
                 groupSubject = rawContact.pushName;
-            } else if (rawContact.verifiedName && rawContact.verifiedName !== 'Group Chat') {
+                console.log(`📝 [${instanceId}] Found pushName field in contact: "${groupSubject}"`);
+            } else if (rawContact.verifiedName && rawContact.verifiedName !== 'Group Chat' && rawContact.verifiedName.trim() !== '') {
                 groupSubject = rawContact.verifiedName;
+                console.log(`📝 [${instanceId}] Found verifiedName field in contact: "${groupSubject}"`);
+            } else {
+                // No subject found in this contact update
+                console.log(`📝 [${instanceId}] No subject fields found in contact update for ${groupJid}`);
+                return;
             }
 
             if (groupSubject) {
@@ -279,54 +288,78 @@ export const WebhookApiAdapter = {
     },
 
     /**
-     * Processes group subject updates from chat.update webhook events
+     * Processes group subject updates from chat.update webhook events using isGroup flag
      */
     async handleGroupSubjectFromChat(groupJid: string, rawChat: any, instanceId: string): Promise<void> {
         try {
-            // Extract subject from various possible fields in chat update
-            let groupSubject = null;
-            
-            if (rawChat.subject && rawChat.subject !== 'Group Chat') {
-                groupSubject = rawChat.subject;
-            } else if (rawChat.name && rawChat.name !== 'Group Chat') {
-                groupSubject = rawChat.name;
-            } else if (rawChat.pushName && rawChat.pushName !== 'Group Chat') {
-                groupSubject = rawChat.pushName;
-            }
-
-            if (groupSubject) {
-                // Always update group subject from chat.update webhook (authoritative source)
-                const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
-                if (!existingGroup || existingGroup.subject !== groupSubject) {
-                    // Update group record with authentic subject from webhook
-                    const groupData = {
-                        groupJid: groupJid,
-                        instanceId: instanceId,
-                        subject: groupSubject,
-                        ownerJid: rawChat.owner || null,
-                        description: rawChat.desc || null,
-                        creationTimestamp: rawChat.creation ? new Date(rawChat.creation * 1000) : null,
-                        isLocked: rawChat.restrict || false,
-                    };
-                    
-                    await storage.upsertWhatsappGroup(groupData);
-                    console.log(`✅ [${instanceId}] Group subject updated from chat webhook: ${groupJid} -> "${groupSubject}"`);
-                    
-                    // Update chat record name to match group subject
-                    const existingChat = await storage.getWhatsappChat(groupJid, instanceId);
-                    if (existingChat) {
-                        const updatedChat = {
-                            ...existingChat,
-                            name: groupSubject
+            // Check if this is definitively a group using the isGroup flag
+            if (rawChat.isGroup === true && rawChat.name) {
+                // For groups, the 'name' property contains the group subject
+                const groupSubject = rawChat.name;
+                
+                if (groupSubject && groupSubject !== 'Group Chat') {
+                    // Always update group subject from chat.update webhook (authoritative source)
+                    const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
+                    if (!existingGroup || existingGroup.subject !== groupSubject) {
+                        // Update group record with authentic subject from webhook
+                        const groupData = {
+                            groupJid: groupJid,
+                            instanceId: instanceId,
+                            subject: groupSubject,
+                            ownerJid: rawChat.owner || null,
+                            description: rawChat.desc || null,
+                            creationTimestamp: rawChat.creation ? new Date(rawChat.creation * 1000) : null,
+                            isLocked: rawChat.restrict || rawChat.isReadOnly || false,
                         };
-                        await storage.upsertWhatsappChat(updatedChat);
+                        
+                        await storage.upsertWhatsappGroup(groupData);
+                        console.log(`✅ [${instanceId}] Group subject updated from chat webhook (isGroup=true): ${groupJid} -> "${groupSubject}"`);
+                        
+                        // Update chat record name to match group subject
+                        const existingChat = await storage.getWhatsappChat(groupJid, instanceId);
+                        if (existingChat) {
+                            const updatedChat = {
+                                ...existingChat,
+                                name: groupSubject
+                            };
+                            await storage.upsertWhatsappChat(updatedChat);
+                        }
+                    } else {
+                        console.log(`📝 [${instanceId}] Group ${groupJid} subject unchanged via chat: "${groupSubject}"`);
+                    }
+                }
+            } else if (groupJid.endsWith('@g.us')) {
+                // Fallback for groups without isGroup flag - check other fields
+                let groupSubject = null;
+                
+                if (rawChat.subject && rawChat.subject !== 'Group Chat') {
+                    groupSubject = rawChat.subject;
+                } else if (rawChat.name && rawChat.name !== 'Group Chat') {
+                    groupSubject = rawChat.name;
+                } else if (rawChat.pushName && rawChat.pushName !== 'Group Chat') {
+                    groupSubject = rawChat.pushName;
+                }
+
+                if (groupSubject) {
+                    const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
+                    if (!existingGroup || existingGroup.subject !== groupSubject) {
+                        const groupData = {
+                            groupJid: groupJid,
+                            instanceId: instanceId,
+                            subject: groupSubject,
+                            ownerJid: rawChat.owner || null,
+                            description: rawChat.desc || null,
+                            creationTimestamp: rawChat.creation ? new Date(rawChat.creation * 1000) : null,
+                            isLocked: rawChat.restrict || false,
+                        };
+                        
+                        await storage.upsertWhatsappGroup(groupData);
+                        console.log(`✅ [${instanceId}] Group subject updated from chat webhook (fallback): ${groupJid} -> "${groupSubject}"`);
                     }
                 } else {
-                    console.log(`📝 [${instanceId}] Group ${groupJid} subject unchanged: "${groupSubject}"`);
+                    // No subject found, ensure group placeholder exists
+                    await this.ensureGroupWithRealSubject(groupJid, instanceId);
                 }
-            } else {
-                // No subject in chat update, ensure group placeholder exists
-                await this.ensureGroupWithRealSubject(groupJid, instanceId);
             }
         } catch (error) {
             console.error(`❌ [${instanceId}] Error processing group subject from chat: ${error.message}`);
