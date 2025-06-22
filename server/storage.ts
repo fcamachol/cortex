@@ -1093,7 +1093,8 @@ export class DatabaseStorage implements IStorage {
       .onConflictDoUpdate({
         target: [whatsappGroups.groupJid, whatsappGroups.instanceId],
         set: {
-          subject: group.subject,
+          // Only update subject if it's not the default placeholder (indicating real group data)
+          subject: group.subject !== 'New Group' ? group.subject : sql`${whatsappGroups.subject}`,
           description: group.description,
           ownerJid: group.ownerJid,
           isLocked: group.isLocked,
