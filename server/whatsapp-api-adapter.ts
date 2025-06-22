@@ -273,14 +273,49 @@ export const WebhookApiAdapter = {
     mapApiPayloadToWhatsappReaction(rawReaction: any, instanceId: string, sender?: string): Omit<WhatsappMessageReactions, 'reactionId'> | null {
         const reactionMsg = rawReaction.message?.reactionMessage;
         if (!reactionMsg?.key?.id) return null;
+        
         const reactorJid = rawReaction.key?.participant || sender || rawReaction.key?.remoteJid;
+        
+        // Comprehensive timestamp validation to prevent RangeError: Invalid time value
+        let validTimestamp = new Date();
+        const timestampMs = reactionMsg.senderTimestampMs;
+        
+        console.log(`🔍 Reaction timestamp debug - raw value: "${timestampMs}", type: ${typeof timestampMs}`);
+        
+        // Only process if it's actually a valid number
+        if (typeof timestampMs === 'number' && 
+            !isNaN(timestampMs) && 
+            isFinite(timestampMs) && 
+            timestampMs > 0 && 
+            timestampMs < Number.MAX_SAFE_INTEGER) {
+            try {
+                const testDate = new Date(timestampMs);
+                // Verify the date is valid and reasonable (not before 2000, not too far in future)
+                const minDate = new Date('2000-01-01').getTime();
+                const maxDate = new Date().getTime() + (365 * 24 * 60 * 60 * 1000); // 1 year from now
+                
+                if (!isNaN(testDate.getTime()) && 
+                    testDate.getTime() >= minDate && 
+                    testDate.getTime() <= maxDate) {
+                    validTimestamp = testDate;
+                    console.log(`✅ Using valid timestamp: ${validTimestamp.toISOString()}`);
+                } else {
+                    console.log(`⚠️ Timestamp out of reasonable range, using current time`);
+                }
+            } catch (error) {
+                console.log(`❌ Error creating date from timestamp, using current time:`, error.message);
+            }
+        } else {
+            console.log(`⚠️ Invalid timestamp value, using current time`);
+        }
+        
         return {
             messageId: reactionMsg.key.id,
             instanceId: instanceId,
             reactorJid: reactorJid,
             reactionEmoji: reactionMsg.text || '',
             fromMe: rawReaction.key.fromMe || false,
-            timestamp: new Date(reactionMsg.senderTimestampMs || Date.now())
+            timestamp: validTimestamp
         };
     },
     

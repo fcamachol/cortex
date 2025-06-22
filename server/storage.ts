@@ -1504,9 +1504,29 @@ export class DatabaseStorage implements IStorage {
     return [];
   }
 
+  async getProjects(): Promise<any[]> {
+    try {
+      // Return empty array for now - can be implemented when projects schema is available
+      return [];
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      return [];
+    }
+  }
+
   async getCrmChecklistItems(): Promise<any[]> {
     // Return empty array for now - can be implemented based on your CRM schema
     return [];
+  }
+
+  async getChecklistItems(): Promise<any[]> {
+    try {
+      // Return empty array for now - can be implemented when checklist schema is available
+      return [];
+    } catch (error) {
+      console.error('Error fetching checklist items:', error);
+      return [];
+    }
   }
 
   async getCalendarTasks(): Promise<any[]> {
