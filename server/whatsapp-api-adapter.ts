@@ -202,50 +202,47 @@ export const WebhookApiAdapter = {
 
     /**
      * Processes group subject updates from contacts.upsert webhook events
-     * Only updates if we have authentic group subject data, not individual contact names
+     * Always prioritizes incoming Evolution API data over existing database values
      */
     async handleGroupSubjectFromContact(groupJid: string, rawContact: any, instanceId: string): Promise<void> {
         try {
             const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
             
-            // If group already has an authentic subject and this contact update doesn't have 
-            // explicit group subject data, don't overwrite with contact display names
-            if (existingGroup && existingGroup.subject && existingGroup.subject !== 'Group') {
-                // Only update if we have explicit subject field, not pushName/name which could be contact names
-                if (rawContact.subject && rawContact.subject !== 'Group Chat' && rawContact.subject.trim() !== '') {
-                    if (existingGroup.subject !== rawContact.subject) {
-                        const groupData = {
-                            groupJid: groupJid,
-                            instanceId: instanceId,
-                            subject: rawContact.subject,
-                            ownerJid: rawContact.owner || existingGroup.ownerJid,
-                            description: rawContact.desc || existingGroup.description,
-                            creationTimestamp: rawContact.creation ? new Date(rawContact.creation * 1000) : existingGroup.creationTimestamp,
-                            isLocked: rawContact.restrict || existingGroup.isLocked,
-                        };
-                        
-                        await storage.upsertWhatsappGroup(groupData);
-                        console.log(`✅ [${instanceId}] Group subject updated from explicit contact subject: ${groupJid} -> "${rawContact.subject}"`);
-                    }
-                } else {
-                    console.log(`📝 [${instanceId}] Preserving existing group subject "${existingGroup.subject}" for ${groupJid}, ignoring contact display name`);
+            // Always update with incoming Evolution API data when available
+            if (rawContact.subject && rawContact.subject !== 'Group Chat' && rawContact.subject.trim() !== '') {
+                const groupData = {
+                    groupJid: groupJid,
+                    instanceId: instanceId,
+                    subject: rawContact.subject,
+                    ownerJid: rawContact.owner || (existingGroup?.ownerJid) || null,
+                    description: rawContact.desc || (existingGroup?.description) || null,
+                    creationTimestamp: rawContact.creation ? new Date(rawContact.creation * 1000) : (existingGroup?.creationTimestamp) || null,
+                    isLocked: rawContact.restrict || (existingGroup?.isLocked) || false,
+                };
+                
+                await storage.upsertWhatsappGroup(groupData);
+                console.log(`🔄 [${instanceId}] Group subject updated from Evolution API: ${groupJid} -> "${rawContact.subject}"`);
+                
+                // Broadcast real-time update if subject changed
+                if (existingGroup && existingGroup.subject !== rawContact.subject) {
+                    const { GroupRealtimeManager } = await import('./group-realtime-manager');
+                    await GroupRealtimeManager.handleSubjectChange(groupJid, instanceId, existingGroup.subject || '', rawContact.subject);
                 }
                 return;
             }
 
-            // For new groups or groups with placeholder subjects, try to extract authentic subject
+            // Process any available group subject from Evolution API
             let groupSubject = null;
             
-            // Priority order for extracting group subject from contact data
+            // Extract group subject from incoming Evolution API data  
             if (rawContact.subject && rawContact.subject !== 'Group Chat' && rawContact.subject.trim() !== '') {
                 groupSubject = rawContact.subject;
                 console.log(`📝 [${instanceId}] Found explicit subject field in contact: "${groupSubject}"`);
-            } else if (rawContact.name && rawContact.name !== 'Group Chat' && rawContact.name.trim() !== '' && !existingGroup) {
-                // Only use name field if no existing group (could be authentic group name)
+            } else if (rawContact.name && rawContact.name !== 'Group Chat' && rawContact.name.trim() !== '') {
                 groupSubject = rawContact.name;
-                console.log(`📝 [${instanceId}] Found name field in contact for new group: "${groupSubject}"`);
+                console.log(`📝 [${instanceId}] Found name field in contact: "${groupSubject}"`);
             } else {
-                console.log(`📝 [${instanceId}] No reliable group subject found in contact update for ${groupJid}`);
+                console.log(`📝 [${instanceId}] No group subject found in contact update for ${groupJid}`);
                 return;
             }
 
@@ -254,14 +251,20 @@ export const WebhookApiAdapter = {
                     groupJid: groupJid,
                     instanceId: instanceId,
                     subject: groupSubject,
-                    ownerJid: rawContact.owner || null,
-                    description: rawContact.desc || null,
-                    creationTimestamp: rawContact.creation ? new Date(rawContact.creation * 1000) : null,
-                    isLocked: rawContact.restrict || false,
+                    ownerJid: rawContact.owner || (existingGroup?.ownerJid) || null,
+                    description: rawContact.desc || (existingGroup?.description) || null,
+                    creationTimestamp: rawContact.creation ? new Date(rawContact.creation * 1000) : (existingGroup?.creationTimestamp) || null,
+                    isLocked: rawContact.restrict || (existingGroup?.isLocked) || false,
                 };
                 
                 await storage.upsertWhatsappGroup(groupData);
-                console.log(`✅ [${instanceId}] Group subject set from contact webhook: ${groupJid} -> "${groupSubject}"`);
+                console.log(`🔄 [${instanceId}] Group updated from Evolution API contact: ${groupJid} -> "${groupSubject}"`);
+                
+                // Broadcast real-time update if subject changed
+                if (existingGroup && existingGroup.subject !== groupSubject) {
+                    const { GroupRealtimeManager } = await import('./group-realtime-manager');
+                    await GroupRealtimeManager.handleSubjectChange(groupJid, instanceId, existingGroup.subject || '', groupSubject);
+                }
                 
                 // Update chat record name to match group subject
                 const existingChat = await storage.getWhatsappChat(groupJid, instanceId);
@@ -317,32 +320,34 @@ export const WebhookApiAdapter = {
                 if (groupSubject && groupSubject !== 'Group Chat') {
                     // Always update group subject from chat.update webhook (authoritative source)
                     const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
-                    if (!existingGroup || existingGroup.subject !== groupSubject) {
-                        // Update group record with authentic subject from webhook
-                        const groupData = {
-                            groupJid: groupJid,
-                            instanceId: instanceId,
-                            subject: groupSubject,
-                            ownerJid: rawChat.owner || null,
-                            description: rawChat.desc || null,
-                            creationTimestamp: rawChat.creation ? new Date(rawChat.creation * 1000) : null,
-                            isLocked: rawChat.restrict || rawChat.isReadOnly || false,
+                    // Always update group record with latest Evolution API data
+                    const groupData = {
+                        groupJid: groupJid,
+                        instanceId: instanceId,
+                        subject: groupSubject,
+                        ownerJid: rawChat.owner || (existingGroup?.ownerJid) || null,
+                        description: rawChat.desc || (existingGroup?.description) || null,
+                        creationTimestamp: rawChat.creation ? new Date(rawChat.creation * 1000) : (existingGroup?.creationTimestamp) || null,
+                        isLocked: rawChat.restrict || rawChat.isReadOnly || (existingGroup?.isLocked) || false,
+                    };
+                    
+                    await storage.upsertWhatsappGroup(groupData);
+                    console.log(`🔄 [${instanceId}] Group updated from Evolution API chat webhook: ${groupJid} -> "${groupSubject}"`);
+                    
+                    // Broadcast real-time update if subject changed
+                    if (existingGroup && existingGroup.subject !== groupSubject) {
+                        const { GroupRealtimeManager } = await import('./group-realtime-manager');
+                        await GroupRealtimeManager.handleSubjectChange(groupJid, instanceId, existingGroup.subject || '', groupSubject);
+                    }
+                    
+                    // Update chat record name to match group subject
+                    const existingChat = await storage.getWhatsappChat(groupJid, instanceId);
+                    if (existingChat) {
+                        const updatedChat = {
+                            ...existingChat,
+                            name: groupSubject
                         };
-                        
-                        await storage.upsertWhatsappGroup(groupData);
-                        console.log(`✅ [${instanceId}] Group subject updated from chat webhook (isGroup=true): ${groupJid} -> "${groupSubject}"`);
-                        
-                        // Update chat record name to match group subject
-                        const existingChat = await storage.getWhatsappChat(groupJid, instanceId);
-                        if (existingChat) {
-                            const updatedChat = {
-                                ...existingChat,
-                                name: groupSubject
-                            };
-                            await storage.upsertWhatsappChat(updatedChat);
-                        }
-                    } else {
-                        console.log(`📝 [${instanceId}] Group ${groupJid} subject unchanged via chat: "${groupSubject}"`);
+                        await storage.upsertWhatsappChat(updatedChat);
                     }
                 }
             } else if (groupJid.endsWith('@g.us')) {
@@ -386,25 +391,33 @@ export const WebhookApiAdapter = {
     },
 
     /**
-     * Handles group creation and updates. This is the only function that should
-     * be trusted to set the group's authentic subject name from Evolution API.
+     * Handles group creation and updates with Evolution API data taking priority
      */
     async handleGroupsUpsert(instanceId: string, data: any[]): Promise<void> {
         if (!Array.isArray(data)) return;
         for (const rawGroup of data) {
+            const groupJid = rawGroup.id;
+            const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
+            
             // Ensure contact record exists for the group
             const chatContact = await this.mapApiPayloadToWhatsappContact({ id: rawGroup.id }, instanceId);
             if(chatContact) await storage.upsertWhatsappContact(chatContact);
             
-            // Ensure chat record exists with authentic group name
+            // Ensure chat record exists with Evolution API group name
             const chatData = this.mapApiPayloadToWhatsappChat({ id: rawGroup.id, name: rawGroup.subject }, instanceId);
             if (chatData) await storage.upsertWhatsappChat(chatData);
 
-            // Store group with authentic subject from Evolution API
+            // Always update group with latest Evolution API data
             const cleanGroup = this.mapApiPayloadToWhatsappGroup(rawGroup, instanceId);
             if (cleanGroup) {
                 await storage.upsertWhatsappGroup(cleanGroup);
-                console.log(`✅ [${instanceId}] Group upserted with authentic subject: ${cleanGroup.subject}`);
+                console.log(`🔄 [${instanceId}] Group updated with Evolution API data: ${groupJid} -> "${cleanGroup.subject}"`);
+                
+                // Broadcast real-time update if subject changed
+                if (existingGroup && existingGroup.subject !== cleanGroup.subject) {
+                    const { GroupRealtimeManager } = await import('./group-realtime-manager');
+                    await GroupRealtimeManager.handleSubjectChange(groupJid, instanceId, existingGroup.subject || '', cleanGroup.subject);
+                }
             }
         }
     },
@@ -500,13 +513,9 @@ export const WebhookApiAdapter = {
                 return;
             }
 
-            // Check if group already has authentic subject from webhook events
-            const existingGroup = await storage.getWhatsappGroup(groupJid, instanceId);
-            if (existingGroup?.subject && existingGroup.subject !== 'Group' && existingGroup.subject !== 'New Group') {
-                // Group already has authentic subject from webhook - no API call needed
-                console.log(`✅ [${instanceId}] Group ${groupJid} already has authentic subject: ${existingGroup.subject}`);
-                return;
-            }
+            // Always allow Evolution API data to update group information
+            // Don't skip API calls based on existing database data
+            console.log(`🔄 [${instanceId}] Preparing to fetch latest group data for ${groupJid} from Evolution API`);
 
             // Evolution API metadata endpoint is unreliable, so we'll create a basic group
             // and let webhook events update it with authentic data
