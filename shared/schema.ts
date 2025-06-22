@@ -992,6 +992,53 @@ export type InsertWhatsappConversation = InsertWhatsappChat;
 export type WhatsappConversation = WhatsappChat;
 
 // =============================================================================
+// CRM SCHEMA - Customer Relationship Management
+// =============================================================================
+
+// Task status and priority enums for CRM
+export const taskStatusEnum = crmSchema.enum("task_status", ["to_do", "in_progress", "done", "cancelled"]);
+export const taskPriorityEnum = crmSchema.enum("task_priority", ["low", "medium", "high", "urgent"]);
+
+// CRM Tasks - Main task management table
+export const crmTasks = crmSchema.table("tasks", {
+  taskId: serial("task_id").primaryKey(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 50 }).default("to_do"),
+  priority: varchar("priority", { length: 50 }).default("medium"),
+  dueDate: timestamp("due_date", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  chatJid: varchar("chat_jid", { length: 100 }),
+  messageId: varchar("message_id", { length: 100 }),
+  senderJid: varchar("sender_jid", { length: 100 }),
+  assignedTo: varchar("assigned_to", { length: 100 }),
+  tags: jsonb("tags"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// CRM Tasks Relations
+export const crmTasksRelations = relations(crmTasks, ({ one }) => ({
+  instance: one(whatsappInstances, {
+    fields: [crmTasks.instanceId],
+    references: [whatsappInstances.instanceId],
+  }),
+}));
+
+// CRM Insert Schemas
+export const insertCrmTaskSchema = createInsertSchema(crmTasks).omit({
+  taskId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// CRM Types
+export type CrmTask = typeof crmTasks.$inferSelect;
+export type InsertCrmTask = z.infer<typeof insertCrmTaskSchema>;
+
+// =============================================================================
 // CALENDAR SCHEMA - External Calendar Integration
 // =============================================================================
 

@@ -290,7 +290,7 @@ class DatabaseStorage {
 
     // Task management methods
     async getTasks(): Promise<any[]> {
-        const results = await db.select().from(tasks);
+        const results = await db.select().from(crmTasks);
         return results;
     }
 
