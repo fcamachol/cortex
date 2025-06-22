@@ -643,9 +643,44 @@ export const WebhookApiAdapter = {
             }
 
             console.log(`🎉 Group name refresh completed for ${enrichedGroups.length} groups`);
+        
+        // After refreshing group names, sync contact records to match
+        await this.syncGroupContactNames(instanceId);
             
         } catch (error) {
             console.error(`Error refreshing group names for ${instanceId}:`, error);
+        }
+    },
+
+    /**
+     * Synchronizes contact names with authentic group subjects
+     */
+    async syncGroupContactNames(instanceId: string): Promise<void> {
+        try {
+            const groups = await storage.getWhatsappGroups(instanceId);
+            let syncedCount = 0;
+            
+            for (const group of groups) {
+                if (group.subject && group.subject !== 'Group') {
+                    const contact = await storage.getWhatsappContact(group.groupJid, instanceId);
+                    
+                    if (contact && contact.pushName !== group.subject) {
+                        const updatedContact = {
+                            ...contact,
+                            pushName: group.subject,
+                            verifiedName: group.subject
+                        };
+                        
+                        await storage.upsertWhatsappContact(updatedContact);
+                        syncedCount++;
+                        console.log(`🔄 Synced contact name for group ${group.groupJid}: "${group.subject}"`);
+                    }
+                }
+            }
+            
+            console.log(`✅ Synchronized ${syncedCount} group contact names with authentic subjects`);
+        } catch (error) {
+            console.error(`Error syncing group contact names:`, error);
         }
     },
     

@@ -910,6 +910,24 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Sync group contact names with authentic subjects
+  app.post('/api/whatsapp/groups/:instanceId/sync-contact-names', async (req: Request, res: Response) => {
+    try {
+      const { instanceId } = req.params;
+      const { WebhookApiAdapter } = await import('./whatsapp-api-adapter.js');
+      
+      await WebhookApiAdapter.syncGroupContactNames(instanceId);
+      
+      res.json({
+        success: true,
+        message: 'Group contact names synchronized with authentic subjects'
+      });
+    } catch (error) {
+      console.error('Group contact name sync error:', error);
+      res.status(500).json({ error: 'Failed to sync group contact names' });
+    }
+  });
+
   // Update group settings
   app.patch('/api/whatsapp/groups/:instanceId/:groupJid', async (req: Request, res: Response) => {
     try {
