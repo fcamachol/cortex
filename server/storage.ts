@@ -215,16 +215,17 @@ class DatabaseStorage {
             .returning();
 
         // Update the chat's lastMessageTimestamp to keep conversations sorted correctly
+        // Only update if this message is newer than the current lastMessageTimestamp
         if (result && message.timestamp) {
-            await db.update(whatsappChats)
-                .set({ 
-                    lastMessageTimestamp: message.timestamp,
-                    updatedAt: new Date()
-                })
-                .where(and(
-                    eq(whatsappChats.chatId, message.chatId),
-                    eq(whatsappChats.instanceId, message.instanceId)
-                ));
+            await db.execute(sql`
+                UPDATE whatsapp.chats 
+                SET 
+                    last_message_timestamp = ${message.timestamp},
+                    updated_at = NOW()
+                WHERE chat_id = ${message.chatId} 
+                AND instance_id = ${message.instanceId}
+                AND (last_message_timestamp IS NULL OR last_message_timestamp < ${message.timestamp})
+            `);
         }
 
         return result;
