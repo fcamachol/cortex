@@ -213,6 +213,20 @@ class DatabaseStorage {
                 }
             })
             .returning();
+
+        // Update the chat's lastMessageTimestamp to keep conversations sorted correctly
+        if (result && message.timestamp) {
+            await db.update(whatsappChats)
+                .set({ 
+                    lastMessageTimestamp: message.timestamp,
+                    updatedAt: new Date()
+                })
+                .where(and(
+                    eq(whatsappChats.chatId, message.chatId),
+                    eq(whatsappChats.instanceId, message.instanceId)
+                ));
+        }
+
         return result;
     }
 
