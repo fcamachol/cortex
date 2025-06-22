@@ -78,11 +78,13 @@ export class InstanceManager {
             // Step 2: Store instance in database
             const dbInstance = {
                 instanceId: instanceName,
-                name: options.displayName || instanceName,
-                status: 'created',
+                displayName: options.displayName || instanceName,
+                clientId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42', // Default user ID
                 apiKey: apiKey,
                 webhookUrl: webhookUrl,
                 ownerJid: null, // Will be updated when connected
+                isConnected: false,
+                lastConnectionAt: null,
             };
 
             await storage.upsertWhatsappInstance(dbInstance);

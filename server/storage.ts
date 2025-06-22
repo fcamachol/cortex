@@ -119,6 +119,25 @@ class DatabaseStorage {
         return group || null;
     }
 
+    async upsertWhatsappInstance(instance: InsertWhatsappInstance): Promise<WhatsappInstance> {
+        const [result] = await db.insert(whatsappInstances)
+            .values(instance)
+            .onConflictDoUpdate({
+                target: whatsappInstances.instanceId,
+                set: {
+                    displayName: instance.displayName,
+                    ownerJid: instance.ownerJid,
+                    apiKey: instance.apiKey,
+                    webhookUrl: instance.webhookUrl,
+                    isConnected: instance.isConnected,
+                    lastConnectionAt: instance.lastConnectionAt,
+                    updatedAt: new Date()
+                }
+            })
+            .returning();
+        return result;
+    }
+
     async upsertWhatsappContact(contact: InsertWhatsappContact): Promise<WhatsappContact> {
         // Build the update object dynamically to avoid undefined values
         const updateSet: Partial<InsertWhatsappContact> = { lastUpdatedAt: new Date() };
@@ -520,6 +539,11 @@ class DatabaseStorage {
                 eq(whatsappGroups.groupJid, groupJid),
                 eq(whatsappGroups.instanceId, instanceId)
             ));
+    }
+
+    async deleteWhatsappInstance(instanceId: string): Promise<void> {
+        await db.delete(whatsappInstances)
+            .where(eq(whatsappInstances.instanceId, instanceId));
     }
 }
 
