@@ -673,6 +673,29 @@ export async function registerRoutes(app: Express): Promise<void> {
     await WebhookController.handleIncomingEvent(req, res);
   });
 
+  // Alternative webhook route for Evolution API format (single endpoint for all events)
+  app.post('/api/evolution/webhook/:instanceName', async (req: Request, res: Response) => {
+    const { instanceName } = req.params;
+    const body = req.body;
+    
+    // Extract event type from the request body
+    const eventType = body.event || 'unknown';
+    
+    console.log(`🎯 [${instanceName}] Received webhook event: ${eventType}`);
+    console.log(`📋 Webhook payload:`, JSON.stringify(body, null, 2));
+    
+    // Create a modified request object for the webhook controller
+    const modifiedReq = {
+      ...req,
+      params: {
+        ...req.params,
+        eventType: eventType
+      }
+    };
+    
+    await WebhookController.handleIncomingEvent(modifiedReq as Request, res);
+  });
+
   // Error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     console.error('Unhandled error:', err);
