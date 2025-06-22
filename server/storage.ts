@@ -119,23 +119,36 @@ class DatabaseStorage {
         return group || null;
     }
 
-    async upsertWhatsappInstance(instance: InsertWhatsappInstance): Promise<WhatsappInstance> {
-        const [result] = await db.insert(whatsappInstances)
-            .values(instance)
-            .onConflictDoUpdate({
-                target: whatsappInstances.instanceId,
-                set: {
-                    displayName: instance.displayName,
-                    ownerJid: instance.ownerJid,
-                    apiKey: instance.apiKey,
-                    webhookUrl: instance.webhookUrl,
-                    isConnected: instance.isConnected,
-                    lastConnectionAt: instance.lastConnectionAt,
-                    updatedAt: new Date()
-                }
-            })
-            .returning();
-        return result;
+    async upsertWhatsappInstance(instance: any): Promise<any> {
+        // Use raw SQL to handle the visibility field requirement
+        const result = await db.execute(sql`
+            INSERT INTO whatsapp.instances (
+                instance_id, display_name, client_id, api_key, webhook_url, 
+                is_connected, visibility, owner_jid, last_connection_at
+            )
+            VALUES (
+                ${instance.instanceId}, 
+                ${instance.displayName}, 
+                ${instance.clientId}, 
+                ${instance.apiKey}, 
+                ${instance.webhookUrl}, 
+                ${instance.isConnected || false}, 
+                'private', 
+                ${instance.ownerJid}, 
+                ${instance.lastConnectionAt}
+            )
+            ON CONFLICT (instance_id) DO UPDATE SET
+                display_name = EXCLUDED.display_name,
+                api_key = EXCLUDED.api_key,
+                webhook_url = EXCLUDED.webhook_url,
+                is_connected = EXCLUDED.is_connected,
+                owner_jid = EXCLUDED.owner_jid,
+                last_connection_at = EXCLUDED.last_connection_at,
+                updated_at = NOW()
+            RETURNING *
+        `);
+        
+        return result.rows[0];
     }
 
     async upsertWhatsappContact(contact: InsertWhatsappContact): Promise<WhatsappContact> {
