@@ -131,12 +131,12 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
     };
 
     fetchMessageData();
-  }, [task?.triggering_message_id, task?.instance_id]);
+  }, [task?.triggeringMessageId, task?.instanceId]);
 
   // Fetch message thread when task changes
   useEffect(() => {
     const fetchMessageThread = async () => {
-      if (!task?.triggering_message_id || !task?.instance_id) {
+      if (!task?.triggeringMessageId || !task?.instanceId) {
         setMessageThread([]);
         return;
       }
@@ -561,10 +561,10 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                     {task.title}
                   </DialogTitle>
                   {/* Show chat JID badge */}
-                  {task.related_chat_jid && (
+                  {task.relatedChatJid && (
                     <div className="flex items-center gap-2 mt-2">
                       <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded font-mono">
-                        {String(task.related_chat_jid).split('@')[0]}
+                        {String(task.relatedChatJid).split('@')[0]}
                       </span>
                       <span className="text-xs text-gray-500">WhatsApp Chat</span>
                     </div>
@@ -1259,17 +1259,17 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                 <div className="flex-1">
                   <div className="text-sm font-medium">Task created</div>
                   <div className="text-xs text-gray-500">
-                    {format(new Date(task.created_at), "PPP 'at' p")}
+                    {format(new Date(task.createdAt), "PPP 'at' p")}
                   </div>
                 </div>
               </div>
-              {task.updated_at !== task.created_at && (
+              {task.updatedAt !== task.createdAt && (
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                   <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
                   <div className="flex-1">
                     <div className="text-sm font-medium">Task updated</div>
                     <div className="text-xs text-gray-500">
-                      {format(new Date(task.updated_at), "PPP 'at' p")}
+                      {format(new Date(task.updatedAt), "PPP 'at' p")}
                     </div>
                   </div>
                 </div>
