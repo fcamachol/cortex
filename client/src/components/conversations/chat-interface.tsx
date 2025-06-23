@@ -332,6 +332,8 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     enabled: !!userId && forwardModalOpen
   });
 
+
+
   const addReactionMutation = useMutation({
     mutationFn: async ({ messageId, reaction }: { messageId: string; reaction: string }) => {
       if (!chatId || !finalInstanceId) throw new Error('Missing conversation or instance ID');
@@ -1053,15 +1055,38 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   }}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                      <span className="text-xs font-medium">
-                        {(() => {
-                          const displayName = conv.contactName || conv.groupSubject;
-                          if (displayName) return displayName.charAt(0);
-                          if (conv.chatId.includes('@g.us')) return 'G';
-                          return conv.chatId.charAt(0);
-                        })()}
-                      </span>
+                    <div className="relative">
+                      <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                        <span className="text-xs font-medium">
+                          {(() => {
+                            const displayName = conv.contactName || conv.groupSubject;
+                            if (displayName) return displayName.charAt(0);
+                            if (conv.chatId.includes('@g.us')) return 'G';
+                            return conv.chatId.charAt(0);
+                          })()}
+                        </span>
+                      </div>
+                      {/* Instance indicator */}
+                      {conv.instanceId && (() => {
+                        const indicator = getInstanceIndicator(conv.instanceId);
+                        return (
+                          <div 
+                            className={`absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center ${
+                              indicator.color ? `${indicator.color} rounded-full text-white` : ''
+                            }`}
+                            style={{
+                              fontSize: indicator.letter.length > 1 ? '18px' : '10px',
+                              fontWeight: indicator.letter.length > 1 ? 'normal' : 'bold',
+                              lineHeight: '1',
+                              overflow: 'visible',
+                              fontFamily: indicator.letter.length > 1 ? 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' : 'inherit',
+                              color: indicator.color ? 'white' : '#666'
+                            }}
+                          >
+                            {indicator.letter}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className="flex-1">
                       <div className="font-medium text-sm">
@@ -1076,9 +1101,6 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                           }
                           return conv.chatId;
                         })()}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {conv.instanceId}
                       </div>
                     </div>
                   </div>
