@@ -384,6 +384,15 @@ export default function ConversationList({ selectedConversation, onSelectConvers
 
   // Helper function to get display name for conversation
   const getConversationDisplayName = (conv: any) => {
+    // Debug logging for group conversations
+    if (conv.chatId && conv.chatId.includes('@g.us')) {
+      console.log('Group conversation debug:', {
+        chatId: conv.chatId,
+        displayName: conv.displayName,
+        type: conv.type
+      });
+    }
+    
     // Use displayName from API response (already contains contact name or group subject)
     if (conv.displayName && conv.displayName !== conv.chatId) {
       return conv.displayName;
