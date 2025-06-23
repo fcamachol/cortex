@@ -257,7 +257,12 @@ export default function ConversationList({ selectedConversation, onSelectConvers
     queryFn: async () => {
       try {
         const draftsPromises = instances.map(async (instance: any) => {
-          const response = await fetch(`/api/whatsapp/drafts/${instance.instanceId}`);
+          const response = await fetch(`/api/whatsapp/drafts/${instance.instanceId}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
           if (response.ok) {
             return response.json();
           }

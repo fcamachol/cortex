@@ -377,7 +377,12 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     queryFn: async () => {
       if (!instanceId || !conversationId) return null;
       try {
-        const response = await fetch(`/api/whatsapp/drafts/${instanceId}?chatId=${conversationId}`);
+        const response = await fetch(`/api/whatsapp/drafts/${instanceId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
         if (response.ok) {
           const drafts = await response.json();
           return drafts.find((d: any) => d.chatId === conversationId) || null;
