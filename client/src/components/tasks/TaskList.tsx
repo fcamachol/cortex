@@ -129,7 +129,7 @@ export function TaskList({
     }
     
     return (
-      <div key={task.task_id} className={`${depth > 0 ? 'ml-8' : ''}`}>
+      <div key={task.taskId} className={`${depth > 0 ? 'ml-8' : ''}`}>
       <Card className="mb-2 hover:shadow-sm transition-shadow">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
@@ -137,7 +137,7 @@ export function TaskList({
             <Checkbox
               checked={task.status === 'done'}
               onCheckedChange={(checked) => 
-                onStatusChange(task.task_id, checked ? 'done' : 'to_do')
+                onStatusChange(task.taskId, checked ? 'done' : 'to_do')
               }
               className="mt-1"
             />
@@ -148,9 +148,9 @@ export function TaskList({
                 variant="ghost"
                 size="sm"
                 className="h-6 w-6 p-0"
-                onClick={() => toggleTaskExpansion(task.task_id)}
+                onClick={() => toggleTaskExpansion(task.taskId)}
               >
-                {expandedTasks.has(task.task_id) ? (
+                {expandedTasks.has(task.taskId) ? (
                   <ChevronDown className="h-4 w-4" />
                 ) : (
                   <ChevronRight className="h-4 w-4" />
@@ -211,10 +211,10 @@ export function TaskList({
               )}
 
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                {task.due_date && (
-                  <div className={`flex items-center gap-1 ${isOverdue(task.due_date) ? 'text-red-500' : ''}`}>
+                {task.dueDate && (
+                  <div className={`flex items-center gap-1 ${isOverdue(task.dueDate) ? 'text-red-500' : ''}`}>
                     <Clock className="h-3 w-3" />
-                    {formatDate(task.due_date)}
+                    {formatDate(task.dueDate)}
                   </div>
                 )}
                 

@@ -18,32 +18,32 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
 export interface Task {
-  task_id: number;
+  taskId: number;
   title: string;
   description?: string;
   status: string;
   priority?: string;
-  due_date?: string;
-  project_id?: number;
-  parent_task_id?: number;
-  assigned_to_user_id?: string;
-  related_chat_jid?: string;
-  created_at: string;
-  updated_at: string;
+  dueDate?: string;
+  projectId?: number;
+  parentTaskId?: number;
+  assignedToUserId?: string;
+  relatedChatJid?: string;
+  createdAt: string;
+  updatedAt: string;
   subtasks?: Task[];
   checklist_items?: ChecklistItem[];
-  triggering_message_id?: string;
-  instance_id?: string;
+  triggeringMessageId?: string;
+  instanceId?: string;
 }
 
 interface Project {
-  project_id: number;
-  project_name: string;
+  projectId: number;
+  projectName: string;
   description?: string;
   status: string;
-  start_date?: string;
-  end_date?: string;
-  created_at: string;
+  startDate?: string;
+  endDate?: string;
+  createdAt: string;
   tasks?: Task[];
 }
 
