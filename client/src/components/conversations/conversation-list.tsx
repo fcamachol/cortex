@@ -175,6 +175,12 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   // Mock user ID - in real app this would come from auth context
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
 
+  // Fetch waiting reply messages to show blue bookmark indicator
+  const { data: waitingReplyMessages = [] } = useQuery({
+    queryKey: [`/api/whatsapp/waiting-reply`],
+    queryFn: () => apiRequest(`/api/whatsapp/waiting-reply`)
+  });
+
   // Fetch instances with customization data
   const { data: instances = [] } = useQuery({
     queryKey: [`/api/whatsapp/instances/${userId}`],
@@ -299,6 +305,13 @@ export default function ConversationList({ selectedConversation, onSelectConvers
     refetchInterval: 30000, // Reduced frequency from 5s to 30s
     staleTime: 25000 // Cache for 25 seconds
   });
+
+  // Helper function to check if conversation has waiting reply messages
+  const hasWaitingReply = (conversation: any) => {
+    return waitingReplyMessages.some((waitingMsg: any) => 
+      waitingMsg.chatId === conversation.chatId && waitingMsg.instanceId === conversation.instanceId
+    );
+  };
 
   // Helper function to get latest message for a conversation (including drafts)
   const getLatestMessage = (conversation: any) => {

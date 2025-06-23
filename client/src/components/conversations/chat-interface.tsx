@@ -33,6 +33,11 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [selectedMessageForForward, setSelectedMessageForForward] = useState<any>(null);
   const [forwardSearchQuery, setForwardSearchQuery] = useState("");
   
+  // Waiting response modal state
+  const [waitingResponseModalOpen, setWaitingResponseModalOpen] = useState(false);
+  const [selectedMessageForWaiting, setSelectedMessageForWaiting] = useState<any>(null);
+  const [waitingSearchQuery, setWaitingSearchQuery] = useState("");
+  
   // Draft storage per conversation (now database-backed)
   const [replyStates, setReplyStates] = useState<{[chatId: string]: any}>({});
   const [isDeletingDraft, setIsDeletingDraft] = useState(false);
@@ -429,7 +434,36 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   // Query to get all conversations for forward modal
   const { data: allConversations } = useQuery({
     queryKey: [`/api/whatsapp/conversations/${userId}`],
-    enabled: !!userId && forwardModalOpen
+    enabled: !!userId && (forwardModalOpen || waitingResponseModalOpen)
+  });
+
+  // Mutation for marking message as waiting for response
+  const markWaitingResponseMutation = useMutation({
+    mutationFn: async ({ targetChatId, targetInstanceId }: { targetChatId: string; targetInstanceId: string }) => {
+      if (!selectedMessageForWaiting) throw new Error('No message selected for waiting response');
+      
+      const response = await fetch('/api/whatsapp/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instanceId: targetInstanceId,
+          chatId: targetChatId,
+          message: selectedMessageForWaiting.content,
+          waitingForResponse: true,
+          originalMessageId: selectedMessageForWaiting.messageId || selectedMessageForWaiting.id
+        }),
+      });
+      
+      if (!response.ok) throw new Error('Failed to send waiting response message');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chat-messages`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+      setWaitingResponseModalOpen(false);
+      setSelectedMessageForWaiting(null);
+      setWaitingSearchQuery("");
+    }
   });
 
 
@@ -1044,11 +1078,8 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                           if (isWaiting) {
                             unmarkWaitingReplyMutation.mutate({ messageId });
                           } else {
-                            markWaitingReplyMutation.mutate({ 
-                              messageId, 
-                              instanceId: currentInstanceId || '',
-                              chatId: chatId || ''
-                            });
+                            setSelectedMessageForWaiting(message);
+                            setWaitingResponseModalOpen(true);
                           }
                         }}
                         title={waitingReplyMessages.has(message.messageId || message.id) ? 'Unmark awaiting reply' : 'Mark as awaiting reply'}
@@ -1428,6 +1459,98 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
             {forwardMessageMutation.isPending && (
               <div className="text-sm text-gray-500 text-center">
                 Reenviando mensaje...
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Waiting Response Modal */}
+      <Dialog open={waitingResponseModalOpen} onOpenChange={(open) => {
+        setWaitingResponseModalOpen(open);
+        if (!open) {
+          setWaitingSearchQuery(""); // Clear search when modal closes
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Esperando respuesta</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm text-gray-600">
+              Selecciona una conversación para enviar este mensaje y marcarlo como esperando respuesta:
+            </div>
+            <div className="bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400">
+              <div className="text-xs text-blue-600 mb-1">Mensaje seleccionado:</div>
+              <div className="text-sm text-gray-700 truncate">
+                {selectedMessageForWaiting?.content}
+              </div>
+            </div>
+            <Input
+              placeholder="Buscar conversación..."
+              value={waitingSearchQuery}
+              onChange={(e) => setWaitingSearchQuery(e.target.value)}
+              className="w-full"
+            />
+            <div className="max-h-64 overflow-y-auto space-y-2">
+              {allConversations?.filter((conv: any) => {
+                if (!waitingSearchQuery) return true;
+                const searchLower = waitingSearchQuery.toLowerCase();
+                const displayName = getConversationDisplayName(conv);
+                return displayName.toLowerCase().includes(searchLower) ||
+                       conv.chatId.toLowerCase().includes(searchLower);
+              }).map((conv: any) => (
+                <div
+                  key={`${conv.instanceId}:${conv.chatId}`}
+                  className="p-3 rounded-lg border hover:bg-blue-50 cursor-pointer transition-colors"
+                  onClick={() => {
+                    markWaitingResponseMutation.mutate({
+                      targetChatId: conv.chatId,
+                      targetInstanceId: conv.instanceId
+                    });
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-xs font-medium text-blue-600">
+                          {getConversationDisplayName(conv).charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      {/* Instance indicator */}
+                      {conv.instanceId && (() => {
+                        const indicator = getInstanceIndicator(conv.instanceId);
+                        return (
+                          <div 
+                            className={`absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center ${
+                              indicator.color ? `${indicator.color} rounded-full text-white` : ''
+                            }`}
+                            style={{
+                              fontSize: indicator.letter.length > 1 ? '18px' : '10px',
+                              fontWeight: indicator.letter.length > 1 ? 'normal' : 'bold',
+                              lineHeight: '1',
+                              overflow: 'visible',
+                              fontFamily: indicator.letter.length > 1 ? 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' : 'inherit',
+                              color: indicator.color ? 'white' : '#666'
+                            }}
+                          >
+                            {indicator.letter}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">
+                        {getConversationDisplayName(conv)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {markWaitingResponseMutation.isPending && (
+              <div className="text-sm text-gray-500 text-center">
+                Enviando mensaje...
               </div>
             )}
           </div>
