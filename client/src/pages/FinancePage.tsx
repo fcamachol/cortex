@@ -9,6 +9,7 @@ import { TransactionForm } from "@/components/finance/TransactionForm";
 import { LoanForm } from "@/components/finance/LoanForm";
 import { AccountForm } from "@/components/finance/AccountForm";
 import { AccountList } from "@/components/finance/AccountList";
+import { CreditCardForm } from "@/components/finance/CreditCardForm";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Receipt, CreditCard, Filter, Building2 } from "lucide-react";
 
 export default function FinancePage() {
@@ -16,6 +17,7 @@ export default function FinancePage() {
   const [showPayableForm, setShowPayableForm] = useState(false);
   const [showLoanForm, setShowLoanForm] = useState(false);
   const [showAccountForm, setShowAccountForm] = useState(false);
+  const [showCreditCardForm, setShowCreditCardForm] = useState(false);
   const [dateFilter, setDateFilter] = useState("this-month");
 
   // Fetch financial overview
@@ -153,12 +155,13 @@ export default function FinancePage() {
 
           {/* Main Content Tabs */}
           <Tabs defaultValue="dashboard" className="w-full">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
               <TabsTrigger value="transactions">Transactions</TabsTrigger>
               <TabsTrigger value="payables">Bills</TabsTrigger>
               <TabsTrigger value="loans">Loans</TabsTrigger>
               <TabsTrigger value="accounts">Accounts</TabsTrigger>
+              <TabsTrigger value="credit-cards">Credit Cards</TabsTrigger>
               <TabsTrigger value="reports">Reports</TabsTrigger>
             </TabsList>
 

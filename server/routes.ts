@@ -11,6 +11,16 @@ import { getEvolutionApi } from './evolution-api';
 import { BillToTaskService } from './bill-task-service';
 import { ScheduledJobsService } from './scheduled-jobs';
 import { db } from './db';
+import {
+  insertFinanceTransactionSchema,
+  insertFinancePayableSchema,
+  insertFinanceRecurringBillSchema,
+  insertFinanceLoanSchema,
+  insertFinanceAccountSchema,
+  insertCrmCompanySchema,
+  insertCreditCardDetailsSchema,
+  insertStatementSchema,
+} from "@shared/schema";
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
