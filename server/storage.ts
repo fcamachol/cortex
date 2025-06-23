@@ -600,31 +600,7 @@ class DatabaseStorage {
     }
 
     // Task management methods
-    async getTasks(): Promise<any[]> {
-        const results = await db.execute(sql`
-            SELECT 
-                task_id,
-                title,
-                description,
-                status,
-                priority,
-                due_date,
-                project_id,
-                parent_task_id,
-                instance_id,
-                triggering_message_id,
-                assigned_to_user_id,
-                related_chat_jid,
-                created_by_user_id,
-                created_at,
-                updated_at,
-                space_id
-            FROM crm.tasks 
-            ORDER BY created_at DESC
-        `);
-        
-        return results.rows;
-    }
+
 
     async updateTask(taskId: number, updates: any): Promise<any> {
         const result = await db.execute(sql`
