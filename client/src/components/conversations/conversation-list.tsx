@@ -527,7 +527,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-5 w-5 p-0 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 absolute -bottom-2 right-0"
+                              className={`h-5 w-5 p-0 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 absolute -bottom-2 ${conversation.unreadCount > 0 ? 'right-7' : 'right-0'}`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
