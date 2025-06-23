@@ -33,13 +33,13 @@ export function FinancePayableForm({ onClose, payable }: FinancePayableFormProps
   const queryClient = useQueryClient();
 
   // Fetch categories for dropdown
-  const { data: categories } = useQuery({
+  const { data: categories = [] } = useQuery({
     queryKey: ["/api/finance/categories"],
     staleTime: 300000,
   });
 
   // Fetch contacts for dropdown
-  const { data: contacts } = useQuery({
+  const { data: contacts = [] } = useQuery({
     queryKey: ["/api/contacts"],
     staleTime: 300000,
   });

@@ -35,13 +35,13 @@ export function FinanceTransactionForm({ onClose, transaction }: FinanceTransact
   const queryClient = useQueryClient();
 
   // Fetch categories for dropdown
-  const { data: categories } = useQuery({
+  const { data: categories = [] } = useQuery({
     queryKey: ["/api/finance/categories"],
     staleTime: 300000, // 5 minutes
   });
 
   // Fetch contacts for dropdown
-  const { data: contacts } = useQuery({
+  const { data: contacts = [] } = useQuery({
     queryKey: ["/api/contacts"],
     staleTime: 300000, // 5 minutes
   });
@@ -236,7 +236,7 @@ export function FinanceTransactionForm({ onClose, transaction }: FinanceTransact
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="none">No category</SelectItem>
-                      {(categories || []).map((category: any) => (
+                      {categories.map((category: any) => (
                         <SelectItem key={category.categoryId} value={category.categoryId.toString()}>
                           {category.categoryName}
                         </SelectItem>

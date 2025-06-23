@@ -38,7 +38,7 @@ export function FinanceLoanForm({ onClose, loan }: FinanceLoanFormProps) {
   const queryClient = useQueryClient();
 
   // Fetch contacts for dropdown
-  const { data: contacts } = useQuery({
+  const { data: contacts = [] } = useQuery({
     queryKey: ["/api/contacts"],
     staleTime: 300000,
   });
