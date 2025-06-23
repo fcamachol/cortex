@@ -11,8 +11,8 @@ export const actionsSchema = pgSchema("actions");
 export const calendarSchema = pgSchema("calendar");
 
 // Enums for App schema
-export const workspaceRoleEnum = appSchema.enum("workspace_role", ["owner", "admin", "member", "guest"]);
-export const spaceRoleEnum = appSchema.enum("space_role", ["admin", "member", "viewer"]);
+export const workspaceRoleEnum = appSchema.enum("workspace_role", ["admin", "member", "viewer"]);
+export const spaceRoleEnum = appSchema.enum("space_role", ["admin", "editor", "viewer"]);
 export const channelTypeEnum = appSchema.enum("channel_type", ["whatsapp", "email", "slack", "sms"]);
 
 // Enums for Calendar schema

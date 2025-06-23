@@ -1,0 +1,58 @@
+-- =============================================================================
+-- SCHEMA: app
+-- PURPOSE: Manages users, multi-tenant workspaces, and the core hierarchical
+--          organization of spaces. This is the structural foundation.
+-- =============================================================================
+
+CREATE SCHEMA IF NOT EXISTS app;
+
+-- ENUMERATED TYPES
+CREATE TYPE app.workspace_role AS ENUM ('owner', 'admin', 'member', 'guest');
+CREATE TYPE app.space_role AS ENUM ('admin', 'member', 'viewer');
+
+-- CORE TABLES
+CREATE TABLE app.users (
+    user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE app.users IS 'Stores global user accounts for authentication.';
+
+CREATE TABLE app.workspaces (
+    workspace_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_name VARCHAR(255) NOT NULL,
+    owner_id UUID NOT NULL REFERENCES app.users(user_id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE app.workspaces IS 'Represents a single tenant (a personal or team account).';
+
+CREATE TABLE app.workspace_members (
+    workspace_id UUID NOT NULL REFERENCES app.workspaces(workspace_id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES app.users(user_id) ON DELETE CASCADE,
+    role app.workspace_role NOT NULL DEFAULT 'member',
+    PRIMARY KEY (workspace_id, user_id)
+);
+COMMENT ON TABLE app.workspace_members IS 'Links users to workspaces and defines their high-level role.';
+
+CREATE TABLE app.spaces (
+    space_id SERIAL PRIMARY KEY,
+    workspace_id UUID REFERENCES app.workspaces(workspace_id) ON DELETE CASCADE, -- NULL for personal spaces
+    creator_user_id UUID NOT NULL REFERENCES app.users(user_id) ON DELETE CASCADE,
+    parent_space_id INTEGER REFERENCES app.spaces(space_id) ON DELETE CASCADE,
+    space_name VARCHAR(100) NOT NULL,
+    icon VARCHAR(255),
+    display_order INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE app.spaces IS 'The main hierarchical containers for all user content (e.g., "Work", "Personal").';
+
+CREATE TABLE app.space_members (
+    space_id INTEGER NOT NULL REFERENCES app.spaces(space_id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES app.users(user_id) ON DELETE CASCADE,
+    role app.space_role NOT NULL DEFAULT 'viewer',
+    PRIMARY KEY (space_id, user_id)
+);
+COMMENT ON TABLE app.space_members IS 'Manages granular access control for users within a specific space.';
