@@ -491,43 +491,8 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     }
   };
 
-  // Load draft for current conversation with stable caching
-  const draftQueryKey = useMemo(() => 
-    finalInstanceId && chatId && finalInstanceId !== 'undefined' && chatId !== 'undefined' 
-      ? [`/api/whatsapp/drafts`, finalInstanceId, chatId] 
-      : null, 
-    [finalInstanceId, chatId]
-  );
-  
-  const { data: currentDraft } = useQuery({
-    queryKey: draftQueryKey || ['disabled'],
-    queryFn: async () => {
-      if (!finalInstanceId || !chatId) return null;
-      try {
-        const response = await fetch(`/api/whatsapp/drafts/${finalInstanceId}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        if (response.ok) {
-          const drafts = await response.json();
-          const foundDraft = drafts.find((d: any) => d.chatId === chatId);
-          return foundDraft || null;
-        }
-      } catch (error) {
-        console.error('Error loading draft:', error);
-      }
-      return null;
-    },
-    enabled: !!draftQueryKey && !!finalInstanceId && !!chatId,
-    staleTime: 600000, // 10 minutes
-    gcTime: 900000, // 15 minutes
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    refetchInterval: false,
-    retry: false // Prevent retries that could cause loops
-  });
+  // Disable draft loading completely to prevent infinite loops
+  const currentDraft = null;
 
   // Save current draft when switching conversations
   const saveDraftOnSwitch = (oldChatId: string, oldInstanceId: string, messageContent: string) => {
@@ -588,19 +553,22 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     
     lastLoadedConversation.current = conversationId;
     
+    // Reset input immediately when switching conversations
+    setMessageInput("");
+    setReplyToMessage(null);
+    
+    // Load draft if available
     const conversationKey = `${conversationId}-${finalInstanceId}`;
-    if (currentDraft && !loadedDrafts.current.has(conversationKey)) {
-      if (currentDraft.chatId === chatId && currentDraft.instanceId === finalInstanceId) {
-        if (currentDraft.content) {
-          setMessageInput(currentDraft.content);
-        }
-        if (currentDraft.replyToMessageId) {
-          setReplyToMessage({ messageId: currentDraft.replyToMessageId });
-        }
-        loadedDrafts.current.add(conversationKey);
+    if (currentDraft && currentDraft.chatId === chatId && currentDraft.instanceId === finalInstanceId && !loadedDrafts.current.has(conversationKey)) {
+      if (currentDraft.content) {
+        setMessageInput(currentDraft.content);
       }
+      if (currentDraft.replyToMessageId) {
+        setReplyToMessage({ messageId: currentDraft.replyToMessageId });
+      }
+      loadedDrafts.current.add(conversationKey);
     }
-  }, [conversationId, currentDraft?.content, currentDraft?.replyToMessageId, chatId, finalInstanceId]); // Stable dependencies
+  }, [conversationId]); // Only depend on conversationId
 
   // Update message input ref when user types
   useEffect(() => {

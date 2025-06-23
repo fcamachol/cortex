@@ -1552,7 +1552,28 @@ export async function registerRoutes(app: Express): Promise<void> {
         rawPayload = message.rawApiPayload;
       }
       
-      // Check if base64 data is already in the webhook payload
+      // First, check for locally cached file
+      const { checkMediaExists } = await import('./media-downloader');
+      const localFilePath = await checkMediaExists(instanceId, messageId);
+      
+      if (localFilePath) {
+        console.log(`✅ Found locally cached file: ${localFilePath}`);
+        
+        // Get media metadata from database
+        const mediaInfo = await storage.getWhatsappMessageMedia(messageId, instanceId);
+        const mimeType = mediaInfo?.mimetype || 'audio/ogg; codecs=opus';
+        
+        // Serve the local file
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        
+        console.log(`✅ Serving cached file: ${messageId} from ${localFilePath}`);
+        return res.sendFile(localFilePath);
+      }
+      
+      // Second, check if base64 data is in the webhook payload
       const audioMessage = rawPayload?.message?.audioMessage;
       if (audioMessage?.base64) {
         console.log(`✅ Found base64 data in webhook payload for ${messageId}`);
@@ -1570,11 +1591,11 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.send(fileBuffer);
       }
       
-      // No base64 data available - cannot serve this media file
-      console.log(`❌ Media not available for ${messageId} - no base64 data in webhook payload`);
+      // No media available
+      console.log(`❌ Media not available for ${messageId} - no cached file or base64 data`);
       return res.status(404).json({ 
         error: 'Media not available', 
-        message: 'This audio file was not cached during webhook processing. Only messages with base64 data can be played.' 
+        message: 'This audio file was not cached during webhook processing.' 
       });
       
     } catch (error) {
