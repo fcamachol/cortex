@@ -127,6 +127,7 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 23, 2025: Completed transaction-account linking functionality with account dropdown in transaction form and account column in transaction list
 - June 23, 2025: Fixed spaces creation functionality by correcting apiRequest parameter order and implementing missing createSpace storage method
 - June 23, 2025: Successfully completed comprehensive finance accounts module with full CRUD functionality and database integration
 - June 23, 2025: Created finance.accounts table with 11 account types (checking, savings, credit card, investment, loan, mortgage, business, cash, crypto, retirement, other)

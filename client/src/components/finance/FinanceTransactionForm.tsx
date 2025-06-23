@@ -156,6 +156,32 @@ export function FinanceTransactionForm({ onClose, transaction }: FinanceTransact
 
             <FormField
               control={form.control}
+              name="accountId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Account</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select account" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">No account</SelectItem>
+                      {accounts?.map((account: any) => (
+                        <SelectItem key={account.accountId} value={account.accountId.toString()}>
+                          {account.accountName} ({account.accountType})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="transactionDate"
               render={({ field }) => (
                 <FormItem>
