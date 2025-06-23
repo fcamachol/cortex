@@ -1027,6 +1027,50 @@ class DatabaseStorage {
         await db.delete(whatsappDrafts)
             .where(eq(whatsappDrafts.messageId, messageId));
     }
+
+    // =========================================================================
+    // CRM TASK METHODS
+    // =========================================================================
+
+    async createTask(taskData: any): Promise<any> {
+        const [task] = await db.insert(crmTasks)
+            .values({
+                instanceId: taskData.instanceId,
+                title: taskData.title,
+                description: taskData.description,
+                status: taskData.status || 'pending',
+                priority: taskData.priority || 'medium',
+                taskType: taskData.taskType || 'task',
+                dueDate: taskData.dueDate || null,
+                triggeringMessageId: taskData.triggeringMessageId || null,
+                relatedChatJid: taskData.relatedChatJid || null,
+                senderJid: taskData.senderJid || null,
+                contactName: taskData.contactName || null,
+                originalMessageContent: taskData.originalMessageContent || null,
+                assignedToUserId: taskData.assignedToUserId || null,
+                createdByUserId: taskData.createdByUserId || null,
+                spaceId: taskData.spaceId || null,
+                projectId: taskData.projectId || null,
+                parentTaskId: taskData.parentTaskId || null
+            })
+            .returning();
+        return task;
+    }
+
+    async getTasks(instanceId?: string): Promise<any[]> {
+        let query = db.select().from(crmTasks).orderBy(desc(crmTasks.createdAt));
+        
+        if (instanceId) {
+            query = query.where(eq(crmTasks.instanceId, instanceId));
+        }
+        
+        return await query;
+    }
+
+    async getTaskById(taskId: number): Promise<any | null> {
+        const [task] = await db.select().from(crmTasks).where(eq(crmTasks.taskId, taskId));
+        return task || null;
+    }
 }
 
 export const storage = new DatabaseStorage();

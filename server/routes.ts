@@ -1733,6 +1733,32 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // CRM Tasks API
+  app.get('/api/crm/tasks', async (req: Request, res: Response) => {
+    try {
+      const { instanceId } = req.query;
+      const tasks = await storage.getTasks(instanceId as string);
+      res.json(tasks);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      res.status(500).json({ error: 'Failed to fetch tasks' });
+    }
+  });
+
+  app.get('/api/crm/tasks/:taskId', async (req: Request, res: Response) => {
+    try {
+      const { taskId } = req.params;
+      const task = await storage.getTaskById(parseInt(taskId));
+      if (!task) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
+      res.json(task);
+    } catch (error) {
+      console.error('Error fetching task:', error);
+      res.status(500).json({ error: 'Failed to fetch task' });
+    }
+  });
+
   // Create task from WhatsApp message
   app.post('/api/whatsapp/create-task-from-message', async (req: Request, res: Response) => {
     try {
