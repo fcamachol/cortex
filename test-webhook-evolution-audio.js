@@ -22,6 +22,7 @@ async function testWebhookEvolutionAudio() {
             mimetype: "audio/ogg; codecs=opus",
             seconds: 5,
             ptt: true,
+            base64: "T2dnUwACAAAAAAAAAAB8AAAAAAAAWAcAAE9nZ1MAAgAAAAAAAAAAfAAAAQAAAFgHAAACT2dnUwACAAAAAAAAAAB8AAAAAgAAAFgHAAABT2dnUwACAAAAAAAAAAB8AAAAAwAAAFgHAAABT2dnUwACAAAAAAAAAAB8AAAABAAAAFgHAAABT2dnUwACAAAAAAAAAAB8AAAABQAAAFgHAAABT2dnUwACAAAAAAAAAAB8AAAABgAAAFgHAAABT2dnUwACAAAAAAAAAAB8AAAABwAAAFgHAAAB",
             contextInfo: {}
           }
         },
