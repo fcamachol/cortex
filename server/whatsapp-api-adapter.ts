@@ -2050,12 +2050,31 @@ export const WebhookApiAdapter = {
                 // Store media metadata in database
                 await storage.upsertWhatsappMessageMedia(mediaInfo as InsertWhatsappMessageMedia);
                 
-                // For now, skip media download - files will be served via proxy
-                console.log(`📎 Media metadata stored for ${messageId}, file will be served via proxy when requested`);
+                // Attempt to download and cache media file immediately
+                if (mediaData.url || mediaData.mediaKey) {
+                    console.log(`⬇️ [${instanceId}] Downloading media for message: ${messageId} (${messageType})`);
+                    
+                    // Get instance details for API key
+                    const instance = await storage.getWhatsappInstance(instanceId);
+                    if (instance?.apiKey) {
+                        const { handleMediaDownload } = await import('./media-downloader');
+                        const downloadResult = await handleMediaDownload(instanceId, instance.apiKey, rawMessage);
+                        
+                        if (downloadResult) {
+                            console.log(`✅ [${instanceId}] Media cached successfully: ${messageId}`);
+                        } else {
+                            console.log(`⚠️ [${instanceId}] Media download failed, will serve via proxy when requested: ${messageId}`);
+                        }
+                    } else {
+                        console.log(`⚠️ [${instanceId}] No API key found, cannot download media: ${messageId}`);
+                    }
+                } else {
+                    console.log(`📎 [${instanceId}] No media URL/key found, storing metadata only: ${messageId}`);
+                }
                 
-                console.log(`📎 [${instanceId}] Stored media metadata for message: ${messageId} (${messageType})`);
+                console.log(`📎 [${instanceId}] Processed media for message: ${messageId} (${messageType})`);
             } catch (error) {
-                console.error(`❌ Error storing media for message ${messageId}:`, error);
+                console.error(`❌ Error processing media for message ${messageId}:`, error);
             }
         }
     },
