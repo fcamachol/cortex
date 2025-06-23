@@ -762,6 +762,11 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                       )}
                     </AvatarFallback>
                   </Avatar>
+                  {/* Unread message indicator - small green dot */}
+                  {conversation.unreadCount > 0 && !hiddenChats.has(`${conversation.instanceId}:${conversation.chatId}`) && (
+                    <div className="absolute -top-1 -left-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-900"></div>
+                  )}
+                  
                   {/* Instance indicator circle */}
                   {conversation.instanceId && (() => {
                     const indicator = getInstanceIndicator(conversation.instanceId);
