@@ -463,17 +463,21 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               <ChevronDown className="h-3 w-3 text-gray-600 dark:text-gray-400" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-52">
+                          <DropdownMenuContent 
+                            align="end" 
+                            className="w-52"
+                            onCloseAutoFocus={(e) => e.preventDefault()}
+                          >
                             <DropdownMenuItem 
                               className="flex items-center gap-2 cursor-pointer"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setOpenDropdown(null);
                                 archiveChatMutation.mutate({
                                   chatId: conversation.chatId,
                                   instanceId: conversation.instanceId,
                                   archived: true
                                 });
+                                setOpenDropdown(null);
                               }}
                             >
                               <Archive className="h-4 w-4" />
@@ -483,12 +487,12 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               className="flex items-center gap-2 cursor-pointer"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setOpenDropdown(null);
                                 muteChatMutation.mutate({
                                   chatId: conversation.chatId,
                                   instanceId: conversation.instanceId,
                                   muted: true
                                 });
+                                setOpenDropdown(null);
                               }}
                             >
                               <BellOff className="h-4 w-4" />
@@ -498,12 +502,12 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               className="flex items-center gap-2 cursor-pointer"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setOpenDropdown(null);
                                 pinChatMutation.mutate({
                                   chatId: conversation.chatId,
                                   instanceId: conversation.instanceId,
                                   pinned: true
                                 });
+                                setOpenDropdown(null);
                               }}
                             >
                               <Pin className="h-4 w-4" />
@@ -513,12 +517,12 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               className="flex items-center gap-2 cursor-pointer"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setOpenDropdown(null);
                                 markUnreadMutation.mutate({
                                   chatId: conversation.chatId,
                                   instanceId: conversation.instanceId,
                                   unread: true
                                 });
+                                setOpenDropdown(null);
                               }}
                             >
                               <CheckCheck className="h-4 w-4" />
@@ -528,12 +532,12 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               className="flex items-center gap-2 cursor-pointer"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setOpenDropdown(null);
                                 favoriteChatMutation.mutate({
                                   chatId: conversation.chatId,
                                   instanceId: conversation.instanceId,
                                   favorite: true
                                 });
+                                setOpenDropdown(null);
                               }}
                             >
                               <Heart className="h-4 w-4" />
@@ -543,12 +547,12 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               className="flex items-center gap-2 cursor-pointer"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setOpenDropdown(null);
                                 blockChatMutation.mutate({
                                   chatId: conversation.chatId,
                                   instanceId: conversation.instanceId,
                                   blocked: true
                                 });
+                                setOpenDropdown(null);
                               }}
                             >
                               <Ban className="h-4 w-4" />
@@ -558,11 +562,11 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               className="flex items-center gap-2 cursor-pointer"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setOpenDropdown(null);
                                 closeChatMutation.mutate({
                                   chatId: conversation.chatId,
                                   instanceId: conversation.instanceId
                                 });
+                                setOpenDropdown(null);
                               }}
                             >
                               <X className="h-4 w-4" />
@@ -572,11 +576,11 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               className="flex items-center gap-2 cursor-pointer text-red-600 dark:text-red-400"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setOpenDropdown(null);
                                 deleteChatMutation.mutate({
                                   chatId: conversation.chatId,
                                   instanceId: conversation.instanceId
                                 });
+                                setOpenDropdown(null);
                               }}
                             >
                               <Trash2 className="h-4 w-4" />

@@ -534,55 +534,88 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   {/* Dropdown arrow in top-right corner */}
                   {hoveredMessageId === (message.messageId || message.id) && (
                     <div className="absolute -top-2 -right-2 z-20">
-                      <DropdownMenu>
+                      <DropdownMenu 
+                        open={openMessageDropdown === (message.messageId || message.id)}
+                        onOpenChange={(open) => {
+                          if (!open) {
+                            setOpenMessageDropdown(null);
+                          }
+                        }}
+                      >
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 rounded-full bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMessageDropdown(message.messageId || message.id);
+                            }}
                           >
                             <ChevronDown className="h-3 w-3 text-gray-600 dark:text-gray-400" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuContent 
+                          align="end" 
+                          className="w-48"
+                          onCloseAutoFocus={(e) => e.preventDefault()}
+                        >
                           <DropdownMenuItem 
                             className="flex items-center gap-2 cursor-pointer"
-                            onClick={() => handleReplyToMessage(message)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReplyToMessage(message);
+                            }}
                           >
                             <Reply className="h-4 w-4" />
                             Responder
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             className="flex items-center gap-2 cursor-pointer"
-                            onClick={() => handleCopyMessage(message)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyMessage(message);
+                            }}
                           >
                             <Copy className="h-4 w-4" />
                             {copiedMessage === message.messageId ? 'Copiado!' : 'Copiar'}
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             className="flex items-center gap-2 cursor-pointer"
-                            onClick={() => handleOpenTaskModal(message)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenTaskModal(message);
+                            }}
                           >
                             <Smile className="h-4 w-4" />
                             Reaccionar
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             className="flex items-center gap-2 cursor-pointer"
-                            onClick={() => handleForwardMessage(message)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleForwardMessage(message);
+                            }}
                           >
                             <Forward className="h-4 w-4" />
                             Reenviar
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             className="flex items-center gap-2 cursor-pointer"
-                            onClick={() => handleStarMessage(message)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStarMessage(message);
+                            }}
                           >
                             <Star className="h-4 w-4" />
                             Destacar
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             className="flex items-center gap-2 cursor-pointer text-red-600 dark:text-red-400"
-                            onClick={() => handleDeleteMessage(message)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteMessage(message);
+                            }}
                           >
                             <Trash2 className="h-4 w-4" />
                             Eliminar
