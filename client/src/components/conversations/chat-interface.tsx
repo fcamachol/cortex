@@ -324,27 +324,40 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     mutationFn: async ({ targetChatId, targetInstanceId }: { targetChatId: string; targetInstanceId: string }) => {
       if (!selectedMessageForForward) throw new Error('No message selected for forwarding');
       
-      const payload = {
-        instanceId: targetInstanceId,
-        chatId: targetChatId,
-        message: selectedMessageForForward.content,
-        isForwarded: true,
-      };
+      // Handle multiple messages if it's an array
+      const messagesToForward = Array.isArray(selectedMessageForForward) 
+        ? selectedMessageForForward 
+        : [selectedMessageForForward];
       
-      const response = await fetch('/api/whatsapp/send-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      // Send each message separately
+      const promises = messagesToForward.map(async (message) => {
+        const payload = {
+          instanceId: targetInstanceId,
+          chatId: targetChatId,
+          message: message.content,
+          isForwarded: true,
+        };
+        
+        const response = await fetch('/api/whatsapp/send-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        
+        if (!response.ok) throw new Error('Failed to forward message');
+        return response.json();
       });
       
-      if (!response.ok) throw new Error('Failed to forward message');
-      return response.json();
+      return Promise.all(promises);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chat-messages`] });
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
       setForwardModalOpen(false);
       setSelectedMessageForForward(null);
+      // Clear multi-select state after successful forwarding
+      setIsMultiSelectMode(false);
+      setSelectedMessages(new Set());
     }
   });
 
@@ -450,8 +463,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       );
       setSelectedMessageForForward(selectedMessageData);
       setForwardModalOpen(true);
-      setIsMultiSelectMode(false);
-      setSelectedMessages(new Set());
+      // Don't clear selection yet - do it after forwarding is complete
     }
   };;
 
@@ -1215,8 +1227,23 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
           </DialogHeader>
           <div className="space-y-4">
             <div className="text-sm text-gray-600">
-              Selecciona una conversación para reenviar el mensaje:
+              {Array.isArray(selectedMessageForForward) && selectedMessageForForward.length > 1 
+                ? `Selecciona una conversación para reenviar ${selectedMessageForForward.length} mensajes:`
+                : "Selecciona una conversación para reenviar el mensaje:"
+              }
             </div>
+            {Array.isArray(selectedMessageForForward) && selectedMessageForForward.length > 1 && (
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <div className="text-xs text-gray-500 mb-2">Mensajes seleccionados:</div>
+                <div className="space-y-1 max-h-20 overflow-y-auto">
+                  {selectedMessageForForward.map((msg, index) => (
+                    <div key={msg.messageId || msg.id} className="text-xs text-gray-700 truncate">
+                      {index + 1}. {msg.content}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <Input
               placeholder="Buscar conversación..."
               value={forwardSearchQuery}
