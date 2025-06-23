@@ -559,15 +559,15 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     prevInstanceId.current = finalInstanceId;
   }, [conversationId, finalInstanceId]); // Remove currentDraft dependency
 
-  // Separate effect for loading draft content to prevent infinite loops
+  // Load draft content only when conversation changes or draft is fetched
   useEffect(() => {
-    if (currentDraft?.content && currentDraft.chatId === chatId && currentDraft.instanceId === finalInstanceId) {
+    if (currentDraft?.content && currentDraft.chatId === chatId && currentDraft.instanceId === finalInstanceId && conversationId) {
       setMessageInput(currentDraft.content);
       if (currentDraft.replyToMessageId) {
         setReplyToMessage({ messageId: currentDraft.replyToMessageId });
       }
     }
-  }, [currentDraft?.content, currentDraft?.chatId, currentDraft?.instanceId, chatId, finalInstanceId]);
+  }, [conversationId]); // Only depend on conversation change
 
   // Update message input ref when user types
   useEffect(() => {
