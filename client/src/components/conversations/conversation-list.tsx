@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Search, Check, CheckCheck, Users, ChevronDown, Archive, Bell, BellOff, Pin, Heart, Ban, Trash2, X } from "lucide-react";
 import { formatPhoneNumber } from "@/lib/phoneUtils";
+import { formatConversationTimestamp } from "@/lib/timeUtils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 
@@ -435,7 +436,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
               key={`${conversation.instanceId}-${conversation.chatId}`}
               className={`whatsapp-conversation-item ${
                 selectedConversation === `${conversation.instanceId}:${conversation.chatId}` ? 'active' : ''
-              } relative group`}
+              } ${conversation.unreadCount > 0 ? 'bg-green-50 dark:bg-green-900/10 border-l-2 border-green-500' : ''} relative group`}
               onClick={() => onSelectConversation(`${conversation.instanceId}:${conversation.chatId}`)}
               onMouseEnter={() => setHoveredConversation(conversation.chatId || conversation.id)}
               onMouseLeave={() => setHoveredConversation(null)}
@@ -477,18 +478,15 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                    <h3 className={`text-sm font-semibold truncate ${conversation.unreadCount > 0 ? 'text-gray-900 dark:text-gray-100' : 'text-gray-900 dark:text-gray-100'}`}>
                       {getConversationDisplayName(conversation)}
                     </h3>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                      <span className={`text-xs ${conversation.unreadCount > 0 ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
                         {(() => {
                           const latestMessage = getLatestMessage(conversation);
                           const timestamp = latestMessage?.timestamp || conversation.actualLastMessageTime || conversation.lastMessageTimestamp;
-                          return timestamp ? new Date(timestamp).toLocaleTimeString([], { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          }) : '';
+                          return timestamp ? formatConversationTimestamp(timestamp) : '';
                         })()}
                       </span>
                       {/* Dropdown arrow that appears on hover or when open */}
@@ -683,7 +681,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                       )}
                     </div>
                     {conversation.unreadCount > 0 && (
-                      <Badge className="bg-green-500 text-white text-xs px-2 py-0.5">
+                      <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-0.5 min-w-[20px] h-5 rounded-full flex items-center justify-center">
                         {conversation.unreadCount}
                       </Badge>
                     )}
