@@ -738,8 +738,15 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                     )}
                   </div>
                 </div>
+                
+                {/* Blue bookmark indicator for waiting reply */}
+                {hasWaitingReply(conversation) && (
+                  <div className="absolute bottom-2 right-2 w-4 h-4 bg-blue-500 rounded-tr-lg rounded-bl-lg flex items-center justify-center">
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                  </div>
+                )}
               </div>
-            </div>
+              </div>
             );
           })
         )}
