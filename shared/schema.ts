@@ -255,6 +255,17 @@ export const whatsappDrafts = whatsappSchema.table("drafts", {
   updatedAtIndex: index("drafts_updated_at_idx").on(table.updatedAt),
 }));
 
+export const whatsappWaitingReply = whatsappSchema.table("waiting_reply", {
+  id: serial("id").primaryKey(),
+  messageId: varchar("message_id", { length: 255 }).notNull().unique(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  chatId: varchar("chat_id", { length: 100 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  messageInstanceIdx: index("waiting_reply_message_instance_idx").on(table.messageId, table.instanceId),
+  chatInstanceIdx: index("waiting_reply_chat_instance_idx").on(table.chatId, table.instanceId),
+}));
+
 // Relations
 export const whatsappInstancesRelations = relations(whatsappInstances, ({ many }) => ({
   contacts: many(whatsappContacts),
@@ -436,6 +447,14 @@ export const insertWhatsappDraftSchema = createInsertSchema(whatsappDrafts).omit
 
 export type WhatsappDraft = typeof whatsappDrafts.$inferSelect;
 export type InsertWhatsappDraft = z.infer<typeof insertWhatsappDraftSchema>;
+
+export const insertWhatsappWaitingReplySchema = createInsertSchema(whatsappWaitingReply).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type WhatsappWaitingReply = typeof whatsappWaitingReply.$inferSelect;
+export type InsertWhatsappWaitingReply = z.infer<typeof insertWhatsappWaitingReplySchema>;
 
 // Legacy types for backward compatibility (to be removed after migration)
 export interface WhatsappInstanceLegacy {
