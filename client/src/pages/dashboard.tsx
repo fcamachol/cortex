@@ -3,6 +3,7 @@ import Sidebar from "@/components/layout/sidebar";
 import ConversationList from "@/components/conversations/conversation-list";
 import ChatInterface from "@/components/conversations/chat-interface";
 import { TasksPage } from "@/pages/TasksPage";
+import FinancePage from "@/pages/FinancePage";
 import ContactModule from "@/components/contacts/contact-module";
 import CalendarModule from "@/components/calendar/calendar-module";
 import IntegrationModule from "@/components/integrations/integration-module";
@@ -77,6 +78,8 @@ export default function Dashboard() {
         );
       case "tasks":
         return <TasksPage />;
+      case "finance":
+        return <FinancePage />;
       case "contacts":
         return <ContactModule />;
       case "calendar":
