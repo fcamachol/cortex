@@ -1238,7 +1238,7 @@ export type InsertCalendarAttendee = z.infer<typeof insertCalendarAttendeeSchema
 export const financeCategories = financeSchema.table("categories", {
   categoryId: serial("category_id").primaryKey(),
   workspaceId: uuid("workspace_id").notNull().references(() => appWorkspaces.workspaceId, { onDelete: "cascade" }),
-  parentCategoryId: integer("parent_category_id").references(() => financeCategories.categoryId, { onDelete: "cascade" }),
+  parentCategoryId: integer("parent_category_id"),
   categoryName: varchar("category_name", { length: 100 }).notNull(),
 });
 
@@ -1316,3 +1316,139 @@ export const financeLoanPayments = financeSchema.table("loan_payments", {
     columns: [table.paymentId, table.loanId]
   }
 }));
+
+// =============================================================================
+// FINANCE SCHEMA RELATIONS
+// =============================================================================
+
+export const financeCategoriesRelations = relations(financeCategories, ({ one, many }) => ({
+  workspace: one(appWorkspaces, {
+    fields: [financeCategories.workspaceId],
+    references: [appWorkspaces.workspaceId],
+  }),
+  parentCategory: one(financeCategories, {
+    fields: [financeCategories.parentCategoryId],
+    references: [financeCategories.categoryId],
+  }),
+  transactions: many(financeTransactions),
+  recurringBills: many(financeRecurringBills),
+}));
+
+export const financeTransactionsRelations = relations(financeTransactions, ({ one, many }) => ({
+  space: one(appSpaces, {
+    fields: [financeTransactions.spaceId],
+    references: [appSpaces.spaceId],
+  }),
+  category: one(financeCategories, {
+    fields: [financeTransactions.categoryId],
+    references: [financeCategories.categoryId],
+  }),
+  createdBy: one(appUsers, {
+    fields: [financeTransactions.createdByUserId],
+    references: [appUsers.userId],
+  }),
+  payablePayments: many(financePayablePayments),
+  loanPayments: many(financeLoanPayments),
+}));
+
+export const financePayablesRelations = relations(financePayables, ({ one, many }) => ({
+  space: one(appSpaces, {
+    fields: [financePayables.spaceId],
+    references: [appSpaces.spaceId],
+  }),
+  payablePayments: many(financePayablePayments),
+}));
+
+export const financePayablePaymentsRelations = relations(financePayablePayments, ({ one }) => ({
+  payment: one(financeTransactions, {
+    fields: [financePayablePayments.paymentId],
+    references: [financeTransactions.transactionId],
+  }),
+  payable: one(financePayables, {
+    fields: [financePayablePayments.payableId],
+    references: [financePayables.payableId],
+  }),
+}));
+
+export const financeRecurringBillsRelations = relations(financeRecurringBills, ({ one }) => ({
+  space: one(appSpaces, {
+    fields: [financeRecurringBills.spaceId],
+    references: [appSpaces.spaceId],
+  }),
+  category: one(financeCategories, {
+    fields: [financeRecurringBills.categoryId],
+    references: [financeCategories.categoryId],
+  }),
+}));
+
+export const financeLoansRelations = relations(financeLoans, ({ one, many }) => ({
+  space: one(appSpaces, {
+    fields: [financeLoans.spaceId],
+    references: [appSpaces.spaceId],
+  }),
+  loanPayments: many(financeLoanPayments),
+}));
+
+export const financeLoanPaymentsRelations = relations(financeLoanPayments, ({ one }) => ({
+  payment: one(financeTransactions, {
+    fields: [financeLoanPayments.paymentId],
+    references: [financeTransactions.transactionId],
+  }),
+  loan: one(financeLoans, {
+    fields: [financeLoanPayments.loanId],
+    references: [financeLoans.loanId],
+  }),
+}));
+
+// =============================================================================
+// FINANCE SCHEMA INSERT SCHEMAS
+// =============================================================================
+
+export const insertFinanceCategorySchema = createInsertSchema(financeCategories).omit({
+  categoryId: true,
+});
+
+export const insertFinanceTransactionSchema = createInsertSchema(financeTransactions).omit({
+  transactionId: true,
+});
+
+export const insertFinancePayableSchema = createInsertSchema(financePayables).omit({
+  payableId: true,
+});
+
+export const insertFinancePayablePaymentSchema = createInsertSchema(financePayablePayments);
+
+export const insertFinanceRecurringBillSchema = createInsertSchema(financeRecurringBills).omit({
+  recurringBillId: true,
+});
+
+export const insertFinanceLoanSchema = createInsertSchema(financeLoans).omit({
+  loanId: true,
+});
+
+export const insertFinanceLoanPaymentSchema = createInsertSchema(financeLoanPayments);
+
+// =============================================================================
+// FINANCE SCHEMA TYPES
+// =============================================================================
+
+export type FinanceCategory = typeof financeCategories.$inferSelect;
+export type InsertFinanceCategory = z.infer<typeof insertFinanceCategorySchema>;
+
+export type FinanceTransaction = typeof financeTransactions.$inferSelect;
+export type InsertFinanceTransaction = z.infer<typeof insertFinanceTransactionSchema>;
+
+export type FinancePayable = typeof financePayables.$inferSelect;
+export type InsertFinancePayable = z.infer<typeof insertFinancePayableSchema>;
+
+export type FinancePayablePayment = typeof financePayablePayments.$inferSelect;
+export type InsertFinancePayablePayment = z.infer<typeof insertFinancePayablePaymentSchema>;
+
+export type FinanceRecurringBill = typeof financeRecurringBills.$inferSelect;
+export type InsertFinanceRecurringBill = z.infer<typeof insertFinanceRecurringBillSchema>;
+
+export type FinanceLoan = typeof financeLoans.$inferSelect;
+export type InsertFinanceLoan = z.infer<typeof insertFinanceLoanSchema>;
+
+export type FinanceLoanPayment = typeof financeLoanPayments.$inferSelect;
+export type InsertFinanceLoanPayment = z.infer<typeof insertFinanceLoanPaymentSchema>;
