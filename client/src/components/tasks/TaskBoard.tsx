@@ -49,9 +49,9 @@ interface StatusColumn {
 }
 
 const statusColumns: StatusColumn[] = [
-  { id: 'to_do', title: 'To Do', color: 'bg-slate-100' },
-  { id: 'in_progress', title: 'In Progress', color: 'bg-blue-100', includeStatuses: ['in_progress', 'pending', 'review'] },
-  { id: 'done', title: 'Done', color: 'bg-green-100' }
+  { id: 'to_do', title: 'To Do', color: 'bg-slate-100', includeStatuses: ['to_do', 'pending'] },
+  { id: 'in_progress', title: 'In Progress', color: 'bg-blue-100', includeStatuses: ['in_progress', 'review'] },
+  { id: 'done', title: 'Done', color: 'bg-green-100', includeStatuses: ['done', 'completed'] }
 ];
 
 export function TaskBoard({ 
@@ -83,6 +83,14 @@ export function TaskBoard({
     } else {
       filteredTasks = tasks.filter(task => task.status === columnId);
     }
+    
+    // Debug logging
+    console.log(`Column ${columnId}:`, {
+      totalTasks: tasks.length,
+      filteredCount: filteredTasks.length,
+      includeStatuses: column?.includeStatuses,
+      statuses: filteredTasks.map(t => t.status)
+    });
     
     // Remove duplicates by taskId to prevent duplicate key warnings
     const uniqueTasks = filteredTasks.filter((task, index, arr) => 

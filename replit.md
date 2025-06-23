@@ -127,7 +127,8 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
-- June 23, 2025: Fixed critical task display issue by resolving field name mismatches between API response (camelCase) and component interfaces (snake_case)
+- June 23, 2025: Fixed TaskBoard filtering logic to properly display all 70 tasks across status columns (66 To Do, 3 In Progress, 1 Done)
+- June 23, 2025: Fixed critical task display issue by resolving field name mismatches between API response (camelCase) and component interfaces (snake_case)  
 - June 23, 2025: Updated default task status from "pending" to "to_do" across all task creation points (server routes and forms)
 - June 23, 2025: Stabilized ChatInterface SSE connections by fixing useCallback dependencies to prevent infinite re-renders
 - June 23, 2025: Implemented real-time waiting response detection - "esperando respuesta" now triggers directly from chat interface with instant blue indicator in conversation list
