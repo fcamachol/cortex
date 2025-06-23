@@ -517,15 +517,39 @@ export default function ConversationList({ selectedConversation, onSelectConvers
       try {
         const data = JSON.parse(event.data);
         
-        if (data.type === 'new_message' || data.type === 'new_reaction') {
-          // Invalidate conversations to refresh latest message previews
+        // Refresh conversation list for any event that affects chat data
+        if (data.type === 'new_message' || 
+            data.type === 'new_reaction' ||
+            data.type === 'message_status_update' ||
+            data.type === 'chat_updated' ||
+            data.type === 'contact_updated' ||
+            data.type === 'group_updated' ||
+            data.type === 'participant_updated' ||
+            data.type === 'draft_updated' ||
+            data.type === 'waiting_reply_added' ||
+            data.type === 'waiting_reply_removed') {
+          
+          console.log(`🔄 Refreshing conversation list due to: ${data.type}`);
+          
+          // Invalidate conversations to refresh latest message previews and metadata
           queryClient.invalidateQueries({
             queryKey: [`/api/whatsapp/conversations/${userId}`]
           });
+          
+          // Also invalidate chat messages if it's a direct message update
+          if (data.type === 'new_message' || data.type === 'message_status_update') {
+            queryClient.invalidateQueries({
+              queryKey: ['/api/whatsapp/chat-messages']
+            });
+          }
         }
       } catch (error) {
         console.error('Error processing SSE event:', error);
       }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE connection error:', error);
     };
 
     return () => {

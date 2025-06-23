@@ -131,6 +131,48 @@ export const SseManager = {
     },
 
     /**
+     * Notifies clients of contact/chat updates that should refresh conversation list
+     */
+    notifyClientsOfChatUpdate(updateData: any) {
+        this.notifyClients('chat_updated', updateData);
+    },
+
+    /**
+     * Notifies clients of contact information updates
+     */
+    notifyClientsOfContactUpdate(contactData: any) {
+        this.notifyClients('contact_updated', contactData);
+    },
+
+    /**
+     * Notifies clients of group metadata updates
+     */
+    notifyClientsOfGroupUpdate(groupData: any) {
+        this.notifyClients('group_updated', groupData);
+    },
+
+    /**
+     * Notifies clients of message status updates (read, delivered, etc.)
+     */
+    notifyClientsOfMessageStatusUpdate(statusData: any) {
+        this.notifyClients('message_status_update', statusData);
+    },
+
+    /**
+     * Notifies clients of draft message updates
+     */
+    notifyClientsOfDraftUpdate(draftData: any) {
+        this.notifyClients('draft_updated', draftData);
+    },
+
+    /**
+     * Notifies clients of waiting reply status changes
+     */
+    notifyClientsOfWaitingReplyUpdate(waitingData: any) {
+        this.notifyClients(waitingData.action === 'added' ? 'waiting_reply_added' : 'waiting_reply_removed', waitingData);
+    },
+
+    /**
      * Generic notification method for any type of event.
      * @param eventType - The type of event (e.g., 'action_completed', 'error', etc.)
      * @param payload - The data to send to clients

@@ -362,6 +362,14 @@ export const WebhookApiAdapter = {
                 // Now it's safe to save the chat
                 await storage.upsertWhatsappChat(cleanChat);
                 console.log(`✅ [${instanceId}] Chat upserted: ${cleanChat.chatId}`);
+                
+                // Notify clients of chat update to refresh conversation list
+                SseManager.notifyClientsOfChatUpdate({
+                    chatId: cleanChat.chatId,
+                    instanceId: instanceId,
+                    name: cleanChat.name,
+                    type: cleanChat.type
+                });
             }
         }
     },
