@@ -1365,9 +1365,33 @@ export const financeAccounts = financeSchema.table("accounts", {
   currentBalance: numeric("current_balance", { precision: 12, scale: 2 }).default("0.00"),
   currency: varchar("currency", { length: 3 }).notNull().default("USD"),
   isActive: boolean("is_active").notNull().default(true),
+  last4Digits: varchar("last_4_digits", { length: 4 }), // For display purposes
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Credit Card Details - Specific information for credit card accounts
+export const creditCardDetails = financeSchema.table("credit_card_details", {
+  accountId: integer("account_id").primaryKey().references(() => financeAccounts.accountId, { onDelete: "cascade" }),
+  creditLimit: numeric("credit_limit", { precision: 12, scale: 2 }).notNull(),
+  apr: numeric("apr", { precision: 6, scale: 4 }).notNull(), // Annual Percentage Rate
+  statementClosingDay: integer("statement_closing_day").notNull(), // Day of month (1-31)
+  paymentDueDaysAfterStatement: integer("payment_due_days_after_statement").notNull().default(21),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Statements - Historical record of monthly credit card statements
+export const statements = financeSchema.table("statements", {
+  statementId: serial("statement_id").primaryKey(),
+  accountId: integer("account_id").notNull().references(() => financeAccounts.accountId, { onDelete: "cascade" }),
+  statementPeriodStart: varchar("statement_period_start", { length: 10 }).notNull(), // DATE as string
+  statementPeriodEnd: varchar("statement_period_end", { length: 10 }).notNull(), // DATE as string
+  closingBalance: numeric("closing_balance", { precision: 12, scale: 2 }).notNull(),
+  minimumPaymentDue: numeric("minimum_payment_due", { precision: 12, scale: 2 }).notNull(),
+  paymentDueDate: varchar("payment_due_date", { length: 10 }).notNull(), // DATE as string
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Finance Loan Payments - Links transactions to loan payments with principal/interest breakdown
@@ -1406,6 +1430,25 @@ export const financeAccountsRelations = relations(financeAccounts, ({ one, many 
     references: [appSpaces.spaceId],
   }),
   transactions: many(financeTransactions),
+  creditCardDetails: one(creditCardDetails, {
+    fields: [financeAccounts.accountId],
+    references: [creditCardDetails.accountId],
+  }),
+  statements: many(statements),
+}));
+
+export const creditCardDetailsRelations = relations(creditCardDetails, ({ one }) => ({
+  account: one(financeAccounts, {
+    fields: [creditCardDetails.accountId],
+    references: [financeAccounts.accountId],
+  }),
+}));
+
+export const statementsRelations = relations(statements, ({ one }) => ({
+  account: one(financeAccounts, {
+    fields: [statements.accountId],
+    references: [financeAccounts.accountId],
+  }),
 }));
 
 export const financeTransactionsRelations = relations(financeTransactions, ({ one, many }) => ({
@@ -1520,6 +1563,16 @@ export const insertFinanceAccountSchema = createInsertSchema(financeAccounts).om
   updatedAt: true,
 });
 
+export const insertCreditCardDetailsSchema = createInsertSchema(creditCardDetails).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertStatementSchema = createInsertSchema(statements).omit({
+  statementId: true,
+  createdAt: true,
+});
+
 // =============================================================================
 // FINANCE SCHEMA TYPES
 // =============================================================================
@@ -1547,3 +1600,9 @@ export type InsertFinanceLoan = z.infer<typeof insertFinanceLoanSchema>;
 
 export type FinanceLoanPayment = typeof financeLoanPayments.$inferSelect;
 export type InsertFinanceLoanPayment = z.infer<typeof insertFinanceLoanPaymentSchema>;
+
+export type CreditCardDetails = typeof creditCardDetails.$inferSelect;
+export type InsertCreditCardDetails = z.infer<typeof insertCreditCardDetailsSchema>;
+
+export type Statement = typeof statements.$inferSelect;
+export type InsertStatement = z.infer<typeof insertStatementSchema>;

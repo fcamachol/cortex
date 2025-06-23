@@ -1,0 +1,100 @@
+The "Accounts" Module: A Home for Credit Cards
+1. The Information We Need (The Data Model)
+To accurately model a credit card, we need to track three core things: the card itself, its monthly statements, and the individual transactions.
+
+Table 1: The Accounts Table (The Parent)
+This will be a central table to hold all financial accounts, starting with credit cards.
+
+SQL
+
+-- [NEW] A central table for all user financial accounts.
+CREATE TABLE Accounts (
+    account_id UUID PRIMARY KEY,
+    space_id UUID REFERENCES Spaces(space_id) NOT NULL,
+    user_id UUID REFERENCES Users(user_id) NOT NULL,
+    
+    account_name VARCHAR(255) NOT NULL, -- e.g., "Chase Sapphire Reserve"
+    account_type VARCHAR(50) NOT NULL, -- 'CreditCard', 'BankAccount', 'Savings'
+    institution_name VARCHAR(255), -- e.g., "Chase Bank", "Bank of America"
+    
+    current_balance DECIMAL(19, 4) NOT NULL DEFAULT 0.00, -- The LIVE, real-time balance
+    last_4_digits VARCHAR(4) -- For display purposes
+);
+Table 2: Credit_Card_Details (Credit Card Specific Info)
+This table links to the Accounts table and stores data unique to credit cards.
+
+SQL
+
+-- [NEW] A table for details specific to credit card accounts.
+CREATE TABLE Credit_Card_Details (
+    account_id UUID PRIMARY KEY REFERENCES Accounts(account_id) ON DELETE CASCADE,
+    
+    credit_limit DECIMAL(19, 4) NOT NULL,
+    apr DECIMAL(10, 6) NOT NULL, -- Annual Percentage Rate
+    
+    -- Rules for statement generation
+    statement_closing_day INT NOT NULL, -- Day of the month the statement closes (e.g., 25)
+    payment_due_days_after_statement INT NOT NULL DEFAULT 21 -- Days after closing that the bill is due
+);
+Table 3: Statements (The Monthly Record)
+This table stores a historical record of each monthly statement generated.
+
+SQL
+
+-- [NEW] A historical log of generated monthly statements.
+CREATE TABLE Statements (
+    statement_id UUID PRIMARY KEY,
+    account_id UUID REFERENCES Accounts(account_id) ON DELETE CASCADE,
+    
+    statement_period_start DATE NOT NULL,
+    statement_period_end DATE NOT NULL,
+    
+    closing_balance DECIMAL(19, 4) NOT NULL, -- The amount that will become the bill
+    minimum_payment_due DECIMAL(19, 4) NOT NULL,
+    payment_due_date DATE NOT NULL
+);
+Modification: Link Transactions to an Account
+
+SQL
+
+-- [MODIFIED] Transactions can now be linked to the account that made them.
+ALTER TABLE Transactions
+ADD COLUMN account_id UUID 
+REFERENCES Accounts(account_id) ON DELETE SET NULL;
+2. The Monthly Lifecycle: From Purchase to Payment
+This is how the system handles the entire credit card cycle, including your partial payment requirement.
+
+Phase 1: Making Purchases (Throughout the Month)
+WhatsApp Command: $25 at Starbucks #food #expense card:Chase
+Backend Logic:
+A new Transaction for $25 is created.
+The system finds the Account where account_name is "Chase" and links it via the new account_id field.
+It updates the current_balance on the Chase Account record in real-time. The user can always see their live balance.
+Phase 2: Statement Day (An Automated Action)
+A background job runs daily. On the statement_closing_day for a card (e.g., the 25th of the month):
+
+Generate Statement: The system creates a new record in the Statements table. It calculates the closing_balance (the amount you owe for that period), the minimum_payment_due, and the payment_due_date.
+Generate Bill (Payable): This is the crucial step. The system immediately creates a new record in our Payables table.
+description: "Chase Sapphire - Statement Balance"
+total_amount_due: The closing_balance from the statement.
+due_date: The payment_due_date from the statement.
+A companion Task is also created to remind the user to pay this bill.
+Phase 3: Paying the Bill (Partial Payments)
+Your new credit card bill now exists as a Payable and works seamlessly with the partial payment system we already designed.
+
+The user sees the task "Pay Chase Sapphire Bill ($1,500)" in their to-do list.
+User makes a partial payment: /pay $200 towards "Chase Bill"
+Backend Logic:
+A new payment Transaction is created.
+The system updates the Payable record: amount_paid is now $200, and the status is 'PARTIALLY_PAID'.
+The current_balance on the main Account is also reduced by $200.
+The user can pay the minimum, the full statement balance, or any amount in between, and the system will track it perfectly against that month's bill.
+3. The Web App User Experience
+New "Accounts" Tab: A new top-level section in the Finance module.
+Accounts Dashboard: A list of all accounts (credit cards, bank accounts). Each credit card shows its name, last 4 digits, and the live current_balance.
+Credit Card Detail View: Clicking a card opens its own dashboard showing:
+The credit_limit vs. current_balance as a visual gauge.
+A chart of the balance over time.
+A list of all recent Transactions made with that card.
+A "Statements" tab to view and download historical statements.
+This dedicated, lifecycle-aware model provides a complete and accurate system for managing revolving credit, giving users a live view of their debt and automatically generating actionable bills that fit perfectly into the existing payment workflow.
