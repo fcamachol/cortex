@@ -1369,6 +1369,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
           chatId={chatId!}
           instanceId={finalInstanceId!}
           contactName={conversation?.contactName}
+          senderJid={selectedMessageForTask.senderJid}
         />
       )}
 

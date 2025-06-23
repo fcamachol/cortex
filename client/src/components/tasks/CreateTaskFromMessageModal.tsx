@@ -16,6 +16,7 @@ interface CreateTaskFromMessageModalProps {
   chatId: string;
   instanceId: string;
   contactName?: string;
+  senderJid?: string;
 }
 
 export function CreateTaskFromMessageModal({
@@ -25,14 +26,13 @@ export function CreateTaskFromMessageModal({
   messageContent,
   chatId,
   instanceId,
-  contactName
+  contactName,
+  senderJid
 }: CreateTaskFromMessageModalProps) {
   const [taskTitle, setTaskTitle] = useState(
     messageContent.length > 50 ? messageContent.substring(0, 47) + '...' : messageContent
   );
-  const [taskDescription, setTaskDescription] = useState(
-    `Task created from WhatsApp message:\n"${messageContent}"\n\nContact: ${contactName || chatId.split('@')[0]}`
-  );
+  const [taskDescription, setTaskDescription] = useState(messageContent);
   const [priority, setPriority] = useState('medium');
   const [dueDate, setDueDate] = useState('');
   const [taskType, setTaskType] = useState('task');
@@ -46,13 +46,16 @@ export function CreateTaskFromMessageModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messageId,
-          messageContent: taskDescription,
+          messageContent,
+          description: taskDescription,
           chatId,
           instanceId,
+          senderJid,
           title: taskTitle,
           priority,
           dueDate: dueDate || null,
           taskType,
+          contactName,
         }),
       });
       
@@ -62,8 +65,9 @@ export function CreateTaskFromMessageModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
       onClose();
+      // Reset form values
       setTaskTitle(messageContent.length > 50 ? messageContent.substring(0, 47) + '...' : messageContent);
-      setTaskDescription(`Task created from WhatsApp message:\n"${messageContent}"\n\nContact: ${contactName || chatId.split('@')[0]}`);
+      setTaskDescription(messageContent);
       setPriority('medium');
       setDueDate('');
       setTaskType('task');

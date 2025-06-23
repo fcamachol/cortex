@@ -1733,6 +1733,52 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Create task from WhatsApp message
+  app.post('/api/whatsapp/create-task-from-message', async (req: Request, res: Response) => {
+    try {
+      const {
+        messageId,
+        messageContent,
+        description,
+        chatId,
+        instanceId,
+        senderJid,
+        title,
+        priority,
+        dueDate,
+        taskType,
+        contactName
+      } = req.body;
+
+      if (!messageId || !title || !instanceId || !chatId) {
+        return res.status(400).json({ error: 'Missing required fields: messageId, title, instanceId, chatId' });
+      }
+
+      // Create task with proper WhatsApp message linking
+      const task = await storage.createTask({
+        title,
+        description: description || messageContent,
+        priority: priority || 'medium',
+        status: 'pending',
+        taskType: taskType || 'task',
+        dueDate: dueDate ? new Date(dueDate) : null,
+        // Link to WhatsApp message metadata
+        triggeringMessageId: messageId,
+        instanceId,
+        relatedChatJid: chatId,
+        senderJid: senderJid || null,
+        contactName: contactName || null,
+        // Store original message content for reference
+        originalMessageContent: messageContent
+      });
+
+      res.json({ success: true, task });
+    } catch (error) {
+      console.error('Error creating task from message:', error);
+      res.status(500).json({ error: 'Failed to create task' });
+    }
+  });
+
   // Evolution API webhook handlers - Use the new layered webhook controller
   app.post('/api/evolution/webhook/:instanceName/:eventType', async (req: Request, res: Response) => {
     await WebhookController.handleIncomingEvent(req, res);
