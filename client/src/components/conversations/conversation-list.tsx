@@ -13,9 +13,10 @@ import { Button } from "@/components/ui/button";
 interface ConversationListProps {
   selectedConversation: string | null;
   onSelectConversation: (conversationId: string) => void;
+  drafts?: {[chatId: string]: string};
 }
 
-export default function ConversationList({ selectedConversation, onSelectConversation }: ConversationListProps) {
+export default function ConversationList({ selectedConversation, onSelectConversation, drafts = {} }: ConversationListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredConversation, setHoveredConversation] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -251,8 +252,20 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   // Ensure messages is always an array
   const messages = Array.isArray(messagesResponse) ? messagesResponse : [];
 
-  // Helper function to get latest message for a conversation
+  // Helper function to get latest message for a conversation (including drafts)
   const getLatestMessage = (conversation: any) => {
+    // Check if there's a draft message for this conversation
+    const draftMessage = drafts[conversation.chatId];
+    if (draftMessage && draftMessage.trim()) {
+      return {
+        content: draftMessage,
+        fromMe: true,
+        messageType: 'draft',
+        timestamp: new Date().toISOString(),
+        isDraft: true
+      };
+    }
+    
     // Use the lastMessageContent from the conversation data if available
     if (conversation.lastMessageContent !== undefined && conversation.lastMessageContent !== null) {
       return {
@@ -325,9 +338,20 @@ export default function ConversationList({ selectedConversation, onSelectConvers
       return chatId.includes(searchTerm) || displayName.includes(searchTerm);
     })
     .sort((a: any, b: any) => {
+      // Get latest messages (including drafts)
+      const aLatestMessage = getLatestMessage(a);
+      const bLatestMessage = getLatestMessage(b);
+      
+      // Prioritize conversations with drafts at the top
+      const aHasDraft = aLatestMessage?.isDraft || false;
+      const bHasDraft = bLatestMessage?.isDraft || false;
+      
+      if (aHasDraft && !bHasDraft) return -1;
+      if (!aHasDraft && bHasDraft) return 1;
+      
       // Sort by most recent message timestamp (newest first)
-      const aTime = a.latestMessage?.timestamp || a.lastMessageAt || a.updatedAt || 0;
-      const bTime = b.latestMessage?.timestamp || b.lastMessageAt || b.updatedAt || 0;
+      const aTime = aLatestMessage?.timestamp || a.lastMessageAt || a.updatedAt || 0;
+      const bTime = bLatestMessage?.timestamp || b.lastMessageAt || b.updatedAt || 0;
       return new Date(bTime).getTime() - new Date(aTime).getTime();
     });
 
@@ -597,14 +621,20 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                       if (latestMessage && latestMessage.content) {
                         return (
                           <span className="flex items-center">
-                            {latestMessage.fromMe && (
-                              <span className="mr-1 text-gray-500">You: </span>
+                            {latestMessage.isDraft ? (
+                              <span className="text-red-500 italic">{latestMessage.content}</span>
+                            ) : (
+                              <>
+                                {latestMessage.fromMe && (
+                                  <span className="mr-1 text-gray-500">You: </span>
+                                )}
+                                {latestMessage.messageType === 'image' ? '📷 Photo' :
+                                 latestMessage.messageType === 'audio' ? '🎵 Audio' :
+                                 latestMessage.messageType === 'video' ? '🎥 Video' :
+                                 latestMessage.messageType === 'document' ? '📄 Document' :
+                                 latestMessage.content}
+                              </>
                             )}
-                            {latestMessage.messageType === 'image' ? '📷 Photo' :
-                             latestMessage.messageType === 'audio' ? '🎵 Audio' :
-                             latestMessage.messageType === 'video' ? '🎥 Video' :
-                             latestMessage.messageType === 'document' ? '📄 Document' :
-                             latestMessage.content}
                           </span>
                         );
                       }
