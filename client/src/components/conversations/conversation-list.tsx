@@ -546,6 +546,10 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                             {conversation.unreadCount}
                           </Badge>
                         )}
+                        {/* Blue corner indicator for conversations with waiting responses */}
+                        {hasWaitingReply(conversation) && (
+                          <div className="w-2 h-2 bg-blue-500 rounded-full" title="Has waiting response messages"></div>
+                        )}
                         {/* Dropdown arrow that appears on hover or when open */}
                         {(hoveredConversation === conversationKey || openDropdown === conversationKey) && (
                           <DropdownMenu 
