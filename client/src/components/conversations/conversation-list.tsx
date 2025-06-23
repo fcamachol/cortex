@@ -87,6 +87,16 @@ export default function ConversationList({ selectedConversation, onSelectConvers
         });
       }
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+    },
+    onError: (error, { silent = false }) => {
+      console.error('Failed to update read status:', error);
+      if (!silent) {
+        toast({
+          title: "Error",
+          description: "No se pudo actualizar el estado de lectura",
+          variant: "destructive"
+        });
+      }
     }
   });
 
@@ -103,6 +113,14 @@ export default function ConversationList({ selectedConversation, onSelectConvers
         description: favorite ? "El chat está en tu lista de favoritos" : "El chat se eliminó de favoritos"
       });
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+    },
+    onError: (error) => {
+      console.error('Failed to update favorite status:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el estado de favorito",
+        variant: "destructive"
+      });
     }
   });
 
@@ -152,6 +170,14 @@ export default function ConversationList({ selectedConversation, onSelectConvers
         variant: "destructive"
       });
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+    },
+    onError: (error) => {
+      console.error('Failed to delete chat:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el chat",
+        variant: "destructive"
+      });
     }
   });
 
@@ -443,16 +469,20 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                 className={`whatsapp-conversation-item ${
                   isSelected ? 'active' : ''
                 } relative group`}
-                onClick={() => {
+                onClick={async () => {
                   onSelectConversation(conversationKey);
                   // Auto-mark as read if conversation has unread messages
                   if (conversation.unreadCount > 0) {
-                    markUnreadMutation.mutate({
-                      chatId: conversation.chatId,
-                      instanceId: conversation.instanceId,
-                      unread: false,
-                      silent: true
-                    });
+                    try {
+                      markUnreadMutation.mutate({
+                        chatId: conversation.chatId,
+                        instanceId: conversation.instanceId,
+                        unread: false,
+                        silent: true
+                      });
+                    } catch (error) {
+                      console.error('Failed to mark conversation as read:', error);
+                    }
                   }
                 }}
               onMouseEnter={() => setHoveredConversation(conversationKey)}
