@@ -431,11 +431,18 @@ class DatabaseStorage {
     }
 
     async upsertWhatsappMessageMedia(media: InsertWhatsappMessageMedia): Promise<WhatsappMessageMedia> {
-        const [result] = await db.insert(whatsappMessageMedia)
-            .values(media)
-            .onConflictDoUpdate({
-                target: [whatsappMessageMedia.messageId, whatsappMessageMedia.instanceId],
-                set: {
+        // Check if media already exists for this message
+        const [existing] = await db.select().from(whatsappMessageMedia)
+            .where(and(
+                eq(whatsappMessageMedia.messageId, media.messageId),
+                eq(whatsappMessageMedia.instanceId, media.instanceId)
+            ))
+            .limit(1);
+
+        if (existing) {
+            // Update existing media
+            const [result] = await db.update(whatsappMessageMedia)
+                .set({
                     mimetype: media.mimetype,
                     fileSizeBytes: media.fileSizeBytes,
                     fileUrl: media.fileUrl,
@@ -447,10 +454,17 @@ class DatabaseStorage {
                     width: media.width,
                     durationSeconds: media.durationSeconds,
                     isViewOnce: media.isViewOnce,
-                }
-            })
-            .returning();
-        return result;
+                })
+                .where(eq(whatsappMessageMedia.mediaId, existing.mediaId))
+                .returning();
+            return result;
+        } else {
+            // Insert new media
+            const [result] = await db.insert(whatsappMessageMedia)
+                .values(media)
+                .returning();
+            return result;
+        }
     }
 
     async getWhatsappMessageMedia(messageId: string, instanceId: string): Promise<WhatsappMessageMedia | undefined> {

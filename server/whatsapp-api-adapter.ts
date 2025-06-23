@@ -2051,7 +2051,7 @@ export const WebhookApiAdapter = {
                 console.error(`❌ Error storing media for message ${messageId}:`, error);
             }
         }
-    }
+    },
 
     /**
      * Cleans up contact records with incorrect data while preserving authentic group JIDs
