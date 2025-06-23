@@ -360,6 +360,49 @@ export default function FinancePage() {
               <AccountList spaceId={1} />
             </TabsContent>
 
+            <TabsContent value="credit-cards" className="space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold">Credit Cards</h2>
+                  <p className="text-muted-foreground">
+                    Manage your credit cards with comprehensive tracking, statements, and payment history
+                  </p>
+                </div>
+                <Button onClick={() => setShowCreditCardForm(true)} className="gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Add Credit Card
+                </Button>
+              </div>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    Credit Card Management
+                  </CardTitle>
+                  <CardDescription>
+                    Complete credit card lifecycle management with monthly statements and payment tracking
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8">
+                    <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">Credit card management system ready.</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Add your first credit card to start tracking statements, payments, and balances.
+                    </p>
+                    <Button 
+                      onClick={() => setShowCreditCardForm(true)} 
+                      className="mt-4 gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Your First Credit Card
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="reports" className="space-y-4">
               <Card>
                 <CardHeader>
@@ -400,6 +443,29 @@ export default function FinancePage() {
         onClose={() => setShowAccountForm(false)} 
         spaceId={1}
       />
+
+      {/* Credit Card Form Modal */}
+      {showCreditCardForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h2 className="text-lg font-semibold">Add Credit Card</h2>
+              <button
+                onClick={() => setShowCreditCardForm(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              <CreditCardForm
+                spaceId={1}
+                onSuccess={() => setShowCreditCardForm(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
