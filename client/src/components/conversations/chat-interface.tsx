@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Paperclip, Smile, Send, CheckSquare, Plus, MoreVertical, ChevronDown, Reply, Copy, Forward, Pin, Star, Trash2, X } from "lucide-react";
+import { Paperclip, Smile, Send, CheckSquare, Plus, MoreVertical, ChevronDown, Reply, Copy, Forward, Pin, Star, Trash2, X, Check } from "lucide-react";
 import { ContactTasksAndEvents } from "@/components/contacts/ContactTasksAndEvents";
 import { MessageReactions } from "@/components/conversations/MessageReactions";
 import { MessageHoverActions } from "@/components/conversations/MessageHoverActions";
@@ -35,6 +35,9 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   // Draft storage per conversation (now database-backed)
   const [replyStates, setReplyStates] = useState<{[chatId: string]: any}>({});
   const [isDeletingDraft, setIsDeletingDraft] = useState(false);
+  
+  // Waiting reply state
+  const [waitingReplyMessages, setWaitingReplyMessages] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -48,8 +51,22 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   // Get current instance ID from selected conversation
   const currentInstanceId = instances.find((inst: any) => 
-    conversationId && conversationId.includes('@')
+    conversationId?.startsWith(inst.instanceId)
   )?.instanceId;
+
+  // Fetch waiting reply messages for current instance
+  const { data: waitingReplyData = [] } = useQuery({
+    queryKey: [`/api/whatsapp/waiting-reply/${currentInstanceId}`],
+    enabled: !!currentInstanceId,
+  });
+
+  // Update waiting reply state when data changes
+  useEffect(() => {
+    if (waitingReplyData) {
+      const messageIds = new Set(waitingReplyData.map((item: any) => item.message_id));
+      setWaitingReplyMessages(messageIds);
+    }
+  }, [waitingReplyData]);
 
   // Get instance indicator with custom colors and letters
   const getInstanceIndicator = (instanceId: string) => {

@@ -1021,6 +1021,62 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Waiting Reply API endpoints
+  app.post('/api/whatsapp/waiting-reply', async (req: Request, res: Response) => {
+    try {
+      const { messageId, instanceId, chatId } = req.body;
+      
+      if (!messageId || !instanceId || !chatId) {
+        return res.status(400).json({ error: 'messageId, instanceId, and chatId are required' });
+      }
+
+      await db.execute(sql`
+        INSERT INTO whatsapp.waiting_reply (message_id, instance_id, chat_id)
+        VALUES (${messageId}, ${instanceId}, ${chatId})
+        ON CONFLICT (message_id) DO NOTHING
+      `);
+      
+      res.json({ success: true, message: 'Message marked as awaiting reply' });
+    } catch (error) {
+      console.error('Error marking message as awaiting reply:', error);
+      res.status(500).json({ error: 'Failed to mark message as awaiting reply' });
+    }
+  });
+
+  app.delete('/api/whatsapp/waiting-reply/:messageId', async (req: Request, res: Response) => {
+    try {
+      const { messageId } = req.params;
+      
+      await db.execute(sql`
+        DELETE FROM whatsapp.waiting_reply 
+        WHERE message_id = ${messageId}
+      `);
+      
+      res.json({ success: true, message: 'Message unmarked from awaiting reply' });
+    } catch (error) {
+      console.error('Error unmarking message from awaiting reply:', error);
+      res.status(500).json({ error: 'Failed to unmark message from awaiting reply' });
+    }
+  });
+
+  app.get('/api/whatsapp/waiting-reply/:instanceId', async (req: Request, res: Response) => {
+    try {
+      const { instanceId } = req.params;
+      
+      const result = await db.execute(sql`
+        SELECT message_id, chat_id, created_at 
+        FROM whatsapp.waiting_reply 
+        WHERE instance_id = ${instanceId}
+        ORDER BY created_at DESC
+      `);
+      
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Error fetching waiting reply messages:', error);
+      res.status(500).json({ error: 'Failed to fetch waiting reply messages' });
+    }
+  });
+
   // WhatsApp Messages API - Fetch messages with full Evolution API data
   app.get('/api/whatsapp/messages', async (req: AuthRequest, res: Response) => {
     try {
