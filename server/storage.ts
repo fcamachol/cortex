@@ -1113,6 +1113,222 @@ class DatabaseStorage {
         
         return update?.status || null;
     }
+
+    // Finance module methods
+    async getFinancialSummary(type: 'income' | 'expense'): Promise<{ total: number; change: number }> {
+        try {
+            // Return placeholder data for now - will be replaced with actual database queries
+            return {
+                total: type === 'income' ? 25000 : 18500,
+                change: type === 'income' ? 12.5 : -3.2
+            };
+        } catch (error) {
+            console.error('Error getting financial summary:', error);
+            return { total: 0, change: 0 };
+        }
+    }
+
+    async getPendingPayables(): Promise<{ count: number; total: number }> {
+        try {
+            // Return placeholder data for now
+            return { count: 3, total: 5400 };
+        } catch (error) {
+            console.error('Error getting pending payables:', error);
+            return { count: 0, total: 0 };
+        }
+    }
+
+    async getActiveLoans(): Promise<{ count: number; total: number }> {
+        try {
+            // Return placeholder data for now
+            return { count: 2, total: 45000 };
+        } catch (error) {
+            console.error('Error getting active loans:', error);
+            return { count: 0, total: 0 };
+        }
+    }
+
+    async getRecentTransactions(limit: number): Promise<any[]> {
+        try {
+            // Return placeholder data for now
+            return [
+                {
+                    transactionId: 1,
+                    description: "Client payment",
+                    amount: 5000,
+                    type: "income",
+                    date: new Date().toISOString(),
+                    category: "Revenue"
+                },
+                {
+                    transactionId: 2,
+                    description: "Office supplies",
+                    amount: -350,
+                    type: "expense",
+                    date: new Date().toISOString(),
+                    category: "Office"
+                }
+            ];
+        } catch (error) {
+            console.error('Error getting recent transactions:', error);
+            return [];
+        }
+    }
+
+    async getFinanceCategories(): Promise<any[]> {
+        try {
+            // Return placeholder data for now
+            return [
+                { categoryId: 1, name: "Revenue", type: "income", parentId: null },
+                { categoryId: 2, name: "Office", type: "expense", parentId: null },
+                { categoryId: 3, name: "Marketing", type: "expense", parentId: null }
+            ];
+        } catch (error) {
+            console.error('Error getting finance categories:', error);
+            return [];
+        }
+    }
+
+    async createFinanceCategory(data: any): Promise<any> {
+        try {
+            // Placeholder implementation
+            return {
+                categoryId: Date.now(),
+                ...data,
+                createdAt: new Date()
+            };
+        } catch (error) {
+            console.error('Error creating finance category:', error);
+            throw error;
+        }
+    }
+
+    async getTransactions(): Promise<any[]> {
+        try {
+            // Return placeholder data for now
+            return [
+                {
+                    transactionId: 1,
+                    description: "Client payment",
+                    amount: 5000,
+                    type: "income",
+                    date: new Date().toISOString(),
+                    category: "Revenue"
+                },
+                {
+                    transactionId: 2,
+                    description: "Office supplies",
+                    amount: 350,
+                    type: "expense",
+                    date: new Date().toISOString(),
+                    category: "Office"
+                }
+            ];
+        } catch (error) {
+            console.error('Error getting transactions:', error);
+            return [];
+        }
+    }
+
+    async createTransaction(data: any): Promise<any> {
+        try {
+            // Placeholder implementation
+            return {
+                transactionId: Date.now(),
+                ...data,
+                createdAt: new Date()
+            };
+        } catch (error) {
+            console.error('Error creating transaction:', error);
+            throw error;
+        }
+    }
+
+    async getPayables(): Promise<any[]> {
+        try {
+            // Return placeholder data for now
+            return [
+                {
+                    payableId: 1,
+                    vendorName: "Office Supplies Inc",
+                    amount: 1200,
+                    dueDate: "2025-07-01",
+                    status: "pending"
+                },
+                {
+                    payableId: 2,
+                    vendorName: "Marketing Agency",
+                    amount: 4200,
+                    dueDate: "2025-07-15",
+                    status: "pending"
+                }
+            ];
+        } catch (error) {
+            console.error('Error getting payables:', error);
+            return [];
+        }
+    }
+
+    async createPayable(data: any): Promise<any> {
+        try {
+            // Placeholder implementation
+            return {
+                payableId: Date.now(),
+                ...data,
+                createdAt: new Date()
+            };
+        } catch (error) {
+            console.error('Error creating payable:', error);
+            throw error;
+        }
+    }
+
+    async getLoans(): Promise<any[]> {
+        try {
+            // Return placeholder data for now
+            return [
+                {
+                    loanId: 1,
+                    loanName: "Business Equipment Loan",
+                    originalAmount: 25000,
+                    currentBalance: 18500,
+                    interestRate: 5.5,
+                    termMonths: 36,
+                    paymentAmount: 750,
+                    startDate: "2024-01-01",
+                    status: "active"
+                },
+                {
+                    loanId: 2,
+                    loanName: "Office Expansion Loan",
+                    originalAmount: 50000,
+                    currentBalance: 26500,
+                    interestRate: 4.8,
+                    termMonths: 60,
+                    paymentAmount: 950,
+                    startDate: "2023-06-01",
+                    status: "active"
+                }
+            ];
+        } catch (error) {
+            console.error('Error getting loans:', error);
+            return [];
+        }
+    }
+
+    async createLoan(data: any): Promise<any> {
+        try {
+            // Placeholder implementation
+            return {
+                loanId: Date.now(),
+                ...data,
+                createdAt: new Date()
+            };
+        } catch (error) {
+            console.error('Error creating loan:', error);
+            throw error;
+        }
+    }
 }
 
 export const storage = new DatabaseStorage();

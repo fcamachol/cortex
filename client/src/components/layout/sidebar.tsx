@@ -87,6 +87,13 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
       badgeColor: "bg-orange-500"
     },
     {
+      id: "finance",
+      label: "Finance",
+      icon: DollarSign,
+      badge: null,
+      badgeColor: null
+    },
+    {
       id: "contacts",
       label: "Contacts",
       icon: Users,

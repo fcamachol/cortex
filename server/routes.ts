@@ -1840,6 +1840,130 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Finance API routes
+  
+  // Get financial dashboard data
+  app.get('/api/finance/dashboard', async (req: Request, res: Response) => {
+    try {
+      const [
+        totalIncome,
+        totalExpenses,
+        pendingBills,
+        activeLoans,
+        recentTransactions
+      ] = await Promise.all([
+        storage.getFinancialSummary('income'),
+        storage.getFinancialSummary('expense'),
+        storage.getPendingPayables(),
+        storage.getActiveLoans(),
+        storage.getRecentTransactions(10)
+      ]);
+
+      res.json({
+        totalIncome: totalIncome.total || 0,
+        incomeChange: totalIncome.change || 0,
+        totalExpenses: totalExpenses.total || 0,
+        expenseChange: totalExpenses.change || 0,
+        pendingBills: pendingBills.count || 0,
+        pendingAmount: pendingBills.total || 0,
+        activeLoans: activeLoans.count || 0,
+        totalLoanBalance: activeLoans.total || 0,
+        recentTransactions: recentTransactions || []
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      res.status(500).json({ error: 'Failed to fetch dashboard data' });
+    }
+  });
+
+  // Get finance categories
+  app.get('/api/finance/categories', async (req: Request, res: Response) => {
+    try {
+      const categories = await storage.getFinanceCategories();
+      res.json(categories || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      res.status(500).json({ error: 'Failed to fetch categories' });
+    }
+  });
+
+  // Create finance category
+  app.post('/api/finance/categories', async (req: Request, res: Response) => {
+    try {
+      const category = await storage.createFinanceCategory(req.body);
+      res.json(category);
+    } catch (error) {
+      console.error('Error creating category:', error);
+      res.status(500).json({ error: 'Failed to create category' });
+    }
+  });
+
+  // Get transactions
+  app.get('/api/finance/transactions', async (req: Request, res: Response) => {
+    try {
+      const transactions = await storage.getTransactions();
+      res.json(transactions || []);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      res.status(500).json({ error: 'Failed to fetch transactions' });
+    }
+  });
+
+  // Create transaction
+  app.post('/api/finance/transactions', async (req: Request, res: Response) => {
+    try {
+      const transaction = await storage.createTransaction(req.body);
+      res.json(transaction);
+    } catch (error) {
+      console.error('Error creating transaction:', error);
+      res.status(500).json({ error: 'Failed to create transaction' });
+    }
+  });
+
+  // Get payables
+  app.get('/api/finance/payables', async (req: Request, res: Response) => {
+    try {
+      const payables = await storage.getPayables();
+      res.json(payables || []);
+    } catch (error) {
+      console.error('Error fetching payables:', error);
+      res.status(500).json({ error: 'Failed to fetch payables' });
+    }
+  });
+
+  // Create payable
+  app.post('/api/finance/payables', async (req: Request, res: Response) => {
+    try {
+      const payable = await storage.createPayable(req.body);
+      res.json(payable);
+    } catch (error) {
+      console.error('Error creating payable:', error);
+      res.status(500).json({ error: 'Failed to create payable' });
+    }
+  });
+
+  // Get loans
+  app.get('/api/finance/loans', async (req: Request, res: Response) => {
+    try {
+      const loans = await storage.getLoans();
+      res.json(loans || []);
+    } catch (error) {
+      console.error('Error fetching loans:', error);
+      res.status(500).json({ error: 'Failed to fetch loans' });
+    }
+  });
+
+  // Create loan
+  app.post('/api/finance/loans', async (req: Request, res: Response) => {
+    try {
+      const loan = await storage.createLoan(req.body);
+      res.json(loan);
+    } catch (error) {
+      console.error('Error creating loan:', error);
+      res.status(500).json({ error: 'Failed to create loan' });
+    }
+  });
+
   // Evolution API webhook handlers - Use the new layered webhook controller
   app.post('/api/evolution/webhook/:instanceName/:eventType', async (req: Request, res: Response) => {
     await WebhookController.handleIncomingEvent(req, res);
