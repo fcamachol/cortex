@@ -13,6 +13,7 @@ import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { promises as fsPromises } from 'fs';
+import { lookup } from 'mime-types';
 
 
 
@@ -1556,47 +1557,75 @@ export async function registerRoutes(app: Express): Promise<void> {
         rawPayload = message.rawApiPayload;
       }
       
-      // First, check for locally cached file
-      const { checkMediaExists } = await import('./media-downloader');
-      const localFilePath = await checkMediaExists(instanceId, messageId);
-      
-      if (localFilePath) {
-        console.log(`✅ Found locally cached file: ${localFilePath}`);
+      // First, check for Evolution API downloaded media files
+      const currentDir = path.dirname(new URL(import.meta.url).pathname);
+      const mediaStoragePath = path.resolve(currentDir, '../media_storage', instanceId);
+      try {
+        const mediaFiles = await fsPromises.readdir(mediaStoragePath);
+        const mediaFile = mediaFiles.find(file => file.startsWith(messageId));
         
-        // Process WhatsApp audio to browser-compatible format
-        const { processWhatsAppAudio } = await import('./whatsapp-audio-processor');
-        const processedAudioPath = await processWhatsAppAudio(localFilePath);
-        
-        if (processedAudioPath) {
-          // Serve the processed WAV file (browser-compatible)
-          res.setHeader('Content-Type', 'audio/wav');
+        if (mediaFile) {
+          const filePath = path.join(mediaStoragePath, mediaFile);
+          const stats = await fsPromises.stat(filePath);
+          const mimeType = lookup(path.extname(mediaFile)) || 'audio/ogg; codecs=opus';
+          
+          console.log(`✅ Found Evolution API media file: ${mediaFile}`);
+          
+          res.setHeader('Content-Type', mimeType);
           res.setHeader('Cache-Control', 'public, max-age=3600');
           res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
           res.setHeader('Access-Control-Allow-Origin', '*');
           res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
           res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
           res.setHeader('Accept-Ranges', 'bytes');
-          
-          // Enhanced headers for Replit browser environment
           res.setHeader('X-Content-Type-Options', 'nosniff');
           res.setHeader('Referrer-Policy', 'no-referrer-when-downgrade');
+          res.setHeader('Content-Length', stats.size.toString());
           
-          console.log(`✅ Serving processed audio: ${messageId} from ${processedAudioPath}`);
-          return res.sendFile(processedAudioPath);
-        } else {
-          // Fallback to original file if processing fails
-          const mediaInfo = await storage.getWhatsappMessageMedia(messageId, instanceId);
-          const mimeType = mediaInfo?.mimetype || 'audio/ogg; codecs=opus';
+          console.log(`✅ Serving Evolution API media: ${messageId} from ${filePath}`);
+          return res.sendFile(filePath);
+        }
+      } catch (err) {
+        // Directory doesn't exist or other error - continue to download
+      }
+      
+      // Second, try to download from Evolution API if not cached
+      try {
+        console.log(`📥 Downloading audio from Evolution API for message: ${messageId}`);
+        
+        const downloadedMedia = await evolutionApi.downloadMedia(instanceId, {
+          key: { id: messageId }
+        });
+        
+        if (downloadedMedia) {
+          // Determine file extension from mimetype
+          const extension = downloadedMedia.mimetype.split('/')[1] || 'ogg';
+          const fileName = `${messageId}.${extension}`;
+          const storagePath = path.resolve(__dirname, '../media_storage', instanceId);
           
-          res.setHeader('Content-Type', mimeType);
+          // Save the buffer to file
+          await fsPromises.mkdir(storagePath, { recursive: true });
+          await fsPromises.writeFile(path.join(storagePath, fileName), downloadedMedia.buffer);
+          
+          console.log(`✅ Playable audio file saved: ${fileName}`);
+          
+          // Serve the downloaded file
+          res.setHeader('Content-Type', downloadedMedia.mimetype);
           res.setHeader('Cache-Control', 'public, max-age=3600');
           res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
           res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
+          res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
           res.setHeader('Accept-Ranges', 'bytes');
+          res.setHeader('X-Content-Type-Options', 'nosniff');
+          res.setHeader('Referrer-Policy', 'no-referrer-when-downgrade');
+          res.setHeader('Content-Length', downloadedMedia.buffer.length.toString());
           
-          console.log(`⚠️ Serving original file (processing failed): ${messageId} from ${localFilePath}`);
-          return res.sendFile(localFilePath);
+          console.log(`✅ Serving fresh Evolution API download: ${messageId}`);
+          return res.send(downloadedMedia.buffer);
         }
+      } catch (downloadError) {
+        console.error(`❌ Error downloading from Evolution API:`, downloadError);
       }
       
       // Second, check if base64 data is in the webhook payload
