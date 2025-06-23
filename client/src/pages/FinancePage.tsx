@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TransactionForm } from "@/components/finance/TransactionForm";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Receipt, CreditCard, Filter } from "lucide-react";
 
 export default function FinancePage() {
@@ -355,6 +356,12 @@ export default function FinancePage() {
           </Tabs>
         </div>
       </div>
+
+      {/* Transaction Form Modal */}
+      <TransactionForm 
+        open={showTransactionForm} 
+        onClose={() => setShowTransactionForm(false)} 
+      />
     </div>
   );
 }
