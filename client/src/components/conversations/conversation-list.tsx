@@ -20,26 +20,24 @@ export default function ConversationList({ selectedConversation, onSelectConvers
 
   // Helper function to get display name for conversation
   const getConversationDisplayName = (conv: any) => {
-    // Try to find contact name for both groups and individuals
-    const contact = contacts.find((c: any) => c.jid === conv.chatId);
+    // Use displayName from API response (already contains contact name or group subject)
+    if (conv.displayName && conv.displayName !== conv.chatId) {
+      return conv.displayName;
+    }
     
-    if (conv.chatId.includes('@g.us')) {
-      // For groups, use group name from contacts
-      if (contact && (contact.pushName || contact.verifiedName)) {
-        return contact.pushName || contact.verifiedName;
-      }
-      // Fallback to group identifier if no name found
-      const groupId = conv.chatId.replace('@g.us', '').split('-')[0];
-      return `Group ${formatPhoneNumber(groupId)}`;
-    } else {
-      // For individuals, use contact name if available
-      if (contact && (contact.pushName || contact.verifiedName)) {
-        return contact.pushName || contact.verifiedName;
-      }
-      // Fallback to formatted phone number if no contact name
+    // Fallback to formatted phone number for individuals
+    if (conv.chatId && !conv.chatId.includes('@g.us')) {
       const phoneNumber = conv.chatId.replace('@s.whatsapp.net', '');
       return formatPhoneNumber(phoneNumber);
     }
+    
+    // Fallback for groups without names
+    if (conv.chatId && conv.chatId.includes('@g.us')) {
+      const groupId = conv.chatId.replace('@g.us', '').split('-')[0];
+      return `Group ${formatPhoneNumber(groupId)}`;
+    }
+    
+    return conv.chatId || 'Unknown';
   };
 
   const { data: conversations = [], isLoading } = useQuery<any[]>({
@@ -70,7 +68,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   // Helper function to get latest message for a conversation
   const getLatestMessage = (conversation: any) => {
     // Use the lastMessageContent from the conversation data if available
-    if (conversation.lastMessageContent) {
+    if (conversation.lastMessageContent !== undefined && conversation.lastMessageContent !== null) {
       return {
         content: conversation.lastMessageContent,
         fromMe: conversation.lastMessageFromMe,
