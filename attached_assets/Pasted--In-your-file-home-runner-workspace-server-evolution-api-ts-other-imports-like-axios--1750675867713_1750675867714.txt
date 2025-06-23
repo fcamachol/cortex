@@ -1,0 +1,61 @@
+// In your file: /home/runner/workspace/server/evolution-api.ts
+
+// ... other imports like axios ...
+
+export class EvolutionApi {
+    private apiUrl: string;
+    private apiKey: string;
+
+    constructor(apiUrl: string, apiKey: string) {
+        // Ensure the apiUrl is correctly set and has no trailing slash
+        this.apiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+        this.apiKey = apiKey;
+    }
+
+    // ... your other functions ...
+
+    /**
+     * Attempts to download media using the /chat/getBase64 endpoint.
+     * @param instanceName - The name of the Evolution API instance.
+     * @param originalWebhookData - The 'data' object from the messages.upsert webhook.
+     */
+    public async downloadMedia(instanceName: string, originalWebhookData: any) {
+        // --- THIS IS THE NEW, CORRECT ENDPOINT ---
+        const endpoint = `/chat/getBase64/${instanceName}`;
+        const requestUrl = `${this.apiUrl}${endpoint}`;
+
+        // --- THIS IS THE NEW, CORRECT REQUEST BODY ---
+        // It only needs the message key with its ID.
+        const requestBody = {
+            message: {
+                key: {
+                    id: originalWebhookData.key.id 
+                }
+            }
+        };
+
+        console.log(`🚀 Making updated API call to: POST ${requestUrl}`);
+        console.log('📦 Sending simplified request body:', JSON.stringify(requestBody, null, 2));
+
+        try {
+            const response = await axios.post(requestUrl, requestBody, {
+                headers: {
+                    'apikey': this.apiKey,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            // If successful, this should contain the { base64: "...", mimetype: "..." } object
+            return response.data;
+
+        } catch (error) {
+            if (axios.isAxiosError(error) && error.response) {
+                console.error(`❌ Evolution API Error Response (${error.response.status}) for ${requestUrl}:`, error.response.data);
+            } else {
+                 console.error(`❌ An unknown error occurred during request to ${requestUrl}:`, error);
+            }
+            // Rethrow the error so the calling function knows it failed.
+            throw new Error(`Evolution API request failed: ${error.response?.statusText || error.message}`);
+        }
+    }
+}

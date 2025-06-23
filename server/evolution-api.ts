@@ -227,17 +227,21 @@ export class EvolutionApi {
     // Download and decrypt media from WhatsApp using the correct endpoint
     async downloadMedia(instanceName: string, instanceApiKey: string, messageData: any): Promise<any> {
         try {
-            // Use the URL constructor to safely join paths and avoid double slashes
-            const endpointPath = `/message/downloadMedia/${instanceName}`;
+            // Use the correct /chat/getBase64 endpoint which only needs the message key
+            const endpointPath = `/chat/getBase64/${instanceName}`;
             const requestUrl = new URL(endpointPath, this.config.baseUrl).href;
             
-            // Construct the request body with the message object from the webhook
+            // Construct the simplified request body with only the message key
             const requestBody = {
-                message: messageData.message
+                message: {
+                    key: {
+                        id: messageData.key.id
+                    }
+                }
             };
             
-            console.log(`🚀 Making correctly formatted API call to: POST ${requestUrl}`);
-            console.log(`📦 Request body:`, JSON.stringify(requestBody, null, 2));
+            console.log(`🚀 Making updated API call to: POST ${requestUrl}`);
+            console.log(`📦 Sending simplified request body:`, JSON.stringify(requestBody, null, 2));
             
             const response = await this.makeRequest<any>(
                 endpointPath,
