@@ -9,7 +9,9 @@ import {
     type WhatsappChats,
     type WhatsappGroups,
     type WhatsappCallLogs,
-    type WhatsappMessageReactions
+    type WhatsappMessageReactions,
+    type WhatsappMessageMedia,
+    type InsertWhatsappMessageMedia
 } from '@shared/schema';
 
 /**
@@ -1135,6 +1137,9 @@ export const WebhookApiAdapter = {
         
         console.log(`📨 Processing message ${rawMessage.key.id}: type="${messageType}", content="${content}"`);
 
+        // Handle media storage for media messages
+        await this.handleMediaStorage(rawMessage, instanceId, messageType);
+
         return {
             messageId: rawMessage.key.id,
             instanceId: instanceId,
@@ -1982,6 +1987,71 @@ export const WebhookApiAdapter = {
 
         return null;
     },
+
+    /**
+     * Handles media storage for image, video, audio, and document messages
+     */
+    async handleMediaStorage(rawMessage: any, instanceId: string, messageType: WhatsappMessages['messageType']): Promise<void> {
+        const mediaTypes = ['image', 'video', 'audio', 'document', 'sticker'];
+        if (!mediaTypes.includes(messageType)) return;
+
+        const messageId = rawMessage.key?.id;
+        if (!messageId) return;
+
+        const message = rawMessage.message;
+        if (!message) return;
+
+        let mediaData: any = null;
+        let mediaInfo: Partial<WhatsappMessageMedia> = {
+            messageId,
+            instanceId,
+        };
+
+        // Extract media data based on message type
+        if (message.imageMessage) {
+            mediaData = message.imageMessage;
+            mediaInfo.mimetype = mediaData.mimetype || 'image/jpeg';
+            mediaInfo.width = mediaData.width;
+            mediaInfo.height = mediaData.height;
+            mediaInfo.caption = mediaData.caption;
+        } else if (message.videoMessage) {
+            mediaData = message.videoMessage;
+            mediaInfo.mimetype = mediaData.mimetype || 'video/mp4';
+            mediaInfo.width = mediaData.width;
+            mediaInfo.height = mediaData.height;
+            mediaInfo.durationSeconds = mediaData.seconds;
+            mediaInfo.caption = mediaData.caption;
+        } else if (message.audioMessage) {
+            mediaData = message.audioMessage;
+            mediaInfo.mimetype = mediaData.mimetype || 'audio/ogg';
+            mediaInfo.durationSeconds = mediaData.seconds;
+        } else if (message.documentMessage) {
+            mediaData = message.documentMessage;
+            mediaInfo.mimetype = mediaData.mimetype || 'application/octet-stream';
+            mediaInfo.caption = mediaData.fileName || mediaData.title;
+        } else if (message.stickerMessage) {
+            mediaData = message.stickerMessage;
+            mediaInfo.mimetype = mediaData.mimetype || 'image/webp';
+            mediaInfo.width = mediaData.width;
+            mediaInfo.height = mediaData.height;
+        }
+
+        if (mediaData) {
+            // Extract common media properties
+            mediaInfo.fileUrl = mediaData.url;
+            mediaInfo.fileSizeBytes = mediaData.fileLength ? parseInt(mediaData.fileLength) : undefined;
+            mediaInfo.mediaKey = mediaData.mediaKey;
+            mediaInfo.thumbnailUrl = mediaData.thumbnailUrl;
+            mediaInfo.isViewOnce = mediaData.viewOnce || false;
+
+            try {
+                await storage.upsertWhatsappMessageMedia(mediaInfo as InsertWhatsappMessageMedia);
+                console.log(`📎 [${instanceId}] Stored media for message: ${messageId} (${messageType})`);
+            } catch (error) {
+                console.error(`❌ Error storing media for message ${messageId}:`, error);
+            }
+        }
+    }
 
     /**
      * Cleans up contact records with incorrect data while preserving authentic group JIDs
