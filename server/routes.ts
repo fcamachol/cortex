@@ -486,6 +486,46 @@ export async function registerRoutes(app: Express): Promise<void> {
       if (result.success) {
         // Automatically delete draft when message is sent successfully
         await storage.deleteDraft(chatId, instanceId);
+        
+        // Create an immediate local message record for the sent message
+        // This ensures the sender sees their message immediately
+        try {
+          console.log(`📝 [${instanceId}] Creating local record for sent message`);
+          const sentMessage = {
+            messageId: result.data?.key?.id || `SENT_${Date.now()}`,
+            instanceId,
+            chatId,
+            senderJid: result.data?.key?.fromMe ? `${instanceId}@sender` : (result.data?.key?.participant || `sender@${instanceId}`), 
+            fromMe: true,
+            messageType: 'text' as const,
+            content: message,
+            timestamp: new Date(),
+            quotedMessageId: quotedMessageId || null,
+            isForwarded: false,
+            forwardingScore: 0,
+            isStarred: false,
+            isEdited: false,
+            lastEditedAt: null,
+            sourcePlatform: 'web' as const,
+            rawApiPayload: result.data || {}
+          };
+          
+          console.log(`📝 [${instanceId}] Storing message with ID: ${sentMessage.messageId}`);
+          
+          // Store the sent message immediately
+          const storedMessage = await storage.upsertWhatsappMessage(sentMessage);
+          console.log(`✅ [${instanceId}] Sent message stored locally: ${storedMessage.messageId}`);
+          
+          // Notify connected clients via SSE
+          const { SseManager } = await import('./sse-manager');
+          SseManager.notifyClientsOfNewMessage(storedMessage);
+          console.log(`📡 [${instanceId}] SSE notification sent for message: ${storedMessage.messageId}`);
+        } catch (localStorageError) {
+          console.error(`⚠️ [${instanceId}] Failed to store sent message locally:`, localStorageError);
+          console.error('Full error details:', JSON.stringify(localStorageError, null, 2));
+          // Continue anyway - the webhook will eventually catch it
+        }
+        
         res.json(result.data);
       } else {
         res.status(400).json({ error: result.error });
