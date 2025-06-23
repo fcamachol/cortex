@@ -559,15 +559,23 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     prevInstanceId.current = finalInstanceId;
   }, [conversationId, finalInstanceId]); // Remove currentDraft dependency
 
-  // Load draft content only when conversation changes or draft is fetched
+  // Load draft content with stable dependencies to prevent infinite loops
   useEffect(() => {
-    if (currentDraft?.content && currentDraft.chatId === chatId && currentDraft.instanceId === finalInstanceId && conversationId) {
-      setMessageInput(currentDraft.content);
-      if (currentDraft.replyToMessageId) {
+    // Only load draft if we have a valid conversation and the draft matches
+    if (conversationId && currentDraft && 
+        currentDraft.chatId === chatId && 
+        currentDraft.instanceId === finalInstanceId) {
+      
+      // Only update if content actually changed
+      if (currentDraft.content && messageInput !== currentDraft.content) {
+        setMessageInput(currentDraft.content);
+      }
+      
+      if (currentDraft.replyToMessageId && !replyToMessage) {
         setReplyToMessage({ messageId: currentDraft.replyToMessageId });
       }
     }
-  }, [conversationId]); // Only depend on conversation change
+  }, [conversationId, currentDraft?.id]); // Stable dependencies
 
   // Update message input ref when user types
   useEffect(() => {

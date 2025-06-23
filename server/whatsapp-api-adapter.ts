@@ -2050,9 +2050,27 @@ export const WebhookApiAdapter = {
                 // Store media metadata in database
                 await storage.upsertWhatsappMessageMedia(mediaInfo as InsertWhatsappMessageMedia);
                 
-                // Attempt to download and cache media file immediately
-                if (mediaData.url || mediaData.mediaKey) {
-                    console.log(`⬇️ [${instanceId}] Downloading media for message: ${messageId} (${messageType})`);
+                // Check for base64 data in webhook payload first, then attempt external download
+                if (mediaData.base64 || mediaData.data) {
+                    console.log(`💾 [${instanceId}] Base64 media data found, caching directly: ${messageId} (${messageType})`);
+                    
+                    try {
+                        const { cacheBase64Media } = await import('./media-downloader');
+                        const base64Data = mediaData.base64 || mediaData.data;
+                        const cachedPath = await cacheBase64Media(instanceId, messageId, base64Data, mediaData.mimetype);
+                        
+                        if (cachedPath) {
+                            // Update database with local file path
+                            await storage.updateWhatsappMessageMediaPath(messageId, instanceId, cachedPath);
+                            console.log(`✅ [${instanceId}] Base64 media cached successfully: ${messageId}`);
+                        } else {
+                            console.log(`⚠️ [${instanceId}] Failed to cache base64 media: ${messageId}`);
+                        }
+                    } catch (error) {
+                        console.error(`❌ [${instanceId}] Error caching base64 media for ${messageId}:`, error);
+                    }
+                } else if (mediaData.url || mediaData.mediaKey) {
+                    console.log(`⬇️ [${instanceId}] No base64 data found, attempting external download: ${messageId} (${messageType})`);
                     
                     // Get instance details for API key
                     const instance = await storage.getWhatsappInstance(instanceId);
@@ -2061,15 +2079,15 @@ export const WebhookApiAdapter = {
                         const downloadResult = await handleMediaDownload(instanceId, instance.apiKey, rawMessage);
                         
                         if (downloadResult) {
-                            console.log(`✅ [${instanceId}] Media cached successfully: ${messageId}`);
+                            console.log(`✅ [${instanceId}] External media downloaded and cached: ${messageId}`);
                         } else {
-                            console.log(`⚠️ [${instanceId}] Media download failed, will serve via proxy when requested: ${messageId}`);
+                            console.log(`⚠️ [${instanceId}] External media download failed, will serve via proxy when requested: ${messageId}`);
                         }
                     } else {
-                        console.log(`⚠️ [${instanceId}] No API key found, cannot download media: ${messageId}`);
+                        console.log(`⚠️ [${instanceId}] No API key found, cannot download external media: ${messageId}`);
                     }
                 } else {
-                    console.log(`📎 [${instanceId}] No media URL/key found, storing metadata only: ${messageId}`);
+                    console.log(`📎 [${instanceId}] No media content found (no base64, URL, or key), storing metadata only: ${messageId}`);
                 }
                 
                 console.log(`📎 [${instanceId}] Processed media for message: ${messageId} (${messageType})`);
