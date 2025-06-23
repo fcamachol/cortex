@@ -88,15 +88,9 @@ export function AccountForm({ open, onClose, spaceId, account }: AccountFormProp
       };
       
       if (account) {
-        return await apiRequest(`/api/finance/accounts/${account.accountId}`, {
-          method: "PUT",
-          body: JSON.stringify(payload)
-        });
+        return await apiRequest(`/api/finance/accounts/${account.accountId}`, "PUT", payload);
       } else {
-        return await apiRequest("/api/finance/accounts", {
-          method: "POST",
-          body: JSON.stringify(payload)
-        });
+        return await apiRequest("/api/finance/accounts", "POST", payload);
       }
     },
     onSuccess: () => {
@@ -118,6 +112,7 @@ export function AccountForm({ open, onClose, spaceId, account }: AccountFormProp
   });
 
   const onSubmit = (data: AccountFormData) => {
+    console.log("Account form submitted:", data);
     createMutation.mutate(data);
   };
 

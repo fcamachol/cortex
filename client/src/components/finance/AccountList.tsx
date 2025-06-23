@@ -81,9 +81,7 @@ export function AccountList({ spaceId }: AccountListProps) {
 
   const deleteMutation = useMutation({
     mutationFn: async (accountId: number) => {
-      return await apiRequest(`/api/finance/accounts/${accountId}`, {
-        method: "DELETE"
-      });
+      return await apiRequest(`/api/finance/accounts/${accountId}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/finance/accounts"] });
@@ -103,10 +101,7 @@ export function AccountList({ spaceId }: AccountListProps) {
 
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ accountId, isActive }: { accountId: number; isActive: boolean }) => {
-      return await apiRequest(`/api/finance/accounts/${accountId}`, {
-        method: "PUT",
-        body: JSON.stringify({ isActive })
-      });
+      return await apiRequest(`/api/finance/accounts/${accountId}`, "PUT", { isActive });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/finance/accounts"] });
