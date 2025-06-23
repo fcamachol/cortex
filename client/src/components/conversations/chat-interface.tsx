@@ -30,6 +30,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   
   // Draft storage per conversation (now database-backed)
   const [replyStates, setReplyStates] = useState<{[chatId: string]: any}>({});
+  const [isDeletingDraft, setIsDeletingDraft] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -905,10 +906,16 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 setMessageInput(newValue);
                 
                 // If message is manually cleared (empty), delete any existing draft
-                if (newValue.trim() === '' && currentDraft) {
+                // Only delete if we're not already in the process of deleting to prevent loops
+                if (newValue.trim() === '' && currentDraft && !isDeletingDraft) {
+                  setIsDeletingDraft(true);
                   deleteDraftMutation.mutate({
                     instanceId: finalInstanceId!,
                     chatId: chatId!
+                  }, {
+                    onSettled: () => {
+                      setIsDeletingDraft(false);
+                    }
                   });
                 }
               }}
