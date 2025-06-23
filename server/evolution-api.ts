@@ -135,78 +135,7 @@ export class EvolutionApi {
      * Attempts to fetch all groups by first fetching all instances and their chat metadata.
      * This is a robust fallback for when /chat/findAll is unavailable.
      */
-    async fetchAllGroups(instanceName: string, instanceApiKey: string): Promise<any[]> {
-        console.log(`🔄 [${instanceName}] Fetching groups using working endpoint...`);
-        
-        // Use the working group/fetchAllGroups endpoint directly with proper parameters
-        try {
-            const response = await this.makeRequest(
-                `/group/fetchAllGroups/${instanceName}?getParticipants=false`, 
-                'GET', 
-                null, 
-                instanceApiKey
-            );
-            
-            // Handle different response formats
-            let groups = [];
-            if (Array.isArray(response)) {
-                groups = response.filter(item => item.id && item.id.endsWith('@g.us'));
-            } else if (response.groups && Array.isArray(response.groups)) {
-                groups = response.groups.filter(item => item.id && item.id.endsWith('@g.us'));
-            } else if (response.data && Array.isArray(response.data)) {
-                groups = response.data.filter(item => item.id && item.id.endsWith('@g.us'));
-            }
-            
-            console.log(`✅ [${instanceName}] Found ${groups.length} groups via direct fetchAllGroups endpoint`);
-            return groups;
-            
-        } catch (error) {
-            console.log(`⚠️ [${instanceName}] Direct group fetch failed: ${error.message}`);
-        }
-
-        // Fallback: try the instance-based approach only if direct fetch fails
-        try {
-            const instances: any = await this.makeRequest(`/instance/fetchInstances`, 'GET', null, this.config.apiKey);
-            
-            if (!instances) {
-                console.log(`❌ [${instanceName}] No instances data received`);
-                return [];
-            }
-            
-            // Handle both array and object responses
-            let instanceList = Array.isArray(instances) ? instances : [instances];
-            
-            const targetInstance = instanceList.find((inst: any) => {
-                return inst && (
-                    (inst.instance?.instance_id === instanceName) ||
-                    (inst.instance_id === instanceName) ||
-                    (inst.name === instanceName)
-                );
-            });
-
-            if (targetInstance) {
-                let chats = targetInstance.instance?.chats || 
-                           targetInstance.chats || 
-                           targetInstance.Chat ||
-                           [];
-                
-                if (chats.length > 0) {
-                    const groups = chats.filter((chat: any) => chat.id && chat.id.endsWith('@g.us'));
-                    console.log(`✅ [${instanceName}] Found ${groups.length} groups via instance metadata`);
-                    return groups;
-                }
-            }
-            
-            console.warn(`[${instanceName}] Could not find group list in instance metadata. Falling back to fetching all chats.`);
-            // Fallback to fetching all chats if the instance metadata doesn't contain it
-            const allChats = await this.fetchAllChats(instanceName, instanceApiKey);
-            return allChats.filter(chat => chat.id && typeof chat.id === 'string' && chat.id.endsWith('@g.us'));
-
-        } catch (error) {
-            console.error(`❌ [${instanceName}] Critical error during fetchAllGroups:`, error);
-            return [];
-        }
-    }
+    // REMOVED: fetchAllGroups function - use individual group fetch only
     
     /**
      * Attempts to fetch a single group's metadata using multiple endpoint strategies.
@@ -295,77 +224,7 @@ export class EvolutionApi {
         return this.makeRequest(`/group/groupMetadata/${instanceName}?groupJid=${groupJid}`, 'GET', null, instanceApiKey);
     }
 
-    async refreshGroupsSubjects(instanceName: string, instanceApiKey: string): Promise<number> {
-        console.log(`🔄 [${instanceName}] Starting direct group subjects refresh with working endpoint...`);
-        
-        try {
-            // Use the working direct endpoint that successfully retrieves authentic group names
-            const response = await this.makeRequest(
-                `/group/fetchAllGroups/${instanceName}?getParticipants=false`, 
-                'GET', 
-                null, 
-                instanceApiKey
-            );
-            
-            // Handle different response formats
-            let groups = [];
-            if (Array.isArray(response)) {
-                groups = response.filter(item => item.id && item.id.endsWith('@g.us'));
-            } else if (response.groups && Array.isArray(response.groups)) {
-                groups = response.groups.filter(item => item.id && item.id.endsWith('@g.us'));
-            } else if (response.data && Array.isArray(response.data)) {
-                groups = response.data.filter(item => item.id && item.id.endsWith('@g.us'));
-            }
-            
-            console.log(`📊 [${instanceName}] Found ${groups.length} groups from Evolution API`);
-            
-            if (groups.length === 0) {
-                console.log(`❌ [${instanceName}] No groups found for refresh`);
-                return 0;
-            }
-
-            let updateCount = 0;
-            for (const group of groups) {
-                if (group.subject && group.subject !== 'Group Chat' && group.id) {
-                    try {
-                        // Force update with authentic Evolution API data
-                        const groupData = {
-                            groupJid: group.id,
-                            instanceId: instanceName,
-                            subject: group.subject,
-                            ownerJid: group.owner || null,
-                            description: group.desc || null,
-                            creationTimestamp: group.creation ? new Date(group.creation * 1000) : null,
-                            isLocked: group.restrict || false,
-                        };
-
-                        await storage.upsertWhatsappGroup(groupData);
-                        
-                        // Also update chat record with authentic name
-                        const existingChat = await storage.getWhatsappChat(group.id, instanceName);
-                        if (existingChat) {
-                            await storage.upsertWhatsappChat({
-                                ...existingChat,
-                                name: group.subject // Force authentic name
-                            });
-                        }
-                        
-                        updateCount++;
-                        console.log(`✅ [${instanceName}] FORCED UPDATE: ${group.id} -> "${group.subject}"`);
-                    } catch (error) {
-                        console.error(`❌ [${instanceName}] Failed to update group ${group.id}:`, error.message);
-                    }
-                }
-            }
-
-            console.log(`🎉 [${instanceName}] Successfully forced ${updateCount} group updates with authentic Evolution API data`);
-            return updateCount;
-            
-        } catch (error) {
-            console.error(`❌ [${instanceName}] Direct group refresh failed:`, error.message);
-            return 0;
-        }
-    }
+    // REMOVED: refreshGroupsSubjects function - use individual group fetch only
 }
 
 

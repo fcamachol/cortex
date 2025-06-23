@@ -1462,53 +1462,7 @@ export const WebhookApiAdapter = {
         return msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.videoMessage?.caption || '';
     },
 
-    /**
-     * A one-time function to proactively sync all group names from the API.
-     * This can be called from a special admin route in your application to
-     * correct any placeholder names.
-     * @param instanceId The specific instance to sync.
-     * @returns An object indicating the success and count of synced groups.
-     */
-    async syncAllGroupSubjects(instanceId: string): Promise<{ success: boolean, count: number, error?: string }> {
-        try {
-            console.log(`🔄 [${instanceId}] Starting one-time sync for group subjects...`);
-            
-            // For demonstration: Find groups with placeholder names that need updating
-            const placeholderGroups = await storage.getGroupsWithPlaceholderNames(instanceId);
-            console.log(`Found ${placeholderGroups.length} groups with placeholder names`);
-            
-            if (placeholderGroups.length === 0) {
-                return { success: true, count: 0 };
-            }
-
-            // Simulate fetching real group information and updating them
-            let syncedCount = 0;
-            for (const group of placeholderGroups) {
-                // In a real implementation, this would fetch from Evolution API
-                // For now, we'll update with sample group names
-                const updatedGroup = {
-                    groupJid: group.groupJid,
-                    instanceId: instanceId,
-                    subject: `Updated Group ${syncedCount + 1}`,
-                    ownerJid: null,
-                    description: 'Updated via sync function',
-                    creationTimestamp: null,
-                    isLocked: false,
-                };
-                
-                await storage.upsertWhatsappGroup(updatedGroup);
-                console.log(`✅ Updated group ${group.groupJid} with proper subject`);
-                syncedCount++;
-            }
-
-            console.log(`✅ [${instanceId}] Successfully synced ${syncedCount} group subjects.`);
-            return { success: true, count: syncedCount };
-
-        } catch (error) {
-            console.error(`❌ [${instanceId}] Error during group sync:`, error);
-            return { success: false, count: 0, error: error.message };
-        }
-    },
+    // REMOVED: syncAllGroupSubjects - use individual group fetch only
 
     /**
      * Fetch specific group using individual group JID endpoint (eliminates bulk fetching)
