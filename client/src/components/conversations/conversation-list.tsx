@@ -69,6 +69,26 @@ export default function ConversationList({ selectedConversation, onSelectConvers
     setOpenDropdown(null);
   };
 
+  // Get emoji for instance based on name or type
+  const getInstanceEmoji = (instanceId: string) => {
+    const instance = instances.find((i: any) => i.instanceId === instanceId);
+    const name = instance?.instanceName?.toLowerCase() || instanceId.toLowerCase();
+    
+    if (name.includes('test') || name.includes('demo')) return '🧪';
+    if (name.includes('live') || name.includes('prod')) return '🟢';
+    if (name.includes('mexico') || name.includes('mx')) return '🇲🇽';
+    if (name.includes('usa') || name.includes('us')) return '🇺🇸';
+    if (name.includes('brasil') || name.includes('br')) return '🇧🇷';
+    if (name.includes('main') || name.includes('primary')) return '⭐';
+    return '📱';
+  };
+
+  // Get display name for instance
+  const getInstanceDisplayName = (instanceId: string) => {
+    const instance = instances.find((i: any) => i.instanceId === instanceId);
+    return instance?.instanceName || instanceId;
+  };
+
   // Chat management mutations
   const archiveChatMutation = useMutation({
     mutationFn: async ({ chatId, instanceId, archived }: { chatId: string; instanceId: string; archived: boolean }) => {
@@ -670,13 +690,34 @@ export default function ConversationList({ selectedConversation, onSelectConvers
         {/* Instance Filter */}
         <Select value={selectedInstance} onValueChange={setSelectedInstance}>
           <SelectTrigger className="w-full h-8">
-            <SelectValue placeholder="All Instances" />
+            <SelectValue placeholder="All Instances">
+              {selectedInstance === 'all' ? (
+                <div className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-green-600" />
+                  <span>All Instances</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{getInstanceEmoji(selectedInstance)}</span>
+                  <span>{getInstanceDisplayName(selectedInstance)}</span>
+                </div>
+              )}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Instances</SelectItem>
+            <SelectItem value="all">
+              <div className="flex items-center gap-2">
+                {selectedInstance === 'all' && <Check className="h-4 w-4 text-green-600" />}
+                <span>All Instances</span>
+              </div>
+            </SelectItem>
             {instances.map((instance: any) => (
               <SelectItem key={instance.instanceId} value={instance.instanceId}>
-                {instance.instanceName || instance.instanceId}
+                <div className="flex items-center gap-2">
+                  {selectedInstance === instance.instanceId && <Check className="h-4 w-4 text-green-600" />}
+                  <span className="text-lg">{getInstanceEmoji(instance.instanceId)}</span>
+                  <span>{getInstanceDisplayName(instance.instanceId)}</span>
+                </div>
               </SelectItem>
             ))}
           </SelectContent>
