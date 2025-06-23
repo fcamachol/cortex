@@ -421,31 +421,31 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
   });
 
   const handleSendReply = () => {
-    if (!replyMessage.trim() || !task?.instance_id || !task?.related_chat_jid) return;
+    if (!replyMessage.trim() || !task?.instanceId || !task?.relatedChatJid) return;
     
     replyMutation.mutate({
-      instanceId: task.instance_id,
-      chatId: task.related_chat_jid,
+      instanceId: task.instanceId,
+      chatId: task.relatedChatJid,
       message: replyMessage.trim(),
       quotedMessageId: task.triggeringMessageId
     });
   };
 
   const handleCreateSubtask = () => {
-    if (!newSubtaskTitle.trim() || !task?.task_id) return;
+    if (!newSubtaskTitle.trim() || !task?.taskId) return;
     
     createSubtaskMutation.mutate({
       title: newSubtaskTitle.trim(),
-      parent_task_id: task.task_id
+      parentTaskId: task.taskId
     });
   };
 
   const handleCreateChecklistItem = () => {
-    if (!newChecklistItem.trim() || !task?.task_id) return;
+    if (!newChecklistItem.trim() || !task?.taskId) return;
     
     createChecklistItemMutation.mutate({
       content: newChecklistItem.trim(),
-      task_id: task.task_id
+      taskId: task.taskId
     });
   };
 
@@ -465,14 +465,14 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
         ...editedTask,
         due_date: dueDate?.toISOString() || undefined
       };
-      onUpdate(task.task_id, updates);
+      onUpdate(task.taskId, updates);
       setIsEditing(false);
     }
   };
 
   const handleCancel = () => {
     setEditedTask(task);
-    setDueDate(task.due_date ? new Date(task.due_date) : undefined);
+    setDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
     setIsEditing(false);
   };
 
