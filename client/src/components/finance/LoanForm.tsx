@@ -149,7 +149,7 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">No contact linked</SelectItem>
-                          {(contacts || []).map((contact: any) => (
+                          {contacts.map((contact: any) => (
                             <SelectItem key={contact.contactId} value={contact.contactId.toString()}>
                               {contact.displayName || contact.phoneNumber}
                             </SelectItem>
@@ -175,7 +175,7 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">No contact linked</SelectItem>
-                          {(contacts || []).map((contact: any) => (
+                          {contacts.map((contact: any) => (
                             <SelectItem key={contact.contactId} value={contact.contactId.toString()}>
                               {contact.displayName || contact.phoneNumber}
                             </SelectItem>
