@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Paperclip, Smile, Send, CheckSquare, Plus, MoreVertical, ChevronDown, Reply, Copy, Forward, Pin, Star, Trash2 } from "lucide-react";
+import { Paperclip, Smile, Send, CheckSquare, Plus, MoreVertical, ChevronDown, Reply, Copy, Forward, Pin, Star, Trash2, X } from "lucide-react";
 import { ContactTasksAndEvents } from "@/components/contacts/ContactTasksAndEvents";
 import { MessageReactions } from "@/components/conversations/MessageReactions";
 import { MessageHoverActions } from "@/components/conversations/MessageHoverActions";
@@ -532,12 +532,14 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   </div>
 
                   {/* Dropdown arrow in top-right corner */}
-                  {hoveredMessageId === (message.messageId || message.id) && (
+                  {(hoveredMessageId === (message.messageId || message.id) || openMessageDropdown === (message.messageId || message.id)) && (
                     <div className="absolute -top-2 -right-2 z-20">
                       <DropdownMenu 
                         open={openMessageDropdown === (message.messageId || message.id)}
                         onOpenChange={(open) => {
-                          if (!open) {
+                          if (open) {
+                            setOpenMessageDropdown(message.messageId || message.id);
+                          } else {
                             setOpenMessageDropdown(null);
                           }
                         }}
@@ -549,6 +551,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                             className="h-6 w-6 p-0 rounded-full bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
                             onClick={(e) => {
                               e.stopPropagation();
+                              e.preventDefault();
                               setOpenMessageDropdown(message.messageId || message.id);
                             }}
                           >
@@ -565,6 +568,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                             onClick={(e) => {
                               e.stopPropagation();
                               handleReplyToMessage(message);
+                              setOpenMessageDropdown(null);
                             }}
                           >
                             <Reply className="h-4 w-4" />
@@ -575,6 +579,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                             onClick={(e) => {
                               e.stopPropagation();
                               handleCopyMessage(message);
+                              setOpenMessageDropdown(null);
                             }}
                           >
                             <Copy className="h-4 w-4" />
@@ -585,6 +590,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                             onClick={(e) => {
                               e.stopPropagation();
                               handleOpenTaskModal(message);
+                              setOpenMessageDropdown(null);
                             }}
                           >
                             <Smile className="h-4 w-4" />
@@ -595,6 +601,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                             onClick={(e) => {
                               e.stopPropagation();
                               handleForwardMessage(message);
+                              setOpenMessageDropdown(null);
                             }}
                           >
                             <Forward className="h-4 w-4" />
@@ -605,6 +612,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                             onClick={(e) => {
                               e.stopPropagation();
                               handleStarMessage(message);
+                              setOpenMessageDropdown(null);
                             }}
                           >
                             <Star className="h-4 w-4" />
@@ -615,6 +623,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDeleteMessage(message);
+                              setOpenMessageDropdown(null);
                             }}
                           >
                             <Trash2 className="h-4 w-4" />
