@@ -868,7 +868,17 @@ export const WebhookApiAdapter = {
     async ensureDependenciesForMessage(cleanMessage: WhatsappMessages, rawMessage: any): Promise<void> {
         const isGroup = cleanMessage.chatId.endsWith('@g.us');
         
-        // Only create sender contact if it's different from chat (group messages)
+        // For individual chats, create contact for the other person (not instance owner)
+        if (!isGroup && cleanMessage.chatId === cleanMessage.senderJid && !cleanMessage.fromMe) {
+            // This is a message FROM the other person TO us
+            const senderContact = await this.mapApiPayloadToWhatsappContact({
+                id: cleanMessage.senderJid,
+                pushName: rawMessage.pushName
+            }, cleanMessage.instanceId);
+            if (senderContact) await storage.upsertWhatsappContact(senderContact);
+        }
+        
+        // For group messages, create sender contact if it's a group participant
         if (isGroup && cleanMessage.senderJid !== cleanMessage.chatId && !cleanMessage.senderJid.endsWith('@g.us')) {
             const senderContact = await this.mapApiPayloadToWhatsappContact({
                 id: cleanMessage.senderJid,
@@ -877,11 +887,11 @@ export const WebhookApiAdapter = {
             if (senderContact) await storage.upsertWhatsappContact(senderContact);
         }
         
-        // Create chat contact record - for groups this should use group subject
+        // Create chat contact record - for individual chats, this represents the other person
         const chatContact = await this.mapApiPayloadToWhatsappContact({ 
             id: cleanMessage.chatId,
-            // Don't pass individual user pushName for group contacts
-            pushName: isGroup ? undefined : rawMessage.pushName
+            // For individual chats, use pushName only if this message is FROM the other person
+            pushName: isGroup ? undefined : (!cleanMessage.fromMe ? rawMessage.pushName : undefined)
         }, cleanMessage.instanceId);
         if (chatContact) await storage.upsertWhatsappContact(chatContact);
 

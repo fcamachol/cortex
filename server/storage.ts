@@ -72,7 +72,12 @@ class DatabaseStorage {
                 c.type,
                 c.unread_count as "unreadCount",
                 c.last_message_timestamp as "lastMessageTimestamp",
-                COALESCE(g.subject, ct.push_name, c.chat_id) as "displayName",
+                CASE 
+                    WHEN c.type = 'group' THEN COALESCE(g.subject, 'Group')
+                    WHEN ct.push_name IS NOT NULL AND ct.push_name != '' AND ct.push_name != c.chat_id 
+                        THEN ct.push_name
+                    ELSE REPLACE(REPLACE(c.chat_id, '@s.whatsapp.net', ''), '@g.us', '')
+                END as "displayName",
                 ct.profile_picture_url as "profilePictureUrl",
                 COALESCE(last_msg.content, '') as "lastMessageContent",
                 last_msg.from_me as "lastMessageFromMe",
