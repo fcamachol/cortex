@@ -390,19 +390,46 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     enabled: !!instanceId && !!conversationId
   });
 
+  // Save current draft when switching conversations
+  const saveDraftOnSwitch = (oldConversationId: string, oldInstanceId: string, messageContent: string) => {
+    if (oldConversationId && oldInstanceId && messageContent && messageContent.trim()) {
+      saveDraftMutation.mutate({
+        chatId: oldConversationId,
+        instanceId: oldInstanceId,
+        content: messageContent,
+        replyToMessageId: replyToMessage?.messageId || null
+      });
+    }
+  };
+
+  // Refs to track previous conversation state for draft saving
+  const prevConversationId = useRef<string | null>(null);
+  const prevInstanceId = useRef<string | null>(null);
+  const prevMessageInput = useRef<string>("");
+
   // Load draft content when conversation changes
   useEffect(() => {
+    // Save draft for previous conversation if there was content
+    if (prevConversationId.current && prevInstanceId.current && prevMessageInput.current.trim()) {
+      saveDraftOnSwitch(prevConversationId.current, prevInstanceId.current, prevMessageInput.current);
+    }
+
+    // Load draft for new conversation
     if (currentDraft?.content) {
       setMessageInput(currentDraft.content);
       if (currentDraft.replyToMessageId) {
-        // Load reply message details if needed
         setReplyToMessage({ messageId: currentDraft.replyToMessageId });
       }
     } else {
       setMessageInput("");
       setReplyToMessage(null);
     }
-  }, [currentDraft, conversationId]);
+
+    // Update refs for next conversation switch
+    prevConversationId.current = conversationId;
+    prevInstanceId.current = instanceId;
+    prevMessageInput.current = messageInput;
+  }, [currentDraft, conversationId, instanceId]);
 
   // Draft saving mutation
   const saveDraftMutation = useMutation({
@@ -419,21 +446,41 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     }
   });
 
-  // Save draft when typing (debounced)
+  // Save draft only when leaving window with unfinished message
   useEffect(() => {
-    if (!conversationId || !instanceId || messageInput === undefined) return;
-    
-    const timeoutId = setTimeout(() => {
-      saveDraftMutation.mutate({
-        chatId: conversationId,
-        instanceId,
-        content: messageInput,
-        replyToMessageId: replyToMessage?.messageId || null
-      });
-    }, 500); // Debounce 500ms
+    const handleBeforeUnload = () => {
+      if (conversationId && instanceId && messageInput && messageInput.trim()) {
+        // Use sendBeacon with proper headers for beforeunload
+        const formData = new FormData();
+        formData.append('chatId', conversationId);
+        formData.append('instanceId', instanceId);
+        formData.append('content', messageInput);
+        if (replyToMessage?.messageId) {
+          formData.append('replyToMessageId', replyToMessage.messageId);
+        }
+        navigator.sendBeacon('/api/whatsapp/drafts', formData);
+      }
+    };
 
-    return () => clearTimeout(timeoutId);
-  }, [messageInput, conversationId, instanceId, replyToMessage]);
+    const handleWindowBlur = () => {
+      if (conversationId && instanceId && messageInput && messageInput.trim()) {
+        saveDraftMutation.mutate({
+          chatId: conversationId,
+          instanceId,
+          content: messageInput,
+          replyToMessageId: replyToMessage?.messageId || null
+        });
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('blur', handleWindowBlur);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, [conversationId, instanceId, messageInput, replyToMessage, saveDraftMutation]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
