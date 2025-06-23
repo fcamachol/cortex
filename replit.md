@@ -127,6 +127,12 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 23, 2025: Successfully implemented polymorphic creditor relationship for loans - lenders can now be either contacts or companies
+- June 23, 2025: Created comprehensive PolymorphicLoanForm with universal search supporting both contact and company selection as creditors
+- June 23, 2025: Added CRM companies table with full CRUD operations including business type, tax ID, and contact information
+- June 23, 2025: Enhanced loan schema with creditor_id and creditor_type fields for flexible lender relationships
+- June 23, 2025: Built intuitive creditor selection UI with icons differentiating between companies (Building2) and contacts (User)
+- June 23, 2025: Integrated companies API endpoints with proper space isolation and error handling
 - June 23, 2025: Successfully implemented comprehensive bill-to-task automatic creation system with penalty balance calculations
 - June 23, 2025: Created BillToTaskService for automatic companion task generation when bills are created - bills generate tasks, not assigned to existing ones
 - June 23, 2025: Added penalty_balance, amount_paid, moratory_rate fields to finance.payables table for transparent late fee tracking
