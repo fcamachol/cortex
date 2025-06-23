@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,8 @@ const loanSchema = z.object({
   purpose: z.string().min(1, "Purpose is required"),
   collateral: z.string().optional(),
   notes: z.string().optional(),
+  lenderContactId: z.string().optional(),
+  borrowerContactId: z.string().optional(),
 });
 
 type LoanFormData = z.infer<typeof loanSchema>;
@@ -39,6 +41,12 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Fetch contacts for linking
+  const { data: contacts = [] } = useQuery({
+    queryKey: ["/api/contacts"],
+    enabled: open, // Only fetch when dialog is open
+  });
+
   const form = useForm<LoanFormData>({
     resolver: zodResolver(loanSchema),
     defaultValues: {
@@ -51,6 +59,8 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
       purpose: "",
       collateral: "",
       notes: "",
+      lenderContactId: "",
+      borrowerContactId: "",
     },
   });
 
@@ -124,6 +134,60 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
                 </FormItem>
               )}
             />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="lenderContactId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lender Contact</FormLabel>
+                    <FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select lender contact" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">No contact linked</SelectItem>
+                          {contacts.map((contact: any) => (
+                            <SelectItem key={contact.contactId} value={contact.contactId.toString()}>
+                              {contact.displayName || contact.phoneNumber}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="borrowerContactId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Borrower Contact</FormLabel>
+                    <FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select borrower contact" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">No contact linked</SelectItem>
+                          {contacts.map((contact: any) => (
+                            <SelectItem key={contact.contactId} value={contact.contactId.toString()}>
+                              {contact.displayName || contact.phoneNumber}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <FormField
