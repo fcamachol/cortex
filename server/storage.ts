@@ -381,22 +381,118 @@ class DatabaseStorage {
     }
 
     async getWhatsappMessages(userId: string, instanceId: string, chatId: string, limit: number = 50): Promise<any[]> {
-        let query = db.select().from(whatsappMessages)
-            .where(eq(whatsappMessages.instanceId, instanceId))
-            .orderBy(desc(whatsappMessages.timestamp))
-            .limit(limit);
+        // Use a more complex query to include media data
+        const baseQuery = db
+            .select({
+                messageId: whatsappMessages.messageId,
+                instanceId: whatsappMessages.instanceId,
+                chatId: whatsappMessages.chatId,
+                senderJid: whatsappMessages.senderJid,
+                fromMe: whatsappMessages.fromMe,
+                messageType: whatsappMessages.messageType,
+                content: whatsappMessages.content,
+                timestamp: whatsappMessages.timestamp,
+                quotedMessageId: whatsappMessages.quotedMessageId,
+                isForwarded: whatsappMessages.isForwarded,
+                forwardingScore: whatsappMessages.forwardingScore,
+                isStarred: whatsappMessages.isStarred,
+                isEdited: whatsappMessages.isEdited,
+                lastEditedAt: whatsappMessages.lastEditedAt,
+                sourcePlatform: whatsappMessages.sourcePlatform,
+                rawApiPayload: whatsappMessages.rawApiPayload,
+                createdAt: whatsappMessages.createdAt,
+                // Media fields (will be null for non-media messages)
+                mediaId: whatsappMessageMedia.mediaId,
+                mimetype: whatsappMessageMedia.mimetype,
+                fileSizeBytes: whatsappMessageMedia.fileSizeBytes,
+                fileUrl: whatsappMessageMedia.fileUrl,
+                fileLocalPath: whatsappMessageMedia.fileLocalPath,
+                mediaKey: whatsappMessageMedia.mediaKey,
+                caption: whatsappMessageMedia.caption,
+                thumbnailUrl: whatsappMessageMedia.thumbnailUrl,
+                height: whatsappMessageMedia.height,
+                width: whatsappMessageMedia.width,
+                durationSeconds: whatsappMessageMedia.durationSeconds,
+                isViewOnce: whatsappMessageMedia.isViewOnce,
+            })
+            .from(whatsappMessages)
+            .leftJoin(
+                whatsappMessageMedia,
+                and(
+                    eq(whatsappMessages.messageId, whatsappMessageMedia.messageId),
+                    eq(whatsappMessages.instanceId, whatsappMessageMedia.instanceId)
+                )
+            );
 
+        let query;
         if (chatId) {
-            query = db.select().from(whatsappMessages)
+            query = baseQuery
                 .where(and(
                     eq(whatsappMessages.instanceId, instanceId),
                     eq(whatsappMessages.chatId, chatId)
                 ))
                 .orderBy(desc(whatsappMessages.timestamp))
                 .limit(limit);
+        } else {
+            query = baseQuery
+                .where(eq(whatsappMessages.instanceId, instanceId))
+                .orderBy(desc(whatsappMessages.timestamp))
+                .limit(limit);
         }
 
-        const result = await query;
+        const rawResults = await query;
+        
+        // Debug: Log a sample result to see the structure
+        if (rawResults.length > 0 && rawResults.some(r => r.messageType === 'audio')) {
+            const audioMessage = rawResults.find(r => r.messageType === 'audio');
+            console.log('🎵 Audio message raw result:', JSON.stringify(audioMessage, null, 2));
+        }
+        
+        // Transform results to include media object for messages that have media
+        const result = rawResults.map(row => {
+            const message: any = {
+                messageId: row.messageId,
+                instanceId: row.instanceId,
+                chatId: row.chatId,
+                senderJid: row.senderJid,
+                fromMe: row.fromMe,
+                messageType: row.messageType,
+                content: row.content,
+                timestamp: row.timestamp,
+                quotedMessageId: row.quotedMessageId,
+                isForwarded: row.isForwarded,
+                forwardingScore: row.forwardingScore,
+                isStarred: row.isStarred,
+                isEdited: row.isEdited,
+                lastEditedAt: row.lastEditedAt,
+                sourcePlatform: row.sourcePlatform,
+                rawApiPayload: row.rawApiPayload,
+                createdAt: row.createdAt,
+            };
+
+            // Add media object if the message has media
+            if (row.mediaId) {
+                message.media = {
+                    mediaId: row.mediaId,
+                    mimetype: row.mimetype,
+                    fileSizeBytes: row.fileSizeBytes,
+                    fileUrl: row.fileUrl,
+                    fileLocalPath: row.fileLocalPath,
+                    mediaKey: row.mediaKey,
+                    caption: row.caption,
+                    thumbnailUrl: row.thumbnailUrl,
+                    height: row.height,
+                    width: row.width,
+                    durationSeconds: row.durationSeconds,
+                    isViewOnce: row.isViewOnce,
+                };
+            } else {
+                message.media = null;
+            }
+
+            return message;
+        });
+
         return result;
     }
 
