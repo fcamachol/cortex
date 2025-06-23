@@ -937,8 +937,8 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
           onClose={handleCloseTaskModal}
           messageId={selectedMessageForTask.messageId || selectedMessageForTask.id}
           messageContent={selectedMessageForTask.content}
-          chatId={conversationId!}
-          instanceId={instanceId!}
+          chatId={chatId!}
+          instanceId={finalInstanceId!}
           contactName={conversation?.contactName}
         />
       )}
