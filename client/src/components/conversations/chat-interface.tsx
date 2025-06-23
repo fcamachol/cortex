@@ -795,9 +795,14 @@ export default function ChatInterface({
     mutationFn: async ({ messageId, instanceId, chatId }: { messageId: string, instanceId: string, chatId: string }) => {
       return apiRequest('POST', '/api/whatsapp/waiting-reply', { messageId, instanceId, chatId });
     },
-    onSuccess: (_, { messageId }) => {
+    onSuccess: (_, { messageId, instanceId, chatId }) => {
       setWaitingReplyMessages(prev => new Set(prev).add(messageId));
-      // SSE will handle real-time updates to conversation list
+      
+      // Immediately invalidate conversation queries to trigger blue indicator
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+      
+      // Also invalidate waiting reply queries for all instances
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/waiting-reply/all`] });
     },
     onError: (error) => {
       console.error('Failed to mark message as waiting reply:', error);
@@ -814,7 +819,12 @@ export default function ChatInterface({
         newSet.delete(messageId);
         return newSet;
       });
-      // SSE will handle real-time updates to conversation list
+      
+      // Immediately invalidate conversation queries to remove blue indicator
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+      
+      // Also invalidate waiting reply queries for all instances
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/waiting-reply/all`] });
     },
     onError: (error) => {
       console.error('Failed to unmark message from waiting reply:', error);

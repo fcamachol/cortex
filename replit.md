@@ -127,7 +127,11 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
-- June 23, 2025. Initial setup
+- June 23, 2025: Implemented real-time waiting response detection - "esperando respuesta" now triggers directly from chat interface with instant blue indicator in conversation list
+- June 23, 2025: Consolidated data fetching architecture - eliminated duplicate API calls by having Dashboard fetch once and pass data as props to components
+- June 23, 2025: Fixed infinite re-render loops in ChatInterface that were causing SSE connection instability
+- June 23, 2025: Made ChatInterface the central SSE hub for all real-time updates, automatic conversation list refresh via SSE events
+- June 23, 2025: Initial setup
 
 ## User Preferences
 
