@@ -378,7 +378,7 @@ export default function ChatInterface({
     }, 1500); // 1.5 second delay when chat is visible
 
     return () => clearTimeout(readTimer);
-  }, [isChatVisible, hasUnreadMessages, chatId, finalInstanceId]); // Only trigger when visibility or unread status changes
+  }, [isChatVisible, hasUnreadMessages, chatId, finalInstanceId]); // Stable dependencies only
 
   // Auto-resize textarea on mount and content changes
   const textareaRef = useRef<HTMLTextAreaElement>(null);
