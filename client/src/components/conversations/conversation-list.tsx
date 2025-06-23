@@ -16,6 +16,7 @@ interface ConversationListProps {
 export default function ConversationList({ selectedConversation, onSelectConversation }: ConversationListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredConversation, setHoveredConversation] = useState<string | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   // Mock user ID - in real app this would come from auth context
@@ -303,48 +304,118 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                           }) : '';
                         })()}
                       </span>
-                      {/* Dropdown arrow that appears on hover */}
-                      {hoveredConversation === (conversation.chatId || conversation.id) && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      {/* Dropdown arrow that appears on hover or when open */}
+                      {(hoveredConversation === (conversation.chatId || conversation.id) || openDropdown === (conversation.chatId || conversation.id)) && (
+                        <DropdownMenu 
+                          open={openDropdown === (conversation.chatId || conversation.id)}
+                          onOpenChange={(open) => {
+                            if (open) {
+                              setOpenDropdown(conversation.chatId || conversation.id);
+                            } else {
+                              setOpenDropdown(null);
+                            }
+                          }}
+                        >
+                          <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-5 w-5 p-0 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                setOpenDropdown(conversation.chatId || conversation.id);
+                              }}
                             >
                               <ChevronDown className="h-3 w-3 text-gray-600 dark:text-gray-400" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-52" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                          <DropdownMenuContent align="end" className="w-52">
+                            <DropdownMenuItem 
+                              className="flex items-center gap-2 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdown(null);
+                                // Add archive functionality here
+                              }}
+                            >
                               <Archive className="h-4 w-4" />
                               Archivar chat
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                            <DropdownMenuItem 
+                              className="flex items-center gap-2 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdown(null);
+                                // Add mute functionality here
+                              }}
+                            >
                               <BellOff className="h-4 w-4" />
                               Silenciar notificaciones
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                            <DropdownMenuItem 
+                              className="flex items-center gap-2 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdown(null);
+                                // Add pin functionality here
+                              }}
+                            >
                               <Pin className="h-4 w-4" />
                               Fijar chat
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                            <DropdownMenuItem 
+                              className="flex items-center gap-2 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdown(null);
+                                // Add mark as unread functionality here
+                              }}
+                            >
                               <CheckCheck className="h-4 w-4" />
                               Marcar como no leído
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                            <DropdownMenuItem 
+                              className="flex items-center gap-2 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdown(null);
+                                // Add favorites functionality here
+                              }}
+                            >
                               <Heart className="h-4 w-4" />
                               Añadir a Favoritos
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                            <DropdownMenuItem 
+                              className="flex items-center gap-2 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdown(null);
+                                // Add block functionality here
+                              }}
+                            >
                               <Ban className="h-4 w-4" />
                               Bloquear
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                            <DropdownMenuItem 
+                              className="flex items-center gap-2 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdown(null);
+                                // Add close chat functionality here
+                              }}
+                            >
                               <X className="h-4 w-4" />
                               Cerrar chat
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer text-red-600 dark:text-red-400">
+                            <DropdownMenuItem 
+                              className="flex items-center gap-2 cursor-pointer text-red-600 dark:text-red-400"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdown(null);
+                                // Add delete chat functionality here
+                              }}
+                            >
                               <Trash2 className="h-4 w-4" />
                               Eliminar chat
                             </DropdownMenuItem>
