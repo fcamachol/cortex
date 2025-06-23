@@ -77,12 +77,31 @@ export function getCallingCode(jid: string): string | undefined {
 }
 
 /**
+ * Validates if a JID is a proper WhatsApp format
+ * @param jid - The JID to validate
+ * @returns True if the JID is valid WhatsApp format
+ */
+function isValidWhatsAppJid(jid: string): boolean {
+  if (!jid) return false;
+  
+  // Valid WhatsApp JID formats:
+  // - Individual: [phone]@s.whatsapp.net
+  // - Group: [groupid]@g.us
+  return jid.includes('@s.whatsapp.net') || jid.includes('@g.us');
+}
+
+/**
  * Formats a phone number in national format
  * @param jid - The WhatsApp JID or phone number
  * @returns National format phone number or original string
  */
 export function formatPhoneNumberNational(jid: string): string {
   if (!jid) return '';
+
+  // Skip invalid JID formats to prevent parsing warnings
+  if (!isValidWhatsAppJid(jid)) {
+    return jid;
+  }
 
   try {
     const numberPart = jid.includes('@') ? jid.split('@')[0] : jid;
@@ -97,7 +116,10 @@ export function formatPhoneNumberNational(jid: string): string {
       return phoneNumber.formatNational();
     }
   } catch (error) {
-    console.warn('Could not parse phone number:', jid, error);
+    // Only log warnings for valid JID formats that fail parsing
+    if (isValidWhatsAppJid(jid)) {
+      console.warn('Could not parse phone number:', jid, error);
+    }
   }
 
   return jid;
