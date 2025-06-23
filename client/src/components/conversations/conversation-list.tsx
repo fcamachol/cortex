@@ -3,8 +3,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Search, Check, CheckCheck, Users } from "lucide-react";
+import { Search, Check, CheckCheck, Users, ChevronDown, Archive, Bell, BellOff, Pin, Heart, Ban, Trash2, X } from "lucide-react";
 import { formatPhoneNumber } from "@/lib/phoneUtils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 interface ConversationListProps {
   selectedConversation: string | null;
@@ -13,6 +15,7 @@ interface ConversationListProps {
 
 export default function ConversationList({ selectedConversation, onSelectConversation }: ConversationListProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [hoveredConversation, setHoveredConversation] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   // Mock user ID - in real app this would come from auth context
@@ -244,8 +247,10 @@ export default function ConversationList({ selectedConversation, onSelectConvers
               key={`${conversation.instanceId}-${conversation.chatId}`}
               className={`whatsapp-conversation-item ${
                 selectedConversation === (conversation.chatId || conversation.id) ? 'active' : ''
-              }`}
+              } relative group`}
               onClick={() => onSelectConversation(conversation.chatId || conversation.id)}
+              onMouseEnter={() => setHoveredConversation(conversation.chatId || conversation.id)}
+              onMouseLeave={() => setHoveredConversation(null)}
             >
               <div className="flex items-start space-x-3">
                 <div className="relative">
@@ -287,16 +292,66 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
                       {getConversationDisplayName(conversation)}
                     </h3>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {(() => {
-                        const latestMessage = getLatestMessage(conversation);
-                        const timestamp = latestMessage?.timestamp || conversation.actualLastMessageTime || conversation.lastMessageTimestamp;
-                        return timestamp ? new Date(timestamp).toLocaleTimeString([], { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        }) : '';
-                      })()}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {(() => {
+                          const latestMessage = getLatestMessage(conversation);
+                          const timestamp = latestMessage?.timestamp || conversation.actualLastMessageTime || conversation.lastMessageTimestamp;
+                          return timestamp ? new Date(timestamp).toLocaleTimeString([], { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          }) : '';
+                        })()}
+                      </span>
+                      {/* Dropdown arrow that appears on hover */}
+                      {hoveredConversation === (conversation.chatId || conversation.id) && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 w-5 p-0 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            >
+                              <ChevronDown className="h-3 w-3 text-gray-600 dark:text-gray-400" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-52" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                              <Archive className="h-4 w-4" />
+                              Archivar chat
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                              <BellOff className="h-4 w-4" />
+                              Silenciar notificaciones
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                              <Pin className="h-4 w-4" />
+                              Fijar chat
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                              <CheckCheck className="h-4 w-4" />
+                              Marcar como no leído
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                              <Heart className="h-4 w-4" />
+                              Añadir a Favoritos
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                              <Ban className="h-4 w-4" />
+                              Bloquear
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                              <X className="h-4 w-4" />
+                              Cerrar chat
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer text-red-600 dark:text-red-400">
+                              <Trash2 className="h-4 w-4" />
+                              Eliminar chat
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-300 truncate mt-1">
                     {(() => {
