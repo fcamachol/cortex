@@ -1055,12 +1055,27 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
                       <span className="text-xs font-medium">
-                        {conv.contactName?.charAt(0) || conv.chatId.charAt(0)}
+                        {(() => {
+                          const displayName = conv.contactName || conv.groupSubject;
+                          if (displayName) return displayName.charAt(0);
+                          if (conv.chatId.includes('@g.us')) return 'G';
+                          return conv.chatId.charAt(0);
+                        })()}
                       </span>
                     </div>
                     <div className="flex-1">
                       <div className="font-medium text-sm">
-                        {conv.contactName || conv.chatId}
+                        {(() => {
+                          // Priority: contactName > groupSubject > formatted phone > chatId
+                          if (conv.contactName) return conv.contactName;
+                          if (conv.groupSubject) return conv.groupSubject;
+                          if (conv.chatId.includes('@g.us')) return `Grupo ${conv.chatId.split('@')[0]}`;
+                          if (conv.chatId.includes('@s.whatsapp.net')) {
+                            const phone = conv.chatId.split('@')[0];
+                            return phone.length > 10 ? `+${phone}` : phone;
+                          }
+                          return conv.chatId;
+                        })()}
                       </div>
                       <div className="text-xs text-gray-500">
                         {conv.instanceId}
