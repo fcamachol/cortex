@@ -454,7 +454,14 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   // Draft deletion mutation
   const deleteDraftMutation = useMutation({
     mutationFn: async ({ instanceId, chatId }: { instanceId: string, chatId: string }) => {
-      return apiRequest(`/api/whatsapp/drafts/${instanceId}/${chatId}`, 'DELETE');
+      const response = await fetch(`/api/whatsapp/drafts/${instanceId}/${chatId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error('Failed to delete draft');
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/drafts/${instanceId}/${conversationId}`] });
