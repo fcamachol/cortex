@@ -1009,6 +1009,8 @@ export const WebhookApiAdapter = {
                 messageType: rawMessage.messageType,
                 key: rawMessage.key,
                 pushName: rawMessage.pushName,
+                chat: rawMessage.chat,
+                groupData: rawMessage.groupData,
                 instanceId: instanceId
             }, null, 2));
             
@@ -1120,19 +1122,47 @@ export const WebhookApiAdapter = {
         // Handle the specific case where Evolution API combines group JID with owner JID
         const malformedJid = rawMessage.key?.remoteJid;
         if (malformedJid && typeof malformedJid === 'string' && malformedJid.length > 20 && !malformedJid.includes('@')) {
-            // Look for group JID pattern in participant field or other message data
-            const participant = rawMessage.key?.participant;
-            if (participant && participant.includes('@g.us')) {
-                console.log(`🔧 Found group JID in participant field: ${participant}`);
-                return participant;
-            }
-            
-            // Look for group indicators in the raw message data
+            // Look for group JID pattern in the raw message data first
             const messageStr = JSON.stringify(rawMessage);
             const groupJidMatch = messageStr.match(/(\d{10,15}-\d+@g\.us)/);
             if (groupJidMatch) {
                 console.log(`🔧 Extracted group JID from message data: ${groupJidMatch[1]}`);
                 return groupJidMatch[1];
+            }
+            
+            // Also check for group JID in specific fields that might contain it
+            const potentialGroupJids = [
+                rawMessage.chat?.id,
+                rawMessage.groupData?.groupJid,
+                rawMessage.group?.id,
+                rawMessage.groupId
+            ].filter(Boolean);
+            
+            for (const jid of potentialGroupJids) {
+                if (typeof jid === 'string' && jid.includes('@g.us')) {
+                    console.log(`🔧 Found group JID in structured data: ${jid}`);
+                    return jid;
+                }
+            }
+            
+            // Check if this is a group message by looking at participant field
+            const participant = rawMessage.key?.participant;
+            if (participant && participant.includes('@s.whatsapp.net')) {
+                // This is a group message, but we need to find the actual group JID
+                // For now, we'll need to handle this differently - the participant is the sender, not the group
+                console.log(`🔧 Group message detected with participant: ${participant}`);
+                
+                // Try to extract group JID from other fields in the message
+                const chatId = rawMessage.chat?.id;
+                if (chatId && chatId.includes('@g.us')) {
+                    console.log(`🔧 Found group JID in chat field: ${chatId}`);
+                    return chatId;
+                }
+                
+                // If we can't find the group JID, we'll need to construct it or use the participant for now
+                // This is a limitation of the current data structure
+                console.warn(`⚠️ Could not find group JID, using participant for message processing: ${participant}`);
+                return participant;
             }
             
             // Look for individual JID pattern

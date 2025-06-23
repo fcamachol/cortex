@@ -11,7 +11,7 @@ async function testMalformedChatIds() {
     // Test Case 1: Group message with malformed chat ID (combining group JID + owner JID)
     const malformedGroupMessage = {
         key: {
-            id: 'TEST_MALFORMED_GROUP_123',
+            id: 'TEST_MALFORMED_GROUP_FIXED',
             fromMe: false,
             // This is the malformed ID that combines group + owner
             remoteJid: 'cmc4yy03m10s6k34q3j768pan',  // Malformed combination
@@ -19,15 +19,21 @@ async function testMalformedChatIds() {
         },
         messageType: 'conversation',
         message: {
-            conversation: 'Test message with malformed group chat ID'
+            conversation: 'Test message with malformed group chat ID - should extract correct group JID'
         },
         messageTimestamp: Math.floor(Date.now() / 1000),
         pushName: 'Test Group Member',
         source: 'android',
-        // Additional data that might contain the correct group JID
+        // Additional data that contains the correct group JID
         chat: {
-            id: '5215551053317-1438010896@g.us',  // Correct group JID
+            id: '5215551053317-1438010896@g.us',  // Correct group JID embedded in data
             subject: 'Test Group Chat'
+        },
+        // Simulate Evolution API structure where group JID might be present
+        groupData: {
+            groupJid: '5215551053317-1438010896@g.us',
+            subject: 'Test Group Chat',
+            participants: ['5215551053317@s.whatsapp.net', '5214422501780@s.whatsapp.net']
         }
     };
 
