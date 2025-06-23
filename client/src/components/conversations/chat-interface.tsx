@@ -310,8 +310,61 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       if (!response.ok) throw new Error('Failed to send message');
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chat-messages`, conversationId, finalInstanceId] });
+    onMutate: async (text: string) => {
+      // Cancel any outgoing refetches to prevent optimistic update conflicts
+      await queryClient.cancelQueries({ queryKey: [`/api/whatsapp/chat-messages`, conversationId, finalInstanceId] });
+
+      // Snapshot the previous value
+      const previousMessages = queryClient.getQueryData([`/api/whatsapp/chat-messages`, conversationId, finalInstanceId]);
+
+      // Create optimistic message with temporary ID
+      const optimisticMessage = {
+        id: `temp-${Date.now()}`,
+        messageId: `temp-${Date.now()}`,
+        content: text,
+        textContent: text,
+        senderJid: 'me',
+        timestamp: new Date().toISOString(),
+        messageType: 'text',
+        fromMe: true,
+        isFromMe: true,
+        instanceId: finalInstanceId,
+        chatId: chatId,
+        quotedMessageId: replyToMessage?.messageId || null,
+        isPending: true, // Mark as pending for potential styling
+        createdAt: new Date().toISOString(),
+      };
+
+      // Optimistically update the messages list
+      queryClient.setQueryData(
+        [`/api/whatsapp/chat-messages`, conversationId, finalInstanceId],
+        (old: any) => old ? [...old, optimisticMessage] : [optimisticMessage]
+      );
+
+      // Return context for rollback if needed
+      return { previousMessages, optimisticMessage };
+    },
+    onError: (err, text, context) => {
+      // Rollback to previous state on error
+      if (context?.previousMessages) {
+        queryClient.setQueryData(
+          [`/api/whatsapp/chat-messages`, conversationId, finalInstanceId],
+          context.previousMessages
+        );
+      }
+    },
+    onSuccess: (serverMessage, text, context) => {
+      // Replace optimistic message with server response
+      queryClient.setQueryData(
+        [`/api/whatsapp/chat-messages`, conversationId, finalInstanceId],
+        (old: any) => {
+          if (!old) return [serverMessage];
+          return old.map((msg: any) => 
+            msg.id === context?.optimisticMessage.id ? { ...serverMessage, isPending: false } : msg
+          );
+        }
+      );
+      
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
       setMessageInput("");
       setReplyToMessage(null);
@@ -914,7 +967,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                     message.isFromMe
                       ? 'whatsapp-message-sent'
                       : 'whatsapp-message-received'
-                  }`}
+                  } ${message.isPending ? 'opacity-70' : ''}`}
                 >
                   {/* Sender name for group chats */}
                   {(conversation?.type === 'group' || conversation?.chatId?.includes('@g.us')) && !message.isFromMe && (
