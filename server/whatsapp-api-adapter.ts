@@ -174,10 +174,6 @@ export const WebhookApiAdapter = {
                 const storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
                 console.log(`✅ [${instanceId}] Message stored: ${storedMessage.messageId}`);
                 
-                // Handle media storage after message is saved to avoid foreign key constraint errors
-                const messageType = getMessageType(rawMessage);
-                await this.handleMediaStorage(rawMessage, instanceId, messageType);
-                
                 SseManager.notifyClientsOfNewMessage(storedMessage);
                 ActionService.processNewMessage(storedMessage);
 
@@ -1141,7 +1137,8 @@ export const WebhookApiAdapter = {
         
         console.log(`📨 Processing message ${rawMessage.key.id}: type="${messageType}", content="${content}"`);
 
-        return {
+        // Store message data first, then handle media storage to avoid foreign key constraint errors
+        const messageData = {
             messageId: rawMessage.key.id,
             instanceId: instanceId,
             chatId: rawMessage.key.remoteJid,
@@ -2046,8 +2043,44 @@ export const WebhookApiAdapter = {
             mediaInfo.isViewOnce = mediaData.viewOnce || false;
 
             try {
+                // Store media metadata in database
                 await storage.upsertWhatsappMessageMedia(mediaInfo as InsertWhatsappMessageMedia);
-                console.log(`📎 [${instanceId}] Stored media for message: ${messageId} (${messageType})`);
+                
+                // Download and cache the media file if URL is available
+                if (mediaData.url) {
+                    try {
+                        const response = await fetch(mediaData.url);
+                        if (response.ok) {
+                            const buffer = await response.arrayBuffer();
+                            const fs = await import('fs/promises');
+                            const path = await import('path');
+                            
+                            // Create media directory if it doesn't exist
+                            const mediaDir = path.join(process.cwd(), 'media', instanceId);
+                            await fs.mkdir(mediaDir, { recursive: true });
+                            
+                            // Determine file extension from mimetype
+                            const getExtension = (mimetype: string) => {
+                                if (mimetype.includes('audio')) return '.ogg';
+                                if (mimetype.includes('image')) return '.jpg';
+                                if (mimetype.includes('video')) return '.mp4';
+                                if (mimetype.includes('document')) return '.pdf';
+                                return '.bin';
+                            };
+                            
+                            const extension = getExtension(mediaInfo.mimetype || '');
+                            const filePath = path.join(mediaDir, `${messageId}${extension}`);
+                            
+                            // Save file to disk
+                            await fs.writeFile(filePath, Buffer.from(buffer));
+                            console.log(`📎 [${instanceId}] Downloaded and cached media: ${messageId} (${messageType})`);
+                        }
+                    } catch (downloadError) {
+                        console.warn(`⚠️ Could not download media file for ${messageId}:`, downloadError);
+                    }
+                }
+                
+                console.log(`📎 [${instanceId}] Stored media metadata for message: ${messageId} (${messageType})`);
             } catch (error) {
                 console.error(`❌ Error storing media for message ${messageId}:`, error);
             }
