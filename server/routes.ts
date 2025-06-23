@@ -14,70 +14,7 @@ import path from 'path';
 import { spawn } from 'child_process';
 import { promises as fsPromises } from 'fs';
 
-/**
- * Convert WhatsApp's proprietary OGG format to browser-compatible WAV
- */
-async function convertOggToWav(oggBuffer: Buffer): Promise<Buffer | null> {
-  try {
-    const tempDir = '/tmp';
-    const inputFile = `${tempDir}/audio_${Date.now()}.ogg`;
-    const outputFile = `${tempDir}/audio_${Date.now()}.wav`;
-    
-    // Write buffer to temporary file
-    await fs.writeFile(inputFile, oggBuffer);
-    
-    // Convert using FFmpeg with multiple strategies
-    const strategies = [
-      // Strategy 1: Standard OGG to WAV conversion
-      ['-i', inputFile, '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', '-f', 'wav', '-y', outputFile],
-      // Strategy 2: Force read as raw data
-      ['-f', 'data', '-i', inputFile, '-ar', '8000', '-ac', '1', '-f', 'wav', '-y', outputFile],
-      // Strategy 3: Ignore errors and convert
-      ['-err_detect', 'ignore_err', '-i', inputFile, '-c:a', 'pcm_s16le', '-ar', '16000', '-f', 'wav', '-y', outputFile]
-    ];
-    
-    for (const args of strategies) {
-      const success = await runFFmpegConversion(args);
-      if (success) {
-        try {
-          const wavBuffer = await fs.readFile(outputFile);
-          // Cleanup temp files
-          await fs.unlink(inputFile).catch(() => {});
-          await fs.unlink(outputFile).catch(() => {});
-          return wavBuffer;
-        } catch (error) {
-          console.warn('Failed to read converted WAV file:', error);
-        }
-      }
-    }
-    
-    // Cleanup on failure
-    await fs.unlink(inputFile).catch(() => {});
-    await fs.unlink(outputFile).catch(() => {});
-    return null;
-    
-  } catch (error) {
-    console.error('Audio conversion error:', error);
-    return null;
-  }
-}
 
-/**
- * Run FFmpeg conversion with given arguments
- */
-function runFFmpegConversion(args: string[]): Promise<boolean> {
-  return new Promise((resolve) => {
-    const ffmpeg = spawn('ffmpeg', args);
-    
-    ffmpeg.on('close', (code) => {
-      resolve(code === 0);
-    });
-    
-    ffmpeg.on('error', () => {
-      resolve(false);
-    });
-  });
-}
 
 function formatToE164(phoneNumber: string): string {
   let cleaned = phoneNumber.replace(/\D/g, '');
@@ -1654,31 +1591,20 @@ export async function registerRoutes(app: Express): Promise<void> {
         console.log(`✅ Found base64 data in webhook payload for ${messageId}`);
         const fileBuffer = Buffer.from(audioMessage.base64, 'base64');
         
-        // Convert to browser-compatible format: WAV
-        const wavBuffer = await convertOggToWav(fileBuffer);
-        if (wavBuffer) {
-          res.setHeader('Content-Type', 'audio/wav');
-          res.setHeader('Content-Length', wavBuffer.length.toString());
-          res.setHeader('Accept-Ranges', 'bytes');
-          res.setHeader('Cache-Control', 'public, max-age=3600');
-          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-          res.setHeader('Access-Control-Allow-Origin', '*');
-          
-          console.log(`✅ Serving converted WAV from webhook: ${messageId} (${wavBuffer.length} bytes)`);
-          return res.send(wavBuffer);
-        } else {
-          // Fallback to original if conversion fails
-          const mimeType = 'audio/ogg';
-          res.setHeader('Content-Type', mimeType);
-          res.setHeader('Content-Length', fileBuffer.length.toString());
-          res.setHeader('Accept-Ranges', 'bytes');
-          res.setHeader('Cache-Control', 'public, max-age=3600');
-          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-          res.setHeader('Access-Control-Allow-Origin', '*');
-          
-          console.log(`⚠️ Serving original base64 media (conversion failed): ${messageId} (${fileBuffer.length} bytes)`);
-          return res.send(fileBuffer);
-        }
+        // Serve the OGG file directly - modern browsers support this format natively
+        const mimeType = audioMessage.mimetype || 'audio/ogg; codecs=opus';
+        
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Content-Length', fileBuffer.length.toString());
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+        
+        console.log(`✅ Serving base64 OGG media from webhook: ${messageId} (${fileBuffer.length} bytes)`);
+        return res.send(fileBuffer);
       }
       
       // No media available
