@@ -224,42 +224,132 @@ export class EvolutionApi {
         return this.makeRequest(`/group/groupMetadata/${instanceName}?groupJid=${groupJid}`, 'GET', null, instanceApiKey);
     }
 
-    // Download and decrypt media from WhatsApp using the correct endpoint
+    // Download and decrypt media from WhatsApp using multiple Evolution API endpoints
     async downloadMedia(instanceName: string, instanceApiKey: string, messageData: any): Promise<any> {
+        const messageId = messageData.key.id;
+        console.log(`📥 Attempting media download for message: ${messageId}`);
+
+        // Method 1: Try /message/download-media endpoint (most direct)
         try {
-            // Use the correct /chat/getBase64 endpoint which only needs the message key
-            const endpointPath = `/chat/getBase64/${instanceName}`;
-            const requestUrl = new URL(endpointPath, this.config.baseUrl).href;
+            const downloadEndpoint = `/message/download-media/${instanceName}`;
+            const downloadBody = { messageId };
             
-            // Construct the simplified request body with only the message key
-            const requestBody = {
+            console.log(`🚀 Method 1: Trying direct download endpoint: ${downloadEndpoint}`);
+            
+            const downloadResponse = await this.makeRequest<any>(
+                downloadEndpoint,
+                'POST',
+                downloadBody,
+                instanceApiKey
+            );
+
+            if (downloadResponse && (downloadResponse.base64 || downloadResponse.data || downloadResponse.mediaUrl)) {
+                console.log(`✅ Media download successful via direct endpoint`);
+                return downloadResponse;
+            }
+        } catch (error) {
+            console.log(`⚠️ Method 1 failed, trying alternative...`);
+        }
+
+        // Method 2: Try /message/media endpoint to get media info first
+        try {
+            const mediaInfoEndpoint = `/message/media/${instanceName}`;
+            const mediaInfoBody = { messageId };
+            
+            console.log(`🚀 Method 2: Getting media info first: ${mediaInfoEndpoint}`);
+            
+            const mediaInfo = await this.makeRequest<any>(
+                mediaInfoEndpoint,
+                'POST',
+                mediaInfoBody,
+                instanceApiKey
+            );
+
+            if (mediaInfo && mediaInfo.mediaUrl) {
+                console.log(`✅ Media info retrieved, downloading from URL`);
+                // Download from the provided URL
+                const response = await fetch(mediaInfo.mediaUrl);
+                const arrayBuffer = await response.arrayBuffer();
+                const base64Data = Buffer.from(arrayBuffer).toString('base64');
+                
+                return {
+                    base64: base64Data,
+                    mimetype: mediaInfo.mimetype || 'audio/ogg',
+                    filename: mediaInfo.filename || `audio_${Date.now()}.ogg`
+                };
+            }
+        } catch (error) {
+            console.log(`⚠️ Method 2 failed, trying fallback...`);
+        }
+
+        // Method 3: Fallback to /chat/getBase64 endpoint
+        try {
+            const getBase64Endpoint = `/chat/getBase64/${instanceName}`;
+            const getBase64Body = {
                 message: {
                     key: {
-                        id: messageData.key.id
+                        id: messageId
                     }
                 }
             };
             
-            console.log(`🚀 Making updated API call to: POST ${requestUrl}`);
-            console.log(`📦 Sending simplified request body:`, JSON.stringify(requestBody, null, 2));
+            console.log(`🚀 Method 3: Trying getBase64 endpoint: ${getBase64Endpoint}`);
             
             const response = await this.makeRequest<any>(
-                endpointPath,
+                getBase64Endpoint,
                 'POST',
-                requestBody,
+                getBase64Body,
                 instanceApiKey
             );
 
             if (response && (response.base64 || response.data)) {
-                console.log(`✅ Media download successful via: ${endpointPath}`);
+                console.log(`✅ Media download successful via getBase64 endpoint`);
                 return response;
             }
-
-            throw new Error('No media data in response');
         } catch (error) {
-            console.error('Evolution API media download error:', error);
-            throw error;
+            console.log(`⚠️ Method 3 failed`);
         }
+
+        // Method 4: Check if media URL is directly available in webhook data
+        if (messageData.message) {
+            const audioMessage = messageData.message.audioMessage;
+            const imageMessage = messageData.message.imageMessage;
+            const videoMessage = messageData.message.videoMessage;
+            const documentMessage = messageData.message.documentMessage;
+            
+            const mediaMessage = audioMessage || imageMessage || videoMessage || documentMessage;
+            
+            if (mediaMessage && mediaMessage.url) {
+                try {
+                    console.log(`🚀 Method 4: Downloading from webhook URL`);
+                    const response = await fetch(mediaMessage.url);
+                    const arrayBuffer = await response.arrayBuffer();
+                    const base64Data = Buffer.from(arrayBuffer).toString('base64');
+                    
+                    return {
+                        base64: base64Data,
+                        mimetype: mediaMessage.mimetype || 'audio/ogg',
+                        filename: `media_${Date.now()}.${this.getFileExtension(mediaMessage.mimetype)}`
+                    };
+                } catch (error) {
+                    console.log(`⚠️ Method 4 failed: ${error.message}`);
+                }
+            }
+        }
+
+        throw new Error('All media download methods failed');
+    }
+
+    private getFileExtension(mimetype: string): string {
+        if (!mimetype) return 'bin';
+        if (mimetype.includes('audio/ogg')) return 'ogg';
+        if (mimetype.includes('audio/mp4')) return 'mp4';
+        if (mimetype.includes('audio/mpeg')) return 'mp3';
+        if (mimetype.includes('image/jpeg')) return 'jpg';
+        if (mimetype.includes('image/png')) return 'png';
+        if (mimetype.includes('video/mp4')) return 'mp4';
+        if (mimetype.includes('application/pdf')) return 'pdf';
+        return 'bin';
     }
 
     // REMOVED: refreshGroupsSubjects function - use individual group fetch only

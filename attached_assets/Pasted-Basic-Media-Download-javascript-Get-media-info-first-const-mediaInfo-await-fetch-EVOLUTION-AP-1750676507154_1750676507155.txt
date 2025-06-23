@@ -1,0 +1,102 @@
+Basic Media Download
+javascript// Get media info first
+const mediaInfo = await fetch(`${EVOLUTION_API_URL}/message/media/${instanceName}`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'apikey': YOUR_API_KEY
+  },
+  body: JSON.stringify({
+    messageId: "message_id_here",
+    // or use remoteJid and fromMe
+    remoteJid: "phone_number@s.whatsapp.net",
+    fromMe: false
+  })
+});
+
+const media = await mediaInfo.json();
+Download Media File
+javascript// Method 1: Direct download using media URL
+if (media.mediaUrl) {
+  const response = await fetch(media.mediaUrl);
+  const audioBuffer = await response.arrayBuffer();
+  
+  // Save to file or process as needed
+  const fs = require('fs');
+  fs.writeFileSync('audio_file.ogg', Buffer.from(audioBuffer));
+}
+
+// Method 2: Using Evolution API download endpoint
+const downloadResponse = await fetch(`${EVOLUTION_API_URL}/message/download-media/${instanceName}`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'apikey': YOUR_API_KEY
+  },
+  body: JSON.stringify({
+    messageId: "message_id_here"
+  })
+});
+
+const audioData = await downloadResponse.arrayBuffer();
+Webhook-based Media Handling
+If you're using webhooks, media files are typically included in the webhook payload:
+javascript// Webhook payload structure for audio messages
+{
+  "event": "messages.upsert",
+  "data": {
+    "key": {
+      "remoteJid": "phone@s.whatsapp.net",
+      "fromMe": false,
+      "id": "message_id"
+    },
+    "message": {
+      "audioMessage": {
+        "url": "media_url_here",
+        "mimetype": "audio/ogg; codecs=opus",
+        "fileLength": "12345",
+        "seconds": 10,
+        "ptt": true // if it's a voice note
+      }
+    }
+  }
+}
+Complete Example
+javascriptasync function downloadAudioMessage(instanceName, messageId) {
+  try {
+    // Get media information
+    const mediaResponse = await fetch(`${EVOLUTION_API_URL}/message/media/${instanceName}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': process.env.EVOLUTION_API_KEY
+      },
+      body: JSON.stringify({ messageId })
+    });
+
+    const mediaData = await mediaResponse.json();
+    
+    if (mediaData.mediaUrl) {
+      // Download the actual file
+      const fileResponse = await fetch(mediaData.mediaUrl);
+      const audioBuffer = await fileResponse.arrayBuffer();
+      
+      // Determine file extension based on mimetype
+      const extension = mediaData.mimetype?.includes('mp4') ? 'mp4' : 'ogg';
+      const filename = `audio_${Date.now()}.${extension}`;
+      
+      // Save file
+      require('fs').writeFileSync(filename, Buffer.from(audioBuffer));
+      
+      return {
+        success: true,
+        filename,
+        mimetype: mediaData.mimetype,
+        size: audioBuffer.byteLength
+      };
+    }
+  } catch (error) {
+    console.error('Error downloading audio:', error);
+    return { success: false, error: error.message };
+  }
+}
