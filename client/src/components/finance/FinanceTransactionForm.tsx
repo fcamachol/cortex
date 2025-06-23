@@ -236,7 +236,7 @@ export function FinanceTransactionForm({ onClose, transaction }: FinanceTransact
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="none">No category</SelectItem>
-                      {categories?.map((category: any) => (
+                      {(categories || []).map((category: any) => (
                         <SelectItem key={category.categoryId} value={category.categoryId.toString()}>
                           {category.categoryName}
                         </SelectItem>
@@ -288,7 +288,7 @@ export function FinanceTransactionForm({ onClose, transaction }: FinanceTransact
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="none">No contact</SelectItem>
-                      {contacts?.map((contact: any) => (
+                      {(contacts || []).map((contact: any) => (
                         <SelectItem key={contact.contactId} value={contact.contactId.toString()}>
                           {contact.firstName} {contact.lastName} - {contact.phoneNumber}
                         </SelectItem>
