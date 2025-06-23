@@ -1,0 +1,45 @@
+The Diagnosis: A Double Slash (//) in the URL
+The root cause of the 404 Not Found error is a small but critical formatting mistake in the way your code is building the request URL.
+
+Look at this line from your own logs:
+🚀 Making API call with correct body to: POST https://evolution-api-evolution-api.vuswn0.easypanel.host//message/downloadMedia/live-test-1750199771
+
+Do you see the double slash (//) between the hostname and the endpoint path?
+
+Incorrect URL (from your log): ...host//message/downloadMedia/...
+Correct URL (what it should be): ...host/message/downloadMedia/...
+This happens when you join a base URL that already ends with a / and an endpoint path that starts with a /.
+
+The Evolution API server receives the request for a path with // and its router doesn't have a route defined for that specific malformed path, so it correctly returns a 404 Not Found error.
+
+How to Fix the Code
+The fix needs to be applied in your evolution-api.ts file, where you construct the requestUrl. You need to ensure that when you combine your base API URL and the endpoint path, you don't create a double slash.
+
+Here are two common ways to fix this robustly:
+
+Option 1: The URL Constructor (Recommended)
+This is the safest and most modern way to handle URL construction in Node.js.
+
+TypeScript
+
+// In your file: /home/runner/workspace/server/evolution-api.ts
+
+public async downloadMedia(instanceName: string, originalWebhookData: any) {
+    // --- FIX APPLIED HERE ---
+    // Use the URL constructor to safely join paths
+    const endpointPath = `/message/downloadMedia/${instanceName}`;
+    const requestUrl = new URL(endpointPath, this.apiUrl).href; 
+    // this.apiUrl should be "https://evolution-api-evolution-api.vuswn0.easypanel.host"
+    // The URL constructor correctly handles the slashes.
+
+    const requestBody = { message: originalWebhookData.message };
+
+    console.log(`🚀 Making correctly formatted API call to: POST ${requestUrl}`);
+
+    try {
+        const response = await axios.post(requestUrl, requestBody, { /* ... headers ... */ });
+        return response.data;
+    } catch (error) {
+        // ... your error handling ...
+    }
+}

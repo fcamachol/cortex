@@ -64,7 +64,7 @@ export class EvolutionApi {
         body?: any,
         instanceApiKey?: string // Optional instance-specific key
     ): Promise<T> {
-        const url = `${this.config.baseUrl}${endpoint}`;
+        const url = new URL(endpoint, this.config.baseUrl).href;
         
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
@@ -227,27 +227,27 @@ export class EvolutionApi {
     // Download and decrypt media from WhatsApp using the correct endpoint
     async downloadMedia(instanceName: string, instanceApiKey: string, messageData: any): Promise<any> {
         try {
-            // Use the correct endpoint format: only instance name in URL, message data in body
-            const endpoint = `/message/downloadMedia/${instanceName}`;
-            const requestUrl = `${this.config.baseUrl}${endpoint}`;
+            // Use the URL constructor to safely join paths and avoid double slashes
+            const endpointPath = `/message/downloadMedia/${instanceName}`;
+            const requestUrl = new URL(endpointPath, this.config.baseUrl).href;
             
             // Construct the request body with the message object from the webhook
             const requestBody = {
                 message: messageData.message
             };
             
-            console.log(`🚀 Making API call with correct body to: POST ${requestUrl}`);
+            console.log(`🚀 Making correctly formatted API call to: POST ${requestUrl}`);
             console.log(`📦 Request body:`, JSON.stringify(requestBody, null, 2));
             
             const response = await this.makeRequest<any>(
-                endpoint,
+                endpointPath,
                 'POST',
                 requestBody,
                 instanceApiKey
             );
 
             if (response && (response.base64 || response.data)) {
-                console.log(`✅ Media download successful via: ${endpoint}`);
+                console.log(`✅ Media download successful via: ${endpointPath}`);
                 return response;
             }
 
