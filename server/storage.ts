@@ -2,7 +2,7 @@ import { db } from "./db"; // Your Drizzle ORM instance
 import { sql, eq, desc, and, or, ilike } from "drizzle-orm";
 import {
     // App Schema
-    appUsers, workspaces, appSpaces, workspaceMembers,
+    appUsers, appWorkspaces, appSpaces, appWorkspaceMembers,
     // WhatsApp Schema
     whatsappInstances, whatsappContacts, whatsappChats, whatsappMessages,
     whatsappGroups, whatsappGroupParticipants, whatsappMessageReactions,
@@ -11,7 +11,7 @@ import {
     // Actions Schema
     actionRules,
     // CRM Schema
-    crmProjects, crmTasks, crmTaskChecklistItems,
+    crmTasks,
     // Type Imports
     type AppUser, type InsertAppUser,
     type WhatsappInstance, type InsertWhatsappInstance,
@@ -153,7 +153,7 @@ class DatabaseStorage {
 
     async upsertWhatsappContact(contact: InsertWhatsappContact): Promise<WhatsappContact> {
         // Build the update object dynamically to avoid undefined values
-        const updateSet: Partial<InsertWhatsappContact> = { lastUpdatedAt: new Date() };
+        const updateSet: Partial<InsertWhatsappContact> = {};
         if (contact.pushName) updateSet.pushName = contact.pushName;
         if (contact.profilePictureUrl) updateSet.profilePictureUrl = contact.profilePictureUrl;
         if (contact.verifiedName) updateSet.verifiedName = contact.verifiedName;
@@ -202,6 +202,9 @@ class DatabaseStorage {
     }
 
     async upsertWhatsappMessage(message: InsertWhatsappMessage): Promise<WhatsappMessage> {
+        // Ensure the chat exists before inserting the message
+        await this.ensureChatExists(message.chatId, message.instanceId);
+
         const [result] = await db.insert(whatsappMessages)
             .values(message)
             .onConflictDoUpdate({
@@ -229,6 +232,67 @@ class DatabaseStorage {
         }
 
         return result;
+    }
+
+    async ensureChatExists(chatId: string, instanceId: string): Promise<void> {
+        // Check if chat already exists
+        const existingChat = await this.getWhatsappChat(chatId, instanceId);
+        if (existingChat) {
+            return; // Chat already exists
+        }
+
+        // Determine chat type based on JID format
+        const chatType = chatId.endsWith('@g.us') ? 'group' as const : 'individual' as const;
+        
+        // Create the chat record
+        const newChat: InsertWhatsappChat = {
+            chatId,
+            instanceId,
+            type: chatType,
+            unreadCount: 0,
+            isArchived: false,
+            isPinned: false,
+            isMuted: false,
+            lastMessageTimestamp: null
+        };
+
+        await this.upsertWhatsappChat(newChat);
+        console.log(`✅ Auto-created chat: ${chatId} (${chatType})`);
+
+        // Also ensure contact exists for the chat
+        await this.ensureContactExists(chatId, instanceId, chatType);
+    }
+
+    async ensureContactExists(jid: string, instanceId: string, chatType: string): Promise<void> {
+        // Check if contact already exists
+        const existingContact = await db.select()
+            .from(whatsappContacts)
+            .where(and(
+                eq(whatsappContacts.jid, jid),
+                eq(whatsappContacts.instanceId, instanceId)
+            ))
+            .limit(1);
+
+        if (existingContact.length > 0) {
+            return; // Contact already exists
+        }
+
+        // Create contact record with appropriate name
+        const contactName = chatType === 'group' ? 'Group Chat' : 'Contact';
+        
+        const newContact = {
+            jid,
+            instanceId,
+            pushName: contactName,
+            profilePictureUrl: null,
+            verifiedName: null,
+            isMe: false,
+            isBlocked: false,
+            isBusiness: false
+        };
+
+        await this.upsertWhatsappContact(newContact);
+        console.log(`✅ Auto-created contact: ${jid} (${chatType})`);
     }
 
     // =========================================================================
