@@ -38,6 +38,10 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   
   // Waiting reply state
   const [waitingReplyMessages, setWaitingReplyMessages] = useState<Set<string>>(new Set());
+  
+  // Multi-select forwarding state
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -415,7 +419,41 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     setSelectedMessageForForward(message);
     setForwardModalOpen(true);
     setOpenMessageDropdown(null);
+  }
+
+  const handleMultiSelectForward = () => {
+    setIsMultiSelectMode(true);
+    setSelectedMessages(new Set());
   };
+
+  const handleCancelMultiSelect = () => {
+    setIsMultiSelectMode(false);
+    setSelectedMessages(new Set());
+  };
+
+  const handleToggleMessageSelect = (messageId: string) => {
+    setSelectedMessages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleForwardSelectedMessages = () => {
+    if (selectedMessages.size > 0) {
+      const selectedMessageData = messages.filter(msg => 
+        selectedMessages.has(msg.messageId || msg.id)
+      );
+      setSelectedMessageForForward(selectedMessageData);
+      setForwardModalOpen(true);
+      setIsMultiSelectMode(false);
+      setSelectedMessages(new Set());
+    }
+  };;
 
   const handleStarMessage = (message: any) => {
     // Implement star functionality
@@ -775,6 +813,14 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 />
               </PopoverContent>
             </Popover>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={handleMultiSelectForward}
+              title="Select multiple messages to forward"
+            >
+              <Forward className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="sm">
               <Plus className="h-4 w-4" />
             </Button>
@@ -805,6 +851,18 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 onMouseEnter={() => setHoveredMessageId(message.messageId || message.id)}
                 onMouseLeave={() => setHoveredMessageId(null)}
               >
+                {/* Multi-select checkbox */}
+                {isMultiSelectMode && (
+                  <div className="flex items-start mt-2 mr-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedMessages.has(message.messageId || message.id)}
+                      onChange={() => handleToggleMessageSelect(message.messageId || message.id)}
+                      className="w-4 h-4 text-blue-500 border-2 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                  </div>
+                )}
+              
                 <div
                   className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg relative ${
                     message.isFromMe
@@ -823,7 +881,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   {message.isForwarded && (
                     <div className="message-forward-indicator">
                       <Forward className="h-3 w-3" />
-                      <span>Forwarded</span>
+                      <span>Reenviado</span>
                     </div>
                   )}
 
