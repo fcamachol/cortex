@@ -348,7 +348,7 @@ class DatabaseStorage {
         return result;
     }
 
-    async getWhatsappMessageById(messageId: string, instanceId: string): Promise<WhatsappMessages | undefined> {
+    async getWhatsappMessageById(messageId: string, instanceId: string): Promise<WhatsappMessage | undefined> {
         const [result] = await db.select().from(whatsappMessages)
             .where(and(
                 eq(whatsappMessages.messageId, messageId),
