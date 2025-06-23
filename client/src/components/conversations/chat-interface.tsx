@@ -18,9 +18,19 @@ import { formatPhoneNumber } from "@/lib/phoneUtils";
 
 interface ChatInterfaceProps {
   conversationId: string | null;
+  conversations: any[];
+  contacts: any[];
+  instances: any[];
+  userId: string;
 }
 
-export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
+export default function ChatInterface({ 
+  conversationId, 
+  conversations, 
+  contacts, 
+  instances, 
+  userId 
+}: ChatInterfaceProps) {
   const [messageInput, setMessageInput] = useState("");
   const [messageReactions, setMessageReactions] = useState<Record<string, any[]>>({});
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
@@ -51,13 +61,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
-  // Mock user ID - in real app this would come from auth context
-  const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
-
-  // Fetch instances with customization data
-  const { data: instances = [] } = useQuery({
-    queryKey: [`/api/whatsapp/instances/${userId}`],
-  });
+  // Data now comes from props - no duplicate API calls
 
   // Get current instance ID from selected conversation
   const currentInstanceId = instances.find((inst: any) => 
@@ -124,17 +128,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   // Note: Real-time messaging now handled via webhook-based Evolution API
 
-  // Get conversation details first to identify instance
-  const { data: conversations = [] } = useQuery<any[]>({
-    queryKey: [`/api/whatsapp/conversations/${userId}`],
-  });
-
-  // Also fetch contacts for display names
-  const { data: contacts = [] } = useQuery<any[]>({
-    queryKey: [`/api/contacts/${userId}`],
-    refetchInterval: false, // Disable polling - use SSE for updates
-    staleTime: 600000, // Cache for 10 minutes - contacts change rarely
-  });
+  // Data now comes from props - no duplicate API calls needed
 
   // Helper function to get display name for conversation
   const getConversationDisplayName = (conv: any) => {
