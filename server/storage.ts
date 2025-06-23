@@ -6,7 +6,7 @@ import {
     // WhatsApp Schema
     whatsappInstances, whatsappContacts, whatsappChats, whatsappMessages,
     whatsappGroups, whatsappGroupParticipants, whatsappMessageReactions,
-    whatsappMessageMedia,
+    whatsappMessageMedia, whatsappMessageUpdates,
     // Legacy Schema
     tasks, contacts,
     // Actions Schema
@@ -23,6 +23,7 @@ import {
     type WhatsappGroupParticipant, type InsertWhatsappGroupParticipant,
     type WhatsappMessageReaction, type InsertWhatsappMessageReaction,
     type WhatsappMessageMedia, type InsertWhatsappMessageMedia,
+    type WhatsappMessageUpdate, type InsertWhatsappMessageUpdate,
     whatsappDrafts, type WhatsappDraft, type InsertWhatsappDraft
 } from "../shared/schema"; // Assuming a single, final schema definition file
 
@@ -1092,6 +1093,49 @@ class DatabaseStorage {
     async getTaskById(taskId: number): Promise<any | null> {
         const [task] = await db.select().from(crmTasks).where(eq(crmTasks.taskId, taskId));
         return task || null;
+    }
+
+    // =========================================================================
+    // MESSAGE UPDATE METHODS
+    // =========================================================================
+
+    async createWhatsappMessageUpdate(updateData: InsertWhatsappMessageUpdate): Promise<WhatsappMessageUpdate> {
+        const [result] = await db.insert(whatsappMessageUpdates)
+            .values({
+                messageId: updateData.messageId,
+                instanceId: updateData.instanceId,
+                status: updateData.status,
+                timestamp: updateData.timestamp || new Date()
+            })
+            .returning();
+        
+        console.log(`💾 [${updateData.instanceId}] Message update logged: ${updateData.messageId} -> ${updateData.status}`);
+        return result;
+    }
+
+    async getMessageUpdates(messageId: string, instanceId: string): Promise<WhatsappMessageUpdate[]> {
+        return await db.select()
+            .from(whatsappMessageUpdates)
+            .where(and(
+                eq(whatsappMessageUpdates.messageId, messageId),
+                eq(whatsappMessageUpdates.instanceId, instanceId)
+            ))
+            .orderBy(desc(whatsappMessageUpdates.timestamp));
+    }
+
+    async getLatestMessageStatus(messageId: string, instanceId: string): Promise<string | null> {
+        const [update] = await db.select({
+            status: whatsappMessageUpdates.status
+        })
+        .from(whatsappMessageUpdates)
+        .where(and(
+            eq(whatsappMessageUpdates.messageId, messageId),
+            eq(whatsappMessageUpdates.instanceId, instanceId)
+        ))
+        .orderBy(desc(whatsappMessageUpdates.timestamp))
+        .limit(1);
+        
+        return update?.status || null;
     }
 }
 
