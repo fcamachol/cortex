@@ -667,6 +667,35 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.post('/api/spaces', async (req: Request, res: Response) => {
+    try {
+      const { name, description } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ error: 'Space name is required' });
+      }
+
+      // For now, use a default user ID - in a real app this would come from authentication
+      const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
+      
+      const spaceData = {
+        spaceName: name,
+        description: description || null,
+        creatorUserId: userId,
+        workspaceId: null, // For now, spaces can exist without workspaces
+        icon: null,
+        color: null,
+        displayOrder: 0
+      };
+
+      const space = await storage.createSpace(spaceData);
+      res.json(space);
+    } catch (error) {
+      console.error('Error creating space:', error);
+      res.status(500).json({ error: 'Failed to create space' });
+    }
+  });
+
   app.get('/api/crm/tasks', async (req: Request, res: Response) => {
     try {
       // Force no-cache headers to prevent 304 responses

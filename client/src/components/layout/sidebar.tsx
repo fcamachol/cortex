@@ -50,8 +50,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
   // Create space mutation
   const createSpaceMutation = useMutation({
     mutationFn: async (spaceData: { name: string; description?: string }) => {
-      const response = await apiRequest('POST', '/api/spaces', spaceData);
-      return response.json();
+      return await apiRequest('/api/spaces', 'POST', spaceData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/spaces/${currentUser.id}`] });

@@ -53,7 +53,30 @@ class DatabaseStorage {
     }
     
     async getSpacesForUser(userId: string): Promise<any[]> {
-        return [];
+        try {
+            const spaces = await db.select().from(appSpaces).where(eq(appSpaces.creatorUserId, userId));
+            return spaces;
+        } catch (error) {
+            console.error('Error fetching spaces for user:', error);
+            return [];
+        }
+    }
+
+    async createSpace(spaceData: any): Promise<any> {
+        try {
+            const [newSpace] = await db.insert(appSpaces).values({
+                spaceName: spaceData.spaceName,
+                creatorUserId: spaceData.creatorUserId,
+                workspaceId: spaceData.workspaceId,
+                icon: spaceData.icon,
+                color: spaceData.color,
+                displayOrder: spaceData.displayOrder || 0
+            }).returning();
+            return newSpace;
+        } catch (error) {
+            console.error('Error creating space:', error);
+            throw error;
+        }
     }
 
     // =========================================================================
