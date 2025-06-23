@@ -194,7 +194,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     },
     enabled: !!chatId && chatId !== 'undefined' && !!finalInstanceId,
     refetchInterval: false, // Disable polling - use SSE for real-time updates
-    staleTime: 300000, // Cache for 5 minutes
+    staleTime: 0, // Force fresh data to pick up media objects
   });
 
   // Set up Server-Sent Events for real-time message updates
@@ -277,6 +277,17 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   console.log('Transformed messages:', messages.length, messages.slice(0, 2));
   console.log('Current conversationId:', conversationId);
   console.log('Current instanceId:', instanceId);
+  
+  // Log audio messages specifically to verify media data
+  const audioMessages = messages.filter(m => m.messageType === 'audio');
+  if (audioMessages.length > 0) {
+    console.log('Audio messages with media data:', audioMessages.map(m => ({
+      messageId: m.messageId,
+      content: m.content,
+      hasMedia: !!m.media,
+      mediaDetails: m.media
+    })));
+  }
 
   const sendMessageMutation = useMutation({
     mutationFn: async (text: string) => {
