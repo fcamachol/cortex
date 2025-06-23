@@ -700,7 +700,19 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/api/crm/projects', async (req: Request, res: Response) => {
     try {
       const projects = await storage.getProjects();
-      res.json(projects);
+      
+      // Transform field names from snake_case to camelCase for frontend compatibility
+      const transformedProjects = projects.map(project => ({
+        projectId: project.project_id,
+        projectName: project.project_name,
+        description: project.description,
+        status: project.status,
+        createdAt: project.created_at,
+        updatedAt: project.updated_at,
+        spaceId: project.space_id
+      }));
+      
+      res.json(transformedProjects);
     } catch (error) {
       console.error('Error fetching projects:', error);
       res.status(500).json({ error: 'Failed to fetch projects' });

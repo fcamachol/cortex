@@ -127,6 +127,8 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 23, 2025: Fixed TaskForm creation error by implementing field name transformation and null safety for projects API endpoint  
+- June 23, 2025: Resolved TaskDetailModal "Invalid time value" error by updating all snake_case field references to camelCase format
 - June 23, 2025: Fixed TaskBoard rendering by implementing server-side field name transformation from snake_case to camelCase for API compatibility
 - June 23, 2025: Resolved missing tasks issue - all 70 tasks now properly distributed (66 To Do, 3 In Progress, 1 Done) with "Contrato Sindicato DH" visible
 - June 23, 2025: Fixed TaskBoard filtering logic to properly display all tasks across status columns
