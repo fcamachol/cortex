@@ -66,7 +66,7 @@ class DatabaseStorage {
     async getWhatsappConversations(userId: string): Promise<any[]> {
         // Use SQL to get conversations with last message content
         const results = await db.execute(sql`
-            SELECT DISTINCT
+            SELECT 
                 c.chat_id as "chatId",
                 c.instance_id as "instanceId", 
                 c.type,
