@@ -85,20 +85,20 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
 
   // Fetch checklist items for the task
   const { data: checklistItems, refetch: refetchChecklist } = useQuery({
-    queryKey: ['/api/crm/checklist-items', task?.task_id],
+    queryKey: ['/api/crm/checklist-items', task?.taskId],
     queryFn: async () => {
-      if (!task?.task_id) return [];
+      if (!task?.taskId) return [];
       const response = await fetch('/api/crm/checklist-items');
       const allItems = await response.json();
-      return allItems.filter((item: any) => item.task_id === task.task_id);
+      return allItems.filter((item: any) => item.task_id === task.taskId);
     },
-    enabled: !!task?.task_id,
+    enabled: !!task?.taskId,
   });
 
   // Fetch WhatsApp message data when task changes
   useEffect(() => {
     const fetchMessageData = async () => {
-      if (!task?.triggering_message_id || !task?.instance_id) {
+      if (!task?.triggeringMessageId || !task?.instanceId) {
         setMessageData(null);
         return;
       }
@@ -107,7 +107,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
       setMessageError(null);
 
       try {
-        const response = await fetch(`/api/whatsapp/message-content?messageId=${task.triggering_message_id}&instanceId=${task.instance_id}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42`, {
+        const response = await fetch(`/api/whatsapp/message-content?messageId=${task.triggeringMessageId}&instanceId=${task.instanceId}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42`, {
           method: 'GET',
           headers: {
             'Cache-Control': 'no-cache',
@@ -145,7 +145,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
 
       try {
         // Use the new API endpoint to get only actual replies to the specific message
-        const response = await fetch(`/api/whatsapp/message-replies?originalMessageId=${task.triggering_message_id}&instanceId=${task.instance_id}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42`, {
+        const response = await fetch(`/api/whatsapp/message-replies?originalMessageId=${task.triggeringMessageId}&instanceId=${task.instanceId}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42`, {
           method: 'GET',
           headers: {
             'Cache-Control': 'no-cache',
@@ -755,7 +755,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                   Created
                 </div>
                 <div className="text-sm text-gray-600">
-                  {format(new Date(task.created_at), "PPP")}
+                  {format(new Date(task.createdAt), "PPP")}
                 </div>
               </div>
             </div>
@@ -811,7 +811,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
           </div>
 
           {/* WhatsApp Integration Info */}
-          {(task.related_chat_jid || task.triggering_message_id) && (
+          {(task.relatedChatJid || task.triggeringMessageId) && (
             <>
               <Separator />
               <div className="space-y-3">
@@ -846,7 +846,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                         </span>
                       </div>
                     </div>
-                  ) : task.triggering_message_id ? (
+                  ) : task.triggeringMessageId ? (
                     <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-dashed">
                       <div className="text-sm text-gray-500 text-center">
                         {messageLoading ? 'Loading message content...' : 
