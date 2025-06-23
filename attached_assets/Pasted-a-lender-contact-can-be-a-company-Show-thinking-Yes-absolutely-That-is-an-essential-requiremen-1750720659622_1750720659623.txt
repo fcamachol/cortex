@@ -1,0 +1,46 @@
+a lender contact can be a company?
+
+
+
+Show thinking
+Yes, absolutely. That is an essential requirement for a realistic finance module. A lender is often a company (a bank, a credit card company, a car financing service) and not just a person.
+
+Our current design links a loan to a Contact, which is intended for people. To handle this properly and elegantly, we will upgrade the Loans table to a more flexible polymorphic relationship.
+
+The Core Concept: A "Creditor" Can Be a Person or a Company
+Instead of having a rigid link only to the Contacts table, we will modify the Loans table so it can link to an entry in either the Contacts table or the Companies table.
+
+1. The Data Model Upgrade
+This change is simple but very powerful. We will replace the single creditor_contact_id with two new columns that define both the ID and the type of the creditor.
+
+SQL
+
+-- [MODIFIED] We are upgrading the Loans table to support multiple creditor types.
+
+-- First, we remove the old, restrictive column.
+ALTER TABLE Loans DROP COLUMN creditor_contact_id;
+
+-- Then, we add the new polymorphic columns.
+ALTER TABLE Loans
+ADD COLUMN creditor_id UUID, -- The ID of the contact OR company
+ADD COLUMN creditor_type VARCHAR(50); -- 'contact' or 'company'
+How this works:
+
+If the lender is a person (John Smith):
+creditor_id: will be the contact_id of John Smith.
+creditor_type: will be 'contact'.
+If the lender is a company (Toyota Financial Services):
+creditor_id: will be the company_id of Toyota Financial.
+creditor_type: will be 'company'.
+2. The User Experience in Practice
+This change makes the app much more intuitive.
+
+A. The Web App: Creating a New Loan
+When you click [+ Add New Loan], the form will have a field labeled "Lender / Creditor."
+
+This field will now be a universal search box.
+When you start typing "Toyo...", the search results will show:
+🏢 Toyota Financial Services (an entity from your Companies list)
+When you start typing "John...", the search results will show:
+👤 John Smith (an entity from your Contacts list)
+The UI will use different icons (like 🏢 for a company and 👤 for a person) to make the distinction clear. You simply select the correct entity, and the system handles the rest in the background.
