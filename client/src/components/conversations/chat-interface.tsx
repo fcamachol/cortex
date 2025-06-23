@@ -1087,7 +1087,11 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                           if (isWaiting) {
                             unmarkWaitingReplyMutation.mutate({ messageId });
                           } else {
-                            markWaitingReplyMutation.mutate({ messageId });
+                            markWaitingReplyMutation.mutate({ 
+                              messageId, 
+                              instanceId: finalInstanceId!, 
+                              chatId: chatId! 
+                            });
                           }
                         }}
                         title={waitingReplyMessages.has(message.messageId || message.id) ? 'Unmark awaiting reply' : 'Mark as awaiting reply'}
