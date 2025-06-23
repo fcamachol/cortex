@@ -157,39 +157,8 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className="p-2">
-          <div className="space-y-1">
-            {navigationItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeModule === item.id;
-
-              return (
-                <Button
-                  key={item.id}
-                  variant="ghost"
-                  className={`w-full justify-start ${isActive ? 'nav-item active' : 'nav-item'}`}
-                  onClick={() => onSetActiveModule(item.id)}
-                >
-                  <Icon className="mr-3 h-4 w-4" />
-                  {item.label}
-                  {item.badge && (
-                    <Badge 
-                      className={`ml-auto text-white text-xs px-2 py-0.5 ${item.badgeColor}`}
-                    >
-                      {item.badge}
-                    </Badge>
-                  )}
-                  {item.id === "integrations" && (
-                    <div className="ml-auto w-2 h-2 bg-green-500 rounded-full"></div>
-                  )}
-                </Button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Spaces */}
-        <div className="border-t border-gray-200 dark:border-gray-800 mt-4">
+        {/* Spaces - moved to top */}
+        <div className="p-3 border-b border-gray-200 dark:border-gray-800">
           <div className="p-3">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -280,6 +249,38 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
                 ))
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Main Navigation */}
+        <div className="p-2">
+          <div className="space-y-1">
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeModule === item.id;
+
+              return (
+                <Button
+                  key={item.id}
+                  variant="ghost"
+                  className={`w-full justify-start ${isActive ? 'nav-item active' : 'nav-item'}`}
+                  onClick={() => onSetActiveModule(item.id)}
+                >
+                  <Icon className="mr-3 h-4 w-4" />
+                  {item.label}
+                  {item.badge && (
+                    <Badge 
+                      className={`ml-auto text-white text-xs px-2 py-0.5 ${item.badgeColor}`}
+                    >
+                      {item.badge}
+                    </Badge>
+                  )}
+                  {item.id === "integrations" && (
+                    <div className="ml-auto w-2 h-2 bg-green-500 rounded-full"></div>
+                  )}
+                </Button>
+              );
+            })}
           </div>
         </div>
       </nav>
