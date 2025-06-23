@@ -431,13 +431,17 @@ export default function ConversationList({ selectedConversation, onSelectConvers
             {conversations.length === 0 ? "No conversations yet" : "No conversations match your search"}
           </div>
         ) : (
-          filteredConversations.map((conversation: any) => (
-            <div
-              key={`${conversation.instanceId}-${conversation.chatId}`}
-              className={`whatsapp-conversation-item ${
-                selectedConversation === `${conversation.instanceId}:${conversation.chatId}` ? 'active' : ''
-              } ${conversation.unreadCount > 0 ? 'bg-green-50 dark:bg-green-900/10 border-l-2 border-green-500' : ''} relative group`}
-              onClick={() => onSelectConversation(`${conversation.instanceId}:${conversation.chatId}`)}
+          filteredConversations.map((conversation: any) => {
+            const conversationKey = `${conversation.instanceId}:${conversation.chatId}`;
+            const isSelected = selectedConversation === conversationKey;
+            
+            return (
+              <div
+                key={`${conversation.instanceId}-${conversation.chatId}`}
+                className={`whatsapp-conversation-item ${
+                  isSelected ? 'active' : ''
+                } ${conversation.unreadCount > 0 ? 'bg-green-50 dark:bg-green-900/10 border-l-2 border-green-500' : ''} relative group`}
+                onClick={() => onSelectConversation(conversationKey)}
               onMouseEnter={() => setHoveredConversation(conversation.chatId || conversation.id)}
               onMouseLeave={() => setHoveredConversation(null)}
             >
@@ -687,7 +691,8 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                 </div>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
