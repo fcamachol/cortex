@@ -387,6 +387,18 @@ export class EvolutionApi {
         return 'bin';
     }
 
+    // Mark chat as read in Evolution API
+    async markChatAsRead(instanceName: string, apiKey: string, chatId: string): Promise<void> {
+        const endpoint = `/chat/markMessageAsRead/${instanceName}`;
+        
+        const requestBody = {
+            remoteJid: chatId,
+            read: true
+        };
+        
+        await this.makeRequest(endpoint, 'PUT', requestBody, apiKey);
+    }
+
     // REMOVED: refreshGroupsSubjects function - use individual group fetch only
 }
 

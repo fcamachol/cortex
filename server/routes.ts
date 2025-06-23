@@ -1492,15 +1492,36 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.patch('/api/whatsapp/conversations/read-status', async (req: Request, res: Response) => {
     try {
-      const { chatId, instanceId, unread = true } = req.body;
+      const { chatId, instanceId, unread = true, silent = false } = req.body;
       
       if (!chatId || !instanceId) {
         return res.status(400).json({ error: 'chatId and instanceId are required' });
       }
       
+      // Update local database
       await storage.updateConversation(chatId, instanceId, { 
         unreadCount: unread ? 1 : 0 
       });
+      
+      // If marking as read (unread=false), notify Evolution API
+      console.log(`🔍 Read status debug: unread=${unread}, silent=${silent}, should notify=${!unread && !silent}`);
+      if (!unread && !silent) {
+        try {
+          const evolutionApi = getEvolutionApi();
+          const instanceApiKey = process.env.EVOLUTION_API_KEY;
+          
+          console.log(`📖 [${instanceId}] Marking conversation as read via Evolution API: ${chatId}`);
+          
+          // Mark all messages in this chat as read via Evolution API
+          await evolutionApi.markChatAsRead(instanceId, instanceApiKey, chatId);
+          
+          console.log(`✅ [${instanceId}] Successfully notified Evolution API that chat is read: ${chatId}`);
+        } catch (evolutionError) {
+          console.warn(`⚠️ [${instanceId}] Failed to notify Evolution API about read status:`, evolutionError.message);
+          // Don't fail the request if Evolution API call fails
+        }
+      }
+      
       res.json({ success: true, message: unread ? 'Marked as unread' : 'Marked as read' });
     } catch (error) {
       console.error('Error updating read status:', error);

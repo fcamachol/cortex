@@ -585,8 +585,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                       markUnreadMutation.mutate({
                         chatId: conversation.chatId,
                         instanceId: conversation.instanceId,
-                        unread: false,
-                        silent: true
+                        unread: false
                       });
                     } catch (error) {
                       console.error('Failed to mark conversation as read:', error);
