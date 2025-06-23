@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Search, Check, CheckCheck, Users, ChevronDown, Archive, Bell, BellOff, Pin, Heart, Ban, Trash2, X } from "lucide-react";
+import { Search, Check, CheckCheck, Users, ChevronDown, Archive, Bell, BellOff, Pin, Heart, Ban, Trash2, X, EyeOff } from "lucide-react";
 import { formatPhoneNumber } from "@/lib/phoneUtils";
 import { formatConversationTimestamp } from "@/lib/timeUtils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -20,8 +20,50 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredConversation, setHoveredConversation] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [hiddenChats, setHiddenChats] = useState<Set<string>>(new Set());
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Load hidden chats from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('hiddenChats');
+    if (stored) {
+      try {
+        const hiddenArray = JSON.parse(stored);
+        setHiddenChats(new Set(hiddenArray));
+      } catch (error) {
+        console.warn('Failed to load hidden chats from localStorage');
+      }
+    }
+  }, []);
+
+  // Save hidden chats to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('hiddenChats', JSON.stringify(Array.from(hiddenChats)));
+  }, [hiddenChats]);
+
+  // Toggle chat visibility (internal only)
+  const toggleChatVisibility = (chatId: string, instanceId: string) => {
+    const chatKey = `${instanceId}:${chatId}`;
+    const newHiddenChats = new Set(hiddenChats);
+    
+    if (hiddenChats.has(chatKey)) {
+      newHiddenChats.delete(chatKey);
+      toast({
+        title: "Chat visible",
+        description: "El chat se mostró en la lista de conversaciones"
+      });
+    } else {
+      newHiddenChats.add(chatKey);
+      toast({
+        title: "Chat oculto",
+        description: "El chat se ocultó de la lista de conversaciones"
+      });
+    }
+    
+    setHiddenChats(newHiddenChats);
+    setOpenDropdown(null);
+  };
 
   // Chat management mutations
   const archiveChatMutation = useMutation({
@@ -492,6 +534,12 @@ export default function ConversationList({ selectedConversation, onSelectConvers
         return false;
       }
       
+      // Skip hidden chats (internal archiving)
+      const chatKey = `${conv.instanceId}:${conv.chatId}`;
+      if (hiddenChats.has(chatKey)) {
+        return false;
+      }
+      
       // Apply search filter if there's a search query
       if (searchQuery.trim() === '') {
         return true; // Show all conversations when no search
@@ -773,6 +821,16 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                             >
                               <Ban className="h-4 w-4" />
                               Bloquear
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="flex items-center gap-2 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleChatVisibility(conversation.chatId, conversation.instanceId);
+                              }}
+                            >
+                              <EyeOff className="h-4 w-4" />
+                              No mostrar chat
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               className="flex items-center gap-2 cursor-pointer"
