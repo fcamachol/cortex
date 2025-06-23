@@ -1,0 +1,65 @@
+Excellent question. This is the natural next step in building a powerful CRM. We've defined how contacts relate to companies and to each other one-on-one, but we need a way to handle custom, multi-person groups.
+
+We will treat Groups as a distinct and flexible feature that allows you to create any collection of contacts you want, give that group its own context, and then interact with it as a single unit.
+
+This is different from a Company (which is a formal organization) or a Project (which is a temporary team). A Group is a user-defined social circle, team, or list (e.g., "My Book Club," "Sunday Soccer Team," "The Magabar Client-Side Team").
+
+1. The Data Model: Creating "Contact Groups"
+We will introduce a new primary table, Contact_Groups, and a join table to link contacts to it.
+
+SQL
+
+-- [NEW] A table to define a custom group of contacts.
+CREATE TABLE Contact_Groups (
+    group_id UUID PRIMARY KEY,
+    owner_user_id UUID REFERENCES Users(user_id) NOT NULL,
+    
+    group_name VARCHAR(255) NOT NULL,
+    group_description TEXT,
+    group_icon VARCHAR(255) -- An optional emoji or icon
+);
+
+-- [NEW] A join table to manage the members of each group.
+CREATE TABLE Contact_Group_Members (
+    group_id UUID REFERENCES Contact_Groups(group_id) ON DELETE CASCADE,
+    contact_id UUID REFERENCES Contacts(contact_id) ON DELETE CASCADE,
+    
+    -- An optional field to define the member's role within that specific group
+    role_in_group VARCHAR(255),
+    
+    PRIMARY KEY(group_id, contact_id)
+);
+This structure allows any contact to be in multiple groups, and any group to have multiple members.
+
+2. The User Experience & Workflows
+Here is how this new "Groups" feature will be integrated into the application, giving your contacts powerful context.
+
+A. Creating and Managing Groups (Web App)
+In the main "Contacts" module of the web app, there will be a new tab or section called "Groups."
+Here, you can create a new group (e.g., "Family," "Book Club").
+When you open a group's page, you can see all its members and easily add or remove contacts.
+B. Assigning a Task to a Group
+This is a key workflow. You want to assign a task to a whole group, but you need clear accountability.
+
+Scenario: You want to remind your "Book Club" group to read the next chapter.
+WhatsApp Command: /create task "Read Chapter 5" for @BookClub due next sunday
+Backend Logic & UX:
+The system recognizes @BookClub as a Contact_Group.
+It retrieves all the members of that group.
+To avoid the "bystander effect" (where no one takes responsibility), the system doesn't just assign the task to the group itself. Instead, it creates an individual, linked task for each member of the group.
+Abraham gets a task: "Read Chapter 5". Pau gets a task: "Read Chapter 5". You get a task: "Read Chapter 5".
+In the web app, you could see the "parent" assignment to the group, with a progress bar showing how many members have completed their individual task.
+C. Inviting a Group to an Event
+This simplifies scheduling for social events.
+
+Scenario: You are planning the birthday party for your godson, Leo. You want to invite your entire "Family" group.
+Action (in the Web App): When creating the "Leo's Birthday Party" Event, in the "Invitees/Participants" field, you can now search for and select @Family.
+Backend Logic: The system automatically retrieves all members of the "Family" group and adds each one as a participant to the Event_Participants table.
+D. Linking a Group to a WhatsApp Chat
+This gives a shared conversational space a persistent context.
+
+Scenario: You have a WhatsApp chat specifically for your Sunday soccer team.
+WhatsApp Command: /link chat to group "Sunday Soccer Team"
+Backend Logic: The system updates the WhatsApp_Context_Links table, mapping that whatsapp_chat_id to your "Sunday Soccer Team" group_id.
+Result: Now, within that chat, you can use commands like /who is playing this week? or /create event "Game vs. The Eagles" and the system will automatically understand the context and participants are the members of the "Sunday Soccer Team" group.
+This "Contact Groups" feature adds the final, flexible layer to your CRM. It empowers you to organize your network not just by formal structures like companies or projects, but by the custom social circles and teams that define your life.

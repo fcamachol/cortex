@@ -1071,6 +1071,30 @@ export const crmCompanies = crmSchema.table("companies", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// CRM Contact Groups - Custom collections of contacts for flexible organization
+export const crmContactGroups = crmSchema.table("contact_groups", {
+  groupId: uuid("group_id").primaryKey().defaultRandom(),
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
+  ownerId: uuid("owner_id").notNull().references(() => appUsers.userId, { onDelete: "cascade" }),
+  groupName: varchar("group_name", { length: 255 }).notNull(),
+  groupDescription: text("group_description"),
+  groupIcon: varchar("group_icon", { length: 255 }), // Emoji or icon identifier
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// CRM Contact Group Members - Junction table linking contacts to groups
+export const crmContactGroupMembers = crmSchema.table("contact_group_members", {
+  groupId: uuid("group_id").notNull().references(() => crmContactGroups.groupId, { onDelete: "cascade" }),
+  contactId: integer("contact_id").notNull(), // References legacy contacts table
+  roleInGroup: varchar("role_in_group", { length: 255 }), // Optional role within the group
+  addedAt: timestamp("added_at", { withTimezone: true }).defaultNow().notNull(),
+  addedBy: uuid("added_by").notNull().references(() => appUsers.userId), // User who added this member
+}, (table) => ({
+  pk: primaryKey({ columns: [table.groupId, table.contactId] }),
+}));
+
 // CRM Tasks - Main task management table
 export const crmTasks = crmSchema.table("tasks", {
   taskId: serial("task_id").primaryKey(),
@@ -1121,11 +1145,25 @@ export const insertCrmCompanySchema = createInsertSchema(crmCompanies).omit({
   updatedAt: true,
 });
 
+export const insertCrmContactGroupSchema = createInsertSchema(crmContactGroups).omit({
+  groupId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrmContactGroupMemberSchema = createInsertSchema(crmContactGroupMembers).omit({
+  addedAt: true,
+});
+
 // CRM Types
 export type CrmTask = typeof crmTasks.$inferSelect;
 export type InsertCrmTask = z.infer<typeof insertCrmTaskSchema>;
 export type CrmCompany = typeof crmCompanies.$inferSelect;
 export type InsertCrmCompany = z.infer<typeof insertCrmCompanySchema>;
+export type CrmContactGroup = typeof crmContactGroups.$inferSelect;
+export type InsertCrmContactGroup = z.infer<typeof insertCrmContactGroupSchema>;
+export type CrmContactGroupMember = typeof crmContactGroupMembers.$inferSelect;
+export type InsertCrmContactGroupMember = z.infer<typeof insertCrmContactGroupMemberSchema>;
 
 // =============================================================================
 // CALENDAR SCHEMA - External Calendar Integration
