@@ -30,6 +30,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
   const [forwardModalOpen, setForwardModalOpen] = useState(false);
   const [selectedMessageForForward, setSelectedMessageForForward] = useState<any>(null);
+  const [forwardSearchQuery, setForwardSearchQuery] = useState("");
   
   // Draft storage per conversation (now database-backed)
   const [replyStates, setReplyStates] = useState<{[chatId: string]: any}>({});
@@ -1033,7 +1034,12 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       )}
 
       {/* Forward Message Modal */}
-      <Dialog open={forwardModalOpen} onOpenChange={setForwardModalOpen}>
+      <Dialog open={forwardModalOpen} onOpenChange={(open) => {
+        setForwardModalOpen(open);
+        if (!open) {
+          setForwardSearchQuery(""); // Clear search when modal closes
+        }
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Reenviar mensaje</DialogTitle>
@@ -1042,8 +1048,20 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
             <div className="text-sm text-gray-600">
               Selecciona una conversación para reenviar el mensaje:
             </div>
+            <Input
+              placeholder="Buscar conversación..."
+              value={forwardSearchQuery}
+              onChange={(e) => setForwardSearchQuery(e.target.value)}
+              className="w-full"
+            />
             <div className="max-h-64 overflow-y-auto space-y-2">
-              {allConversations?.map((conv: any) => (
+              {allConversations?.filter((conv: any) => {
+                if (!forwardSearchQuery) return true;
+                const searchLower = forwardSearchQuery.toLowerCase();
+                const displayName = getConversationDisplayName(conv);
+                return displayName.toLowerCase().includes(searchLower) ||
+                       conv.chatId.toLowerCase().includes(searchLower);
+              }).map((conv: any) => (
                 <div
                   key={`${conv.instanceId}:${conv.chatId}`}
                   className="p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors"
@@ -1058,12 +1076,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                     <div className="relative">
                       <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
                         <span className="text-xs font-medium">
-                          {(() => {
-                            const displayName = conv.contactName || conv.groupSubject;
-                            if (displayName) return displayName.charAt(0);
-                            if (conv.chatId.includes('@g.us')) return 'G';
-                            return conv.chatId.charAt(0);
-                          })()}
+                          {getConversationDisplayName(conv).charAt(0).toUpperCase()}
                         </span>
                       </div>
                       {/* Instance indicator */}
@@ -1090,17 +1103,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                     </div>
                     <div className="flex-1">
                       <div className="font-medium text-sm">
-                        {(() => {
-                          // Priority: contactName > groupSubject > formatted phone > chatId
-                          if (conv.contactName) return conv.contactName;
-                          if (conv.groupSubject) return conv.groupSubject;
-                          if (conv.chatId.includes('@g.us')) return `Grupo ${conv.chatId.split('@')[0]}`;
-                          if (conv.chatId.includes('@s.whatsapp.net')) {
-                            const phone = conv.chatId.split('@')[0];
-                            return phone.length > 10 ? `+${phone}` : phone;
-                          }
-                          return conv.chatId;
-                        })()}
+                        {getConversationDisplayName(conv)}
                       </div>
                     </div>
                   </div>
