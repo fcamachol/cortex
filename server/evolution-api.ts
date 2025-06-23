@@ -224,17 +224,65 @@ export class EvolutionApi {
         return this.makeRequest(`/group/groupMetadata/${instanceName}?groupJid=${groupJid}`, 'GET', null, instanceApiKey);
     }
 
-    // Download and decrypt media from WhatsApp using multiple Evolution API endpoints
+    // Download and decrypt media from WhatsApp using base64 methods
     async downloadMedia(instanceName: string, instanceApiKey: string, messageData: any): Promise<any> {
         const messageId = messageData.key.id;
         console.log(`📥 Attempting media download for message: ${messageId}`);
 
-        // Method 1: Try /message/download-media endpoint (most direct)
-        try {
-            const downloadEndpoint = `/message/download-media/${instanceName}`;
-            const downloadBody = { messageId };
+        // Method 1: Check if base64 data is already in the webhook payload
+        if (messageData.message) {
+            const audioMessage = messageData.message.audioMessage;
+            const imageMessage = messageData.message.imageMessage;
+            const videoMessage = messageData.message.videoMessage;
+            const documentMessage = messageData.message.documentMessage;
             
-            console.log(`🚀 Method 1: Trying direct download endpoint: ${downloadEndpoint}`);
+            const mediaMessage = audioMessage || imageMessage || videoMessage || documentMessage;
+            
+            if (mediaMessage) {
+                // Check for direct base64 data in the webhook
+                if (mediaMessage.base64) {
+                    console.log(`✅ Method 1: Using base64 from webhook payload`);
+                    const buffer = Buffer.from(mediaMessage.base64, 'base64');
+                    return {
+                        buffer: buffer,
+                        base64: mediaMessage.base64,
+                        mimetype: mediaMessage.mimetype || 'audio/ogg',
+                        filename: `${messageId}.${this.getFileExtension(mediaMessage.mimetype)}`
+                    };
+                }
+                
+                // Check for media URL in webhook
+                if (mediaMessage.url) {
+                    console.log(`🚀 Method 2: Downloading from webhook URL`);
+                    try {
+                        const response = await fetch(mediaMessage.url);
+                        if (response.ok) {
+                            const arrayBuffer = await response.arrayBuffer();
+                            const buffer = Buffer.from(arrayBuffer);
+                            const base64Data = buffer.toString('base64');
+                            
+                            return {
+                                buffer: buffer,
+                                base64: base64Data,
+                                mimetype: mediaMessage.mimetype || 'audio/ogg',
+                                filename: `${messageId}.${this.getFileExtension(mediaMessage.mimetype)}`
+                            };
+                        }
+                    } catch (error) {
+                        console.log(`⚠️ Method 2 failed: ${error.message}`);
+                    }
+                }
+            }
+        }
+
+        // Method 3: Try Evolution API /chat/getBase64 endpoint
+        try {
+            const downloadEndpoint = `/chat/getBase64/${instanceName}`;
+            const downloadBody = {
+                message: messageData
+            };
+            
+            console.log(`🚀 Method 3: Using Evolution API getBase64 endpoint`);
             
             const downloadResponse = await this.makeRequest<any>(
                 downloadEndpoint,
@@ -243,71 +291,58 @@ export class EvolutionApi {
                 instanceApiKey
             );
 
-            if (downloadResponse && (downloadResponse.base64 || downloadResponse.data || downloadResponse.mediaUrl)) {
-                console.log(`✅ Media download successful via direct endpoint`);
-                return downloadResponse;
-            }
-        } catch (error) {
-            console.log(`⚠️ Method 1 failed, trying alternative...`);
-        }
-
-        // Method 2: Try /message/media endpoint to get media info first
-        try {
-            const mediaInfoEndpoint = `/message/media/${instanceName}`;
-            const mediaInfoBody = { messageId };
-            
-            console.log(`🚀 Method 2: Getting media info first: ${mediaInfoEndpoint}`);
-            
-            const mediaInfo = await this.makeRequest<any>(
-                mediaInfoEndpoint,
-                'POST',
-                mediaInfoBody,
-                instanceApiKey
-            );
-
-            if (mediaInfo && mediaInfo.mediaUrl) {
-                console.log(`✅ Media info retrieved, downloading from URL`);
-                // Download from the provided URL
-                const response = await fetch(mediaInfo.mediaUrl);
-                const arrayBuffer = await response.arrayBuffer();
-                const base64Data = Buffer.from(arrayBuffer).toString('base64');
+            if (downloadResponse && downloadResponse.base64) {
+                console.log(`✅ Method 3: Media download successful via Evolution API`);
+                
+                const buffer = Buffer.from(downloadResponse.base64, 'base64');
+                let mimetype = 'audio/ogg';
+                if (messageData.message?.audioMessage?.mimetype) {
+                    mimetype = messageData.message.audioMessage.mimetype;
+                } else if (downloadResponse.mimetype) {
+                    mimetype = downloadResponse.mimetype;
+                }
                 
                 return {
-                    base64: base64Data,
-                    mimetype: mediaInfo.mimetype || 'audio/ogg',
-                    filename: mediaInfo.filename || `audio_${Date.now()}.ogg`
+                    buffer: buffer,
+                    base64: downloadResponse.base64,
+                    mimetype: mimetype,
+                    filename: `${messageId}.${this.getFileExtension(mimetype)}`
                 };
             }
         } catch (error) {
-            console.log(`⚠️ Method 2 failed, trying fallback...`);
+            console.log(`⚠️ Method 3 failed: ${error.message}`);
         }
 
-        // Method 3: Fallback to /chat/getBase64 endpoint
+        // Method 4: Try alternative Evolution API endpoint structure
         try {
-            const getBase64Endpoint = `/chat/getBase64/${instanceName}`;
-            const getBase64Body = {
+            const downloadEndpoint = `/chat/getBase64/${instanceName}`;
+            const downloadBody = {
                 message: {
-                    key: {
-                        id: messageId
-                    }
+                    key: messageData.key
                 }
             };
             
-            console.log(`🚀 Method 3: Trying getBase64 endpoint: ${getBase64Endpoint}`);
+            console.log(`🚀 Method 4: Using Evolution API with key-only structure`);
             
-            const response = await this.makeRequest<any>(
-                getBase64Endpoint,
+            const downloadResponse = await this.makeRequest<any>(
+                downloadEndpoint,
                 'POST',
-                getBase64Body,
+                downloadBody,
                 instanceApiKey
             );
 
-            if (response && (response.base64 || response.data)) {
-                console.log(`✅ Media download successful via getBase64 endpoint`);
-                return response;
+            if (downloadResponse && downloadResponse.base64) {
+                console.log(`✅ Method 4: Media download successful`);
+                const buffer = Buffer.from(downloadResponse.base64, 'base64');
+                return {
+                    buffer: buffer,
+                    base64: downloadResponse.base64,
+                    mimetype: messageData.message?.audioMessage?.mimetype || 'audio/ogg',
+                    filename: `${messageId}.ogg`
+                };
             }
         } catch (error) {
-            console.log(`⚠️ Method 3 failed`);
+            console.log(`⚠️ Method 4 failed: ${error.message}`);
         }
 
         // Method 4: Check if media URL is directly available in webhook data
