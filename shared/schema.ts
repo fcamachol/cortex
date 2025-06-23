@@ -26,6 +26,10 @@ export const transactionTypeEnum = financeSchema.enum("transaction_type", ["inco
 export const payableStatusEnum = financeSchema.enum("payable_status", ["unpaid", "partially_paid", "paid", "overdue"]);
 export const loanStatusEnum = financeSchema.enum("loan_status", ["active", "paid_off", "in_arrears"]);
 export const interestPeriodTypeEnum = financeSchema.enum("interest_period_type", ["daily", "weekly", "monthly", "annually"]);
+export const accountTypeEnum = financeSchema.enum("account_type", [
+  "checking", "savings", "credit_card", "investment", "loan", "mortgage", 
+  "business", "cash", "crypto", "retirement", "other"
+]);
 
 // Enums for WhatsApp schema
 export const chatTypeEnum = whatsappSchema.enum("chat_type", ["individual", "group"]);
@@ -1246,6 +1250,7 @@ export const financeCategories = financeSchema.table("categories", {
 export const financeTransactions = financeSchema.table("transactions", {
   transactionId: serial("transaction_id").primaryKey(),
   spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
+  accountId: integer("account_id").references(() => financeAccounts.accountId), // Link to account
   transactionDate: varchar("transaction_date", { length: 10 }).notNull(), // DATE as string (YYYY-MM-DD)
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
   type: transactionTypeEnum("type").notNull(),
@@ -1304,6 +1309,22 @@ export const financeLoans = financeSchema.table("loans", {
   moratoryInterestPeriod: interestPeriodTypeEnum("moratory_interest_period"),
 });
 
+// Finance Accounts - Bank accounts, credit cards, investment accounts, etc.
+export const financeAccounts = financeSchema.table("accounts", {
+  accountId: serial("account_id").primaryKey(),
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
+  accountName: varchar("account_name", { length: 255 }).notNull(),
+  accountType: accountTypeEnum("account_type").notNull(),
+  institutionName: varchar("institution_name", { length: 255 }),
+  accountNumber: varchar("account_number", { length: 50 }), // Last 4 digits or masked number
+  currentBalance: numeric("current_balance", { precision: 12, scale: 2 }).default("0.00"),
+  currency: varchar("currency", { length: 3 }).notNull().default("USD"),
+  isActive: boolean("is_active").notNull().default(true),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // Finance Loan Payments - Links transactions to loan payments with principal/interest breakdown
 export const financeLoanPayments = financeSchema.table("loan_payments", {
   paymentId: integer("payment_id").notNull().references(() => financeTransactions.transactionId, { onDelete: "cascade" }),
@@ -1334,10 +1355,22 @@ export const financeCategoriesRelations = relations(financeCategories, ({ one, m
   recurringBills: many(financeRecurringBills),
 }));
 
+export const financeAccountsRelations = relations(financeAccounts, ({ one, many }) => ({
+  space: one(appSpaces, {
+    fields: [financeAccounts.spaceId],
+    references: [appSpaces.spaceId],
+  }),
+  transactions: many(financeTransactions),
+}));
+
 export const financeTransactionsRelations = relations(financeTransactions, ({ one, many }) => ({
   space: one(appSpaces, {
     fields: [financeTransactions.spaceId],
     references: [appSpaces.spaceId],
+  }),
+  account: one(financeAccounts, {
+    fields: [financeTransactions.accountId],
+    references: [financeAccounts.accountId],
   }),
   category: one(financeCategories, {
     fields: [financeTransactions.categoryId],
@@ -1428,12 +1461,21 @@ export const insertFinanceLoanSchema = createInsertSchema(financeLoans).omit({
 
 export const insertFinanceLoanPaymentSchema = createInsertSchema(financeLoanPayments);
 
+export const insertFinanceAccountSchema = createInsertSchema(financeAccounts).omit({
+  accountId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // =============================================================================
 // FINANCE SCHEMA TYPES
 // =============================================================================
 
 export type FinanceCategory = typeof financeCategories.$inferSelect;
 export type InsertFinanceCategory = z.infer<typeof insertFinanceCategorySchema>;
+
+export type FinanceAccount = typeof financeAccounts.$inferSelect;
+export type InsertFinanceAccount = z.infer<typeof insertFinanceAccountSchema>;
 
 export type FinanceTransaction = typeof financeTransactions.$inferSelect;
 export type InsertFinanceTransaction = z.infer<typeof insertFinanceTransactionSchema>;

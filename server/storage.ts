@@ -1329,6 +1329,65 @@ class DatabaseStorage {
             throw error;
         }
     }
+
+    // Finance Accounts
+    async getFinanceAccounts(spaceId: number): Promise<FinanceAccount[]> {
+        try {
+            const accounts = await db
+                .select()
+                .from(financeAccounts)
+                .where(eq(financeAccounts.spaceId, spaceId))
+                .orderBy(financeAccounts.accountName);
+            return accounts;
+        } catch (error) {
+            console.error('Error getting finance accounts:', error);
+            return [];
+        }
+    }
+
+    async createFinanceAccount(data: InsertFinanceAccount): Promise<FinanceAccount> {
+        try {
+            const [account] = await db
+                .insert(financeAccounts)
+                .values({
+                    ...data,
+                    updatedAt: new Date(),
+                })
+                .returning();
+            return account;
+        } catch (error) {
+            console.error('Error creating finance account:', error);
+            throw error;
+        }
+    }
+
+    async updateFinanceAccount(accountId: number, data: Partial<InsertFinanceAccount>): Promise<FinanceAccount> {
+        try {
+            const [account] = await db
+                .update(financeAccounts)
+                .set({
+                    ...data,
+                    updatedAt: new Date(),
+                })
+                .where(eq(financeAccounts.accountId, accountId))
+                .returning();
+            return account;
+        } catch (error) {
+            console.error('Error updating finance account:', error);
+            throw error;
+        }
+    }
+
+    async deleteFinanceAccount(accountId: number): Promise<void> {
+        try {
+            await db
+                .delete(financeAccounts)
+                .where(eq(financeAccounts.accountId, accountId));
+        } catch (error) {
+            console.error('Error deleting finance account:', error);
+            throw error;
+        }
+    }
 }
 
 export const storage = new DatabaseStorage();
