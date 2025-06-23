@@ -8,32 +8,30 @@ async function testMalformedChatIds() {
     
     console.log('🧪 Testing malformed chat ID detection and correction...\n');
 
-    // Test Case 1: Group message with malformed chat ID (combining group JID + owner JID)
+    // Test Case 1: Group message with malformed chat ID (simulating Evolution API bug)
+    // Based on your example, this shows how a malformed remoteJid should be corrected
     const malformedGroupMessage = {
         key: {
-            id: 'TEST_MALFORMED_GROUP_FIXED',
+            id: 'TEST_MALFORMED_GROUP_REAL',
             fromMe: false,
-            // This is the malformed ID that combines group + owner
-            remoteJid: 'cmc4yy03m10s6k34q3j768pan',  // Malformed combination
-            participant: '5215551053317@s.whatsapp.net'  // Actual participant
+            // This malformed ID represents Evolution API combining group JID + owner JID
+            remoteJid: 'cmc4yy03m10s6k34q3j768pan',  // Malformed - should be group JID
+            participant: '5215551053317@s.whatsapp.net'  // Sender JID (like your example)
         },
         messageType: 'conversation',
         message: {
-            conversation: 'Test message with malformed group chat ID - should extract correct group JID'
+            conversation: 'Test group message - should correct malformed remoteJid to proper group JID'
         },
         messageTimestamp: Math.floor(Date.now() / 1000),
         pushName: 'Test Group Member',
         source: 'android',
-        // Additional data that contains the correct group JID
-        chat: {
-            id: '5215551053317-1438010896@g.us',  // Correct group JID embedded in data
-            subject: 'Test Group Chat'
-        },
-        // Simulate Evolution API structure where group JID might be present
-        groupData: {
-            groupJid: '5215551053317-1438010896@g.us',
-            subject: 'Test Group Chat',
-            participants: ['5215551053317@s.whatsapp.net', '5214422501780@s.whatsapp.net']
+        // The correct group JID should be embedded somewhere in the message data
+        // Simulating where Evolution API might include the real group JID
+        metadata: {
+            groupInfo: {
+                jid: '5215551053317-1438010896@g.us',  // Real group JID that should be extracted
+                subject: 'Test Group Chat'
+            }
         }
     };
 

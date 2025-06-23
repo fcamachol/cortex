@@ -1122,54 +1122,77 @@ export const WebhookApiAdapter = {
         // Handle the specific case where Evolution API combines group JID with owner JID
         const malformedJid = rawMessage.key?.remoteJid;
         if (malformedJid && typeof malformedJid === 'string' && malformedJid.length > 20 && !malformedJid.includes('@')) {
-            // Look for group JID pattern in the raw message data first
-            const messageStr = JSON.stringify(rawMessage);
-            const groupJidMatch = messageStr.match(/(\d{10,15}-\d+@g\.us)/);
-            if (groupJidMatch) {
-                console.log(`🔧 Extracted group JID from message data: ${groupJidMatch[1]}`);
-                return groupJidMatch[1];
-            }
+            console.log(`🔧 Attempting to correct malformed JID: ${malformedJid}`);
             
-            // Also check for group JID in specific fields that might contain it
-            const potentialGroupJids = [
-                rawMessage.chat?.id,
-                rawMessage.groupData?.groupJid,
-                rawMessage.group?.id,
-                rawMessage.groupId
-            ].filter(Boolean);
-            
-            for (const jid of potentialGroupJids) {
-                if (typeof jid === 'string' && jid.includes('@g.us')) {
-                    console.log(`🔧 Found group JID in structured data: ${jid}`);
-                    return jid;
-                }
-            }
-            
-            // Check if this is a group message by looking at participant field
             const participant = rawMessage.key?.participant;
-            if (participant && participant.includes('@s.whatsapp.net')) {
-                // This is a group message, but we need to find the actual group JID
-                // For now, we'll need to handle this differently - the participant is the sender, not the group
+            const isGroupMessage = participant && participant.includes('@s.whatsapp.net');
+            
+            if (isGroupMessage) {
                 console.log(`🔧 Group message detected with participant: ${participant}`);
                 
-                // Try to extract group JID from other fields in the message
-                const chatId = rawMessage.chat?.id;
-                if (chatId && chatId.includes('@g.us')) {
-                    console.log(`🔧 Found group JID in chat field: ${chatId}`);
-                    return chatId;
+                // For group messages, look for the actual group JID in the message data
+                const messageStr = JSON.stringify(rawMessage);
+                const groupJidMatch = messageStr.match(/(\d{10,15}-\d+@g\.us)/);
+                
+                if (groupJidMatch) {
+                    console.log(`🔧 Extracted group JID from message data: ${groupJidMatch[1]}`);
+                    return groupJidMatch[1];
                 }
                 
-                // If we can't find the group JID, we'll need to construct it or use the participant for now
-                // This is a limitation of the current data structure
-                console.warn(`⚠️ Could not find group JID, using participant for message processing: ${participant}`);
-                return participant;
-            }
-            
-            // Look for individual JID pattern
-            const individualJidMatch = messageStr.match(/(\d{10,15}@s\.whatsapp\.net)/);
-            if (individualJidMatch) {
-                console.log(`🔧 Extracted individual JID from message data: ${individualJidMatch[1]}`);
-                return individualJidMatch[1];
+                // Check for group JID in specific fields and nested structures
+                const potentialGroupJids = [
+                    rawMessage.chat?.id,
+                    rawMessage.groupData?.groupJid,
+                    rawMessage.group?.id,
+                    rawMessage.groupId,
+                    rawMessage.metadata?.groupInfo?.jid,
+                    rawMessage.groupInfo?.jid,
+                    rawMessage.groupMetadata?.id
+                ].filter(Boolean);
+                
+                for (const jid of potentialGroupJids) {
+                    if (typeof jid === 'string' && jid.includes('@g.us')) {
+                        console.log(`🔧 Found group JID in structured data: ${jid}`);
+                        return jid;
+                    }
+                }
+                
+                // Try to construct group JID from malformed ID if it contains recognizable patterns
+                // Some Evolution API bugs might encode the group info in the malformed string
+                if (malformedJid.length > 25) {
+                    // Look for phone number patterns that might be part of a group JID
+                    const phoneMatches = malformedJid.match(/(\d{10,15})/g);
+                    if (phoneMatches && phoneMatches.length > 0) {
+                        // Try to construct a group JID - this is speculative but worth trying
+                        const basePhone = phoneMatches[0];
+                        // Look for any timestamp-like numbers that could be the group creation time
+                        const timestampPattern = malformedJid.match(/(\d{10,13})/g);
+                        if (timestampPattern && timestampPattern.length > 1) {
+                            const possibleGroupJid = `${basePhone}-${timestampPattern[1]}@g.us`;
+                            console.log(`🔧 Constructed possible group JID from malformed data: ${possibleGroupJid}`);
+                            return possibleGroupJid;
+                        }
+                    }
+                }
+                
+                // If we can't find the group JID in the message data, this is a critical limitation
+                // When Evolution API sends malformed group data, the actual group JID is lost
+                console.warn(`⚠️ Could not extract group JID from malformed ID: ${malformedJid}`);
+                console.warn(`⚠️ Participant: ${participant}, group JID resolution needed`);
+                
+                // For now, we'll have to skip this message to avoid creating incorrect data
+                // In a production system, you'd want to implement Evolution API lookup here
+                console.error(`❌ Cannot process group message without valid group JID - skipping malformed message`);
+                return null;
+            } else {
+                // For individual messages, look for individual JID pattern
+                const messageStr = JSON.stringify(rawMessage);
+                const individualJidMatch = messageStr.match(/(\d{10,15}@s\.whatsapp\.net)/);
+                
+                if (individualJidMatch) {
+                    console.log(`🔧 Extracted individual JID from message data: ${individualJidMatch[1]}`);
+                    return individualJidMatch[1];
+                }
             }
         }
 
