@@ -265,15 +265,16 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                     return (
                       <div 
                         className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center ${
-                          indicator.color ? `${indicator.color} text-white` : 'text-gray-600 dark:text-gray-400'
+                          indicator.color ? `${indicator.color} text-white` : ''
                         }`}
                         style={{
-                          fontSize: '16px',
+                          fontSize: indicator.letter.length > 1 ? '18px' : '10px',
                           fontWeight: indicator.letter.length > 1 ? 'normal' : 'bold',
                           lineHeight: '1',
                           overflow: 'visible',
                           fontFamily: indicator.letter.length > 1 ? 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' : 'inherit',
-                          ...((!indicator.color) ? { backgroundColor: "transparent", border: "1px solid #ccc", color: "#666" } : {})
+                          ...((!indicator.color) ? { display: 'none' } : {}),
+                          color: indicator.color ? 'white' : '#666'
                         }}
                         title={`Instance: ${conversation.instanceId}`}
                       >

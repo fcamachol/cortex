@@ -688,15 +688,16 @@ export function WhatsAppInstanceManager() {
                   {/* Preview indicator */}
                   <div 
                     className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center ${
-                      customColor ? `${customColor} text-white` : 'text-gray-600'
+                      customColor ? `${customColor} text-white` : ''
                     }`}
                     style={{
-                      fontSize: '16px',
-                      fontWeight: customLetter && customLetter.length > 1 ? 'normal' : 'bold',
+                      fontSize: (customLetter && customLetter.length > 1) ? '18px' : '10px',
+                      fontWeight: (customLetter && customLetter.length > 1) ? 'normal' : 'bold',
                       lineHeight: '1',
                       overflow: 'visible',
-                      fontFamily: customLetter && customLetter.length > 1 ? 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' : 'inherit',
-                      ...((!customColor) ? { backgroundColor: "transparent", border: "1px solid #ccc", color: "#666" } : {})
+                      fontFamily: (customLetter && customLetter.length > 1) ? 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' : 'inherit',
+                      ...((!customColor) ? { display: 'none' } : {}),
+                      color: customColor ? 'white' : '#666'
                     }}
                   >
                     {customLetter || "I"}
