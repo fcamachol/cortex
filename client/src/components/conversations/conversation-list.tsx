@@ -478,17 +478,22 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <h3 className={`text-sm font-semibold truncate ${conversation.unreadCount > 0 ? 'text-gray-900 dark:text-gray-100' : 'text-gray-900 dark:text-gray-100'}`}>
+                    <h3 className={`text-sm font-semibold truncate pr-2 ${conversation.unreadCount > 0 ? 'text-gray-900 dark:text-gray-100' : 'text-gray-900 dark:text-gray-100'}`}>
                       {getConversationDisplayName(conversation)}
                     </h3>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs ${conversation.unreadCount > 0 ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
+                    <div className="flex flex-col items-end">
+                      <span className={`text-xs ${conversation.unreadCount > 0 ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-500 dark:text-gray-400'} mb-1`}>
                         {(() => {
                           const latestMessage = getLatestMessage(conversation);
                           const timestamp = latestMessage?.timestamp || conversation.actualLastMessageTime || conversation.lastMessageTimestamp;
                           return timestamp ? formatConversationTimestamp(timestamp) : '';
                         })()}
                       </span>
+                      {conversation.unreadCount > 0 && (
+                        <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-0.5 min-w-[20px] h-5 rounded-full flex items-center justify-center">
+                          {conversation.unreadCount}
+                        </Badge>
+                      )}
                       {/* Dropdown arrow that appears on hover or when open */}
                       {(hoveredConversation === (conversation.chatId || conversation.id) || openDropdown === (conversation.chatId || conversation.id)) && (
                         <DropdownMenu 
@@ -643,12 +648,12 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                       )}
                     </div>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 truncate mt-1">
+                  <p className="text-sm text-gray-600 dark:text-gray-300 truncate mt-1 pr-16">
                     {(() => {
                       const latestMessage = getLatestMessage(conversation);
                       if (latestMessage && latestMessage.content) {
                         return (
-                          <span className="flex items-center">
+                          <>
                             {latestMessage.isDraft ? (
                               <span className="text-gray-600 dark:text-gray-300">
                                 <span className="font-bold">Draft: </span>{latestMessage.content}
@@ -656,7 +661,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                             ) : (
                               <>
                                 {latestMessage.fromMe && (
-                                  <span className="mr-1 text-gray-500">You: </span>
+                                  <span className="text-gray-500">You: </span>
                                 )}
                                 {latestMessage.messageType === 'image' ? '📷 Photo' :
                                  latestMessage.messageType === 'audio' ? '🎵 Audio' :
@@ -665,25 +670,18 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                                  latestMessage.content}
                               </>
                             )}
-                          </span>
+                          </>
                         );
                       }
                       return conversation.lastMessageTimestamp ? 'Tap to view messages' : 'No messages yet';
                     })()}
                   </p>
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center space-x-2">
-                      {conversation.latestMessage?.fromMe && (
-                        <CheckCheck className="h-3 w-3 text-blue-500" />
-                      )}
-                      {conversation.isPinned && (
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      )}
-                    </div>
-                    {conversation.unreadCount > 0 && (
-                      <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-0.5 min-w-[20px] h-5 rounded-full flex items-center justify-center">
-                        {conversation.unreadCount}
-                      </Badge>
+                  <div className="flex items-center mt-2">
+                    {conversation.latestMessage?.fromMe && (
+                      <CheckCheck className="h-3 w-3 text-blue-500 mr-1" />
+                    )}
+                    {conversation.isPinned && (
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     )}
                   </div>
                 </div>
