@@ -1027,10 +1027,51 @@ export const WebhookApiAdapter = {
         
         const timestamp = rawMessage.messageTimestamp;
 
-        const getMessageType = (type?: string): WhatsappMessages['messageType'] => {
-            const validTypes: WhatsappMessages['messageType'][] = ['text', 'image', 'video', 'audio', 'document', 'sticker', 'location', 'contact_card', 'contact_card_multi', 'order', 'revoked', 'unsupported', 'reaction', 'call_log', 'edited_message'];
+        const getMessageType = (rawMessage: any): WhatsappMessages['messageType'] => {
+            const type = rawMessage.messageType;
+            
+            // Direct type mappings
             if (type === 'conversation') return 'text';
-            if (type && validTypes.includes(type as any)) return type as WhatsappMessages['messageType'];
+            if (type === 'extendedTextMessage') return 'text';
+            
+            // Media type mappings
+            if (type === 'imageMessage') return 'image';
+            if (type === 'videoMessage') return 'video';
+            if (type === 'audioMessage') return 'audio';
+            if (type === 'documentMessage') return 'document';
+            if (type === 'stickerMessage') return 'sticker';
+            if (type === 'locationMessage') return 'location';
+            if (type === 'contactMessage') return 'contact_card';
+            if (type === 'contactsArrayMessage') return 'contact_card_multi';
+            
+            // Check message content for media types
+            const message = rawMessage.message;
+            if (message) {
+                if (message.imageMessage) return 'image';
+                if (message.videoMessage) return 'video';
+                if (message.audioMessage) return 'audio';
+                if (message.documentMessage) return 'document';
+                if (message.stickerMessage) return 'sticker';
+                if (message.locationMessage) return 'location';
+                if (message.contactMessage) return 'contact_card';
+                if (message.contactsArrayMessage) return 'contact_card_multi';
+                if (message.conversation) return 'text';
+                if (message.extendedTextMessage) return 'text';
+            }
+            
+            // Fallback for known valid types
+            const validTypes: WhatsappMessages['messageType'][] = ['text', 'image', 'video', 'audio', 'document', 'sticker', 'location', 'contact_card', 'contact_card_multi', 'order', 'revoked', 'unsupported', 'reaction', 'call_log', 'edited_message'];
+            if (type && validTypes.includes(type as any)) {
+                return type as WhatsappMessages['messageType'];
+            }
+            
+            // Log unknown types for debugging
+            console.log(`🔍 Unknown message type detected: ${type}`, {
+                messageType: type,
+                messageKeys: message ? Object.keys(message) : [],
+                messageId: rawMessage.key?.id
+            });
+            
             return 'unsupported';
         };
 
@@ -1093,7 +1134,7 @@ export const WebhookApiAdapter = {
             chatId: rawMessage.key.remoteJid,
             senderJid: rawMessage.key.participant || rawMessage.key.remoteJid,
             fromMe: correctedFromMe,
-            messageType: getMessageType(rawMessage.messageType),
+            messageType: getMessageType(rawMessage),
             content: this.extractMessageContent(rawMessage),
             timestamp: timestamp && typeof timestamp === 'number' ? new Date(timestamp * 1000) : new Date(),
             quotedMessageId: rawMessage.message?.extendedTextMessage?.contextInfo?.quotedMessage?.key?.id,
@@ -1523,7 +1564,42 @@ export const WebhookApiAdapter = {
     extractMessageContent(message: any): string {
         const msg = message.message;
         if (!msg) return '';
-        return msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.videoMessage?.caption || '';
+        
+        // Text messages
+        if (msg.conversation) return msg.conversation;
+        if (msg.extendedTextMessage?.text) return msg.extendedTextMessage.text;
+        
+        // Media messages with captions
+        if (msg.imageMessage) {
+            return msg.imageMessage.caption || '[Image]';
+        }
+        if (msg.videoMessage) {
+            return msg.videoMessage.caption || '[Video]';
+        }
+        if (msg.audioMessage) {
+            const duration = msg.audioMessage.seconds ? ` (${msg.audioMessage.seconds}s)` : '';
+            return `[Audio${duration}]`;
+        }
+        if (msg.documentMessage) {
+            const filename = msg.documentMessage.fileName || msg.documentMessage.title;
+            return filename ? `[Document: ${filename}]` : '[Document]';
+        }
+        if (msg.stickerMessage) {
+            return '[Sticker]';
+        }
+        if (msg.locationMessage) {
+            return '[Location]';
+        }
+        if (msg.contactMessage) {
+            const name = msg.contactMessage.displayName || msg.contactMessage.vcard?.split('\n').find(line => line.startsWith('FN:'))?.replace('FN:', '');
+            return name ? `[Contact: ${name}]` : '[Contact]';
+        }
+        if (msg.contactsArrayMessage) {
+            return '[Contacts]';
+        }
+        
+        // Fallback for other message types
+        return '[Message]';
     },
 
     // REMOVED: syncAllGroupSubjects - use individual group fetch only
