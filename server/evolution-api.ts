@@ -229,15 +229,20 @@ export class EvolutionApi {
         try {
             // Use the correct endpoint format: only instance name in URL, message data in body
             const endpoint = `/message/downloadMedia/${instanceName}`;
+            const requestUrl = `${this.config.baseUrl}${endpoint}`;
             
-            console.log(`🚀 Making correct API call to: POST ${this.apiUrl}${endpoint}`);
+            // Construct the request body with the message object from the webhook
+            const requestBody = {
+                message: messageData.message
+            };
+            
+            console.log(`🚀 Making API call with correct body to: POST ${requestUrl}`);
+            console.log(`📦 Request body:`, JSON.stringify(requestBody, null, 2));
             
             const response = await this.makeRequest<any>(
                 endpoint,
                 'POST',
-                {
-                    message: messageData.message // Pass the nested message object from the webhook
-                },
+                requestBody,
                 instanceApiKey
             );
 

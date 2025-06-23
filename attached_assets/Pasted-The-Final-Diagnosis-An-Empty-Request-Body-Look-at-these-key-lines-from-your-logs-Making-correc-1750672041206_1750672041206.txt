@@ -1,0 +1,59 @@
+The Final Diagnosis: An Empty Request Body
+Look at these key lines from your logs:
+
+🚀 Making correct API call to: POST undefined/message/downloadMedia/live-test-1750199771
+❌ Evolution API Error Response (404) ... {"message":["Cannot POST /message/downloadMedia/live-test-1750199771"]}
+This sequence tells us two things:
+
+The URL is now correct: The previous bug of adding an extra ID to the URL path is fixed. Your code is now targeting the correct endpoint.
+The Request Body is empty: The error message Cannot POST /message/downloadMedia/... is a standard error from the Evolution API's web server when it receives a POST request on a valid route but the request body is missing or malformed.
+The /message/downloadMedia endpoint requires you to send a JSON object in the body of the request, specifically the "claim ticket"—the message object from the original webhook. Your code is currently sending an empty body, so the server doesn't know which message you want to download.
+
+How to Fix the Code
+The fix needs to be applied inside your EvolutionApi.downloadMedia function in the file /home/runner/workspace/server/evolution-api.ts. You need to ensure you are passing the correct requestBody to your axios.post call.
+
+Here is the corrected conceptual code for that function. Please apply this structure to your file.
+
+TypeScript
+
+// In your file: /home/runner/workspace/server/evolution-api.ts
+
+// ...
+
+public async downloadMedia(instanceName: string, originalWebhookData: any) {
+    // 1. Define the correct endpoint path.
+    const endpoint = `/message/downloadMedia/${instanceName}`;
+    const requestUrl = `${this.apiUrl}${endpoint}`; // Make sure this.apiUrl is correctly defined in your class constructor!
+
+    // 2. THIS IS THE FIX: Construct the request body.
+    // The Evolution API expects an object with a "message" key,
+    // which contains the message object from the webhook.
+    const requestBody = {
+        message: originalWebhookData.message 
+    };
+
+    console.log(`🚀 Making API call with correct body to: POST ${requestUrl}`);
+
+    try {
+        // 3. Pass the requestBody as the second argument to axios.post
+        const response = await axios.post(requestUrl, requestBody, {
+            headers: {
+                'apikey': this.apiKey,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        // This should now succeed and return the base64 data
+        return response.data;
+
+    } catch (error) {
+        // Your existing error handling is great and will catch any real 404s for expired media
+        console.error(`❌ Evolution API request to ${requestUrl} failed.`, error.response?.data);
+        throw new Error(`Evolution API request failed: ${error.response?.status} ${error.response?.statusText}`);
+    }
+}
+Secondary Fix:
+
+Your log also shows POST undefined/message/downloadMedia/.... This means the this.apiUrl variable inside your EvolutionApi class is not being set correctly when the class is initialized. Please ensure your class constructor is properly receiving and setting the SERVER_URL from your environment variables.
+
+By ensuring the requestBody is correctly constructed and sent with your POST request, you will have resolved the final issue blocking your media downloads.
