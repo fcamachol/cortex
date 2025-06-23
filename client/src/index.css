@@ -91,7 +91,7 @@
   }
   
   .whatsapp-conversation-item.active {
-    @apply bg-green-100 dark:bg-green-900/30 border-l-4 border-green-500;
+    @apply bg-gray-100 dark:bg-gray-800/50;
   }
   
   .whatsapp-message-sent {
