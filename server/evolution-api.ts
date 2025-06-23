@@ -231,7 +231,8 @@ export class EvolutionApi {
                 `/message/downloadMedia/${instanceName}`,
                 'POST',
                 {
-                    message: messageData.message || messageData
+                    key: messageData.key,
+                    message: messageData.message
                 },
                 instanceApiKey
             );
