@@ -498,7 +498,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                     <h3 className={`text-sm font-semibold truncate pr-2 ${conversation.unreadCount > 0 ? 'text-gray-900 dark:text-gray-100' : 'text-gray-900 dark:text-gray-100'}`}>
                       {getConversationDisplayName(conversation)}
                     </h3>
-                    <div className="flex flex-col items-end relative h-full">
+                    <div className="flex flex-col items-end">
                       <span className={`text-xs ${conversation.unreadCount > 0 ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
                         {(() => {
                           const latestMessage = getLatestMessage(conversation);
@@ -506,7 +506,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                           return timestamp ? formatConversationTimestamp(timestamp) : '';
                         })()}
                       </span>
-                      <div className="mt-2 flex items-center gap-2">
+                      <div className="mt-1 flex items-center gap-1">
                         {conversation.unreadCount > 0 && (
                           <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-0.5 min-w-[20px] h-5 rounded-full flex items-center justify-center">
                             {conversation.unreadCount}
@@ -664,6 +664,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
+                      </div>
                     </div>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-300 truncate mt-1 pr-16">
