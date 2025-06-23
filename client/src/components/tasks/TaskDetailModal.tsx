@@ -595,7 +595,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                   <span>Loading chat info...</span>
                 </div>
               )}
-              {task.triggering_message_id && (
+              {task.triggeringMessageId && (
                 <div className="flex items-center gap-2 mt-2 text-sm text-purple-600">
                   <MessageSquare className="h-4 w-4" />
                   <span>Created from WhatsApp message reaction</span>
@@ -717,7 +717,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                       onSelect={(date) => {
                         setDueDate(date);
                         if (!isEditing && date) {
-                          onUpdate(task.taskId, { due_date: date.toISOString() });
+                          onUpdate(task.taskId, { dueDate: date.toISOString() });
                         }
                       }}
                       initialFocus
@@ -901,7 +901,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                               }`}>
                                 {msg.content || 'No content'}
                               </div>
-                              {msg.quotedMessageId === task.triggering_message_id && (
+                              {msg.quotedMessageId === task.triggeringMessageId && (
                                 <div className="mt-2 text-xs text-purple-600 flex items-center gap-1">
                                   <Reply className="h-3 w-3" />
                                   Reply to original message
