@@ -1526,10 +1526,31 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const { instanceId, messageId } = req.params;
       
-      // First try to serve from cached file
+      // Get media metadata from database first
+      const media = await storage.getWhatsappMessageMedia(messageId, instanceId);
+      if (!media) {
+        return res.status(404).json({ error: 'Media not found' });
+      }
+
+      // First try to serve from locally cached file
+      if (media.fileLocalPath && fs.existsSync(media.fileLocalPath)) {
+        console.log(`📁 Serving cached media file: ${media.fileLocalPath}`);
+        const stats = fs.statSync(media.fileLocalPath);
+        
+        res.setHeader('Content-Type', media.mimetype || 'audio/ogg');
+        res.setHeader('Content-Length', stats.size.toString());
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        
+        const fileStream = fs.createReadStream(media.fileLocalPath);
+        fileStream.pipe(res);
+        return;
+      }
+
+      // Check for cached file with various extensions if fileLocalPath not set
       const mediaDir = path.join(process.cwd(), 'media', instanceId);
-      
-      // Check for cached file with various extensions
       const possibleExtensions = ['.ogg', '.wav', '.mp3', '.m4a', '.webm'];
       let cachedFilePath = null;
       
@@ -1547,7 +1568,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         const ext = path.extname(cachedFilePath);
         
         // Determine MIME type from extension
-        let mimeType = 'audio/wav';
+        let mimeType = media.mimetype || 'audio/wav';
         if (ext === '.ogg') mimeType = 'audio/ogg';
         else if (ext === '.mp3') mimeType = 'audio/mpeg';
         else if (ext === '.m4a') mimeType = 'audio/mp4';
@@ -1564,47 +1585,90 @@ export async function registerRoutes(app: Express): Promise<void> {
         fileStream.pipe(res);
         return;
       }
-      
-      // If no cached file, get media metadata from database and fetch
-      const media = await storage.getWhatsappMessageMedia(messageId, instanceId);
-      if (!media || !media.fileUrl) {
-        return res.status(404).json({ error: 'Media not found' });
+
+      // If no cached file found and no URL, return 404
+      if (!media.fileUrl) {
+        return res.status(404).json({ error: 'Media file not available' });
       }
 
-      console.log(`🌐 Fetching and streaming media from URL: ${media.fileUrl}`);
+      console.log(`🌐 Attempting to decrypt WhatsApp media via Evolution API: ${messageId}`);
       
       try {
+        // Use Evolution API to decrypt WhatsApp media
+        const decryptResponse = await fetch(`${process.env.EVOLUTION_API_URL}/chat/getBase64FromMediaMessage/${instanceId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': process.env.EVOLUTION_API_KEY || ''
+          },
+          body: JSON.stringify({
+            message: {
+              key: {
+                remoteJid: media.messageId.includes('@') ? media.messageId.split('_')[0] + '@s.whatsapp.net' : '15103165094@s.whatsapp.net',
+                fromMe: false,
+                id: messageId
+              },
+              message: {
+                audioMessage: {
+                  url: media.fileUrl,
+                  mediaKey: media.mediaKey,
+                  mimetype: media.mimetype,
+                  seconds: media.durationSeconds
+                }
+              }
+            },
+            convertToMp4: false
+          })
+        });
+
+        if (decryptResponse.ok) {
+          const decryptResult = await decryptResponse.json();
+          if (decryptResult.base64) {
+            // Convert base64 to buffer and serve
+            const buffer = Buffer.from(decryptResult.base64, 'base64');
+            
+            res.setHeader('Content-Type', media.mimetype || 'audio/ogg');
+            res.setHeader('Content-Length', buffer.length.toString());
+            res.setHeader('Accept-Ranges', 'bytes');
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+            res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            
+            res.send(buffer);
+            console.log(`✅ Successfully decrypted and served media: ${messageId} (${buffer.length} bytes)`);
+            return;
+          }
+        }
+        
+        console.warn(`⚠️ Evolution API decryption failed for ${messageId}, attempting direct fetch`);
+        
+        // Fallback: try direct fetch (for test URLs)
         const response = await fetch(media.fileUrl, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           },
         });
         
-        if (!response.ok) {
+        if (response.ok) {
+          const buffer = await response.arrayBuffer();
+          
+          res.setHeader('Content-Type', media.mimetype || 'audio/wav');
+          res.setHeader('Content-Length', buffer.byteLength.toString());
+          res.setHeader('Accept-Ranges', 'bytes');
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          
+          res.send(Buffer.from(buffer));
+          console.log(`✅ Successfully served media via direct fetch: ${messageId}`);
+        } else {
           console.error(`Failed to fetch media: ${response.status} ${response.statusText}`);
           return res.status(404).json({ error: 'Media file not accessible' });
         }
-
-        // Set appropriate headers for streaming
-        const contentType = response.headers.get('content-type') || media.mimetype || 'audio/wav';
-        const contentLength = response.headers.get('content-length');
-        
-        res.setHeader('Content-Type', contentType);
-        if (contentLength) {
-          res.setHeader('Content-Length', contentLength);
-        }
-        res.setHeader('Accept-Ranges', 'bytes');
-        res.setHeader('Cache-Control', 'public, max-age=3600');
-        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-
-        // Stream the response body directly to the client
-        const buffer = await response.arrayBuffer();
-        res.send(Buffer.from(buffer));
         
       } catch (fetchError) {
-        console.error('Error fetching media:', fetchError);
-        res.status(500).json({ error: 'Failed to fetch media file' });
+        console.error('Error processing media:', fetchError);
+        res.status(500).json({ error: 'Failed to process media file' });
       }
     } catch (error) {
       console.error('Error serving media:', error);

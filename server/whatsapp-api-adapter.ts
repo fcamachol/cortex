@@ -2050,47 +2050,8 @@ export const WebhookApiAdapter = {
                 // Store media metadata in database
                 await storage.upsertWhatsappMessageMedia(mediaInfo as InsertWhatsappMessageMedia);
                 
-                // Download and cache the media file if URL is available
-                if (mediaData.url) {
-                    try {
-                        console.log(`🔽 Attempting to download media from URL: ${mediaData.url}`);
-                        const response = await fetch(mediaData.url);
-                        console.log(`📥 Download response status: ${response.status} ${response.statusText}`);
-                        
-                        if (response.ok) {
-                            const buffer = await response.arrayBuffer();
-                            const fs = await import('fs/promises');
-                            const path = await import('path');
-                            
-                            // Create media directory if it doesn't exist
-                            const mediaDir = path.join(process.cwd(), 'media', instanceId);
-                            await fs.mkdir(mediaDir, { recursive: true });
-                            console.log(`📁 Created media directory: ${mediaDir}`);
-                            
-                            // Determine file extension from mimetype
-                            const getExtension = (mimetype: string) => {
-                                if (mimetype.includes('audio')) return '.ogg';
-                                if (mimetype.includes('image')) return '.jpg';
-                                if (mimetype.includes('video')) return '.mp4';
-                                if (mimetype.includes('document')) return '.pdf';
-                                return '.bin';
-                            };
-                            
-                            const extension = getExtension(mediaInfo.mimetype || '');
-                            const filePath = path.join(mediaDir, `${messageId}${extension}`);
-                            
-                            // Save file to disk
-                            await fs.writeFile(filePath, Buffer.from(buffer));
-                            console.log(`📎 [${instanceId}] Successfully downloaded and cached media: ${messageId}${extension} (${buffer.byteLength} bytes)`);
-                        } else {
-                            console.warn(`⚠️ Failed to download media file for ${messageId}: HTTP ${response.status} ${response.statusText}`);
-                        }
-                    } catch (downloadError) {
-                        console.error(`❌ Error downloading media file for ${messageId}:`, downloadError);
-                    }
-                } else {
-                    console.log(`📎 No URL provided for media file ${messageId}, skipping download`);
-                }
+                // For now, skip media download - files will be served via proxy
+                console.log(`📎 Media metadata stored for ${messageId}, file will be served via proxy when requested`);
                 
                 console.log(`📎 [${instanceId}] Stored media metadata for message: ${messageId} (${messageType})`);
             } catch (error) {
