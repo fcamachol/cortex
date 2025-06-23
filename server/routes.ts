@@ -1563,11 +1563,18 @@ export async function registerRoutes(app: Express): Promise<void> {
         const mediaInfo = await storage.getWhatsappMessageMedia(messageId, instanceId);
         const mimeType = mediaInfo?.mimetype || 'audio/ogg; codecs=opus';
         
-        // Serve the local file
+        // Serve the local file with enhanced headers for browser compatibility
         res.setHeader('Content-Type', mimeType);
         res.setHeader('Cache-Control', 'public, max-age=3600');
         res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
         res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Headers', 'Range');
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length');
+        res.setHeader('Accept-Ranges', 'bytes');
+        
+        // Add browser-specific headers for Replit environment
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Referrer-Policy', 'no-referrer-when-downgrade');
         
         console.log(`✅ Serving cached file: ${messageId} from ${localFilePath}`);
         return res.sendFile(localFilePath);

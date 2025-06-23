@@ -252,13 +252,13 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   // Force invalidation when conversation changes
   useEffect(() => {
-    if (conversationId && instanceId) {
+    if (conversationId && finalInstanceId) {
       // Force invalidate all message queries when switching conversations
       queryClient.invalidateQueries({
         queryKey: [`/api/whatsapp/chat-messages`]
       });
     }
-  }, [conversationId, instanceId, queryClient]);
+  }, [conversationId, finalInstanceId]);
 
   // Remove the aggressive polling interval since we now use SSE for real-time updates
 
