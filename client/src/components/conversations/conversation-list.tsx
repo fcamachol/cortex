@@ -68,11 +68,22 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   const messages = Array.isArray(messagesResponse) ? messagesResponse : [];
 
   // Helper function to get latest message for a conversation
-  const getLatestMessage = (chatId: string) => {
+  const getLatestMessage = (conversation: any) => {
+    // Use the lastMessageContent from the conversation data if available
+    if (conversation.lastMessageContent) {
+      return {
+        content: conversation.lastMessageContent,
+        fromMe: conversation.lastMessageFromMe,
+        messageType: conversation.lastMessageType,
+        timestamp: conversation.actualLastMessageTime || conversation.lastMessageTimestamp
+      };
+    }
+    
+    // Fallback to searching in messages array
     if (!Array.isArray(messages) || messages.length === 0) return null;
     
     return messages
-      .filter((msg: any) => msg.chatId === chatId)
+      .filter((msg: any) => msg.chatId === conversation.chatId)
       .sort((a: any, b: any) => new Date(b.timestamp || b.createdAt).getTime() - new Date(a.timestamp || a.createdAt).getTime())[0];
   };
 
@@ -207,8 +218,8 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                     </h3>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
                       {(() => {
-                        const latestMessage = getLatestMessage(conversation.chatId);
-                        const timestamp = latestMessage?.timestamp || latestMessage?.createdAt || conversation.lastMessageTimestamp;
+                        const latestMessage = getLatestMessage(conversation);
+                        const timestamp = latestMessage?.timestamp || conversation.actualLastMessageTime || conversation.lastMessageTimestamp;
                         return timestamp ? new Date(timestamp).toLocaleTimeString([], { 
                           hour: '2-digit', 
                           minute: '2-digit' 
@@ -218,8 +229,8 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-300 truncate mt-1">
                     {(() => {
-                      const latestMessage = getLatestMessage(conversation.chatId);
-                      if (latestMessage) {
+                      const latestMessage = getLatestMessage(conversation);
+                      if (latestMessage && latestMessage.content) {
                         return (
                           <span className="flex items-center">
                             {latestMessage.fromMe && (
@@ -229,7 +240,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                              latestMessage.messageType === 'audio' ? '🎵 Audio' :
                              latestMessage.messageType === 'video' ? '🎥 Video' :
                              latestMessage.messageType === 'document' ? '📄 Document' :
-                             latestMessage.content || 'Message'}
+                             latestMessage.content}
                           </span>
                         );
                       }

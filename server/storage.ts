@@ -64,23 +64,36 @@ class DatabaseStorage {
     }
     
     async getWhatsappConversations(userId: string): Promise<any[]> {
-        const results = await db.select({
-            chatId: whatsappChats.chatId,
-            instanceId: whatsappChats.instanceId,
-            type: whatsappChats.type,
-            unreadCount: whatsappChats.unreadCount,
-            lastMessageTimestamp: whatsappChats.lastMessageTimestamp,
-            displayName: sql<string>`COALESCE(${whatsappGroups.subject}, ${whatsappContacts.pushName}, ${whatsappChats.chatId})`,
-            profilePictureUrl: whatsappContacts.profilePictureUrl,
-        })
-        .from(whatsappChats)
-        .innerJoin(whatsappInstances, eq(whatsappChats.instanceId, whatsappInstances.instanceId))
-        .leftJoin(whatsappContacts, and(eq(whatsappChats.chatId, whatsappContacts.jid), eq(whatsappChats.instanceId, whatsappContacts.instanceId)))
-        .leftJoin(whatsappGroups, and(eq(whatsappChats.chatId, whatsappGroups.groupJid), eq(whatsappChats.instanceId, whatsappGroups.instanceId)))
-        .where(eq(whatsappInstances.clientId, userId))
-        .orderBy(desc(sql`COALESCE(${whatsappChats.lastMessageTimestamp}, ${whatsappChats.createdAt})`));
+        // Use SQL to get conversations with last message content
+        const results = await db.execute(sql`
+            SELECT DISTINCT
+                c.chat_id as "chatId",
+                c.instance_id as "instanceId", 
+                c.type,
+                c.unread_count as "unreadCount",
+                c.last_message_timestamp as "lastMessageTimestamp",
+                COALESCE(g.subject, ct.push_name, c.chat_id) as "displayName",
+                ct.profile_picture_url as "profilePictureUrl",
+                COALESCE(last_msg.content, '') as "lastMessageContent",
+                last_msg.from_me as "lastMessageFromMe",
+                last_msg.timestamp as "actualLastMessageTime",
+                last_msg.message_type as "lastMessageType"
+            FROM whatsapp.chats c
+            INNER JOIN whatsapp.instances i ON c.instance_id = i.instance_id
+            LEFT JOIN whatsapp.contacts ct ON c.chat_id = ct.jid AND c.instance_id = ct.instance_id
+            LEFT JOIN whatsapp.groups g ON c.chat_id = g.group_jid AND c.instance_id = g.instance_id
+            LEFT JOIN LATERAL (
+                SELECT m.content, m.from_me, m.timestamp, m.message_type
+                FROM whatsapp.messages m
+                WHERE m.chat_id = c.chat_id AND m.instance_id = c.instance_id
+                ORDER BY m.timestamp DESC
+                LIMIT 1
+            ) last_msg ON true
+            WHERE i.client_id = ${userId}
+            ORDER BY COALESCE(last_msg.timestamp, c.last_message_timestamp, c.created_at) DESC
+        `);
 
-        return results;
+        return results.rows;
     }
     
     async getWhatsappContacts(userId: string): Promise<WhatsappContact[]> {
