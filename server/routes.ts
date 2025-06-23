@@ -1563,26 +1563,40 @@ export async function registerRoutes(app: Express): Promise<void> {
       if (localFilePath) {
         console.log(`✅ Found locally cached file: ${localFilePath}`);
         
-        // Get media metadata from database
-        const mediaInfo = await storage.getWhatsappMessageMedia(messageId, instanceId);
-        const mimeType = mediaInfo?.mimetype || 'audio/ogg; codecs=opus';
+        // Process WhatsApp audio to browser-compatible format
+        const { processWhatsAppAudio } = await import('./whatsapp-audio-processor');
+        const processedAudioPath = await processWhatsAppAudio(localFilePath);
         
-        // Serve the OGG file with optimized headers for browser compatibility
-        res.setHeader('Content-Type', mimeType);
-        res.setHeader('Cache-Control', 'public, max-age=3600');
-        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
-        res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
-        res.setHeader('Accept-Ranges', 'bytes');
-        
-        // Enhanced headers for Replit browser environment
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-        res.setHeader('Referrer-Policy', 'no-referrer-when-downgrade');
-        res.setHeader('Content-Security-Policy', 'default-src \'self\'');
-        
-        console.log(`✅ Serving cached OGG file: ${messageId} from ${localFilePath}`);
-        return res.sendFile(localFilePath);
+        if (processedAudioPath) {
+          // Serve the processed WAV file (browser-compatible)
+          res.setHeader('Content-Type', 'audio/wav');
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
+          res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+          res.setHeader('Accept-Ranges', 'bytes');
+          
+          // Enhanced headers for Replit browser environment
+          res.setHeader('X-Content-Type-Options', 'nosniff');
+          res.setHeader('Referrer-Policy', 'no-referrer-when-downgrade');
+          
+          console.log(`✅ Serving processed audio: ${messageId} from ${processedAudioPath}`);
+          return res.sendFile(processedAudioPath);
+        } else {
+          // Fallback to original file if processing fails
+          const mediaInfo = await storage.getWhatsappMessageMedia(messageId, instanceId);
+          const mimeType = mediaInfo?.mimetype || 'audio/ogg; codecs=opus';
+          
+          res.setHeader('Content-Type', mimeType);
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Accept-Ranges', 'bytes');
+          
+          console.log(`⚠️ Serving original file (processing failed): ${messageId} from ${localFilePath}`);
+          return res.sendFile(localFilePath);
+        }
       }
       
       // Second, check if base64 data is in the webhook payload
