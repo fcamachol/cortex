@@ -1021,7 +1021,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
                   {/* Waiting response indicator */}
                   {waitingReplyMessages.has(message.messageId || message.id) && (
-                    <div className="message-forward-indicator">
+                    <div className="message-forward-indicator text-blue-500">
                       <Clock className="h-3 w-3" />
                       <span>Esperando respuesta</span>
                     </div>
