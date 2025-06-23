@@ -69,24 +69,16 @@ export default function ConversationList({ selectedConversation, onSelectConvers
     setOpenDropdown(null);
   };
 
-  // Get emoji for instance based on name or type
+  // Get emoji for instance directly from the instance data
   const getInstanceEmoji = (instanceId: string) => {
     const instance = instances.find((i: any) => i.instanceId === instanceId);
-    const name = instance?.instanceName?.toLowerCase() || instanceId.toLowerCase();
-    
-    if (name.includes('test') || name.includes('demo')) return '🧪';
-    if (name.includes('live') || name.includes('prod')) return '🟢';
-    if (name.includes('mexico') || name.includes('mx')) return '🇲🇽';
-    if (name.includes('usa') || name.includes('us')) return '🇺🇸';
-    if (name.includes('brasil') || name.includes('br')) return '🇧🇷';
-    if (name.includes('main') || name.includes('primary')) return '⭐';
-    return '📱';
+    return instance?.customLetter || '📱';
   };
 
   // Get display name for instance
   const getInstanceDisplayName = (instanceId: string) => {
     const instance = instances.find((i: any) => i.instanceId === instanceId);
-    return instance?.instanceName || instanceId;
+    return instance?.displayName || instanceId;
   };
 
   // Chat management mutations
