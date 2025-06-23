@@ -82,10 +82,12 @@ export function AccountForm({ open, onClose, spaceId, account }: AccountFormProp
 
   const createMutation = useMutation({
     mutationFn: async (data: AccountFormData) => {
+      console.log("Mutation data received:", data);
       const payload = {
         ...data,
         currentBalance: parseFloat(data.currentBalance || "0")
       };
+      console.log("Payload being sent:", payload);
       
       if (account) {
         return await apiRequest(`/api/finance/accounts/${account.accountId}`, "PUT", payload);
