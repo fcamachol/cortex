@@ -455,7 +455,9 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/drafts/${instanceId}/${conversationId}`] });
+      // Invalidate all draft-related queries to refresh the conversation list
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/drafts`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations`] });
     }
   });
 
@@ -472,7 +474,9 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/drafts/${instanceId}/${conversationId}`] });
+      // Invalidate all draft-related queries to refresh the conversation list
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/drafts`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations`] });
     }
   });
 
