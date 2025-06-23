@@ -28,8 +28,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [replyToMessage, setReplyToMessage] = useState<any>(null);
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
   
-  // Draft storage per conversation
-  const [drafts, setDrafts] = useState<{[chatId: string]: string}>({});
+  // Draft storage per conversation (now database-backed)
   const [replyStates, setReplyStates] = useState<{[chatId: string]: any}>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
@@ -41,6 +40,11 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const { data: instances = [] } = useQuery({
     queryKey: [`/api/whatsapp/instances/${userId}`],
   });
+
+  // Get current instance ID from selected conversation
+  const currentInstanceId = instances.find((inst: any) => 
+    conversationId && conversationId.includes('@')
+  )?.instanceId;
 
   // Get instance indicator with custom colors and letters
   const getInstanceIndicator = (instanceId: string) => {
@@ -367,42 +371,69 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     }
   };
 
-  // Save/restore drafts and reply states when switching conversations
+  // Load draft for current conversation
+  const { data: currentDraft } = useQuery({
+    queryKey: [`/api/whatsapp/drafts/${instanceId}/${conversationId}`],
+    queryFn: async () => {
+      if (!instanceId || !conversationId) return null;
+      try {
+        const response = await fetch(`/api/whatsapp/drafts/${instanceId}?chatId=${conversationId}`);
+        if (response.ok) {
+          const drafts = await response.json();
+          return drafts.find((d: any) => d.chatId === conversationId) || null;
+        }
+      } catch (error) {
+        console.error('Error loading draft:', error);
+      }
+      return null;
+    },
+    enabled: !!instanceId && !!conversationId
+  });
+
+  // Load draft content when conversation changes
   useEffect(() => {
-    if (!conversationId) return;
-
-    // Save current state before switching
-    const currentChatKey = conversationId;
-    
-    // Save current draft and reply state
-    setDrafts(prev => ({
-      ...prev,
-      [currentChatKey]: messageInput
-    }));
-    
-    setReplyStates(prev => ({
-      ...prev,
-      [currentChatKey]: replyToMessage
-    }));
-
-    // Restore draft and reply state for new conversation
-    const savedDraft = drafts[currentChatKey] || "";
-    const savedReplyState = replyStates[currentChatKey] || null;
-    
-    setMessageInput(savedDraft);
-    setReplyToMessage(savedReplyState);
-    
-  }, [conversationId]);
-
-  // Save draft when typing
-  useEffect(() => {
-    if (conversationId && messageInput !== undefined) {
-      setDrafts(prev => ({
-        ...prev,
-        [conversationId]: messageInput
-      }));
+    if (currentDraft?.content) {
+      setMessageInput(currentDraft.content);
+      if (currentDraft.replyToMessageId) {
+        // Load reply message details if needed
+        setReplyToMessage({ messageId: currentDraft.replyToMessageId });
+      }
+    } else {
+      setMessageInput("");
+      setReplyToMessage(null);
     }
-  }, [messageInput, conversationId]);
+  }, [currentDraft, conversationId]);
+
+  // Draft saving mutation
+  const saveDraftMutation = useMutation({
+    mutationFn: async ({ chatId, instanceId, content, replyToMessageId }: any) => {
+      return apiRequest('/api/whatsapp/drafts', 'POST', {
+        chatId,
+        instanceId,
+        content,
+        replyToMessageId
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/drafts/${instanceId}/${conversationId}`] });
+    }
+  });
+
+  // Save draft when typing (debounced)
+  useEffect(() => {
+    if (!conversationId || !instanceId || messageInput === undefined) return;
+    
+    const timeoutId = setTimeout(() => {
+      saveDraftMutation.mutate({
+        chatId: conversationId,
+        instanceId,
+        content: messageInput,
+        replyToMessageId: replyToMessage?.messageId || null
+      });
+    }, 500); // Debounce 500ms
+
+    return () => clearTimeout(timeoutId);
+  }, [messageInput, conversationId, instanceId, replyToMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

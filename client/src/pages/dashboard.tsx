@@ -13,7 +13,6 @@ import { useQuery } from "@tanstack/react-query";
 export default function Dashboard() {
   const [activeModule, setActiveModule] = useState("conversations");
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
-  const [drafts, setDrafts] = useState<{[chatId: string]: string}>({});
 
   // Auto-select the first conversation with messages when none is selected
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
@@ -36,12 +35,9 @@ export default function Dashboard() {
             <ConversationList
               selectedConversation={selectedConversation}
               onSelectConversation={setSelectedConversation}
-              drafts={drafts}
             />
             <ChatInterface 
               conversationId={selectedConversation} 
-              drafts={drafts}
-              onDraftsChange={setDrafts}
             />
           </div>
         );

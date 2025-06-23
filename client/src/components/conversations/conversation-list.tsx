@@ -13,10 +13,9 @@ import { Button } from "@/components/ui/button";
 interface ConversationListProps {
   selectedConversation: string | null;
   onSelectConversation: (conversationId: string) => void;
-  drafts?: {[chatId: string]: string};
 }
 
-export default function ConversationList({ selectedConversation, onSelectConversation, drafts = {} }: ConversationListProps) {
+export default function ConversationList({ selectedConversation, onSelectConversation }: ConversationListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredConversation, setHoveredConversation] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
