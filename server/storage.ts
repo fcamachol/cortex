@@ -567,6 +567,15 @@ class DatabaseStorage {
         return result;
     }
 
+    async updateWhatsappMessageMediaPath(messageId: string, instanceId: string, localPath: string): Promise<void> {
+        await db.update(whatsappMessageMedia)
+            .set({ fileLocalPath: localPath })
+            .where(and(
+                eq(whatsappMessageMedia.messageId, messageId),
+                eq(whatsappMessageMedia.instanceId, instanceId)
+            ));
+    }
+
     // Task management methods
     async getTasks(): Promise<any[]> {
         const results = await db.execute(sql`

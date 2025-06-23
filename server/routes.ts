@@ -1586,17 +1586,68 @@ export async function registerRoutes(app: Express): Promise<void> {
         return;
       }
 
-      // If no cached file found and no URL, return 404
+      // If no cached file found, try to download from Evolution API
       if (!media.fileUrl) {
         return res.status(404).json({ error: 'Media file not available' });
       }
 
-      // For now, return a 404 for uncached files since Evolution API decryption needs proper setup
-      console.log(`📎 Media file not cached locally for ${messageId}, returning 404`);
-      return res.status(404).json({ 
-        error: 'Media file not cached', 
-        message: 'This audio file needs to be downloaded and decrypted first'
-      });
+      console.log(`⬇️ Media file not cached locally for ${messageId}, attempting download from Evolution API`);
+      
+      // Get instance credentials for Evolution API
+      const instance = await storage.getWhatsappInstance(instanceId);
+      if (!instance?.apiKey) {
+        return res.status(404).json({ error: 'Instance not found or missing API key' });
+      }
+
+      // Get the original message with raw API payload for media download
+      const message = await storage.getWhatsappMessageById(messageId, instanceId);
+      if (!message?.rawApiPayload) {
+        return res.status(404).json({ error: 'Original message data not found' });
+      }
+
+      try {
+        const evolutionApi = getEvolutionApi();
+        const mediaBuffer = await evolutionApi.downloadMedia(instanceId, instance.apiKey, message.rawApiPayload);
+        
+        if (!mediaBuffer) {
+          return res.status(404).json({ error: 'Failed to download media from Evolution API' });
+        }
+
+        // Cache the downloaded file for future requests
+        const fs = require('fs');
+        const path = require('path');
+        const mediaDir = path.join(process.cwd(), 'media', instanceId);
+        
+        if (!fs.existsSync(mediaDir)) {
+          fs.mkdirSync(mediaDir, { recursive: true });
+        }
+        
+        const fileExtension = media.mimetype?.includes('ogg') ? 'ogg' : 
+                             media.mimetype?.includes('mp3') ? 'mp3' : 
+                             media.mimetype?.includes('wav') ? 'wav' : 'bin';
+        const localPath = path.join(mediaDir, `${messageId}.${fileExtension}`);
+        
+        fs.writeFileSync(localPath, mediaBuffer);
+        
+        // Update database with local file path
+        await storage.updateWhatsappMessageMediaPath(messageId, instanceId, localPath);
+        
+        console.log(`💾 Downloaded and cached media file: ${localPath}`);
+        
+        // Serve the downloaded file
+        res.setHeader('Content-Type', media.mimetype || 'audio/ogg');
+        res.setHeader('Content-Length', mediaBuffer.length.toString());
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        
+        res.send(mediaBuffer);
+        
+      } catch (error) {
+        console.error('Error downloading media from Evolution API:', error);
+        return res.status(500).json({ error: 'Failed to download media' });
+      }
     } catch (error) {
       console.error('Error serving media:', error);
       res.status(500).json({ error: 'Failed to serve media' });

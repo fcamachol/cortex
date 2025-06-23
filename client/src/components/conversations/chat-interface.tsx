@@ -693,6 +693,26 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   }, [conversationId, instanceId, messageInput, replyToMessage, saveDraftMutation]);
 
   // Completely disable automatic scrolling - user controls scroll position
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  
+  // Track scroll position to show/hide scroll to bottom button
+  useEffect(() => {
+    const messagesContainer = messagesEndRef.current?.parentElement;
+    if (!messagesContainer) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setShowScrollToBottom(!isNearBottom);
+    };
+
+    messagesContainer.addEventListener('scroll', handleScroll);
+    return () => messagesContainer.removeEventListener('scroll', handleScroll);
+  }, [conversationId]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   // Temporarily disable reactions loading to fix database errors
   // useEffect(() => {
@@ -836,7 +856,18 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 chat-area scroll-smooth scrollbar-thin chat-messages-scroll">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 chat-area scroll-smooth scrollbar-thin chat-messages-scroll relative">
+        {/* Floating Scroll to Bottom Button */}
+        {showScrollToBottom && (
+          <Button
+            onClick={scrollToBottom}
+            className="fixed bottom-32 right-8 z-10 w-10 h-10 rounded-full bg-green-500 hover:bg-green-600 text-white shadow-lg"
+            size="sm"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+        )}
+        
         <div className="space-y-4">
           {isLoading ? (
             <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
