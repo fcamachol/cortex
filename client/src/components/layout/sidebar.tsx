@@ -100,13 +100,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
       badge: "247",
       badgeColor: "bg-gray-500"
     },
-    {
-      id: "groups",
-      label: "Groups",
-      icon: Users,
-      badge: "46",
-      badgeColor: "bg-blue-500"
-    },
+
     {
       id: "calendar",
       label: "Calendar",
@@ -128,13 +122,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
       badge: null,
       badgeColor: null
     },
-    {
-      id: "database",
-      label: "Database",
-      icon: Database,
-      badge: null,
-      badgeColor: null
-    }
+
   ];
 
   return (
