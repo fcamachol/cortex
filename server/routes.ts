@@ -1593,15 +1593,20 @@ export async function registerRoutes(app: Express): Promise<void> {
       try {
         console.log(`📥 Downloading audio from Evolution API for message: ${messageId}`);
         
-        const downloadedMedia = await evolutionApi.downloadMedia(instanceId, {
-          key: { id: messageId }
-        });
+        // Get the message data to construct proper payload for downloadMedia
+        const messages = await storage.getWhatsappMessages(instanceId);
+        const messageData = messages.find(msg => msg.messageId === messageId);
+        if (!messageData || !messageData.rawApiPayload) {
+          throw new Error('Message data not found or invalid');
+        }
+        
+        const downloadedMedia = await evolutionApi.downloadMedia(instanceId, process.env.EVOLUTION_API_KEY!, messageData.rawApiPayload);
         
         if (downloadedMedia) {
           // Determine file extension from mimetype
           const extension = downloadedMedia.mimetype.split('/')[1] || 'ogg';
           const fileName = `${messageId}.${extension}`;
-          const storagePath = path.resolve(__dirname, '../media_storage', instanceId);
+          const storagePath = path.resolve(currentDir, '../media_storage', instanceId);
           
           // Save the buffer to file
           await fsPromises.mkdir(storagePath, { recursive: true });
