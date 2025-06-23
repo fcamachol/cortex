@@ -260,6 +260,20 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     }
   }, [conversationId, finalInstanceId]);
 
+  // Auto-resize textarea on mount and content changes
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  const resizeTextarea = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
+    }
+  };
+
+  useEffect(() => {
+    resizeTextarea();
+  }, [messageInput]);
+
   // Remove the aggressive polling interval since we now use SSE for real-time updates
 
   // Transform messages to match frontend expectations
@@ -1196,17 +1210,21 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
           </div>
         )}
         
-        <div className="flex items-center space-x-2">
+        <div className="flex items-end space-x-2">
           <Button variant="ghost" size="sm">
             <Paperclip className="h-4 w-4" />
           </Button>
           <div className="flex-1">
-            <Input
+            <textarea
+              ref={textareaRef}
               placeholder={replyToMessage ? "Escribe tu respuesta..." : "Type a message..."}
               value={messageInput}
               onChange={(e) => {
                 const newValue = e.target.value;
                 setMessageInput(newValue);
+                
+                // Auto-resize textarea using ref function
+                resizeTextarea();
                 
                 // If message is manually cleared (empty), delete any existing draft
                 // Only delete if we're not already in the process of deleting to prevent loops
@@ -1222,8 +1240,17 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   });
                 }
               }}
-              onKeyPress={handleKeyPress}
+              onKeyDown={(e) => {
+                // Send message on Shift+Enter
+                if (e.key === 'Enter' && e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+                // Allow Enter for line breaks when not holding Shift
+              }}
               disabled={sendMessageMutation.isPending}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none overflow-hidden min-h-[40px] max-h-[120px] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+              rows={1}
             />
           </div>
           <Button variant="ghost" size="sm">
