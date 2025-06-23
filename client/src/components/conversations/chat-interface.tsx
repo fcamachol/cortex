@@ -451,6 +451,16 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     }
   });
 
+  // Draft deletion mutation
+  const deleteDraftMutation = useMutation({
+    mutationFn: async ({ instanceId, chatId }: { instanceId: string, chatId: string }) => {
+      return apiRequest(`/api/whatsapp/drafts/${instanceId}/${chatId}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/drafts/${instanceId}/${conversationId}`] });
+    }
+  });
+
   // Save draft only when leaving window with unfinished message
   useEffect(() => {
     const handleBeforeUnload = () => {

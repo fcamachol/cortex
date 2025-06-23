@@ -652,7 +652,9 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                         return (
                           <span className="flex items-center">
                             {latestMessage.isDraft ? (
-                              <span className="text-red-500 italic">{latestMessage.content}</span>
+                              <span className="text-gray-600 dark:text-gray-300">
+                                <span className="font-bold">Draft: </span>{latestMessage.content}
+                              </span>
                             ) : (
                               <>
                                 {latestMessage.fromMe && (
