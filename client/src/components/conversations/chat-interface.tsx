@@ -185,11 +185,9 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     queryKey: [`/api/whatsapp/chat-messages`, conversationId, finalInstanceId],
     queryFn: async () => {
       if (!chatId || !finalInstanceId) return [];
-      console.log('Fetching messages for chatId:', chatId, 'instanceId:', finalInstanceId);
       const response = await fetch(`/api/whatsapp/chat-messages?chatId=${encodeURIComponent(chatId)}&instanceId=${finalInstanceId}&userId=${userId}&limit=100`);
       if (!response.ok) throw new Error('Failed to fetch messages');
       const data = await response.json();
-      console.log('Fetched messages:', data.length, 'messages for chat:', chatId);
       return data.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     },
     enabled: !!chatId && chatId !== 'undefined' && !!finalInstanceId,
@@ -272,22 +270,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     media: msg.media // Preserve media object for audio/video/image messages
   }));
 
-  // Debug logging
-  console.log('Raw messages received:', rawMessages.length, rawMessages.slice(0, 2));
-  console.log('Transformed messages:', messages.length, messages.slice(0, 2));
-  console.log('Current conversationId:', conversationId);
-  console.log('Current instanceId:', instanceId);
-  
-  // Log audio messages specifically to verify media data
-  const audioMessages = messages.filter(m => m.messageType === 'audio');
-  if (audioMessages.length > 0) {
-    console.log('Audio messages with media data:', audioMessages.map(m => ({
-      messageId: m.messageId,
-      content: m.content,
-      hasMedia: !!m.media,
-      mediaDetails: m.media
-    })));
-  }
+  // Audio messages now include proper media data for playback
 
   const sendMessageMutation = useMutation({
     mutationFn: async (text: string) => {
@@ -709,9 +692,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     };
   }, [conversationId, instanceId, messageInput, replyToMessage, saveDraftMutation]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  // Completely disable automatic scrolling - user controls scroll position
 
   // Temporarily disable reactions loading to fix database errors
   // useEffect(() => {
