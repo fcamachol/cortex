@@ -17,6 +17,9 @@ interface Transaction {
   transactionDate: string;
   categoryName?: string;
   contactName?: string;
+  accountId?: number;
+  accountName?: string;
+  accountType?: string;
   linkedToWhatsApp?: boolean;
 }
 

@@ -21,6 +21,7 @@ const transactionSchema = z.object({
   type: z.enum(["income", "expense"]),
   description: z.string().optional(),
   categoryId: z.string().optional(),
+  accountId: z.string().optional(),
   transactionDate: z.date(),
   contactId: z.string().optional(),
 });
@@ -45,6 +46,17 @@ export function FinanceTransactionForm({ onClose, transaction }: FinanceTransact
     staleTime: 300000, // 5 minutes
   });
 
+  // Fetch accounts for dropdown
+  const { data: accounts } = useQuery({
+    queryKey: ["/api/finance/accounts"],
+    queryFn: async () => {
+      const response = await fetch("/api/finance/accounts?spaceId=1");
+      if (!response.ok) throw new Error('Failed to fetch accounts');
+      return response.json();
+    },
+    staleTime: 300000, // 5 minutes
+  });
+
   const form = useForm<z.infer<typeof transactionSchema>>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
@@ -52,6 +64,7 @@ export function FinanceTransactionForm({ onClose, transaction }: FinanceTransact
       type: transaction?.type || "expense",
       description: transaction?.description || "",
       categoryId: transaction?.categoryId?.toString() || "",
+      accountId: transaction?.accountId?.toString() || "",
       transactionDate: transaction?.transactionDate ? new Date(transaction.transactionDate) : new Date(),
       contactId: transaction?.contactId?.toString() || "",
     },
@@ -63,6 +76,7 @@ export function FinanceTransactionForm({ onClose, transaction }: FinanceTransact
         ...data,
         amount: parseFloat(data.amount),
         categoryId: data.categoryId ? parseInt(data.categoryId) : null,
+        accountId: data.accountId ? parseInt(data.accountId) : null,
         contactId: data.contactId ? parseInt(data.contactId) : null,
         transactionDate: format(data.transactionDate, "yyyy-MM-dd"),
       };
@@ -199,6 +213,32 @@ export function FinanceTransactionForm({ onClose, transaction }: FinanceTransact
                       {categories?.map((category: any) => (
                         <SelectItem key={category.categoryId} value={category.categoryId.toString()}>
                           {category.categoryName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="accountId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Account</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select account" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">No account</SelectItem>
+                      {accounts?.map((account: any) => (
+                        <SelectItem key={account.accountId} value={account.accountId.toString()}>
+                          {account.accountName} ({account.accountType})
                         </SelectItem>
                       ))}
                     </SelectContent>
