@@ -224,31 +224,22 @@ export class EvolutionApi {
         return this.makeRequest(`/group/groupMetadata/${instanceName}?groupJid=${groupJid}`, 'GET', null, instanceApiKey);
     }
 
-    // Download and decrypt media from WhatsApp
-    async downloadMedia(instanceName: string, instanceApiKey: string, mediaData: any): Promise<Buffer | null> {
+    // Download and decrypt media from WhatsApp using the correct endpoint
+    async downloadMedia(instanceName: string, instanceApiKey: string, messageData: any): Promise<any> {
         try {
-            const downloadPayload = {
-                message: mediaData,
-                convertToMp4: false,
-                convertToWebp: false
-            };
-            
-            const result = await this.makeRequest(
-                `/chat/downloadMediaMessage/${instanceName}`, 
-                'POST', 
-                downloadPayload, 
+            const response = await this.makeRequest<any>(
+                `/message/downloadMedia/${instanceName}`,
+                'POST',
+                {
+                    message: messageData.message || messageData
+                },
                 instanceApiKey
             );
-            
-            if (result?.media) {
-                // Convert base64 to buffer
-                return Buffer.from(result.media, 'base64');
-            }
-            
-            return null;
+
+            return response;
         } catch (error) {
-            console.error('Failed to download media from Evolution API:', error);
-            return null;
+            console.error('Evolution API media download error:', error);
+            throw error;
         }
     }
 
