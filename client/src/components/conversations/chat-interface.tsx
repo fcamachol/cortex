@@ -231,7 +231,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
             `${conv.instanceId}:${conv.chatId}` === conversationId
           );
           
-          // Only process messages for the current conversation
+          // Only process messages for the current conversation in chat interface
           if (currentConv && newMessage.chatId === currentConv.chatId && newMessage.instanceId === currentConv.instanceId) {
             console.log('Received real-time message update:', newMessage);
             
@@ -250,10 +250,36 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 );
               }
             );
-
-            // Also refresh conversation list to update latest message preview
+          }
+          
+          // Always refresh conversation list for any new message (regardless of current chat)
+          console.log('🔄 Refreshing conversation list due to new message');
+          queryClient.invalidateQueries({
+            queryKey: [`/api/whatsapp/conversations/${userId}`]
+          });
+          
+          // Refresh contacts in case this is a new contact
+          queryClient.invalidateQueries({
+            queryKey: [`/api/contacts/${userId}`]
+          });
+        }
+        
+        // Handle other events that should refresh conversation list
+        else if (data.type === 'new_reaction' ||
+                 data.type === 'message_status_update' ||
+                 data.type === 'chat_updated' ||
+                 data.type === 'contact_updated' ||
+                 data.type === 'group_updated' ||
+                 data.type === 'participant_updated') {
+          
+          console.log(`🔄 Refreshing conversation list due to: ${data.type}`);
+          queryClient.invalidateQueries({
+            queryKey: [`/api/whatsapp/conversations/${userId}`]
+          });
+          
+          if (data.type === 'contact_updated' || data.type === 'group_updated') {
             queryClient.invalidateQueries({
-              queryKey: [`/api/whatsapp/conversations/${userId}`]
+              queryKey: [`/api/contacts/${userId}`]
             });
           }
         }

@@ -513,53 +513,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
       .sort((a: any, b: any) => new Date(b.timestamp || b.createdAt).getTime() - new Date(a.timestamp || a.createdAt).getTime())[0];
   };
 
-  // Set up SSE connection for real-time conversation updates
-  useEffect(() => {
-    const eventSource = new EventSource('/api/events');
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        // Refresh conversation list for any event that affects chat data
-        if (data.type === 'new_message' || 
-            data.type === 'new_reaction' ||
-            data.type === 'message_status_update' ||
-            data.type === 'chat_updated' ||
-            data.type === 'contact_updated' ||
-            data.type === 'group_updated' ||
-            data.type === 'participant_updated' ||
-            data.type === 'draft_updated' ||
-            data.type === 'waiting_reply_added' ||
-            data.type === 'waiting_reply_removed') {
-          
-          console.log(`🔄 Refreshing conversation list due to: ${data.type}`);
-          
-          // Invalidate conversations to refresh latest message previews and metadata
-          queryClient.invalidateQueries({
-            queryKey: [`/api/whatsapp/conversations/${userId}`]
-          });
-          
-          // Also invalidate chat messages if it's a direct message update
-          if (data.type === 'new_message' || data.type === 'message_status_update') {
-            queryClient.invalidateQueries({
-              queryKey: ['/api/whatsapp/chat-messages']
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error processing SSE event:', error);
-      }
-    };
-
-    eventSource.onerror = (error) => {
-      console.error('SSE connection error:', error);
-    };
-
-    return () => {
-      eventSource.close();
-    };
-  }, [queryClient, userId]);
+  // Note: SSE connection removed - now handled by ChatInterface which propagates updates to conversation list
 
   const filteredConversations = conversations
     .filter((conv: any) => {
