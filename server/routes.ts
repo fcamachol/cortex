@@ -474,7 +474,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Send WhatsApp message (with optional reply)
   app.post('/api/whatsapp/send-message', async (req: Request, res: Response) => {
     try {
-      const { instanceId, chatId, message, quotedMessageId } = req.body;
+      const { instanceId, chatId, message, quotedMessageId, isForwarded } = req.body;
       
       if (!instanceId || !chatId || !message) {
         return res.status(400).json({ error: 'instanceId, chatId, and message are required' });
@@ -524,8 +524,8 @@ export async function registerRoutes(app: Express): Promise<void> {
             content: message,
             timestamp: new Date(),
             quotedMessageId: quotedMessageId || null,
-            isForwarded: false,
-            forwardingScore: 0,
+            isForwarded: isForwarded || false,
+            forwardingScore: isForwarded ? 1 : 0,
             isStarred: false,
             isEdited: false,
             lastEditedAt: null,
