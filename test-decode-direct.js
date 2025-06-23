@@ -125,4 +125,10 @@ async function testDirectDecoding() {
     }
 }
 
+function createMinimalOggPage(data) {
+    // This is a placeholder - creating proper OGG pages requires complex logic
+    // For now, just return null to indicate it's not implemented
+    return null;
+}
+
 testDirectDecoding();

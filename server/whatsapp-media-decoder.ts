@@ -42,34 +42,55 @@ export async function decodeWhatsAppAudio(inputPath: string, outputPath: string)
  */
 async function convertWithFFmpeg(inputPath: string, outputPath: string): Promise<boolean> {
     return new Promise((resolve) => {
-        const ffmpeg = spawn('ffmpeg', [
-            '-i', inputPath,
-            '-c:a', 'libopus',
-            '-b:a', '64k',
-            '-f', 'ogg',
-            '-y', // Overwrite output file
-            outputPath
-        ]);
+        // Try multiple FFmpeg conversion strategies for WhatsApp audio
+        const strategies = [
+            // Strategy 1: Force read as raw audio and convert to WAV
+            ['-f', 'data', '-i', inputPath, '-ar', '16000', '-ac', '1', '-f', 'wav', '-y', outputPath.replace('.ogg', '.wav')],
+            // Strategy 2: Try to read as OGG with error tolerance
+            ['-err_detect', 'ignore_err', '-i', inputPath, '-c:a', 'pcm_s16le', '-ar', '16000', '-f', 'wav', '-y', outputPath.replace('.ogg', '.wav')],
+            // Strategy 3: Raw audio conversion assuming Opus format
+            ['-f', 's16le', '-ar', '16000', '-ac', '1', '-i', inputPath, '-f', 'wav', '-y', outputPath.replace('.ogg', '.wav')],
+            // Strategy 4: Try original conversion
+            ['-i', inputPath, '-c:a', 'libopus', '-b:a', '64k', '-f', 'ogg', '-y', outputPath]
+        ];
         
-        let stderr = '';
-        ffmpeg.stderr.on('data', (data) => {
-            stderr += data.toString();
-        });
-        
-        ffmpeg.on('close', (code) => {
-            if (code === 0) {
-                console.log(`✅ FFmpeg conversion successful`);
-                resolve(true);
-            } else {
-                console.log(`❌ FFmpeg conversion failed (code ${code})`);
+        function tryStrategy(index: number) {
+            if (index >= strategies.length) {
+                console.log(`❌ All FFmpeg strategies failed`);
                 resolve(false);
+                return;
             }
-        });
+            
+            const args = strategies[index];
+            console.log(`🔄 Trying FFmpeg strategy ${index + 1}: ${args.join(' ')}`);
+            
+            const ffmpeg = spawn('ffmpeg', args);
+            
+            let stderr = '';
+            ffmpeg.stderr.on('data', (data) => {
+                stderr += data.toString();
+            });
+            
+            ffmpeg.on('close', (code) => {
+                if (code === 0) {
+                    console.log(`✅ FFmpeg strategy ${index + 1} successful`);
+                    resolve(true);
+                } else {
+                    console.log(`❌ FFmpeg strategy ${index + 1} failed (code ${code})`);
+                    // Try next strategy
+                    tryStrategy(index + 1);
+                }
+            });
+            
+            ffmpeg.on('error', (error) => {
+                console.log(`❌ FFmpeg strategy ${index + 1} error: ${error.message}`);
+                // Try next strategy
+                tryStrategy(index + 1);
+            });
+        }
         
-        ffmpeg.on('error', (error) => {
-            console.log(`❌ FFmpeg not available: ${error.message}`);
-            resolve(false);
-        });
+        // Start with first strategy
+        tryStrategy(0);
     });
 }
 

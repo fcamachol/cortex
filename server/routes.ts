@@ -1565,7 +1565,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         
         // Get media metadata from database
         const mediaInfo = await storage.getWhatsappMessageMedia(messageId, instanceId);
-        const mimeType = mediaInfo?.mimetype || 'audio/ogg; codecs=opus';
+        
+        // Use generic audio type for better browser compatibility with WhatsApp files
+        const mimeType = 'audio/ogg';
         
         // Serve the decoded file with enhanced headers for browser compatibility
         res.setHeader('Content-Type', mimeType);
