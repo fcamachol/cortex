@@ -870,12 +870,18 @@ export const WebhookApiAdapter = {
         
         // For individual chats, create contact for the other person (not instance owner)
         if (!isGroup && cleanMessage.chatId === cleanMessage.senderJid && !cleanMessage.fromMe) {
-            // This is a message FROM the other person TO us
+            // This is a message FROM the other person TO us - use their pushName
             const senderContact = await this.mapApiPayloadToWhatsappContact({
                 id: cleanMessage.senderJid,
                 pushName: rawMessage.pushName
             }, cleanMessage.instanceId);
             if (senderContact) await storage.upsertWhatsappContact(senderContact);
+        }
+        
+        // For individual chats where I sent a message, don't update the other person's contact with my name
+        if (!isGroup && cleanMessage.chatId === cleanMessage.senderJid && cleanMessage.fromMe) {
+            // This is a message FROM me TO the other person - don't update their contact
+            return; // Skip contact creation to avoid overwriting their name with mine
         }
         
         // For group messages, create sender contact if it's a group participant
@@ -887,13 +893,15 @@ export const WebhookApiAdapter = {
             if (senderContact) await storage.upsertWhatsappContact(senderContact);
         }
         
-        // Create chat contact record - for individual chats, this represents the other person
-        const chatContact = await this.mapApiPayloadToWhatsappContact({ 
-            id: cleanMessage.chatId,
-            // For individual chats, use pushName only if this message is FROM the other person
-            pushName: isGroup ? undefined : (!cleanMessage.fromMe ? rawMessage.pushName : undefined)
-        }, cleanMessage.instanceId);
-        if (chatContact) await storage.upsertWhatsappContact(chatContact);
+        // Create chat contact record only if we haven't already created it above
+        if (isGroup || (!isGroup && !cleanMessage.fromMe)) {
+            const chatContact = await this.mapApiPayloadToWhatsappContact({ 
+                id: cleanMessage.chatId,
+                // For individual chats, use pushName only if this message is FROM the other person
+                pushName: isGroup ? undefined : (!cleanMessage.fromMe ? rawMessage.pushName : undefined)
+            }, cleanMessage.instanceId);
+            if (chatContact) await storage.upsertWhatsappContact(chatContact);
+        }
 
         const chatData = await this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chatId }, cleanMessage.instanceId);
         if (chatData && chatData.chatId && chatData.instanceId) {

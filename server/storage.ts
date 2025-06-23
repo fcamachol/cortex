@@ -170,9 +170,34 @@ class DatabaseStorage {
     }
 
     async upsertWhatsappContact(contact: InsertWhatsappContact): Promise<WhatsappContact> {
+        // Check if contact already exists with a valid push name
+        const existingContact = await db.select()
+            .from(whatsappContacts)
+            .where(
+                and(
+                    eq(whatsappContacts.jid, contact.jid),
+                    eq(whatsappContacts.instanceId, contact.instanceId)
+                )
+            )
+            .limit(1);
+
+        const existing = existingContact[0];
+        
         // Build the update object dynamically to avoid undefined values
         const updateSet: Partial<InsertWhatsappContact> = {};
-        if (contact.pushName) updateSet.pushName = contact.pushName;
+        
+        // Only update push name if the new one is better than existing
+        if (contact.pushName && contact.pushName !== contact.jid) {
+            // If no existing name, or existing name is just the JID, use new name
+            if (!existing?.pushName || existing.pushName === existing.jid || existing.pushName === '') {
+                updateSet.pushName = contact.pushName;
+            }
+            // If new name is more specific (not just phone number), prefer it
+            else if (contact.pushName.length > 10 && !/^\d+$/.test(contact.pushName)) {
+                updateSet.pushName = contact.pushName;
+            }
+        }
+        
         if (contact.profilePictureUrl) updateSet.profilePictureUrl = contact.profilePictureUrl;
         if (contact.verifiedName) updateSet.verifiedName = contact.verifiedName;
         if (typeof contact.isBusiness === 'boolean') updateSet.isBusiness = contact.isBusiness;
