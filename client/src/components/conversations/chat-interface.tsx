@@ -24,6 +24,9 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMessageForTask, setSelectedMessageForTask] = useState<any>(null);
+  const [openMessageDropdown, setOpenMessageDropdown] = useState<string | null>(null);
+  const [replyToMessage, setReplyToMessage] = useState<any>(null);
+  const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -233,14 +236,21 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     mutationFn: async (text: string) => {
       if (!conversationId || !instanceId) throw new Error('Missing conversation or instance ID');
       
+      const payload: any = {
+        instanceId,
+        chatId: conversationId,
+        message: text,
+      };
+
+      // Add reply information if replying to a message
+      if (replyToMessage) {
+        payload.quotedMessageId = replyToMessage.messageId;
+      }
+      
       const response = await fetch('/api/whatsapp/send-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          instanceId,
-          chatId: conversationId,
-          message: text,
-        }),
+        body: JSON.stringify(payload),
       });
       
       if (!response.ok) throw new Error('Failed to send message');
@@ -250,6 +260,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chat-messages`, conversationId, instanceId] });
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
       setMessageInput("");
+      setReplyToMessage(null); // Clear reply state after sending
     },
   });
 
@@ -289,6 +300,41 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  // Message action handlers
+  const handleReplyToMessage = (message: any) => {
+    setReplyToMessage(message);
+    setOpenMessageDropdown(null);
+  };
+
+  const handleCopyMessage = (message: any) => {
+    navigator.clipboard.writeText(message.content);
+    setCopiedMessage(message.messageId);
+    setOpenMessageDropdown(null);
+    setTimeout(() => setCopiedMessage(null), 2000);
+  };
+
+  const handleForwardMessage = (message: any) => {
+    // Implement forward functionality
+    console.log('Forward message:', message);
+    setOpenMessageDropdown(null);
+  };
+
+  const handleStarMessage = (message: any) => {
+    // Implement star functionality
+    console.log('Star message:', message);
+    setOpenMessageDropdown(null);
+  };
+
+  const handleDeleteMessage = (message: any) => {
+    // Implement delete functionality
+    console.log('Delete message:', message);
+    setOpenMessageDropdown(null);
+  };
+
+  const cancelReply = () => {
+    setReplyToMessage(null);
   };
 
   useEffect(() => {
@@ -499,31 +545,45 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                          <DropdownMenuItem 
+                            className="flex items-center gap-2 cursor-pointer"
+                            onClick={() => handleReplyToMessage(message)}
+                          >
                             <Reply className="h-4 w-4" />
                             Responder
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                          <DropdownMenuItem 
+                            className="flex items-center gap-2 cursor-pointer"
+                            onClick={() => handleCopyMessage(message)}
+                          >
                             <Copy className="h-4 w-4" />
-                            Copiar
+                            {copiedMessage === message.messageId ? 'Copiado!' : 'Copiar'}
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                          <DropdownMenuItem 
+                            className="flex items-center gap-2 cursor-pointer"
+                            onClick={() => handleOpenTaskModal(message)}
+                          >
                             <Smile className="h-4 w-4" />
                             Reaccionar
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                          <DropdownMenuItem 
+                            className="flex items-center gap-2 cursor-pointer"
+                            onClick={() => handleForwardMessage(message)}
+                          >
                             <Forward className="h-4 w-4" />
                             Reenviar
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
-                            <Pin className="h-4 w-4" />
-                            Fijar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                          <DropdownMenuItem 
+                            className="flex items-center gap-2 cursor-pointer"
+                            onClick={() => handleStarMessage(message)}
+                          >
                             <Star className="h-4 w-4" />
                             Destacar
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="flex items-center gap-2 cursor-pointer text-red-600 dark:text-red-400">
+                          <DropdownMenuItem 
+                            className="flex items-center gap-2 cursor-pointer text-red-600 dark:text-red-400"
+                            onClick={() => handleDeleteMessage(message)}
+                          >
                             <Trash2 className="h-4 w-4" />
                             Eliminar
                           </DropdownMenuItem>
@@ -562,13 +622,37 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
       {/* Message Input */}
       <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
+        {/* Reply indicator */}
+        {replyToMessage && (
+          <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border-l-4 border-blue-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                  Respondiendo a {replyToMessage.isFromMe ? 'ti mismo' : getSenderDisplayName(replyToMessage.senderJid)}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-md">
+                  {replyToMessage.content}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={cancelReply}
+                className="h-6 w-6 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+        
         <div className="flex items-center space-x-2">
           <Button variant="ghost" size="sm">
             <Paperclip className="h-4 w-4" />
           </Button>
           <div className="flex-1">
             <Input
-              placeholder="Type a message..."
+              placeholder={replyToMessage ? "Escribe tu respuesta..." : "Type a message..."}
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
               onKeyPress={handleKeyPress}
