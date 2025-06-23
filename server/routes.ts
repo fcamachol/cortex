@@ -1044,6 +1044,14 @@ export async function registerRoutes(app: Express): Promise<void> {
         ON CONFLICT (message_id) DO NOTHING
       `);
       
+      // Notify all connected clients about the new waiting reply
+      const { SseManager } = await import('./sse-manager');
+      SseManager.notifyClients('waiting_reply_added', {
+        messageId,
+        chatId,
+        instanceId
+      });
+      
       res.json({ success: true, message: 'Message marked as awaiting reply' });
     } catch (error) {
       console.error('Error marking message as awaiting reply:', error);
@@ -1055,10 +1063,27 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const { messageId } = req.params;
       
+      // Get the waiting reply record before deletion to notify clients
+      const existingRecord = await db.execute(sql`
+        SELECT message_id, chat_id, instance_id 
+        FROM whatsapp.waiting_reply 
+        WHERE message_id = ${messageId}
+      `);
+      
       await db.execute(sql`
         DELETE FROM whatsapp.waiting_reply 
         WHERE message_id = ${messageId}
       `);
+      
+      // Notify all connected clients about the waiting reply removal
+      if (existingRecord.rows.length > 0) {
+        const { SseManager } = await import('./sse-manager');
+        SseManager.notifyClients('waiting_reply_removed', {
+          messageId,
+          chatId: existingRecord.rows[0].chat_id,
+          instanceId: existingRecord.rows[0].instance_id
+        });
+      }
       
       res.json({ success: true, message: 'Message unmarked from awaiting reply' });
     } catch (error) {

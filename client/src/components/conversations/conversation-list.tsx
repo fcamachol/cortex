@@ -180,8 +180,11 @@ export default function ConversationList({ selectedConversation, onSelectConvers
     queryKey: [`/api/whatsapp/instances/${userId}`],
   });
 
-  // Fetch waiting reply messages to show blue bookmark indicator
-  const { data: waitingReplyMessages = [] } = useQuery({
+  // Real-time waiting reply messages state
+  const [waitingReplyMessages, setWaitingReplyMessages] = useState<any[]>([]);
+
+  // Fetch initial waiting reply messages to show blue bookmark indicator
+  const { data: initialWaitingReplies = [] } = useQuery({
     queryKey: [`/api/whatsapp/waiting-reply/all`],
     queryFn: async () => {
       try {
@@ -205,8 +208,53 @@ export default function ConversationList({ selectedConversation, onSelectConvers
         return [];
       }
     },
-    enabled: instances.length > 0
+    enabled: instances.length > 0,
+    refetchInterval: false, // Disable polling - use SSE for updates
+    staleTime: Infinity // Keep data fresh - updates come via SSE
   });
+
+  // Initialize waiting reply messages from query
+  useEffect(() => {
+    setWaitingReplyMessages(initialWaitingReplies);
+  }, [initialWaitingReplies]);
+
+  // Set up SSE listener for real-time waiting reply updates
+  useEffect(() => {
+    const eventSource = new EventSource('/api/events');
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'waiting_reply_added') {
+          const { messageId, chatId, instanceId } = data.payload;
+          setWaitingReplyMessages(prev => [
+            ...prev,
+            {
+              message_id: messageId,
+              chat_id: chatId,
+              instanceId: instanceId
+            }
+          ]);
+        } else if (data.type === 'waiting_reply_removed') {
+          const { messageId } = data.payload;
+          setWaitingReplyMessages(prev => 
+            prev.filter(msg => msg.message_id !== messageId)
+          );
+        }
+      } catch (error) {
+        console.error('Error processing waiting reply SSE message:', error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE connection error:', error);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, []);
 
   // Get instance indicator with custom colors and letters
   const getInstanceIndicator = (instanceId: string) => {

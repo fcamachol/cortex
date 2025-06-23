@@ -730,9 +730,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     },
     onSuccess: (_, { messageId }) => {
       setWaitingReplyMessages(prev => new Set(prev).add(messageId));
-      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/waiting-reply/${currentInstanceId}`] });
-      // Also invalidate the conversation list waiting reply query to update blue indicators
-      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/waiting-reply/all`] });
+      // SSE will handle real-time updates to conversation list
     },
     onError: (error) => {
       console.error('Failed to mark message as waiting reply:', error);
@@ -749,9 +747,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
         newSet.delete(messageId);
         return newSet;
       });
-      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/waiting-reply/${currentInstanceId}`] });
-      // Also invalidate the conversation list waiting reply query to update blue indicators
-      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/waiting-reply/all`] });
+      // SSE will handle real-time updates to conversation list
     },
     onError: (error) => {
       console.error('Failed to unmark message from waiting reply:', error);
