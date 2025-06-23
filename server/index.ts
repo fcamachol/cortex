@@ -4,6 +4,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeEvolutionApi } from "./evolution-api";
 import { SseManager } from "./sse-manager"; // Import the SSE manager
+import { ScheduledJobsService } from "./scheduled-jobs";
 
 // Main async function to start the server
 (async () => {
@@ -46,6 +47,10 @@ import { SseManager } from "./sse-manager"; // Import the SSE manager
 
     // This single route handles real-time updates pushed to the frontend
     app.get('/api/events', SseManager.handleNewConnection);
+
+    // 4.5. Start Scheduled Jobs for Bill Processing
+    console.log("⏰ Starting scheduled jobs for bill processing...");
+    ScheduledJobsService.start();
 
     // 5. Setup Frontend Serving (Vite for Dev, Static for Prod)
     if (process.env.NODE_ENV === "development") {

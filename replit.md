@@ -127,6 +127,16 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 23, 2025: Successfully implemented comprehensive bill-to-task automatic creation system with penalty balance calculations
+- June 23, 2025: Created BillToTaskService for automatic companion task generation when bills are created - bills generate tasks, not assigned to existing ones
+- June 23, 2025: Added penalty_balance, amount_paid, moratory_rate fields to finance.payables table for transparent late fee tracking
+- June 23, 2025: Implemented linked_payable_id field in crm.tasks table to establish one-to-one bill-to-task relationship
+- June 23, 2025: Built comprehensive payment application system with penalty priority - penalties paid first, then principal amount
+- June 23, 2025: Created ScheduledJobsService with node-cron for daily moratory interest calculations on overdue bills at 1:00 AM
+- June 23, 2025: Added payment processing endpoints for bill payments with automatic task status updates and penalty balance management
+- June 23, 2025: Established complete audit trail system - original bill amounts remain fixed, penalties tracked separately for transparency
+- June 23, 2025: Integrated automatic task completion when bills are fully paid, with real-time task title updates reflecting payment status
+- June 23, 2025: Fixed all SelectItem component errors across finance forms by adding proper value props and TypeScript array handling
 - June 23, 2025: Removed Database and Groups modules from sidebar navigation to streamline interface
 - June 23, 2025: Moved Spaces section to top of sidebar navigation to emphasize spaces as core foundation of the app
 - June 23, 2025: Completed transaction-account linking functionality with account dropdown in transaction form and account column in transaction list

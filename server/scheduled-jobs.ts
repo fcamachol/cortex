@@ -58,7 +58,7 @@ export class ScheduledJobsService {
       return;
     }
 
-    cron.getTasks().forEach(task => task.stop());
+    cron.getTasks().forEach((task: any) => task.stop());
     this.isRunning = false;
     console.log('🛑 Scheduled jobs stopped');
   }
@@ -74,7 +74,7 @@ export class ScheduledJobsService {
       return { success: true, message: 'Overdue bills processing completed' };
     } catch (error) {
       console.error('❌ Error in manual overdue bills processing:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: (error as Error).message };
     }
   }
 }
