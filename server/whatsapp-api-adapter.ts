@@ -1029,6 +1029,7 @@ export const WebhookApiAdapter = {
 
         const getMessageType = (rawMessage: any): WhatsappMessages['messageType'] => {
             const type = rawMessage.messageType;
+            console.log(`🔍 Processing message type: "${type}" for message ${rawMessage.key?.id}`);
             
             // Direct type mappings
             if (type === 'conversation') return 'text';
@@ -1069,7 +1070,8 @@ export const WebhookApiAdapter = {
             console.log(`🔍 Unknown message type detected: ${type}`, {
                 messageType: type,
                 messageKeys: message ? Object.keys(message) : [],
-                messageId: rawMessage.key?.id
+                messageId: rawMessage.key?.id,
+                fullMessage: message
             });
             
             return 'unsupported';
