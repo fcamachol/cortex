@@ -174,6 +174,54 @@ export function WhatsAppInstanceManager() {
     setEditingDisplayName("");
   };
 
+  const updateInstanceCustomization = useMutation({
+    mutationFn: async ({ instanceId, color, letter }: { instanceId: string; color: string; letter: string }) => {
+      return apiRequest("PATCH", `/api/whatsapp/instances/${instanceId}`, {
+        customColor: color,
+        customLetter: letter,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/instances/${userId}`] });
+      setCustomizingInstanceId(null);
+      setCustomColor("");
+      setCustomLetter("");
+      toast({
+        title: "Customization Updated",
+        description: "Instance appearance has been updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update instance customization. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleStartCustomization = (instance: WhatsAppInstance) => {
+    setCustomizingInstanceId(instance.instanceId);
+    // Set current values or defaults
+    setCustomColor((instance as any).customColor || "");
+    setCustomLetter((instance as any).customLetter || "");
+  };
+
+  const handleSaveCustomization = () => {
+    if (!customizingInstanceId) return;
+    updateInstanceCustomization.mutate({
+      instanceId: customizingInstanceId,
+      color: customColor,
+      letter: customLetter,
+    });
+  };
+
+  const handleCancelCustomization = () => {
+    setCustomizingInstanceId(null);
+    setCustomColor("");
+    setCustomLetter("");
+  };
+
   const syncStatus = useMutation({
     mutationFn: async (instanceId: string) => {
       const response = await fetch(`/api/whatsapp/instances/${instanceId}/sync-status`, {
@@ -412,16 +460,27 @@ export function WhatsAppInstanceManager() {
                       Connect
                     </Button>
                   )}
-                  <Button 
-                    onClick={() => handleSyncStatus(instance.instanceId)}
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    disabled={syncStatus.isPending}
-                  >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${syncStatus.isPending ? 'animate-spin' : ''}`} />
-                    {syncStatus.isPending ? 'Syncing...' : 'Sync Status'}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={() => handleSyncStatus(instance.instanceId)}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      disabled={syncStatus.isPending}
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${syncStatus.isPending ? 'animate-spin' : ''}`} />
+                      {syncStatus.isPending ? 'Syncing...' : 'Sync Status'}
+                    </Button>
+                    <Button 
+                      onClick={() => handleStartCustomization(instance)}
+                      variant="outline"
+                      size="sm"
+                      className="px-3"
+                      title="Customize appearance"
+                    >
+                      <Palette className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -523,6 +582,117 @@ export function WhatsAppInstanceManager() {
               disabled={deleteInstance.isPending}
             >
               {deleteInstance.isPending ? "Deleting..." : "Delete Instance"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Customization Dialog */}
+      <Dialog open={!!customizingInstanceId} onOpenChange={() => handleCancelCustomization()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Customize Instance Appearance</DialogTitle>
+            <DialogDescription>
+              Choose a color and letter/emoji to identify this instance in conversations.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            {/* Color Selection */}
+            <div>
+              <Label className="text-sm font-medium mb-3 block">Background Color</Label>
+              <div className="grid grid-cols-6 gap-2">
+                {/* Transparent/None option */}
+                <button
+                  onClick={() => setCustomColor("")}
+                  className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${
+                    customColor === "" ? "border-blue-500" : "border-gray-300"
+                  }`}
+                  style={{ 
+                    background: "linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)",
+                    backgroundSize: "4px 4px",
+                    backgroundPosition: "0 0, 0 2px, 2px -2px, -2px 0px"
+                  }}
+                  title="No background color"
+                >
+                  {customColor === "" && <Check className="w-3 h-3 text-gray-700" />}
+                </button>
+                {/* Color options */}
+                {[
+                  { name: 'Blue', value: 'bg-blue-500', color: '#3b82f6' },
+                  { name: 'Green', value: 'bg-green-500', color: '#10b981' },
+                  { name: 'Purple', value: 'bg-purple-500', color: '#8b5cf6' },
+                  { name: 'Pink', value: 'bg-pink-500', color: '#ec4899' },
+                  { name: 'Yellow', value: 'bg-yellow-500', color: '#eab308' },
+                  { name: 'Orange', value: 'bg-orange-500', color: '#f97316' },
+                  { name: 'Red', value: 'bg-red-500', color: '#ef4444' },
+                  { name: 'Indigo', value: 'bg-indigo-500', color: '#6366f1' },
+                  { name: 'Teal', value: 'bg-teal-500', color: '#14b8a6' },
+                  { name: 'Cyan', value: 'bg-cyan-500', color: '#06b6d4' },
+                  { name: 'Lime', value: 'bg-lime-500', color: '#84cc16' },
+                  { name: 'Amber', value: 'bg-amber-500', color: '#f59e0b' },
+                ].map((colorOption) => (
+                  <button
+                    key={colorOption.value}
+                    onClick={() => setCustomColor(colorOption.value)}
+                    className={`w-8 h-8 rounded-full border-2 ${
+                      customColor === colorOption.value ? "border-blue-500" : "border-gray-300"
+                    }`}
+                    style={{ backgroundColor: colorOption.color }}
+                    title={colorOption.name}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Letter/Emoji Input */}
+            <div>
+              <Label htmlFor="customLetter" className="text-sm font-medium">
+                Letter or Emoji
+              </Label>
+              <Input
+                id="customLetter"
+                value={customLetter}
+                onChange={(e) => setCustomLetter(e.target.value.slice(0, 2))}
+                placeholder="A, 1, 🔥, etc."
+                className="mt-1"
+                maxLength={2}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Use a single letter, number, or emoji to identify this instance
+              </p>
+            </div>
+
+            {/* Preview */}
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Preview</Label>
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                    <span className="text-gray-600">U</span>
+                  </div>
+                  {/* Preview indicator */}
+                  <div 
+                    className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-white text-xs font-bold ${
+                      customColor || "bg-gray-400"
+                    }`}
+                    style={!customColor ? { backgroundColor: "transparent", border: "1px solid #ccc", color: "#666" } : {}}
+                  >
+                    {customLetter || "I"}
+                  </div>
+                </div>
+                <span className="text-sm text-gray-600">Sample conversation with this indicator</span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelCustomization}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveCustomization}
+              disabled={updateInstanceCustomization.isPending}
+            >
+              {updateInstanceCustomization.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

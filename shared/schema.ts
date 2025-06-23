@@ -44,6 +44,8 @@ export const whatsappInstances = whatsappSchema.table("instances", {
   webhookUrl: varchar("webhook_url", { length: 255 }),
   isConnected: boolean("is_connected").default(false).notNull(),
   lastConnectionAt: timestamp("last_connection_at", { withTimezone: true }),
+  customColor: varchar("custom_color", { length: 50 }), // Custom background color class
+  customLetter: varchar("custom_letter", { length: 10 }), // Custom letter or emoji
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
