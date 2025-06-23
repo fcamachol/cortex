@@ -31,25 +31,8 @@ export function AudioPlayer({ src, duration, className, variant = 'received' }: 
     setCurrentTime(0);
     setTotalDuration(0);
 
-    // Check if the audio source is accessible
-    const checkAudioSource = async () => {
-      try {
-        const response = await fetch(src, { method: 'HEAD' });
-        if (!response.ok) {
-          setHasError(true);
-          setIsLoaded(false);
-          console.error('Audio source not accessible:', src, response.status);
-          return;
-        }
-      } catch (error) {
-        setHasError(true);
-        setIsLoaded(false);
-        console.error('Audio source check failed:', src, error);
-        return;
-      }
-    };
-
-    checkAudioSource();
+    // Let the audio element handle loading naturally - don't pre-check with HEAD
+    // The media serving endpoint may support GET but not HEAD requests
 
     const handleLoadedData = () => {
       setTotalDuration(audio.duration);

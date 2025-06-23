@@ -255,8 +255,7 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
                                   </span>
                                 </div>
                                 <AudioPlayer
-                                  audioUrl={`/api/whatsapp/media/${message.instanceId}/${message.messageId}`}
-                                  waveform={message.media.waveform}
+                                  src={`/api/whatsapp/media/${message.instanceId}/${message.messageId}`}
                                   duration={message.media.durationSeconds}
                                   className="bg-transparent"
                                 />
