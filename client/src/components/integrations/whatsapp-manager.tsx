@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { QrCode, Smartphone, WifiOff, Wifi, Plus, Trash2, AlertTriangle, Edit2, Check, X, RefreshCw, Palette } from "lucide-react";
+import { QrCode, Smartphone, WifiOff, Wifi, Plus, Trash2, AlertTriangle, Edit2, Check, X, RefreshCw, Palette, Smile } from "lucide-react";
+import { EmojiPicker } from "@/components/ui/emoji-picker";
 import { QRCodeDisplay } from "./qr-code-display";
 
 interface WhatsAppInstance {
@@ -649,18 +650,28 @@ export function WhatsAppInstanceManager() {
               <Label htmlFor="customLetter" className="text-sm font-medium">
                 Letter or Emoji
               </Label>
-              <Input
-                id="customLetter"
-                value={customLetter}
-                onChange={(e) => {
-                  // Allow up to 4 characters to support complex emojis like flags
-                  const value = e.target.value.slice(0, 4);
-                  setCustomLetter(value);
-                }}
-                placeholder="A, 1, 🔥, 🇲🇽, etc."
-                className="mt-1"
-                maxLength={4}
-              />
+              <div className="flex gap-2 mt-1">
+                <Input
+                  id="customLetter"
+                  value={customLetter}
+                  onChange={(e) => {
+                    // Allow up to 4 characters to support complex emojis like flags
+                    const value = e.target.value.slice(0, 4);
+                    setCustomLetter(value);
+                  }}
+                  placeholder="A, 1, 🔥, 🇲🇽, etc."
+                  className="flex-1"
+                  maxLength={4}
+                />
+                <EmojiPicker 
+                  onEmojiSelect={(emoji) => setCustomLetter(emoji)}
+                  trigger={
+                    <Button variant="outline" size="sm" type="button">
+                      <Smile className="h-4 w-4" />
+                    </Button>
+                  }
+                />
+              </div>
               <p className="text-xs text-gray-500 mt-1">
                 Use a letter, number, or emoji (including flags like 🇲🇽) to identify this instance
               </p>
@@ -676,11 +687,11 @@ export function WhatsAppInstanceManager() {
                   </div>
                   {/* Preview indicator */}
                   <div 
-                    className={`absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center ${
+                    className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center ${
                       customColor ? `${customColor} text-white` : 'text-gray-600'
                     }`}
                     style={{
-                      fontSize: '12px',
+                      fontSize: '14px',
                       fontWeight: customLetter && customLetter.length > 1 ? 'normal' : 'bold',
                       lineHeight: '1',
                       fontFamily: customLetter && customLetter.length > 1 ? 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' : 'inherit'
