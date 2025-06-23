@@ -687,8 +687,8 @@ export function WhatsAppInstanceManager() {
                   </div>
                   {/* Preview indicator */}
                   <div 
-                    className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center ${
-                      customColor ? `${customColor} text-white` : ''
+                    className={`absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center ${
+                      customColor ? `${customColor} rounded-full text-white` : ''
                     }`}
                     style={{
                       fontSize: (customLetter && customLetter.length > 1) ? '18px' : '10px',
@@ -696,7 +696,6 @@ export function WhatsAppInstanceManager() {
                       lineHeight: '1',
                       overflow: 'visible',
                       fontFamily: (customLetter && customLetter.length > 1) ? 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' : 'inherit',
-                      ...((!customColor) ? { display: 'none' } : {}),
                       color: customColor ? 'white' : '#666'
                     }}
                   >
