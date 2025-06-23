@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -243,8 +243,9 @@ export default function ConversationList({ selectedConversation, onSelectConvers
 
   // Fetch initial waiting reply messages to show blue bookmark indicator
   const { data: initialWaitingReplies = [] } = useQuery({
-    queryKey: [`/api/whatsapp/waiting-reply/all`],
+    queryKey: [`/api/whatsapp/waiting-reply/all`, instances.map(i => i.instanceId).sort().join(',')],
     queryFn: async () => {
+      if (instances.length === 0) return [];
       try {
         // Get all waiting replies for all instances and add instanceId to each
         const allWaitingReplies = [];
@@ -268,13 +269,15 @@ export default function ConversationList({ selectedConversation, onSelectConvers
     },
     enabled: instances.length > 0,
     refetchInterval: false, // Disable polling - use SSE for updates
-    staleTime: Infinity // Keep data fresh - updates come via SSE
+    staleTime: 30000 // Cache for 30 seconds, refresh via SSE
   });
 
-  // Initialize waiting reply messages from query
+  // Initialize waiting reply messages from query - prevent infinite loops
   useEffect(() => {
-    setWaitingReplyMessages(initialWaitingReplies);
-  }, [initialWaitingReplies]);
+    if (initialWaitingReplies.length !== waitingReplyMessages.length) {
+      setWaitingReplyMessages(initialWaitingReplies);
+    }
+  }, [initialWaitingReplies.length, waitingReplyMessages.length]);
 
   // Set up SSE listener for real-time waiting reply updates
   useEffect(() => {
@@ -422,9 +425,14 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   // Real-time drafts state
   const [allDrafts, setAllDrafts] = useState<any[]>([]);
 
-  // Fetch initial drafts for display in conversation list
+  // Fetch initial drafts for display in conversation list - stable query key
+  const instanceIdsKey = useMemo(() => 
+    instances.map(i => i.instanceId).sort().join(','), 
+    [instances]
+  );
+
   const { data: initialDrafts = [] } = useQuery({
-    queryKey: [`/api/whatsapp/drafts/all/${userId}`],
+    queryKey: [`/api/whatsapp/drafts/all/${userId}`, instanceIdsKey],
     queryFn: async () => {
       if (instances.length === 0) return [];
       try {
@@ -448,16 +456,18 @@ export default function ConversationList({ selectedConversation, onSelectConvers
       }
     },
     enabled: instances.length > 0,
-    refetchInterval: false, // Disable polling - use SSE for updates
-    staleTime: Infinity // Keep data fresh - updates come via SSE
+    refetchInterval: false,
+    staleTime: 60000
   });
 
-  // Initialize drafts from query
+  // Initialize drafts from query - use ref to prevent loops
+  const draftsInitialized = useRef(false);
   useEffect(() => {
-    if (initialDrafts && initialDrafts.length >= 0) {
+    if (!draftsInitialized.current && initialDrafts.length > 0) {
       setAllDrafts(initialDrafts);
+      draftsInitialized.current = true;
     }
-  }, [initialDrafts]);
+  }, [initialDrafts.length]);
 
   // Helper function to check if conversation has waiting reply messages
   const hasWaitingReply = (conversation: any) => {
