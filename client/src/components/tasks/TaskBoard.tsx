@@ -84,13 +84,7 @@ export function TaskBoard({
       filteredTasks = tasks.filter(task => task.status === columnId);
     }
     
-    // Debug logging
-    console.log(`Column ${columnId}:`, {
-      totalTasks: tasks.length,
-      filteredCount: filteredTasks.length,
-      includeStatuses: column?.includeStatuses,
-      statuses: filteredTasks.map(t => t.status)
-    });
+    // Debug logging removed - tasks now properly filtered
     
     // Remove duplicates by taskId to prevent duplicate key warnings
     const uniqueTasks = filteredTasks.filter((task, index, arr) => 

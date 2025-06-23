@@ -1738,7 +1738,30 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const { instanceId } = req.query;
       const tasks = await storage.getTasks(instanceId as string);
-      res.json(tasks);
+      
+      // Transform snake_case field names to camelCase for frontend compatibility
+      const transformedTasks = tasks.map(task => ({
+        taskId: task.task_id,
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        dueDate: task.due_date,
+        projectId: task.project_id,
+        parentTaskId: task.parent_task_id,
+        assignedToUserId: task.assigned_to_user_id,
+        relatedChatJid: task.related_chat_jid,
+        createdAt: task.created_at,
+        updatedAt: task.updated_at,
+        subtasks: task.subtasks || [],
+        checklistItems: task.checklist_items || [],
+        triggeringMessageId: task.triggering_message_id,
+        instanceId: task.instance_id,
+        senderJid: task.sender_jid,
+        taskType: task.task_type
+      }));
+      
+      res.json(transformedTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
       res.status(500).json({ error: 'Failed to fetch tasks' });

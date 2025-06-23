@@ -114,20 +114,20 @@ export function TasksPage() {
     
     // First pass: create task map with existing subtasks preserved
     data.forEach(task => {
-      taskMap.set(task.task_id, { 
+      taskMap.set(task.taskId, { 
         ...task, 
         subtasks: task.subtasks || [] // Preserve existing subtasks from API
       });
     });
     
-    // Second pass: build hierarchy from parent_task_id relationships
+    // Second pass: build hierarchy from parentTaskId relationships
     data.forEach(task => {
-      const taskWithSubtasks = taskMap.get(task.task_id)!;
-      if (task.parent_task_id) {
-        const parent = taskMap.get(task.parent_task_id);
+      const taskWithSubtasks = taskMap.get(task.taskId)!;
+      if (task.parentTaskId) {
+        const parent = taskMap.get(task.parentTaskId);
         if (parent) {
           // Only add if not already in subtasks array
-          const existsInSubtasks = parent.subtasks!.some(st => st.task_id === task.task_id);
+          const existsInSubtasks = parent.subtasks!.some(st => st.taskId === task.taskId);
           if (!existsInSubtasks) {
             parent.subtasks!.push(taskWithSubtasks);
           }
@@ -144,12 +144,7 @@ export function TasksPage() {
   const { data: tasks, isLoading: tasksLoading } = useQuery({
     queryKey: ['/api/crm/tasks'],
     select: (data) => {
-      // Debug: Log all task data to see what we're receiving
-      console.log('Total tasks in frontend:', data.length);
-      const tasksWithJid = data.filter((task: any) => task.related_chat_jid);
-      const tasksWithoutJid = data.filter((task: any) => !task.related_chat_jid);
-      console.log('Tasks with JID:', tasksWithJid.length);
-      console.log('Tasks without JID:', tasksWithoutJid.length);
+      // Transform and return all tasks for proper board rendering
       
       // Return ALL tasks, not just those with JID
       return transformTasksData(data);
