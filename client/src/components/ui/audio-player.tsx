@@ -31,6 +31,26 @@ export function AudioPlayer({ src, duration, className, variant = 'received' }: 
     setCurrentTime(0);
     setTotalDuration(0);
 
+    // Check if the audio source is accessible
+    const checkAudioSource = async () => {
+      try {
+        const response = await fetch(src, { method: 'HEAD' });
+        if (!response.ok) {
+          setHasError(true);
+          setIsLoaded(false);
+          console.error('Audio source not accessible:', src, response.status);
+          return;
+        }
+      } catch (error) {
+        setHasError(true);
+        setIsLoaded(false);
+        console.error('Audio source check failed:', src, error);
+        return;
+      }
+    };
+
+    checkAudioSource();
+
     const handleLoadedData = () => {
       setTotalDuration(audio.duration);
       setIsLoaded(true);
@@ -48,11 +68,8 @@ export function AudioPlayer({ src, duration, className, variant = 'received' }: 
 
     const handleError = (e: Event) => {
       const target = e.target as HTMLAudioElement;
-      // Only mark as error for genuine media errors, not network timeouts
-      if (target?.error && (
-        target.error.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED ||
-        target.error.code === MediaError.MEDIA_ERR_DECODE
-      )) {
+      // Mark as error for any media loading failure
+      if (target?.error || target?.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
         setHasError(true);
         setIsLoaded(false);
         console.error('Audio playback error for:', src);
