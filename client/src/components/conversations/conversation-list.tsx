@@ -175,15 +175,38 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   // Mock user ID - in real app this would come from auth context
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
 
-  // Fetch waiting reply messages to show blue bookmark indicator
-  const { data: waitingReplyMessages = [] } = useQuery({
-    queryKey: [`/api/whatsapp/waiting-reply`],
-    queryFn: () => apiRequest(`/api/whatsapp/waiting-reply`)
-  });
-
   // Fetch instances with customization data
   const { data: instances = [] } = useQuery({
     queryKey: [`/api/whatsapp/instances/${userId}`],
+  });
+
+  // Fetch waiting reply messages to show blue bookmark indicator
+  const { data: waitingReplyMessages = [] } = useQuery({
+    queryKey: [`/api/whatsapp/waiting-reply/all`],
+    queryFn: async () => {
+      try {
+        // Get all waiting replies for all instances and add instanceId to each
+        const allWaitingReplies = [];
+        for (const instance of instances) {
+          const response = await fetch(`/api/whatsapp/waiting-reply/${instance.instanceId}`);
+          if (response.ok) {
+            const data = await response.json();
+            // Add instanceId to each waiting reply
+            const repliesWithInstance = data.map((reply: any) => ({
+              ...reply,
+              instanceId: instance.instanceId
+            }));
+            allWaitingReplies.push(...repliesWithInstance);
+          }
+        }
+        console.log('Total waiting replies found:', allWaitingReplies.length, allWaitingReplies);
+        return allWaitingReplies;
+      } catch (error) {
+        console.error('Error fetching waiting replies:', error);
+        return [];
+      }
+    },
+    enabled: instances.length > 0
   });
 
   // Get instance indicator with custom colors and letters
@@ -308,9 +331,16 @@ export default function ConversationList({ selectedConversation, onSelectConvers
 
   // Helper function to check if conversation has waiting reply messages
   const hasWaitingReply = (conversation: any) => {
-    return waitingReplyMessages.some((waitingMsg: any) => 
-      waitingMsg.chatId === conversation.chatId && waitingMsg.instanceId === conversation.instanceId
+    const hasWaiting = waitingReplyMessages.some((waitingMsg: any) => 
+      // Check both camelCase and snake_case field names
+      (waitingMsg.chatId === conversation.chatId || waitingMsg.chat_id === conversation.chatId) && 
+      (waitingMsg.instanceId === conversation.instanceId || waitingMsg.instance_id === conversation.instanceId)
     );
+    // Debug logging
+    if (hasWaiting) {
+      console.log('Conversation has waiting reply:', conversation.chatId, conversation.instanceId);
+    }
+    return hasWaiting;
   };
 
   // Helper function to get latest message for a conversation (including drafts)
