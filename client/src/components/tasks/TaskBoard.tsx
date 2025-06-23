@@ -9,18 +9,18 @@ import { Calendar, MessageSquare, User, MoreHorizontal, Plus, ChevronDown, Chevr
 
 
 interface Task {
-  task_id: number;
+  taskId: number;
   title: string;
   description?: string;
   status: string;
   priority?: string;
-  due_date?: string;
-  project_id?: number;
-  parent_task_id?: number;
-  assigned_to_user_id?: string;
-  related_chat_jid?: string;
-  created_at: string;
-  updated_at: string;
+  dueDate?: string;
+  projectId?: number;
+  parentTaskId?: number;
+  assignedToUserId?: string;
+  relatedChatJid?: string;
+  createdAt: string;
+  updatedAt: string;
   subtasks?: Task[];
   checklist_items?: ChecklistItem[];
 }
@@ -108,12 +108,12 @@ export function TaskBoard({
   };
 
   const renderTask = (task: Task, index: number) => {
-    if (!task || !task.task_id) {
+    if (!task || !task.taskId) {
       return null;
     }
     
     return (
-    <Draggable key={task.task_id} draggableId={task.task_id.toString()} index={index}>
+    <Draggable key={task.taskId} draggableId={task.taskId.toString()} index={index}>
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
