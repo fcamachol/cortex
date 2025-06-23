@@ -7,12 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TransactionForm } from "@/components/finance/TransactionForm";
 import { LoanForm } from "@/components/finance/LoanForm";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Receipt, CreditCard, Filter } from "lucide-react";
+import { AccountForm } from "@/components/finance/AccountForm";
+import { AccountList } from "@/components/finance/AccountList";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Receipt, CreditCard, Filter, Building2 } from "lucide-react";
 
 export default function FinancePage() {
   const [showTransactionForm, setShowTransactionForm] = useState(false);
   const [showPayableForm, setShowPayableForm] = useState(false);
   const [showLoanForm, setShowLoanForm] = useState(false);
+  const [showAccountForm, setShowAccountForm] = useState(false);
   const [dateFilter, setDateFilter] = useState("this-month");
 
   // Fetch financial overview

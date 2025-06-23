@@ -1964,6 +1964,57 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Get accounts
+  app.get('/api/finance/accounts', async (req: Request, res: Response) => {
+    try {
+      const spaceId = parseInt(req.query.spaceId as string);
+      if (!spaceId) {
+        return res.status(400).json({ error: 'Space ID is required' });
+      }
+      
+      const accounts = await storage.getFinanceAccounts(spaceId);
+      res.json(accounts || []);
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
+      res.status(500).json({ error: 'Failed to fetch accounts' });
+    }
+  });
+
+  // Create account
+  app.post('/api/finance/accounts', async (req: Request, res: Response) => {
+    try {
+      const account = await storage.createFinanceAccount(req.body);
+      res.json(account);
+    } catch (error) {
+      console.error('Error creating account:', error);
+      res.status(500).json({ error: 'Failed to create account' });
+    }
+  });
+
+  // Update account
+  app.put('/api/finance/accounts/:accountId', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const account = await storage.updateFinanceAccount(accountId, req.body);
+      res.json(account);
+    } catch (error) {
+      console.error('Error updating account:', error);
+      res.status(500).json({ error: 'Failed to update account' });
+    }
+  });
+
+  // Delete account
+  app.delete('/api/finance/accounts/:accountId', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      await storage.deleteFinanceAccount(accountId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      res.status(500).json({ error: 'Failed to delete account' });
+    }
+  });
+
   // Evolution API webhook handlers - Use the new layered webhook controller
   app.post('/api/evolution/webhook/:instanceName/:eventType', async (req: Request, res: Response) => {
     await WebhookController.handleIncomingEvent(req, res);

@@ -13,6 +13,8 @@ import {
     actionRules,
     // CRM Schema
     crmTasks,
+    // Finance Schema
+    financeAccounts,
     // Type Imports
     type AppUser, type InsertAppUser,
     type WhatsappInstance, type InsertWhatsappInstance,
@@ -24,7 +26,8 @@ import {
     type WhatsappMessageReaction, type InsertWhatsappMessageReaction,
     type WhatsappMessageMedia, type InsertWhatsappMessageMedia,
     type WhatsappMessageUpdate, type InsertWhatsappMessageUpdate,
-    whatsappDrafts, type WhatsappDraft, type InsertWhatsappDraft
+    whatsappDrafts, type WhatsappDraft, type InsertWhatsappDraft,
+    type FinanceAccount, type InsertFinanceAccount
 } from "../shared/schema"; // Assuming a single, final schema definition file
 
 /**
