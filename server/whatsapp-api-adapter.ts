@@ -1086,8 +1086,8 @@ export const WebhookApiAdapter = {
             content: this.extractMessageContent(rawMessage),
             timestamp: timestamp && typeof timestamp === 'number' ? new Date(timestamp * 1000) : new Date(),
             quotedMessageId: rawMessage.message?.extendedTextMessage?.contextInfo?.quotedMessage?.key?.id,
-            isForwarded: (rawMessage.message?.extendedTextMessage?.contextInfo?.forwardingScore || 0) > 0,
-            forwardingScore: rawMessage.message?.extendedTextMessage?.contextInfo?.forwardingScore || 0,
+            isForwarded: this.detectForwardedMessage(rawMessage),
+            forwardingScore: this.extractForwardingScore(rawMessage),
             isStarred: rawMessage.starred || false,
             isEdited: rawMessage.messageType === 'editedMessage',
             lastEditedAt: rawMessage.messageType === 'editedMessage' && timestamp && typeof timestamp === 'number'
@@ -1096,6 +1096,59 @@ export const WebhookApiAdapter = {
             sourcePlatform: rawMessage.source,
             rawApiPayload: rawMessage,
         };
+    },
+
+    /**
+     * Detects if a message is forwarded by checking multiple possible locations
+     */
+    detectForwardedMessage(rawMessage: any): boolean {
+        // Check contextInfo at the root level (Evolution API format)
+        if (rawMessage.contextInfo?.isForwarded === true) {
+            console.log(`🔄 Detected forwarded message via contextInfo.isForwarded: ${rawMessage.key?.id}`);
+            return true;
+        }
+        
+        // Check forwardingScore in contextInfo
+        if ((rawMessage.contextInfo?.forwardingScore || 0) > 0) {
+            console.log(`🔄 Detected forwarded message via contextInfo.forwardingScore: ${rawMessage.key?.id} (score: ${rawMessage.contextInfo.forwardingScore})`);
+            return true;
+        }
+        
+        // Check in message.extendedTextMessage.contextInfo (WhatsApp format)
+        if ((rawMessage.message?.extendedTextMessage?.contextInfo?.forwardingScore || 0) > 0) {
+            console.log(`🔄 Detected forwarded message via extendedTextMessage.contextInfo: ${rawMessage.key?.id}`);
+            return true;
+        }
+        
+        // Check in message.conversation contextInfo
+        if ((rawMessage.message?.contextInfo?.forwardingScore || 0) > 0) {
+            console.log(`🔄 Detected forwarded message via message.contextInfo: ${rawMessage.key?.id}`);
+            return true;
+        }
+        
+        return false;
+    },
+
+    /**
+     * Extracts forwarding score from various possible locations
+     */
+    extractForwardingScore(rawMessage: any): number {
+        // Check contextInfo at the root level (Evolution API format)
+        if (rawMessage.contextInfo?.forwardingScore) {
+            return rawMessage.contextInfo.forwardingScore;
+        }
+        
+        // Check in message.extendedTextMessage.contextInfo (WhatsApp format)
+        if (rawMessage.message?.extendedTextMessage?.contextInfo?.forwardingScore) {
+            return rawMessage.message.extendedTextMessage.contextInfo.forwardingScore;
+        }
+        
+        // Check in message.conversation contextInfo
+        if (rawMessage.message?.contextInfo?.forwardingScore) {
+            return rawMessage.message.contextInfo.forwardingScore;
+        }
+        
+        return 0;
     },
 
     /**
