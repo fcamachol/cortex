@@ -607,7 +607,6 @@ export const appUsers = appSchema.table("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   fullName: varchar("full_name", { length: 255 }),
-  whatsappPhoneNumber: varchar("whatsapp_phone_number", { length: 50 }).unique(),
   avatarUrl: varchar("avatar_url", { length: 512 }),
   passwordResetToken: varchar("password_reset_token", { length: 10 }),
   passwordResetExpiry: timestamp("password_reset_expiry", { withTimezone: true }),
