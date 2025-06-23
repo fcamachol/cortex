@@ -2176,6 +2176,135 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // ============================================
+  // CRM CONTACT GROUPS ENDPOINTS - Flexible contact organization
+  // ============================================
+
+  // Get contact groups for a space
+  app.get('/api/crm/contact-groups', async (req: Request, res: Response) => {
+    try {
+      const spaceId = parseInt(req.query.spaceId as string);
+      if (!spaceId) {
+        return res.status(400).json({ error: 'spaceId is required' });
+      }
+
+      const groups = await storage.getContactGroups(spaceId);
+      res.json(groups);
+    } catch (error) {
+      console.error('Error fetching contact groups:', error);
+      res.status(500).json({ error: 'Failed to fetch contact groups' });
+    }
+  });
+
+  // Get contact group with members
+  app.get('/api/crm/contact-groups/:groupId', async (req: Request, res: Response) => {
+    try {
+      const { groupId } = req.params;
+      const group = await storage.getContactGroupWithMembers(groupId);
+      
+      if (!group) {
+        return res.status(404).json({ error: 'Contact group not found' });
+      }
+
+      res.json(group);
+    } catch (error) {
+      console.error('Error fetching contact group:', error);
+      res.status(500).json({ error: 'Failed to fetch contact group' });
+    }
+  });
+
+  // Create contact group
+  app.post('/api/crm/contact-groups', async (req: Request, res: Response) => {
+    try {
+      const groupData = req.body;
+      const group = await storage.createContactGroup(groupData);
+      res.status(201).json(group);
+    } catch (error) {
+      console.error('Error creating contact group:', error);
+      res.status(500).json({ error: 'Failed to create contact group' });
+    }
+  });
+
+  // Update contact group
+  app.put('/api/crm/contact-groups/:groupId', async (req: Request, res: Response) => {
+    try {
+      const { groupId } = req.params;
+      const updates = req.body;
+      const group = await storage.updateContactGroup(groupId, updates);
+      res.json(group);
+    } catch (error) {
+      console.error('Error updating contact group:', error);
+      res.status(500).json({ error: 'Failed to update contact group' });
+    }
+  });
+
+  // Delete contact group
+  app.delete('/api/crm/contact-groups/:groupId', async (req: Request, res: Response) => {
+    try {
+      const { groupId } = req.params;
+      await storage.deleteContactGroup(groupId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting contact group:', error);
+      res.status(500).json({ error: 'Failed to delete contact group' });
+    }
+  });
+
+  // Add contact to group
+  app.post('/api/crm/contact-groups/:groupId/members', async (req: Request, res: Response) => {
+    try {
+      const { groupId } = req.params;
+      const { contactId, addedBy, roleInGroup } = req.body;
+      
+      const member = await storage.addContactToGroup(groupId, contactId, addedBy, roleInGroup);
+      res.status(201).json(member);
+    } catch (error) {
+      console.error('Error adding contact to group:', error);
+      res.status(500).json({ error: 'Failed to add contact to group' });
+    }
+  });
+
+  // Remove contact from group
+  app.delete('/api/crm/contact-groups/:groupId/members/:contactId', async (req: Request, res: Response) => {
+    try {
+      const { groupId } = req.params;
+      const contactId = parseInt(req.params.contactId);
+      
+      await storage.removeContactFromGroup(groupId, contactId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error removing contact from group:', error);
+      res.status(500).json({ error: 'Failed to remove contact from group' });
+    }
+  });
+
+  // Update contact role in group
+  app.put('/api/crm/contact-groups/:groupId/members/:contactId', async (req: Request, res: Response) => {
+    try {
+      const { groupId } = req.params;
+      const contactId = parseInt(req.params.contactId);
+      const { roleInGroup } = req.body;
+      
+      const member = await storage.updateContactRoleInGroup(groupId, contactId, roleInGroup);
+      res.json(member);
+    } catch (error) {
+      console.error('Error updating contact role in group:', error);
+      res.status(500).json({ error: 'Failed to update contact role in group' });
+    }
+  });
+
+  // Get groups for a specific contact
+  app.get('/api/crm/contacts/:contactId/groups', async (req: Request, res: Response) => {
+    try {
+      const contactId = parseInt(req.params.contactId);
+      const groups = await storage.getContactGroupsByContact(contactId);
+      res.json(groups);
+    } catch (error) {
+      console.error('Error fetching contact groups for contact:', error);
+      res.status(500).json({ error: 'Failed to fetch contact groups for contact' });
+    }
+  });
+
   // =============================================================================
   // CREDIT CARD MANAGEMENT ENDPOINTS
   // =============================================================================

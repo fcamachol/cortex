@@ -12,7 +12,7 @@ import {
     // Actions Schema
     actionRules,
     // CRM Schema
-    crmTasks, crmCompanies,
+    crmTasks, crmCompanies, crmContactGroups, crmContactGroupMembers,
     // Finance Schema
     financeAccounts, financeTransactions, financePayables, financeCategories,
     financeRecurringBills, financeLoans, financeLoanPayments, financePayablePayments,
@@ -1567,6 +1567,109 @@ class DatabaseStorage {
             console.error('Error fetching latest statement:', error);
             throw error;
         }
+    }
+
+    // =========================================================================
+    // CRM CONTACT GROUPS METHODS
+    // =========================================================================
+
+    async getContactGroups(spaceId: number): Promise<any[]> {
+        return await db.select().from(crmContactGroups)
+            .where(and(
+                eq(crmContactGroups.spaceId, spaceId),
+                eq(crmContactGroups.isActive, true)
+            ))
+            .orderBy(desc(crmContactGroups.createdAt));
+    }
+
+    async getContactGroupWithMembers(groupId: string): Promise<any> {
+        const group = await db.select().from(crmContactGroups)
+            .where(eq(crmContactGroups.groupId, groupId))
+            .limit(1);
+
+        if (!group.length) return null;
+
+        const members = await db.select({
+            contactId: crmContactGroupMembers.contactId,
+            roleInGroup: crmContactGroupMembers.roleInGroup,
+            addedAt: crmContactGroupMembers.addedAt,
+            addedBy: crmContactGroupMembers.addedBy,
+        }).from(crmContactGroupMembers)
+        .where(eq(crmContactGroupMembers.groupId, groupId));
+
+        return {
+            ...group[0],
+            members
+        };
+    }
+
+    async createContactGroup(groupData: any): Promise<any> {
+        const [group] = await db.insert(crmContactGroups)
+            .values(groupData)
+            .returning();
+        return group;
+    }
+
+    async updateContactGroup(groupId: string, updates: any): Promise<any> {
+        const [group] = await db.update(crmContactGroups)
+            .set({ ...updates, updatedAt: new Date() })
+            .where(eq(crmContactGroups.groupId, groupId))
+            .returning();
+        return group;
+    }
+
+    async deleteContactGroup(groupId: string): Promise<void> {
+        // Soft delete by setting isActive to false
+        await db.update(crmContactGroups)
+            .set({ isActive: false, updatedAt: new Date() })
+            .where(eq(crmContactGroups.groupId, groupId));
+    }
+
+    async addContactToGroup(groupId: string, contactId: number, addedBy: string, roleInGroup?: string): Promise<any> {
+        const [member] = await db.insert(crmContactGroupMembers)
+            .values({
+                groupId,
+                contactId,
+                addedBy,
+                roleInGroup: roleInGroup || null
+            })
+            .returning();
+        return member;
+    }
+
+    async removeContactFromGroup(groupId: string, contactId: number): Promise<void> {
+        await db.delete(crmContactGroupMembers)
+            .where(and(
+                eq(crmContactGroupMembers.groupId, groupId),
+                eq(crmContactGroupMembers.contactId, contactId)
+            ));
+    }
+
+    async updateContactRoleInGroup(groupId: string, contactId: number, roleInGroup: string): Promise<any> {
+        const [member] = await db.update(crmContactGroupMembers)
+            .set({ roleInGroup })
+            .where(and(
+                eq(crmContactGroupMembers.groupId, groupId),
+                eq(crmContactGroupMembers.contactId, contactId)
+            ))
+            .returning();
+        return member;
+    }
+
+    async getContactGroupsByContact(contactId: number): Promise<any[]> {
+        return await db.select({
+            groupId: crmContactGroups.groupId,
+            groupName: crmContactGroups.groupName,
+            groupDescription: crmContactGroups.groupDescription,
+            groupIcon: crmContactGroups.groupIcon,
+            roleInGroup: crmContactGroupMembers.roleInGroup,
+            addedAt: crmContactGroupMembers.addedAt,
+        }).from(crmContactGroupMembers)
+        .innerJoin(crmContactGroups, eq(crmContactGroupMembers.groupId, crmContactGroups.groupId))
+        .where(and(
+            eq(crmContactGroupMembers.contactId, contactId),
+            eq(crmContactGroups.isActive, true)
+        ));
     }
 }
 
