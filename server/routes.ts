@@ -8,6 +8,8 @@ import { nanoid } from 'nanoid';
 import { WebhookController } from './webhook-controller';
 import { SseManager } from './sse-manager';
 import { db } from './db';
+import fs from 'fs';
+import path from 'path';
 
 function formatToE164(phoneNumber: string): string {
   let cleaned = phoneNumber.replace(/\D/g, '');
@@ -1525,8 +1527,6 @@ export async function registerRoutes(app: Express): Promise<void> {
       const { instanceId, messageId } = req.params;
       
       // First try to serve from cached file
-      const fs = require('fs');
-      const path = require('path');
       const mediaDir = path.join(process.cwd(), 'media', instanceId);
       
       // Check for cached file with various extensions
