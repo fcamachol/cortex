@@ -440,7 +440,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                 key={`${conversation.instanceId}-${conversation.chatId}`}
                 className={`whatsapp-conversation-item ${
                   isSelected ? 'active' : ''
-                } ${conversation.unreadCount > 0 ? 'bg-green-50 dark:bg-green-900/10 border-l-2 border-green-500' : ''} relative group`}
+                } relative group`}
                 onClick={() => onSelectConversation(conversationKey)}
               onMouseEnter={() => setHoveredConversation(conversationKey)}
               onMouseLeave={() => setHoveredConversation(null)}
