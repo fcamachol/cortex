@@ -10,6 +10,8 @@ import { formatPhoneNumber } from "@/lib/phoneUtils";
 import { formatConversationTimestamp } from "@/lib/timeUtils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ConversationListProps {
   selectedConversation: string | null;
@@ -21,6 +23,8 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   const [hoveredConversation, setHoveredConversation] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [hiddenChats, setHiddenChats] = useState<Set<string>>(new Set());
+  const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'favorites' | 'groups'>('all');
+  const [selectedInstance, setSelectedInstance] = useState<string>('all');
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -540,6 +544,22 @@ export default function ConversationList({ selectedConversation, onSelectConvers
         return false;
       }
       
+      // Instance filter
+      if (selectedInstance !== 'all' && conv.instanceId !== selectedInstance) {
+        return false;
+      }
+      
+      // Filter by type (All, Unread, Favorites, Groups)
+      if (activeFilter === 'unread' && (!conv.unreadCount || conv.unreadCount === 0)) {
+        return false;
+      }
+      if (activeFilter === 'favorites' && !conv.favorite) {
+        return false;
+      }
+      if (activeFilter === 'groups' && !conv.chatId?.includes('@g.us')) {
+        return false;
+      }
+      
       // Apply search filter if there's a search query
       if (searchQuery.trim() === '') {
         return true; // Show all conversations when no search
@@ -597,16 +617,86 @@ export default function ConversationList({ selectedConversation, onSelectConvers
     <div className="w-80 whatsapp-sidebar flex flex-col">
       {/* Search */}
       <div className="p-3 border-b border-gray-200 dark:border-gray-800">
-        <div className="relative">
+        <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
-            placeholder="Search conversations..."
+            placeholder="Search or start a new chat"
             className="pl-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
+        
+        {/* Filter Tabs */}
+        <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as any)}>
+          <TabsList className="grid w-full grid-cols-4 h-9 mb-2 bg-gray-50 dark:bg-gray-800">
+            <TabsTrigger value="all" className="text-xs px-2 data-[state=active]:bg-green-100 data-[state=active]:text-green-800 dark:data-[state=active]:bg-green-900 dark:data-[state=active]:text-green-200">
+              All
+            </TabsTrigger>
+            <TabsTrigger value="unread" className="text-xs px-2 data-[state=active]:bg-green-100 data-[state=active]:text-green-800 dark:data-[state=active]:bg-green-900 dark:data-[state=active]:text-green-200">
+              Unread
+              {(() => {
+                const unreadCount = conversations.filter((conv: any) => 
+                  conv.unreadCount && conv.unreadCount > 0 && 
+                  (selectedInstance === 'all' || conv.instanceId === selectedInstance)
+                ).length;
+                return unreadCount > 0 ? (
+                  <Badge variant="secondary" className="ml-1 h-4 text-xs bg-green-500 text-white">
+                    {unreadCount}
+                  </Badge>
+                ) : null;
+              })()}
+            </TabsTrigger>
+            <TabsTrigger value="favorites" className="text-xs px-2 data-[state=active]:bg-green-100 data-[state=active]:text-green-800 dark:data-[state=active]:bg-green-900 dark:data-[state=active]:text-green-200">
+              Favorites
+            </TabsTrigger>
+            <TabsTrigger value="groups" className="text-xs px-2 data-[state=active]:bg-green-100 data-[state=active]:text-green-800 dark:data-[state=active]:bg-green-900 dark:data-[state=active]:text-green-200">
+              Groups
+              {(() => {
+                const groupCount = conversations.filter((conv: any) => 
+                  conv.chatId?.includes('@g.us') && 
+                  (selectedInstance === 'all' || conv.instanceId === selectedInstance)
+                ).length;
+                return groupCount > 0 ? (
+                  <Badge variant="secondary" className="ml-1 h-4 text-xs">
+                    {groupCount}
+                  </Badge>
+                ) : null;
+              })()}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        
+        {/* Instance Filter */}
+        <Select value={selectedInstance} onValueChange={setSelectedInstance}>
+          <SelectTrigger className="w-full h-8">
+            <SelectValue placeholder="All Instances" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Instances</SelectItem>
+            {instances.map((instance: any) => (
+              <SelectItem key={instance.instanceId} value={instance.instanceId}>
+                {instance.instanceName || instance.instanceId}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
+
+      {/* Archived Section */}
+      {hiddenChats.size > 0 && (
+        <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+          <div className="flex items-center justify-between cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg px-2 py-1">
+            <div className="flex items-center gap-2">
+              <Archive className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Archived</span>
+            </div>
+            <Badge variant="secondary" className="h-5 text-xs">
+              {hiddenChats.size}
+            </Badge>
+          </div>
+        </div>
+      )}
 
       {/* Conversations List */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden max-h-[calc(100vh-120px)] scroll-smooth scrollbar-thin conversations-scroll">
