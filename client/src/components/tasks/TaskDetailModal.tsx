@@ -236,14 +236,14 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
 
   // Create checklist item mutation
   const createChecklistItemMutation = useMutation({
-    mutationFn: async (itemData: { content: string; task_id: number }) => {
+    mutationFn: async (itemData: { content: string; taskId: number }) => {
       return fetch('/api/crm/checklist-items', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          task_id: itemData.task_id,
+          task_id: itemData.taskId,
           content: itemData.content,
           is_completed: false
         })
@@ -315,7 +315,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
 
   // Create subtask mutation
   const createSubtaskMutation = useMutation({
-    mutationFn: async (subtaskData: { title: string; parent_task_id: number }) => {
+    mutationFn: async (subtaskData: { title: string; parentTaskId: number }) => {
       return fetch('/api/crm/tasks', {
         method: 'POST',
         headers: {
@@ -323,7 +323,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
         },
         body: JSON.stringify({
           title: subtaskData.title,
-          parent_task_id: subtaskData.parent_task_id,
+          parent_task_id: subtaskData.parentTaskId,
           status: 'todo',
           priority: 'medium'
         })
@@ -378,21 +378,21 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
         const updates: Partial<Task> = {
           status: statusAfterReply
         };
-        onUpdate(task.task_id, updates);
+        onUpdate(task.taskId, updates);
       }
       
       // Refresh message thread to show the new reply
       setTimeout(async () => {
-        if (task?.related_chat_jid && task?.instance_id) {
+        if (task?.relatedChatJid && task?.instanceId) {
           setThreadLoading(true);
           try {
-            const response = await fetch(`/api/whatsapp/chat-messages?chatId=${encodeURIComponent(task.related_chat_jid)}&instanceId=${task.instance_id}&limit=50`);
+            const response = await fetch(`/api/whatsapp/chat-messages?chatId=${encodeURIComponent(task.relatedChatJid)}&instanceId=${task.instanceId}&limit=50`);
             if (response.ok) {
               const messages = await response.json();
               const relevantMessages = messages.filter((msg: any) => {
-                if (msg.messageId === task.triggering_message_id) return true;
-                if (msg.quotedMessageId === task.triggering_message_id) return true;
-                if (msg.timestamp && new Date(msg.timestamp) >= new Date(task.created_at)) return true;
+                if (msg.messageId === task.triggeringMessageId) return true;
+                if (msg.quotedMessageId === task.triggeringMessageId) return true;
+                if (msg.timestamp && new Date(msg.timestamp) >= new Date(task.createdAt)) return true;
                 if (msg.fromMe === true) return true;
                 return false;
               });
@@ -427,7 +427,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
       instanceId: task.instance_id,
       chatId: task.related_chat_jid,
       message: replyMessage.trim(),
-      quotedMessageId: task.triggering_message_id
+      quotedMessageId: task.triggeringMessageId
     });
   };
 
