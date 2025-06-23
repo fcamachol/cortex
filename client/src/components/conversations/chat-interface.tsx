@@ -141,21 +141,31 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     return formatPhoneNumber(senderJid.replace('@s.whatsapp.net', ''));
   };
 
-  const conversation = conversations.find(conv => conv.chatId === conversationId);
-  const instanceId = conversation?.instanceId;
+  // Parse the composite conversation identifier (instanceId:chatId)
+  const [instanceId, chatId] = conversationId?.includes(':') 
+    ? conversationId.split(':') 
+    : [null, conversationId];
+  
+  // Find the specific conversation, preferring exact instance match
+  const conversation = instanceId 
+    ? conversations.find(conv => conv.chatId === chatId && conv.instanceId === instanceId)
+    : conversations.find(conv => conv.chatId === chatId);
+  
+  // Use the conversation's instanceId if we found one, otherwise use the parsed instanceId
+  const finalInstanceId = conversation?.instanceId || instanceId;
 
   const { data: rawMessages = [], isLoading } = useQuery<any[]>({
-    queryKey: [`/api/whatsapp/chat-messages`, conversationId, instanceId],
+    queryKey: [`/api/whatsapp/chat-messages`, conversationId, finalInstanceId],
     queryFn: async () => {
-      if (!conversationId || !instanceId) return [];
-      console.log('Fetching messages for chatId:', conversationId, 'instanceId:', instanceId);
-      const response = await fetch(`/api/whatsapp/chat-messages?chatId=${encodeURIComponent(conversationId)}&instanceId=${instanceId}&userId=${userId}&limit=100`);
+      if (!chatId || !finalInstanceId) return [];
+      console.log('Fetching messages for chatId:', chatId, 'instanceId:', finalInstanceId);
+      const response = await fetch(`/api/whatsapp/chat-messages?chatId=${encodeURIComponent(chatId)}&instanceId=${finalInstanceId}&userId=${userId}&limit=100`);
       if (!response.ok) throw new Error('Failed to fetch messages');
       const data = await response.json();
-      console.log('Fetched messages:', data.length, 'messages for chat:', conversationId);
+      console.log('Fetched messages:', data.length, 'messages for chat:', chatId);
       return data.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     },
-    enabled: !!conversationId && conversationId !== 'undefined' && !!instanceId,
+    enabled: !!chatId && chatId !== 'undefined' && !!finalInstanceId,
     refetchInterval: false, // Disable polling - use SSE for real-time updates
     staleTime: 300000, // Cache for 5 minutes
   });
@@ -373,12 +383,12 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   // Load draft for current conversation
   const { data: currentDraft } = useQuery({
-    queryKey: [`/api/whatsapp/drafts/${instanceId}/${conversationId}`],
+    queryKey: [`/api/whatsapp/drafts/${finalInstanceId}/${chatId}`],
     queryFn: async () => {
-      if (!instanceId || !conversationId) return null;
+      if (!finalInstanceId || !chatId) return null;
       try {
-        console.log('Fetching draft for:', { instanceId, conversationId });
-        const response = await fetch(`/api/whatsapp/drafts/${instanceId}`, {
+        console.log('Fetching draft for:', { instanceId: finalInstanceId, chatId });
+        const response = await fetch(`/api/whatsapp/drafts/${finalInstanceId}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -387,7 +397,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
         if (response.ok) {
           const drafts = await response.json();
           console.log('All drafts for instance:', drafts);
-          const foundDraft = drafts.find((d: any) => d.chatId === conversationId);
+          const foundDraft = drafts.find((d: any) => d.chatId === chatId);
           console.log('Found draft for conversation:', foundDraft);
           return foundDraft || null;
         }
@@ -396,7 +406,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       }
       return null;
     },
-    enabled: !!instanceId && !!conversationId,
+    enabled: !!finalInstanceId && !!chatId,
     staleTime: 1000, // Reduce stale time for more responsive draft loading
     refetchOnWindowFocus: true
   });

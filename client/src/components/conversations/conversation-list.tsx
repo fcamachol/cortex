@@ -434,9 +434,9 @@ export default function ConversationList({ selectedConversation, onSelectConvers
             <div
               key={`${conversation.instanceId}-${conversation.chatId}`}
               className={`whatsapp-conversation-item ${
-                selectedConversation === (conversation.chatId || conversation.id) ? 'active' : ''
+                selectedConversation === `${conversation.instanceId}:${conversation.chatId}` ? 'active' : ''
               } relative group`}
-              onClick={() => onSelectConversation(conversation.chatId || conversation.id)}
+              onClick={() => onSelectConversation(`${conversation.instanceId}:${conversation.chatId}`)}
               onMouseEnter={() => setHoveredConversation(conversation.chatId || conversation.id)}
               onMouseLeave={() => setHoveredConversation(null)}
             >
