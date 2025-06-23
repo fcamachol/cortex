@@ -10,6 +10,7 @@ import { MessageHoverActions } from "@/components/conversations/MessageHoverActi
 import { CreateTaskFromMessageModal } from "@/components/tasks/CreateTaskFromMessageModal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 // WebSocket functionality removed - using webhook-based system
 import { apiRequest } from "@/lib/queryClient";
 import { formatPhoneNumber } from "@/lib/phoneUtils";
@@ -27,6 +28,8 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [openMessageDropdown, setOpenMessageDropdown] = useState<string | null>(null);
   const [replyToMessage, setReplyToMessage] = useState<any>(null);
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
+  const [forwardModalOpen, setForwardModalOpen] = useState(false);
+  const [selectedMessageForForward, setSelectedMessageForForward] = useState<any>(null);
   
   // Draft storage per conversation (now database-backed)
   const [replyStates, setReplyStates] = useState<{[chatId: string]: any}>({});
@@ -295,6 +298,40 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     },
   });
 
+  const forwardMessageMutation = useMutation({
+    mutationFn: async ({ targetChatId, targetInstanceId }: { targetChatId: string; targetInstanceId: string }) => {
+      if (!selectedMessageForForward) throw new Error('No message selected for forwarding');
+      
+      const payload = {
+        instanceId: targetInstanceId,
+        chatId: targetChatId,
+        message: selectedMessageForForward.content,
+        isForwarded: true,
+      };
+      
+      const response = await fetch('/api/whatsapp/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      
+      if (!response.ok) throw new Error('Failed to forward message');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chat-messages`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+      setForwardModalOpen(false);
+      setSelectedMessageForForward(null);
+    }
+  });
+
+  // Query to get all conversations for forward modal
+  const { data: allConversations } = useQuery({
+    queryKey: [`/api/whatsapp/conversations/${userId}`],
+    enabled: !!userId && forwardModalOpen
+  });
+
   const addReactionMutation = useMutation({
     mutationFn: async ({ messageId, reaction }: { messageId: string; reaction: string }) => {
       if (!chatId || !finalInstanceId) throw new Error('Missing conversation or instance ID');
@@ -354,8 +391,9 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   };
 
   const handleForwardMessage = (message: any) => {
-    // Implement forward functionality
-    console.log('Forward message:', message);
+    // Create a forward modal state
+    setSelectedMessageForForward(message);
+    setForwardModalOpen(true);
     setOpenMessageDropdown(null);
   };
 
