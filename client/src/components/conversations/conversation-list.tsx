@@ -73,17 +73,19 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   });
 
   const markUnreadMutation = useMutation({
-    mutationFn: async ({ chatId, instanceId, unread }: { chatId: string; instanceId: string; unread: boolean }) => {
+    mutationFn: async ({ chatId, instanceId, unread, silent = false }: { chatId: string; instanceId: string; unread: boolean; silent?: boolean }) => {
       return apiRequest(`/api/whatsapp/conversations/${chatId}/read-status`, {
         method: 'PATCH',
         body: { instanceId, unread }
       });
     },
-    onSuccess: (_, { unread }) => {
-      toast({
-        title: unread ? "Marcado como no leído" : "Marcado como leído",
-        description: unread ? "El chat aparecerá como nuevo" : "El chat aparecerá como leído"
-      });
+    onSuccess: (_, { unread, silent = false }) => {
+      if (!silent) {
+        toast({
+          title: unread ? "Marcado como no leído" : "Marcado como leído",
+          description: unread ? "El chat aparecerá como nuevo" : "El chat aparecerá como leído"
+        });
+      }
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
     }
   });
@@ -441,7 +443,18 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                 className={`whatsapp-conversation-item ${
                   isSelected ? 'active' : ''
                 } relative group`}
-                onClick={() => onSelectConversation(conversationKey)}
+                onClick={() => {
+                  onSelectConversation(conversationKey);
+                  // Auto-mark as read if conversation has unread messages
+                  if (conversation.unreadCount > 0) {
+                    markUnreadMutation.mutate({
+                      chatId: conversation.chatId,
+                      instanceId: conversation.instanceId,
+                      unread: false,
+                      silent: true
+                    });
+                  }
+                }}
               onMouseEnter={() => setHoveredConversation(conversationKey)}
               onMouseLeave={() => setHoveredConversation(null)}
             >
@@ -485,8 +498,8 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                     <h3 className={`text-sm font-semibold truncate pr-2 ${conversation.unreadCount > 0 ? 'text-gray-900 dark:text-gray-100' : 'text-gray-900 dark:text-gray-100'}`}>
                       {getConversationDisplayName(conversation)}
                     </h3>
-                    <div className="flex flex-col items-end">
-                      <span className={`text-xs ${conversation.unreadCount > 0 ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-500 dark:text-gray-400'} mb-1`}>
+                    <div className="flex flex-col items-end relative">
+                      <span className={`text-xs ${conversation.unreadCount > 0 ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
                         {(() => {
                           const latestMessage = getLatestMessage(conversation);
                           const timestamp = latestMessage?.timestamp || conversation.actualLastMessageTime || conversation.lastMessageTimestamp;
@@ -494,7 +507,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                         })()}
                       </span>
                       {conversation.unreadCount > 0 && (
-                        <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-0.5 min-w-[20px] h-5 rounded-full flex items-center justify-center">
+                        <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-0.5 min-w-[20px] h-5 rounded-full flex items-center justify-center absolute -bottom-2 right-0">
                           {conversation.unreadCount}
                         </Badge>
                       )}
@@ -514,7 +527,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-5 w-5 p-0 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                              className="h-5 w-5 p-0 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 absolute -bottom-2 right-0"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
