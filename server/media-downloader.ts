@@ -170,21 +170,16 @@ export async function checkMediaExists(instanceId: string, messageId: string): P
         const extensions = ['ogg', 'mp4', 'jpg', 'png', 'webp', 'pdf', 'bin'];
         const instanceDir = path.join(MEDIA_STORAGE_PATH, instanceId);
         
-        console.log(`🔍 Checking for media files: ${instanceDir}/${messageId}.*`);
-        
         for (const ext of extensions) {
             const filePath = path.join(instanceDir, `${messageId}.${ext}`);
             try {
                 await fs.access(filePath);
-                console.log(`✅ Found media file: ${filePath}`);
                 return path.resolve(filePath); // Return absolute path
             } catch {
                 // File doesn't exist, try next extension
                 continue;
             }
         }
-        
-        console.log(`❌ No media file found for ${messageId} in ${instanceDir}`);
         return null; // No file found
     } catch (error) {
         console.error('Error checking media existence:', error);
