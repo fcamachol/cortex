@@ -268,7 +268,8 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const messages = rawMessages.map((msg: any) => ({
     ...msg,
     content: msg.textContent || msg.content,
-    isFromMe: msg.fromMe || msg.isFromMe
+    isFromMe: msg.fromMe || msg.isFromMe,
+    media: msg.media // Preserve media object for audio/video/image messages
   }));
 
   // Debug logging

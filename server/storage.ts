@@ -442,12 +442,6 @@ class DatabaseStorage {
 
         const rawResults = await query;
         
-        // Debug: Log a sample result to see the structure
-        if (rawResults.length > 0 && rawResults.some(r => r.messageType === 'audio')) {
-            const audioMessage = rawResults.find(r => r.messageType === 'audio');
-            console.log('🎵 Audio message raw result:', JSON.stringify(audioMessage, null, 2));
-        }
-        
         // Transform results to include media object for messages that have media
         const result = rawResults.map(row => {
             const message: any = {
