@@ -495,27 +495,23 @@ export async function registerRoutes(app: Express): Promise<void> {
           // First, ensure sender contact exists or find an existing valid sender
           let senderJid = result.data?.key?.participant || `${instanceId}@bot`;
           
-          // Try to find an existing contact for this instance to use as sender
-          const existingContacts = await storage.getContacts('', instanceId);
-          if (existingContacts.length > 0) {
-            // Use the first existing contact as the sender to avoid FK constraint issues
-            senderJid = existingContacts[0].jid;
-          } else {
-            // Create a bot/system contact for this instance
-            try {
-              await storage.upsertContact({
-                jid: `${instanceId}@bot`,
-                instanceId,
-                pushName: 'System',
-                isGroup: false,
-                profilePictureUrl: null
-              });
-              senderJid = `${instanceId}@bot`;
-            } catch (contactError) {
-              console.warn(`Could not create system contact, using placeholder: ${contactError}`);
-              // Fall back to webhook processing
-              return;
-            }
+          // Create a system contact for this instance to avoid FK constraint issues
+          try {
+            const systemContactJid = `system@${instanceId}`;
+            await storage.upsertWhatsappContact({
+              jid: systemContactJid,
+              instanceId,
+              pushName: 'System',
+              isGroup: false,
+              profilePictureUrl: null,
+              isMe: false
+            });
+            senderJid = systemContactJid;
+          } catch (contactError) {
+            console.warn(`Could not create system contact, falling back to webhook: ${contactError}`);
+            // Fall back to webhook processing - continue without immediate storage
+            res.json(result.data);
+            return;
           }
           
           const sentMessage = {
