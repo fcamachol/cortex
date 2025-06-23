@@ -27,6 +27,10 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [openMessageDropdown, setOpenMessageDropdown] = useState<string | null>(null);
   const [replyToMessage, setReplyToMessage] = useState<any>(null);
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
+  
+  // Draft storage per conversation
+  const [drafts, setDrafts] = useState<{[chatId: string]: string}>({});
+  const [replyStates, setReplyStates] = useState<{[chatId: string]: any}>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -305,6 +309,13 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   // Message action handlers
   const handleReplyToMessage = (message: any) => {
     setReplyToMessage(message);
+    // Save reply state for current conversation
+    if (conversationId) {
+      setReplyStates(prev => ({
+        ...prev,
+        [conversationId]: message
+      }));
+    }
     setOpenMessageDropdown(null);
   };
 
@@ -335,7 +346,51 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   const cancelReply = () => {
     setReplyToMessage(null);
+    // Also clear reply state for current conversation
+    if (conversationId) {
+      setReplyStates(prev => ({
+        ...prev,
+        [conversationId]: null
+      }));
+    }
   };
+
+  // Save/restore drafts and reply states when switching conversations
+  useEffect(() => {
+    if (!conversationId) return;
+
+    // Save current state before switching
+    const currentChatKey = conversationId;
+    
+    // Save current draft and reply state
+    setDrafts(prev => ({
+      ...prev,
+      [currentChatKey]: messageInput
+    }));
+    
+    setReplyStates(prev => ({
+      ...prev,
+      [currentChatKey]: replyToMessage
+    }));
+
+    // Restore draft and reply state for new conversation
+    const savedDraft = drafts[currentChatKey] || "";
+    const savedReplyState = replyStates[currentChatKey] || null;
+    
+    setMessageInput(savedDraft);
+    setReplyToMessage(savedReplyState);
+    
+  }, [conversationId]);
+
+  // Save draft when typing
+  useEffect(() => {
+    if (conversationId && messageInput !== undefined) {
+      setDrafts(prev => ({
+        ...prev,
+        [conversationId]: messageInput
+      }));
+    }
+  }, [messageInput, conversationId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

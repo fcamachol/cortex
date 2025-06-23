@@ -1947,14 +1947,12 @@ export const WhatsAppAPIAdapter = {
 
             const payload: any = {
                 number: chatId,
-                textMessage: {
-                    text: message
-                }
+                text: message
             };
 
             // Add quoted message if replying
             if (quotedMessageId) {
-                payload.textMessage.quoted = {
+                payload.quoted = {
                     key: {
                         id: quotedMessageId
                     }
