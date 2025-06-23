@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Paperclip, Smile, Send, CheckSquare, Plus, MoreVertical, ChevronDown, Reply, Copy, Forward, Pin, Star, Trash2, X, Check } from "lucide-react";
+import { Paperclip, Smile, Send, CheckSquare, Plus, MoreVertical, ChevronDown, Reply, Copy, Forward, Pin, Star, Trash2, X, Check, Clock } from "lucide-react";
 import { ContactTasksAndEvents } from "@/components/contacts/ContactTasksAndEvents";
 import { MessageReactions } from "@/components/conversations/MessageReactions";
 import { MessageHoverActions } from "@/components/conversations/MessageHoverActions";
@@ -1003,10 +1003,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                       : 'whatsapp-message-received'
                   } ${message.isPending ? 'opacity-70' : ''}`}
                 >
-                  {/* Blue corner indicator for waiting reply */}
-                  {waitingReplyMessages.has(message.messageId || message.id) && (
-                    <div className="absolute bottom-0 right-0 w-0 h-0 border-l-[12px] border-b-[12px] border-l-transparent border-b-blue-500 rounded-br-lg"></div>
-                  )}
+
                   {/* Sender name for group chats */}
                   {(conversation?.type === 'group' || conversation?.chatId?.includes('@g.us')) && !message.isFromMe && (
                     <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
@@ -1019,6 +1016,14 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                     <div className="message-forward-indicator">
                       <Forward className="h-3 w-3" />
                       <span>Reenviado</span>
+                    </div>
+                  )}
+
+                  {/* Waiting response indicator */}
+                  {waitingReplyMessages.has(message.messageId || message.id) && (
+                    <div className="message-forward-indicator">
+                      <Clock className="h-3 w-3" />
+                      <span>Esperando respuesta</span>
                     </div>
                   )}
 
@@ -1082,8 +1087,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                           if (isWaiting) {
                             unmarkWaitingReplyMutation.mutate({ messageId });
                           } else {
-                            setSelectedMessageForWaiting(message);
-                            setWaitingResponseModalOpen(true);
+                            markWaitingReplyMutation.mutate({ messageId });
                           }
                         }}
                         title={waitingReplyMessages.has(message.messageId || message.id) ? 'Unmark awaiting reply' : 'Mark as awaiting reply'}
