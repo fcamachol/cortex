@@ -260,16 +260,19 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                     </AvatarFallback>
                   </Avatar>
                   {/* Instance indicator circle */}
-                  {conversation.instanceId && (
-                    <div 
-                      className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                        getInstanceIndicator(conversation.instanceId).color
-                      }`}
-                      title={`Instance: ${conversation.instanceId}`}
-                    >
-                      {getInstanceIndicator(conversation.instanceId).letter}
-                    </div>
-                  )}
+                  {conversation.instanceId && (() => {
+                    const indicator = getInstanceIndicator(conversation.instanceId);
+                    return (
+                      <div 
+                        className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                          indicator.color ? `${indicator.color} text-white` : 'border border-gray-400 text-gray-600 bg-white dark:bg-gray-800'
+                        }`}
+                        title={`Instance: ${conversation.instanceId}`}
+                      >
+                        {indicator.letter}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">

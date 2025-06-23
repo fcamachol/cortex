@@ -349,12 +349,18 @@ class DatabaseStorage {
     async getWhatsappInstances(userId: string): Promise<any[]> {
         const results = await db.execute(sql`
             SELECT 
-                instance_name as "instanceId",
-                instance_name as "instanceName", 
+                instance_id as "instanceId",
                 display_name as "displayName",
+                owner_jid as "ownerJid",
+                client_id as "clientId",
                 api_key as "apiKey",
+                webhook_url as "webhookUrl",
                 is_connected as "isConnected",
-                created_at as "createdAt"
+                last_connection_at as "lastConnectionAt",
+                custom_color as "customColor",
+                custom_letter as "customLetter",
+                created_at as "createdAt",
+                updated_at as "updatedAt"
             FROM whatsapp.instances 
             ORDER BY created_at DESC
         `);
@@ -723,6 +729,18 @@ class DatabaseStorage {
                 eq(whatsappGroups.groupJid, groupJid),
                 eq(whatsappGroups.instanceId, instanceId)
             ));
+    }
+
+    async updateWhatsappInstance(instanceId: string, updateData: { displayName?: string; customColor?: string; customLetter?: string }): Promise<WhatsappInstance> {
+        const [updatedInstance] = await db.update(whatsappInstances)
+            .set({
+                ...updateData,
+                updatedAt: new Date()
+            })
+            .where(eq(whatsappInstances.instanceId, instanceId))
+            .returning();
+        
+        return updatedInstance;
     }
 
     async deleteWhatsappInstance(instanceId: string): Promise<void> {

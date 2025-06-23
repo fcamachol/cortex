@@ -29,35 +29,46 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   // Mock user ID - in real app this would come from auth context
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
 
-  // Generate consistent colors and letters for instance identification
+  // Fetch instances with customization data
+  const { data: instances = [] } = useQuery({
+    queryKey: [`/api/whatsapp/instances/${userId}`],
+  });
+
+  // Get instance indicator with custom colors and letters
   const getInstanceIndicator = (instanceId: string) => {
+    const instance = instances.find((inst: any) => inst.instanceId === instanceId);
+    
+    if (instance && (instance.customColor || instance.customLetter)) {
+      return {
+        color: instance.customColor || "",
+        letter: instance.customLetter || "I"
+      };
+    }
+    
+    // Fallback to generated colors if no customization
     const colors = [
       'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-pink-500', 
       'bg-yellow-500', 'bg-orange-500', 'bg-red-500', 'bg-indigo-500',
       'bg-teal-500', 'bg-cyan-500', 'bg-lime-500', 'bg-amber-500'
     ];
     
-    // Generate a hash from the instanceId for consistent color assignment
     let hash = 0;
     for (let i = 0; i < instanceId.length; i++) {
       hash = instanceId.charCodeAt(i) + ((hash << 5) - hash);
     }
     const colorIndex = Math.abs(hash) % colors.length;
     
-    // Extract a letter from the instanceId or use a default pattern
-    let letter = 'I'; // Default
+    let letter = 'I';
     if (instanceId.includes('live')) letter = 'L';
     else if (instanceId.includes('test')) letter = 'T';
     else if (instanceId.includes('prod')) letter = 'P';
     else if (instanceId.includes('instance')) {
-      // Extract number from instance ID if present
       const match = instanceId.match(/\d+/);
       if (match) {
         const num = parseInt(match[0]);
-        letter = String.fromCharCode(65 + (num % 26)); // A-Z based on number
+        letter = String.fromCharCode(65 + (num % 26));
       }
     } else {
-      // Use first letter of instanceId
       letter = instanceId.charAt(0).toUpperCase();
     }
     
@@ -367,16 +378,19 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 </AvatarFallback>
               </Avatar>
               {/* Instance indicator circle */}
-              {instanceId && (
-                <div 
-                  className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                    getInstanceIndicator(instanceId).color
-                  }`}
-                  title={`Instance: ${instanceId}`}
-                >
-                  {getInstanceIndicator(instanceId).letter}
-                </div>
-              )}
+              {instanceId && (() => {
+                const indicator = getInstanceIndicator(instanceId);
+                return (
+                  <div 
+                    className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold ${
+                      indicator.color ? `${indicator.color} text-white` : 'border border-gray-400 text-gray-600 bg-white dark:bg-gray-800'
+                    }`}
+                    title={`Instance: ${instanceId}`}
+                  >
+                    {indicator.letter}
+                  </div>
+                );
+              })()}
             </div>
             <div>
               <h2 className="font-semibold text-gray-900 dark:text-gray-100">

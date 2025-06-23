@@ -198,6 +198,35 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.patch('/api/whatsapp/instances/:instanceId', async (req: Request, res: Response) => {
+    try {
+      const { instanceId } = req.params;
+      const { displayName, customColor, customLetter } = req.body;
+      
+      const updatedInstance = await storage.updateWhatsappInstance(instanceId, {
+        displayName,
+        customColor,
+        customLetter
+      });
+      
+      res.json(updatedInstance);
+    } catch (error) {
+      console.error('Error updating instance:', error);
+      res.status(500).json({ error: 'Failed to update instance' });
+    }
+  });
+
+  app.delete('/api/whatsapp/instances/:instanceId', async (req: Request, res: Response) => {
+    try {
+      const { instanceId } = req.params;
+      await storage.deleteWhatsappInstance(instanceId);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting instance:', error);
+      res.status(500).json({ error: 'Failed to delete instance' });
+    }
+  });
+
   // Instance Management Routes
   app.post('/api/whatsapp/instances/create', async (req: Request, res: Response) => {
     try {
