@@ -199,7 +199,6 @@ export default function ConversationList({ selectedConversation, onSelectConvers
             allWaitingReplies.push(...repliesWithInstance);
           }
         }
-        console.log('Total waiting replies found:', allWaitingReplies.length, allWaitingReplies);
         return allWaitingReplies;
       } catch (error) {
         console.error('Error fetching waiting replies:', error);
@@ -336,10 +335,6 @@ export default function ConversationList({ selectedConversation, onSelectConvers
       (waitingMsg.chatId === conversation.chatId || waitingMsg.chat_id === conversation.chatId) && 
       (waitingMsg.instanceId === conversation.instanceId || waitingMsg.instance_id === conversation.instanceId)
     );
-    // Debug logging
-    if (hasWaiting) {
-      console.log('Conversation has waiting reply:', conversation.chatId, conversation.instanceId);
-    }
     return hasWaiting;
   };
 
