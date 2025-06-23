@@ -442,25 +442,32 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       saveDraftOnSwitch(prevChatId, prevInstanceId.current, prevMessageInput.current);
     }
 
-    // Load draft for new conversation
-    if (currentDraft?.content) {
-      console.log('Loading draft content:', currentDraft.content);
-      setMessageInput(currentDraft.content);
-      if (currentDraft.replyToMessageId) {
-        setReplyToMessage({ messageId: currentDraft.replyToMessageId });
-      }
-    } else if (conversationId !== prevConversationId.current) {
-      // Only clear input when switching to a different conversation without draft
-      console.log('No draft found, clearing input');
+    // Always clear input first when switching conversations
+    if (conversationId !== prevConversationId.current) {
+      console.log('Conversation changed, clearing input first');
       setMessageInput("");
       setReplyToMessage(null);
     }
 
-    // Update refs for next conversation switch
+    // Load draft for new conversation only if it matches the current chat
+    if (currentDraft?.content && currentDraft.chatId === chatId && currentDraft.instanceId === finalInstanceId) {
+      console.log('Loading draft content for correct chat:', currentDraft.content);
+      setMessageInput(currentDraft.content);
+      if (currentDraft.replyToMessageId) {
+        setReplyToMessage({ messageId: currentDraft.replyToMessageId });
+      }
+    }
+
+    // Update refs for next conversation switch - use current values, not stale ones
     prevConversationId.current = conversationId;
     prevInstanceId.current = finalInstanceId;
+    // Don't update prevMessageInput here - it will be updated when user types
+  }, [currentDraft, conversationId, finalInstanceId, chatId]);
+
+  // Update message input ref when user types
+  useEffect(() => {
     prevMessageInput.current = messageInput;
-  }, [currentDraft, conversationId, finalInstanceId]);
+  }, [messageInput]);
 
   // Draft saving mutation
   const saveDraftMutation = useMutation({
