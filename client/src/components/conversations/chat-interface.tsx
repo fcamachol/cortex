@@ -627,9 +627,9 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col h-full">
       {/* Chat Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="relative">
@@ -697,7 +697,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 chat-area max-h-[calc(100vh-200px)] scroll-smooth scrollbar-thin chat-messages-scroll">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 chat-area scroll-smooth scrollbar-thin chat-messages-scroll">
         <div className="space-y-4">
           {isLoading ? (
             <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
@@ -878,7 +878,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       </div>
 
       {/* Message Input */}
-      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 mt-0">
+      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
         {/* Reply indicator */}
         {replyToMessage && (
           <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border-l-4 border-blue-500">

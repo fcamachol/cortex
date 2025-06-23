@@ -31,7 +31,7 @@ export default function Dashboard() {
     switch (activeModule) {
       case "conversations":
         return (
-          <div className="flex-1 flex">
+          <div className="flex-1 flex h-full">
             <ConversationList
               selectedConversation={selectedConversation}
               onSelectConversation={setSelectedConversation}
