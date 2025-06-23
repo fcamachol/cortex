@@ -402,8 +402,10 @@ export default function ConversationList({ selectedConversation, onSelectConvers
 
   // Initialize drafts from query
   useEffect(() => {
-    setAllDrafts(initialDrafts);
-  }, [initialDrafts]);
+    if (initialDrafts && initialDrafts.length >= 0) {
+      setAllDrafts(initialDrafts);
+    }
+  }, [initialDrafts.length]);
 
   // Helper function to check if conversation has waiting reply messages
   const hasWaitingReply = (conversation: any) => {

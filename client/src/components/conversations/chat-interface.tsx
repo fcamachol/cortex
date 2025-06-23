@@ -715,9 +715,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate all draft-related queries to refresh the conversation list
-      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/drafts`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations`] });
+      // SSE will handle real-time updates to conversation list
     }
   });
 
