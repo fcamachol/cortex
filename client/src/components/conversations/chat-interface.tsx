@@ -257,13 +257,13 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   // Force invalidation when conversation changes
   useEffect(() => {
-    if (conversationId && finalInstanceId) {
+    if (conversationId && instanceId) {
       // Force invalidate all message queries when switching conversations
       queryClient.invalidateQueries({
         queryKey: [`/api/whatsapp/chat-messages`]
       });
     }
-  }, [conversationId, finalInstanceId]);
+  }, [conversationId, instanceId, queryClient]);
 
   // Auto-resize textarea on mount and content changes
   const textareaRef = useRef<HTMLTextAreaElement>(null);
