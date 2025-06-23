@@ -75,13 +75,18 @@ export function AccountList({ spaceId }: AccountListProps) {
 
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ["/api/finance/accounts", spaceId],
-    queryFn: () => apiRequest(`/api/finance/accounts?spaceId=${spaceId}`),
+    queryFn: async () => {
+      const response = await fetch(`/api/finance/accounts?spaceId=${spaceId}`);
+      if (!response.ok) throw new Error('Failed to fetch accounts');
+      return response.json();
+    },
     staleTime: 25000,
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (accountId: number) => {
-      return await apiRequest(`/api/finance/accounts/${accountId}`, "DELETE");
+      const response = await apiRequest("DELETE", `/api/finance/accounts/${accountId}`);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/finance/accounts"] });
