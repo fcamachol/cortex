@@ -68,6 +68,7 @@ class DatabaseStorage {
     
     async getWhatsappConversations(userId: string): Promise<any[]> {
         // Use SQL to get conversations with last message content
+        // Only include conversations that have at least one actual message
         const results = await db.execute(sql`
             SELECT 
                 c.chat_id as "chatId",
@@ -90,15 +91,17 @@ class DatabaseStorage {
             INNER JOIN whatsapp.instances i ON c.instance_id = i.instance_id
             LEFT JOIN whatsapp.contacts ct ON c.chat_id = ct.jid AND c.instance_id = ct.instance_id
             LEFT JOIN whatsapp.groups g ON c.chat_id = g.group_jid AND c.instance_id = g.instance_id
-            LEFT JOIN LATERAL (
+            INNER JOIN LATERAL (
                 SELECT m.content, m.from_me, m.timestamp, m.message_type
                 FROM whatsapp.messages m
                 WHERE m.chat_id = c.chat_id AND m.instance_id = c.instance_id
+                  AND m.content IS NOT NULL 
+                  AND m.content != ''
                 ORDER BY m.timestamp DESC
                 LIMIT 1
             ) last_msg ON true
             WHERE i.client_id = ${userId}
-            ORDER BY COALESCE(last_msg.timestamp, c.last_message_timestamp, c.created_at) DESC
+            ORDER BY last_msg.timestamp DESC
         `);
 
         return results.rows;
