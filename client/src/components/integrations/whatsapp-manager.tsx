@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { QrCode, Smartphone, WifiOff, Wifi, Plus, Trash2, AlertTriangle, Edit2, Check, X, RefreshCw } from "lucide-react";
+import { QrCode, Smartphone, WifiOff, Wifi, Plus, Trash2, AlertTriangle, Edit2, Check, X, RefreshCw, Palette } from "lucide-react";
 import { QRCodeDisplay } from "./qr-code-display";
 
 interface WhatsAppInstance {
@@ -44,6 +44,9 @@ export function WhatsAppInstanceManager() {
   const [instanceToDelete, setInstanceToDelete] = useState<WhatsAppInstance | null>(null);
   const [editingInstanceId, setEditingInstanceId] = useState<string | null>(null);
   const [editingDisplayName, setEditingDisplayName] = useState("");
+  const [customizingInstanceId, setCustomizingInstanceId] = useState<string | null>(null);
+  const [customColor, setCustomColor] = useState("");
+  const [customLetter, setCustomLetter] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
