@@ -55,17 +55,32 @@ export function AudioPlayer({ src, duration, className, variant = 'received' }: 
       if (target?.error || target?.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
         setHasError(true);
         setIsLoaded(false);
-        console.error('Audio playback error for:', src);
+        console.error('Audio playback error for:', src, {
+          error: target?.error,
+          networkState: target?.networkState,
+          readyState: target?.readyState,
+          currentSrc: target?.currentSrc
+        });
       }
     };
 
     const handleCanPlay = () => {
       setHasError(false);
       setIsLoaded(true);
+      console.log('Audio can play successfully:', src);
     };
 
     const handleLoadStart = () => {
       setHasError(false);
+      console.log('Audio load started:', src);
+    };
+
+    const handleSuspend = () => {
+      console.log('Audio loading suspended:', src);
+    };
+
+    const handleAbort = () => {
+      console.log('Audio loading aborted:', src);
     };
 
     audio.addEventListener('loadeddata', handleLoadedData);
@@ -74,6 +89,8 @@ export function AudioPlayer({ src, duration, className, variant = 'received' }: 
     audio.addEventListener('error', handleError);
     audio.addEventListener('canplay', handleCanPlay);
     audio.addEventListener('loadstart', handleLoadStart);
+    audio.addEventListener('suspend', handleSuspend);
+    audio.addEventListener('abort', handleAbort);
 
     return () => {
       audio.removeEventListener('loadeddata', handleLoadedData);
@@ -82,6 +99,8 @@ export function AudioPlayer({ src, duration, className, variant = 'received' }: 
       audio.removeEventListener('error', handleError);
       audio.removeEventListener('canplay', handleCanPlay);
       audio.removeEventListener('loadstart', handleLoadStart);
+      audio.removeEventListener('suspend', handleSuspend);
+      audio.removeEventListener('abort', handleAbort);
     };
   }, [src]);
 
