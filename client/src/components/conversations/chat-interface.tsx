@@ -1090,6 +1090,35 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
         </div>
       </div>
 
+      {/* Multi-select control bar */}
+      {isMultiSelectMode && (
+        <div className="bg-blue-500 text-white p-3 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCancelMultiSelect}
+              className="text-white hover:bg-blue-600"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            <span className="font-medium">
+              {selectedMessages.size} seleccionados
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleForwardSelectedMessages}
+            disabled={selectedMessages.size === 0}
+            className="text-white hover:bg-blue-600 disabled:opacity-50"
+          >
+            <Forward className="h-4 w-4 mr-2" />
+            Reenviar
+          </Button>
+        </div>
+      )}
+
       {/* Message Input */}
       <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
         {/* Reply indicator */}
