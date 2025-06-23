@@ -1096,6 +1096,101 @@ export const WebhookApiAdapter = {
         };
     },
 
+    /**
+     * Extract correct JID from malformed Evolution API data that combines group JID with owner JID
+     */
+    extractCorrectJid(rawMessage: any): string | null {
+        // First, look for proper JID patterns in various fields
+        const possibleJids = [
+            rawMessage.key?.remoteJid,
+            rawMessage.key?.participant, 
+            rawMessage.remoteJid,
+            rawMessage.participant,
+            rawMessage.from,
+            rawMessage.to
+        ].filter(Boolean);
+
+        // Check if any field contains a proper WhatsApp JID format
+        for (const jid of possibleJids) {
+            if (typeof jid === 'string' && (jid.includes('@s.whatsapp.net') || jid.includes('@g.us'))) {
+                return jid;
+            }
+        }
+
+        // Handle the specific case where Evolution API combines group JID with owner JID
+        const malformedJid = rawMessage.key?.remoteJid;
+        if (malformedJid && typeof malformedJid === 'string' && malformedJid.length > 20 && !malformedJid.includes('@')) {
+            // Look for group JID pattern in participant field or other message data
+            const participant = rawMessage.key?.participant;
+            if (participant && participant.includes('@g.us')) {
+                console.log(`🔧 Found group JID in participant field: ${participant}`);
+                return participant;
+            }
+            
+            // Look for group indicators in the raw message data
+            const messageStr = JSON.stringify(rawMessage);
+            const groupJidMatch = messageStr.match(/(\d{10,15}-\d+@g\.us)/);
+            if (groupJidMatch) {
+                console.log(`🔧 Extracted group JID from message data: ${groupJidMatch[1]}`);
+                return groupJidMatch[1];
+            }
+            
+            // Look for individual JID pattern
+            const individualJidMatch = messageStr.match(/(\d{10,15}@s\.whatsapp\.net)/);
+            if (individualJidMatch) {
+                console.log(`🔧 Extracted individual JID from message data: ${individualJidMatch[1]}`);
+                return individualJidMatch[1];
+            }
+        }
+
+        return null;
+    },
+
+    /**
+     * Extract correct JID from malformed chat data that combines group JID with owner JID
+     */
+    extractCorrectJidFromChat(rawChat: any): string | null {
+        // First, look for proper JID patterns in chat data fields
+        const possibleJids = [
+            rawChat.id,
+            rawChat.remoteJid,
+            rawChat.jid,
+            rawChat.chatId,
+            rawChat.from,
+            rawChat.to
+        ].filter(Boolean);
+
+        // Check if any field contains a proper WhatsApp JID format
+        for (const jid of possibleJids) {
+            if (typeof jid === 'string' && (jid.includes('@s.whatsapp.net') || jid.includes('@g.us'))) {
+                return jid;
+            }
+        }
+
+        // Handle the specific case where Evolution API combines group JID with owner JID in chat data
+        const malformedId = rawChat.id || rawChat.remoteJid;
+        if (malformedId && typeof malformedId === 'string' && malformedId.length > 20 && !malformedId.includes('@')) {
+            // Look for proper JID patterns in the entire chat object
+            const chatStr = JSON.stringify(rawChat);
+            
+            // Look for group JID pattern first
+            const groupJidMatch = chatStr.match(/(\d{10,15}-\d+@g\.us)/);
+            if (groupJidMatch) {
+                console.log(`🔧 Extracted group JID from chat data: ${groupJidMatch[1]}`);
+                return groupJidMatch[1];
+            }
+            
+            // Look for individual JID pattern
+            const individualJidMatch = chatStr.match(/(\d{10,15}@s\.whatsapp\.net)/);
+            if (individualJidMatch) {
+                console.log(`🔧 Extracted individual JID from chat data: ${individualJidMatch[1]}`);
+                return individualJidMatch[1];
+            }
+        }
+
+        return null;
+    },
+
     async mapApiPayloadToWhatsappContact(rawContact: any, instanceId: string): Promise<Omit<WhatsappContacts, 'firstSeenAt' | 'lastUpdatedAt'> | null> {
         const jid = rawContact.id || rawContact.remoteJid;
         if (!jid || !instanceId) return null;
@@ -1135,10 +1230,26 @@ export const WebhookApiAdapter = {
     },
     
     async mapApiPayloadToWhatsappChat(rawChat: any, instanceId: string): Promise<Omit<WhatsappChats, 'createdAt' | 'updatedAt'> | null> {
-        const chatId = rawChat.id || rawChat.remoteJid;
+        let chatId = rawChat.id || rawChat.remoteJid;
         if (!chatId || typeof chatId !== 'string' || chatId.trim() === '' || !instanceId || typeof instanceId !== 'string' || instanceId.trim() === '') {
             console.warn(`Invalid chat data - chatId: ${chatId}, instanceId: ${instanceId}`);
             return null;
+        }
+
+        // Debug and fix malformed chat IDs in chat creation
+        if (chatId && !chatId.includes('@') && chatId.length > 20) {
+            console.error(`🚨 MALFORMED CHAT ID IN CHAT CREATION: "${chatId}"`);
+            console.error(`Raw chat data:`, JSON.stringify(rawChat, null, 2));
+            
+            // Try to find the correct JID in the chat data
+            const correctJid = this.extractCorrectJidFromChat(rawChat);
+            if (correctJid) {
+                console.log(`🔧 Found correct chat JID: "${correctJid}", replacing malformed ID`);
+                chatId = correctJid;
+            } else {
+                console.error(`❌ Could not find correct chat JID, skipping chat creation`);
+                return null;
+            }
         }
         
         // Use authentic group name when available, fallback to contact name or JID
