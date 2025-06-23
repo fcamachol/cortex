@@ -136,6 +136,7 @@ export function FinanceTransactionList() {
                 <TableHead className="w-28">Date</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead className="w-32">Category</TableHead>
+                <TableHead className="w-32">Account</TableHead>
                 <TableHead className="w-32 text-right">Amount</TableHead>
                 <TableHead className="w-32">Contact</TableHead>
               </TableRow>
@@ -161,6 +162,15 @@ export function FinanceTransactionList() {
                       <Badge variant="secondary" className="text-xs">
                         {transaction.categoryName}
                       </Badge>
+                    )}
+                  </TableCell>
+                  
+                  <TableCell>
+                    {transaction.accountName && (
+                      <div className="text-sm">
+                        <div className="font-medium">{transaction.accountName}</div>
+                        <div className="text-xs text-muted-foreground capitalize">{transaction.accountType}</div>
+                      </div>
                     )}
                   </TableCell>
                   
