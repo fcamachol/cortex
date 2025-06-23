@@ -698,7 +698,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   // Track scroll position to show/hide scroll to bottom button
   useEffect(() => {
     const messagesContainer = messagesEndRef.current?.parentElement;
-    if (!messagesContainer) return;
+    if (!messagesContainer || !conversationId) return;
 
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
@@ -708,7 +708,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
     messagesContainer.addEventListener('scroll', handleScroll);
     return () => messagesContainer.removeEventListener('scroll', handleScroll);
-  }, [conversationId]);
+  }, [conversationId]); // Only re-run when conversation changes
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

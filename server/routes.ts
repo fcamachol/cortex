@@ -1606,6 +1606,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       try {
+        const { getEvolutionApi } = await import('./evolution-api');
         const evolutionApi = getEvolutionApi();
         const mediaBuffer = await evolutionApi.downloadMedia(instanceId, instance.apiKey, message.rawApiPayload);
         
