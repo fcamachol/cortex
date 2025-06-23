@@ -1,0 +1,121 @@
+A Bill is NOT assigned to a task.
+
+Instead, a Task is automatically created for a Bill.
+
+Let me clarify with a simple analogy:
+
+Think of the Bill (the record in our Payables table) as the official, detailed invoice you receive in the mail. It has the precise amount, the due date, the account number, etc. It is the financial source of truth.
+Think of the Task as the bright, simple sticky note you put on your fridge that says, "Pay electricity bill!" This is your actionable reminder.
+The magic of our system is that when the official "invoice" (Bill) is generated, the system automatically writes the "sticky note" (Task) for you and digitally staples it to the invoice.
+
+The Complete Workflow Explained
+Here is the precise flow of how they are linked:
+
+A Bill is Generated: On July 1st, a recurring rule creates a new Payable (a Bill) in the system.
+
+Entity: Payable
+Details: Description: "Electricity Bill - July 2025", Total Due: $100.00, Status: 'UNPAID'.
+A Companion Task is Automatically Created: Immediately after the Bill is created, the system creates a corresponding Task.
+
+Entity: Task
+Details: Title: "Pay Electricity Bill ($100.00)", Due Date: July 15, 2025.
+The Crucial Link: This Task record has a special field, linked_payable_id, which contains the ID of the Bill created in Step 1.
+What the User Sees:
+
+In your daily to-do list or calendar, you see the Task: "Pay Electricity Bill ($100.00)". This is your simple, actionable reminder. You don't have to go hunting in the finance module.
+How Payments are Handled (Partial Payments):
+
+You make a partial payment via WhatsApp: /pay $40 towards "Electricity Bill"
+The system finds the Bill, not the task. It updates the Bill's amount_paid to $40.00 and its status to 'PARTIALLY_PAID'.
+The companion Task remains open because the Bill is not fully paid.
+Completing the Process:
+
+You pay the remaining $60. The system updates the Bill's status to 'PAID'.
+Because the Bill is now fully paid, the system finds the linked companion Task and automatically marks it as "Done."
+Summary for Your Experts
+For your UX/UI Team:
+The user's primary interaction is with a simple Task that appears in their daily workflow. This task acts as a user-friendly gateway to a more complex financial Bill. The UI should reflect this by showing financial tasks in the main to-do list, perhaps with a small dollar-sign icon, and allowing users to click through to see the full bill details, including any partial payments made.
+
+For your Database Expert:
+The relationship is a one-to-one link originating from the Tasks table to the Payables table (linked_payable_id). A Payable is the master record representing a financial obligation. A Task is a subordinate, actionable reminder. The lifecycle of the Task (specifically its final completion) is controlled by the status of the Payable it is linked to. This architecture allows us to maintain financial data integrity while providing a seamless, integrated user experience.
+
+
+
+
+
+
+
+a bill should increment if not paid with moratory interests? or the moratory interests create another bill?
+
+
+
+Show thinking
+That's another excellent, detailed question that gets to the heart of how to handle financial rules correctly and transparently.
+
+The best and most transparent approach is that the original bill should NOT increment.
+
+Instead, moratory interests will accumulate as a separate Penalty Balance that is attached to the original bill. Creating a whole new bill for each penalty would be confusing and clutter the system.
+
+Here’s why this "separate ledger" approach is superior and how it works.
+
+The Core Concept: The Bill is Fixed, The Penalty is a Separate Balance
+This design provides maximum clarity for both the user and for accounting purposes.
+
+For the User (Transparency): The user can always see, "My original electricity bill was $100.00, and because I was late, there is a separate, clearly marked penalty of $1.50." This feels fair and transparent, unlike seeing their original bill amount mysteriously change.
+For the System (Integrity): It maintains a perfect audit trail. The total_amount_due for a specific service period remains constant, which is correct from an accounting perspective. The penalties are tracked as a separate type of balance owed.
+1. The Data Model Update
+To support this, we only need to add one field to our existing Payables table.
+
+SQL
+
+-- [MODIFIED] Add a dedicated field to track accrued late fees/penalties for a specific bill.
+ALTER TABLE Payables
+ADD COLUMN penalty_balance DECIMAL(19, 4) NOT NULL DEFAULT 0.00;
+Our Payables record for a bill now has three key financial fields:
+
+total_amount_due: The original, fixed amount of the bill.
+amount_paid: The portion of the original amount that has been paid.
+penalty_balance: The accumulated total of all late fees.
+2. The Step-by-Step Workflow in Action
+Let's use our $100 electricity bill, due on July 15th, with a daily moratory interest penalty of $1.
+
+Step 1: Bill is Generated (July 1st)
+
+A new Payable record is created.
+total_amount_due: $100.00
+amount_paid: $0.00
+penalty_balance: $0.00
+status: 'UNPAID'
+Step 2: Payment is Missed (July 16th)
+
+The due date has passed. The status of the Payable changes to 'OVERDUE'.
+The daily background job runs and calculates the penalty for one day.
+The record is updated: penalty_balance is now $1.00.
+Step 3: How the User Sees It (The Web App UI)
+When the user looks at this overdue bill in the app, the UI will present the information clearly:
+
+Bill: Electricity Bill - July 2025
+Original Amount: $100.00
+Late Penalties: $1.00
+Amount Paid: $0.00
+Total Amount Owed: $101.00
+Step 4: The User Makes a Partial Payment (July 17th)
+
+On July 17th (now 2 days overdue, so the penalty_balance is $2.00), the user makes a $50 payment. The system applies this payment in a strict order of priority:
+
+Cover Penalties First: The first $2.00 of the payment goes to the penalty_balance.
+Cover Principal Second: The remaining $48.00 goes to the main bill.
+The Payable record is updated as follows:
+
+penalty_balance: is now $0.00.
+amount_paid: is now $48.00.
+status: 'PARTIALLY_PAID' (but still overdue).
+Total Amount Still Owed: The user still owes $52.00 of the original bill. If they don't pay this, new penalties will start accruing again tomorrow.
+This method is the standard for real-world accounting. It provides a clear, auditable trail of all charges and payments, ensuring there is no confusion for the user about what they owe and why.
+
+
+
+
+
+
+

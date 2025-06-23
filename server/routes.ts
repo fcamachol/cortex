@@ -8,6 +8,7 @@ import { nanoid } from 'nanoid';
 import { WebhookController } from './webhook-controller';
 import { SseManager } from './sse-manager';
 import { getEvolutionApi } from './evolution-api';
+import { BillToTaskService } from './bill-task-service';
 import { db } from './db';
 import fs from 'fs';
 import path from 'path';

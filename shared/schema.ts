@@ -1059,7 +1059,7 @@ export const crmTasks = crmSchema.table("tasks", {
   instanceId: varchar("instance_id", { length: 100 }).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
-  status: varchar("status", { length: 50 }).default("pending"),
+  status: varchar("status", { length: 50 }).default("to_do"),
   dueDate: timestamp("due_date", { withTimezone: true }),
   priority: varchar("priority", { length: 50 }).default("medium"),
   taskType: varchar("task_type", { length: 50 }).default("task"),
@@ -1072,6 +1072,7 @@ export const crmTasks = crmSchema.table("tasks", {
   contactName: varchar("contact_name", { length: 255 }),
   originalMessageContent: text("original_message_content"),
   createdByUserId: uuid("created_by_user_id"),
+  linkedPayableId: integer("linked_payable_id").references(() => financePayables.payableId), // Link to bill/payable
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   spaceId: integer("space_id"),
@@ -1082,6 +1083,10 @@ export const crmTasksRelations = relations(crmTasks, ({ one }) => ({
   instance: one(whatsappInstances, {
     fields: [crmTasks.instanceId],
     references: [whatsappInstances.instanceId],
+  }),
+  linkedPayable: one(financePayables, {
+    fields: [crmTasks.linkedPayableId],
+    references: [financePayables.payableId],
   }),
 }));
 
@@ -1266,9 +1271,15 @@ export const financePayables = financeSchema.table("payables", {
   spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
   description: text("description").notNull(),
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
+  amountPaid: numeric("amount_paid", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  penaltyBalance: numeric("penalty_balance", { precision: 12, scale: 2 }).notNull().default("0.00"),
   dueDate: varchar("due_date", { length: 10 }).notNull(), // DATE as string (YYYY-MM-DD)
   status: payableStatusEnum("status").notNull().default("unpaid"),
   contactId: integer("contact_id"), // References CRM contact when available
+  categoryId: integer("category_id").references(() => financeCategories.categoryId),
+  moratoryRate: numeric("moratory_rate", { precision: 5, scale: 4 }).default("0.0000"), // Daily moratory interest rate
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Finance Payable Payments - Links transactions to the specific bills they are paying off
@@ -1389,7 +1400,15 @@ export const financePayablesRelations = relations(financePayables, ({ one, many 
     fields: [financePayables.spaceId],
     references: [appSpaces.spaceId],
   }),
+  category: one(financeCategories, {
+    fields: [financePayables.categoryId],
+    references: [financeCategories.categoryId],
+  }),
   payablePayments: many(financePayablePayments),
+  linkedTask: one(crmTasks, {
+    fields: [financePayables.payableId],
+    references: [crmTasks.linkedPayableId],
+  }),
 }));
 
 export const financePayablePaymentsRelations = relations(financePayablePayments, ({ one }) => ({
