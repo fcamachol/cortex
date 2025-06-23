@@ -520,12 +520,13 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       }
       return null;
     },
-    enabled: !!draftQueryKey,
-    staleTime: Infinity, // Never refetch automatically
-    gcTime: Infinity, // Never garbage collect
+    enabled: !!draftQueryKey && !!finalInstanceId && !!chatId,
+    staleTime: 600000, // 10 minutes
+    gcTime: 900000, // 15 minutes
     refetchOnWindowFocus: false,
     refetchOnMount: false,
-    refetchInterval: false
+    refetchInterval: false,
+    retry: false // Prevent retries that could cause loops
   });
 
   // Save current draft when switching conversations
@@ -567,35 +568,30 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     prevInstanceId.current = finalInstanceId;
   }, [conversationId, finalInstanceId]); // Remove currentDraft dependency
 
-  // Prevent draft loading loops with stable key tracking
-  const loadedDraftKey = useRef<string | null>(null);
+  // Track loaded drafts to prevent infinite loops
+  const loadedDrafts = useRef<Set<string>>(new Set());
   
   useEffect(() => {
     if (!conversationId) {
-      // Clear everything when no conversation selected
       setMessageInput("");
       setReplyToMessage(null);
-      loadedDraftKey.current = null;
+      loadedDrafts.current.clear();
       return;
     }
     
-    if (currentDraft?.chatId === chatId && currentDraft?.instanceId === finalInstanceId) {
-      const draftKey = `${chatId}-${finalInstanceId}`;
-      
-      // Only apply draft if we haven't loaded this conversation's draft yet
-      if (loadedDraftKey.current !== draftKey) {
-        if (currentDraft.content && currentDraft.content !== messageInput) {
+    const conversationKey = `${conversationId}-${finalInstanceId}`;
+    if (currentDraft && !loadedDrafts.current.has(conversationKey)) {
+      if (currentDraft.chatId === chatId && currentDraft.instanceId === finalInstanceId) {
+        if (currentDraft.content) {
           setMessageInput(currentDraft.content);
         }
-        
         if (currentDraft.replyToMessageId) {
           setReplyToMessage({ messageId: currentDraft.replyToMessageId });
         }
-        
-        loadedDraftKey.current = draftKey;
+        loadedDrafts.current.add(conversationKey);
       }
     }
-  }, [conversationId, chatId, finalInstanceId]); // Remove currentDraft from dependencies
+  }, [conversationId]); // Only depend on conversationId to prevent loops
 
   // Update message input ref when user types
   useEffect(() => {
