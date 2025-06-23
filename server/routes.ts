@@ -621,6 +621,15 @@ export async function registerRoutes(app: Express): Promise<void> {
         replyToMessageId: replyToMessageId || null
       });
       
+      // Notify all connected clients about the draft change
+      const { SseManager } = await import('./sse-manager');
+      SseManager.notifyClients('draft_updated', {
+        chatId,
+        instanceId,
+        content,
+        messageId: draft.messageId
+      });
+      
       res.json(draft);
     } catch (error) {
       console.error('Error saving draft:', error);
@@ -632,6 +641,14 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const { instanceId, chatId } = req.params;
       await storage.deleteDraft(chatId, instanceId);
+      
+      // Notify all connected clients about the draft deletion
+      const { SseManager } = await import('./sse-manager');
+      SseManager.notifyClients('draft_deleted', {
+        chatId,
+        instanceId
+      });
+      
       res.json({ success: true });
     } catch (error) {
       console.error('Error deleting draft:', error);

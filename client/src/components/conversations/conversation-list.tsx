@@ -241,6 +241,27 @@ export default function ConversationList({ selectedConversation, onSelectConvers
           setWaitingReplyMessages(prev => 
             prev.filter(msg => msg.message_id !== messageId)
           );
+        } else if (data.type === 'draft_updated') {
+          const { chatId, instanceId, content, messageId } = data.payload;
+          setAllDrafts(prev => {
+            const existing = prev.find(d => d.chatId === chatId && d.instanceId === instanceId);
+            if (existing) {
+              // Update existing draft
+              return prev.map(d => 
+                d.chatId === chatId && d.instanceId === instanceId 
+                  ? { ...d, content, messageId, updatedAt: new Date().toISOString() }
+                  : d
+              );
+            } else {
+              // Add new draft
+              return [...prev, { chatId, instanceId, content, messageId, updatedAt: new Date().toISOString() }];
+            }
+          });
+        } else if (data.type === 'draft_deleted') {
+          const { chatId, instanceId } = data.payload;
+          setAllDrafts(prev => 
+            prev.filter(d => !(d.chatId === chatId && d.instanceId === instanceId))
+          );
         }
       } catch (error) {
         console.error('Error processing waiting reply SSE message:', error);
@@ -347,8 +368,11 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   // Ensure messages is always an array
   const messages = Array.isArray(messagesResponse) ? messagesResponse : [];
 
-  // Fetch all drafts for display in conversation list
-  const { data: allDrafts = [] } = useQuery({
+  // Real-time drafts state
+  const [allDrafts, setAllDrafts] = useState<any[]>([]);
+
+  // Fetch initial drafts for display in conversation list
+  const { data: initialDrafts = [] } = useQuery({
     queryKey: [`/api/whatsapp/drafts/all/${userId}`],
     queryFn: async () => {
       try {
@@ -372,9 +396,14 @@ export default function ConversationList({ selectedConversation, onSelectConvers
       }
     },
     enabled: instances.length > 0,
-    refetchInterval: 30000, // Reduced frequency from 5s to 30s
-    staleTime: 25000 // Cache for 25 seconds
+    refetchInterval: false, // Disable polling - use SSE for updates
+    staleTime: Infinity // Keep data fresh - updates come via SSE
   });
+
+  // Initialize drafts from query
+  useEffect(() => {
+    setAllDrafts(initialDrafts);
+  }, [initialDrafts]);
 
   // Helper function to check if conversation has waiting reply messages
   const hasWaitingReply = (conversation: any) => {
