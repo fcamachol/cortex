@@ -9,6 +9,7 @@ import { WebhookController } from './webhook-controller';
 import { SseManager } from './sse-manager';
 import { getEvolutionApi } from './evolution-api';
 import { BillToTaskService } from './bill-task-service';
+import { ScheduledJobsService } from './scheduled-jobs';
 import { db } from './db';
 import fs from 'fs';
 import path from 'path';
@@ -1965,10 +1966,73 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post('/api/finance/payables', async (req: Request, res: Response) => {
     try {
       const payable = await storage.createPayable(req.body);
+      
+      // Automatically create a companion task for the bill
+      try {
+        await BillToTaskService.createTaskForBill(payable.payableId, {
+          instanceId: req.body.instanceId || 'default-instance',
+          spaceId: payable.spaceId,
+          createdByUserId: req.body.createdByUserId,
+        });
+      } catch (taskError) {
+        console.error('Error creating companion task for bill:', taskError);
+        // Don't fail the bill creation if task creation fails
+      }
+      
       res.json(payable);
     } catch (error) {
       console.error('Error creating payable:', error);
       res.status(500).json({ error: 'Failed to create payable' });
+    }
+  });
+
+  // Apply payment to bill (with penalty priority)
+  app.post('/api/finance/payables/:payableId/payment', async (req: Request, res: Response) => {
+    try {
+      const payableId = parseInt(req.params.payableId);
+      const { paymentAmount } = req.body;
+      
+      if (!paymentAmount || paymentAmount <= 0) {
+        return res.status(400).json({ error: 'Payment amount must be greater than 0' });
+      }
+      
+      const result = await BillToTaskService.applyPaymentToBill(payableId, parseFloat(paymentAmount));
+      res.json(result);
+    } catch (error) {
+      console.error('Error applying payment to bill:', error);
+      res.status(500).json({ error: 'Failed to apply payment to bill' });
+    }
+  });
+
+  // Manual trigger for overdue bills processing
+  app.post('/api/finance/process-overdue-bills', async (req: Request, res: Response) => {
+    try {
+      const result = await ScheduledJobsService.triggerOverdueBillsProcessing();
+      res.json(result);
+    } catch (error) {
+      console.error('Error processing overdue bills:', error);
+      res.status(500).json({ error: 'Failed to process overdue bills' });
+    }
+  });
+
+  // Update payable (with task sync)
+  app.put('/api/finance/payables/:payableId', async (req: Request, res: Response) => {
+    try {
+      const payableId = parseInt(req.params.payableId);
+      const payable = await storage.updatePayable(payableId, req.body);
+      
+      // Update the companion task
+      try {
+        await BillToTaskService.updateTaskForBill(payableId);
+      } catch (taskError) {
+        console.error('Error updating companion task for bill:', taskError);
+        // Don't fail the payable update if task update fails
+      }
+      
+      res.json(payable);
+    } catch (error) {
+      console.error('Error updating payable:', error);
+      res.status(500).json({ error: 'Failed to update payable' });
     }
   });
 
