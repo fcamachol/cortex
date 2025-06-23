@@ -570,14 +570,23 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   // Track loaded drafts to prevent infinite loops
   const loadedDrafts = useRef<Set<string>>(new Set());
+  const lastLoadedConversation = useRef<string | null>(null);
   
   useEffect(() => {
     if (!conversationId) {
       setMessageInput("");
       setReplyToMessage(null);
       loadedDrafts.current.clear();
+      lastLoadedConversation.current = null;
       return;
     }
+    
+    // Only process if conversation actually changed
+    if (conversationId === lastLoadedConversation.current) {
+      return;
+    }
+    
+    lastLoadedConversation.current = conversationId;
     
     const conversationKey = `${conversationId}-${finalInstanceId}`;
     if (currentDraft && !loadedDrafts.current.has(conversationKey)) {
@@ -591,7 +600,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
         loadedDrafts.current.add(conversationKey);
       }
     }
-  }, [conversationId]); // Only depend on conversationId to prevent loops
+  }, [conversationId, currentDraft?.content, currentDraft?.replyToMessageId, chatId, finalInstanceId]); // Stable dependencies
 
   // Update message input ref when user types
   useEffect(() => {

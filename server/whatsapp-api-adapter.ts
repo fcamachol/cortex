@@ -2069,25 +2069,8 @@ export const WebhookApiAdapter = {
                     } catch (error) {
                         console.error(`❌ [${instanceId}] Error caching base64 media for ${messageId}:`, error);
                     }
-                } else if (mediaData.url || mediaData.mediaKey) {
-                    console.log(`⬇️ [${instanceId}] No base64 data found, attempting external download: ${messageId} (${messageType})`);
-                    
-                    // Get instance details for API key
-                    const instance = await storage.getWhatsappInstance(instanceId);
-                    if (instance?.apiKey) {
-                        const { handleMediaDownload } = await import('./media-downloader');
-                        const downloadResult = await handleMediaDownload(instanceId, instance.apiKey, rawMessage);
-                        
-                        if (downloadResult) {
-                            console.log(`✅ [${instanceId}] External media downloaded and cached: ${messageId}`);
-                        } else {
-                            console.log(`⚠️ [${instanceId}] External media download failed, will serve via proxy when requested: ${messageId}`);
-                        }
-                    } else {
-                        console.log(`⚠️ [${instanceId}] No API key found, cannot download external media: ${messageId}`);
-                    }
                 } else {
-                    console.log(`📎 [${instanceId}] No media content found (no base64, URL, or key), storing metadata only: ${messageId}`);
+                    console.log(`📎 [${instanceId}] No base64 data in webhook, media will be unavailable: ${messageId} (${messageType})`);
                 }
                 
                 console.log(`📎 [${instanceId}] Processed media for message: ${messageId} (${messageType})`);
