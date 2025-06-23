@@ -678,7 +678,8 @@ export default function ConversationList({ selectedConversation, onSelectConvers
               {(() => {
                 const unreadCount = conversations.filter((conv: any) => 
                   conv.unreadCount && conv.unreadCount > 0 && 
-                  (selectedInstance === 'all' || conv.instanceId === selectedInstance)
+                  (selectedInstance === 'all' || conv.instanceId === selectedInstance) &&
+                  !hiddenChats.has(`${conv.instanceId}:${conv.chatId}`) // Exclude archived/hidden chats
                 ).length;
                 return unreadCount > 0 ? (
                   <Badge variant="secondary" className="ml-1 h-4 text-xs bg-green-500 text-white">
@@ -843,7 +844,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                         })()}
                       </span>
                       <div className="mt-1 flex items-center gap-1">
-                        {conversation.unreadCount > 0 && (
+                        {conversation.unreadCount > 0 && !hiddenChats.has(`${conversation.instanceId}:${conversation.chatId}`) && (
                           <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-0.5 min-w-[20px] h-5 rounded-full flex items-center justify-center">
                             {conversation.unreadCount}
                           </Badge>
