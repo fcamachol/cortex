@@ -515,6 +515,51 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Draft management endpoints
+  app.get('/api/whatsapp/drafts/:instanceId', async (req: Request, res: Response) => {
+    try {
+      const { instanceId } = req.params;
+      const drafts = await storage.getAllDrafts(instanceId);
+      res.json(drafts);
+    } catch (error) {
+      console.error('Error fetching drafts:', error);
+      res.status(500).json({ error: 'Failed to fetch drafts' });
+    }
+  });
+
+  app.post('/api/whatsapp/drafts', async (req: Request, res: Response) => {
+    try {
+      const { chatId, instanceId, content, replyToMessageId } = req.body;
+      
+      if (!chatId || !instanceId || content === undefined) {
+        return res.status(400).json({ error: 'chatId, instanceId, and content are required' });
+      }
+
+      const draft = await storage.upsertDraft({
+        chatId,
+        instanceId,
+        content,
+        replyToMessageId: replyToMessageId || null
+      });
+      
+      res.json(draft);
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      res.status(500).json({ error: 'Failed to save draft' });
+    }
+  });
+
+  app.delete('/api/whatsapp/drafts/:instanceId/:chatId', async (req: Request, res: Response) => {
+    try {
+      const { instanceId, chatId } = req.params;
+      await storage.deleteDraft(chatId, instanceId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting draft:', error);
+      res.status(500).json({ error: 'Failed to delete draft' });
+    }
+  });
+
   app.get('/api/spaces/:userId', async (req: Request, res: Response) => {
     try {
       const { userId } = req.params;
