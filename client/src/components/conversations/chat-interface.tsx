@@ -846,7 +846,18 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
             <Input
               placeholder={replyToMessage ? "Escribe tu respuesta..." : "Type a message..."}
               value={messageInput}
-              onChange={(e) => setMessageInput(e.target.value)}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                setMessageInput(newValue);
+                
+                // If message is manually cleared (empty), delete any existing draft
+                if (newValue.trim() === '' && currentDraft) {
+                  deleteDraftMutation.mutate({
+                    instanceId: instanceId!,
+                    chatId: conversationId!
+                  });
+                }
+              }}
               onKeyPress={handleKeyPress}
               disabled={sendMessageMutation.isPending}
             />
