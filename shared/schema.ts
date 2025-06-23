@@ -9,6 +9,7 @@ export const crmSchema = pgSchema("crm");
 export const appSchema = pgSchema("app");
 export const actionsSchema = pgSchema("actions");
 export const calendarSchema = pgSchema("calendar");
+export const financeSchema = pgSchema("finance");
 
 // Enums for App schema
 export const workspaceRoleEnum = appSchema.enum("workspace_role", ["admin", "member", "viewer"]);
@@ -19,6 +20,12 @@ export const channelTypeEnum = appSchema.enum("channel_type", ["whatsapp", "emai
 export const providerTypeEnum = calendarSchema.enum("provider_type", ["google", "outlook", "apple"]);
 export const syncStatusTypeEnum = calendarSchema.enum("sync_status_type", ["active", "revoked", "error", "pending"]);
 export const attendeeResponseStatusEnum = calendarSchema.enum("attendee_response_status", ["needsAction", "declined", "tentative", "accepted"]);
+
+// Enums for Finance schema
+export const transactionTypeEnum = financeSchema.enum("transaction_type", ["income", "expense"]);
+export const payableStatusEnum = financeSchema.enum("payable_status", ["unpaid", "partially_paid", "paid", "overdue"]);
+export const loanStatusEnum = financeSchema.enum("loan_status", ["active", "paid_off", "in_arrears"]);
+export const interestPeriodTypeEnum = financeSchema.enum("interest_period_type", ["daily", "weekly", "monthly", "annually"]);
 
 // Enums for WhatsApp schema
 export const chatTypeEnum = whatsappSchema.enum("chat_type", ["individual", "group"]);
@@ -1222,3 +1229,90 @@ export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
 
 export type CalendarAttendee = typeof calendarAttendees.$inferSelect;
 export type InsertCalendarAttendee = z.infer<typeof insertCalendarAttendeeSchema>;
+
+// =============================================================================
+// FINANCE SCHEMA TABLES
+// =============================================================================
+
+// Finance Categories - Hierarchical categories for income and expenses
+export const financeCategories = financeSchema.table("categories", {
+  categoryId: serial("category_id").primaryKey(),
+  workspaceId: uuid("workspace_id").notNull().references(() => appWorkspaces.workspaceId, { onDelete: "cascade" }),
+  parentCategoryId: integer("parent_category_id").references(() => financeCategories.categoryId, { onDelete: "cascade" }),
+  categoryName: varchar("category_name", { length: 100 }).notNull(),
+});
+
+// Finance Transactions - The immutable ledger of all past financial movements
+export const financeTransactions = financeSchema.table("transactions", {
+  transactionId: serial("transaction_id").primaryKey(),
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
+  transactionDate: varchar("transaction_date", { length: 10 }).notNull(), // DATE as string (YYYY-MM-DD)
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  type: transactionTypeEnum("type").notNull(),
+  description: text("description"),
+  categoryId: integer("category_id").references(() => financeCategories.categoryId),
+  contactId: integer("contact_id"), // References CRM contact when available
+  createdByUserId: uuid("created_by_user_id").notNull().references(() => appUsers.userId),
+});
+
+// Finance Payables - Represents a single, specific bill to be paid
+export const financePayables = financeSchema.table("payables", {
+  payableId: serial("payable_id").primaryKey(),
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
+  dueDate: varchar("due_date", { length: 10 }).notNull(), // DATE as string (YYYY-MM-DD)
+  status: payableStatusEnum("status").notNull().default("unpaid"),
+  contactId: integer("contact_id"), // References CRM contact when available
+});
+
+// Finance Payable Payments - Links transactions to the specific bills they are paying off
+export const financePayablePayments = financeSchema.table("payable_payments", {
+  paymentId: integer("payment_id").notNull().references(() => financeTransactions.transactionId, { onDelete: "cascade" }),
+  payableId: integer("payable_id").notNull().references(() => financePayables.payableId, { onDelete: "cascade" }),
+}, (table) => ({
+  pk: {
+    name: "payable_payments_pkey",
+    columns: [table.paymentId, table.payableId]
+  }
+}));
+
+// Finance Recurring Bills - Templates that generate Payables on a schedule
+export const financeRecurringBills = financeSchema.table("recurring_bills", {
+  recurringBillId: serial("recurring_bill_id").primaryKey(),
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  defaultAmount: numeric("default_amount", { precision: 12, scale: 2 }),
+  recurrenceRule: text("recurrence_rule").notNull(), // iCal RRULE string
+  nextDueDate: varchar("next_due_date", { length: 10 }).notNull(), // DATE as string (YYYY-MM-DD)
+  contactId: integer("contact_id"), // References CRM contact when available
+  categoryId: integer("category_id").references(() => financeCategories.categoryId),
+});
+
+// Finance Loans - Credit instruments with interest and payment schedules
+export const financeLoans = financeSchema.table("loans", {
+  loanId: serial("loan_id").primaryKey(),
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
+  principalAmount: numeric("principal_amount", { precision: 12, scale: 2 }).notNull(),
+  interestRate: numeric("interest_rate", { precision: 5, scale: 4 }).notNull(),
+  issueDate: varchar("issue_date", { length: 10 }).notNull(), // DATE as string (YYYY-MM-DD)
+  termMonths: integer("term_months").notNull(),
+  status: loanStatusEnum("status").notNull().default("active"),
+  lenderContactId: integer("lender_contact_id"), // References CRM contact when available
+  borrowerContactId: integer("borrower_contact_id"), // References CRM contact when available
+  moratoryInterestRate: numeric("moratory_interest_rate", { precision: 5, scale: 4 }),
+  moratoryInterestPeriod: interestPeriodTypeEnum("moratory_interest_period"),
+});
+
+// Finance Loan Payments - Links transactions to loan payments with principal/interest breakdown
+export const financeLoanPayments = financeSchema.table("loan_payments", {
+  paymentId: integer("payment_id").notNull().references(() => financeTransactions.transactionId, { onDelete: "cascade" }),
+  loanId: integer("loan_id").notNull().references(() => financeLoans.loanId, { onDelete: "cascade" }),
+  principalPaid: numeric("principal_paid", { precision: 12, scale: 2 }).notNull(),
+  interestPaid: numeric("interest_paid", { precision: 12, scale: 2 }).notNull(),
+}, (table) => ({
+  pk: {
+    name: "loan_payments_pkey",
+    columns: [table.paymentId, table.loanId]
+  }
+}));
