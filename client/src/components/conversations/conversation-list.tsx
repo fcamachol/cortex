@@ -404,7 +404,8 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   const { data: conversations = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/whatsapp/conversations/${userId}`],
     refetchInterval: false, // Disable polling - use SSE for updates
-    staleTime: 300000, // Cache for 5 minutes
+    staleTime: 0, // Always fresh data when invalidated by SSE
+    refetchOnWindowFocus: false, // Prevent unnecessary refetches
   });
 
   // Also fetch contacts for display names - no polling
@@ -415,16 +416,8 @@ export default function ConversationList({ selectedConversation, onSelectConvers
     staleTime: Infinity, // Keep data fresh - updates come via SSE
   });
 
-  // Fetch recent messages to show latest message per conversation
-  const { data: messagesResponse = [] } = useQuery<any[]>({
-    queryKey: [`/api/whatsapp/conversations/${userId}`],
-    queryFn: () => fetch(`/api/whatsapp/conversations/${userId}`).then(res => res.json()),
-    refetchInterval: false, // Disable polling - use SSE for updates
-    staleTime: 300000, // Cache for 5 minutes
-  });
-
-  // Ensure messages is always an array
-  const messages = Array.isArray(messagesResponse) ? messagesResponse : [];
+  // Use conversations data directly since it already contains message info
+  const messages = conversations;
 
   // Real-time drafts state
   const [allDrafts, setAllDrafts] = useState<any[]>([]);
@@ -433,6 +426,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   const { data: initialDrafts = [] } = useQuery({
     queryKey: [`/api/whatsapp/drafts/all/${userId}`],
     queryFn: async () => {
+      if (instances.length === 0) return [];
       try {
         const draftsPromises = instances.map(async (instance: any) => {
           const response = await fetch(`/api/whatsapp/drafts/${instance.instanceId}`, {
@@ -463,7 +457,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
     if (initialDrafts && initialDrafts.length >= 0) {
       setAllDrafts(initialDrafts);
     }
-  }, [initialDrafts.length]);
+  }, [initialDrafts]);
 
   // Helper function to check if conversation has waiting reply messages
   const hasWaitingReply = (conversation: any) => {
