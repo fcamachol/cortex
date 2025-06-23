@@ -4,16 +4,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Receipt, CreditCard } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Receipt, CreditCard, Filter } from "lucide-react";
 
 export default function FinancePage() {
   const [showTransactionForm, setShowTransactionForm] = useState(false);
   const [showPayableForm, setShowPayableForm] = useState(false);
   const [showLoanForm, setShowLoanForm] = useState(false);
+  const [dateFilter, setDateFilter] = useState("this-month");
 
   // Fetch financial overview
   const { data: overview = {} } = useQuery({
-    queryKey: ["/api/finance/overview"],
+    queryKey: ["/api/finance/overview", dateFilter],
     staleTime: 30000, // 30 seconds
   });
 
@@ -25,19 +27,19 @@ export default function FinancePage() {
 
   // Fetch transactions
   const { data: transactions = [] } = useQuery({
-    queryKey: ["/api/finance/transactions"],
+    queryKey: ["/api/finance/transactions", dateFilter],
     staleTime: 30000,
   });
 
   // Fetch payables
   const { data: payables = [] } = useQuery({
-    queryKey: ["/api/finance/payables"],
+    queryKey: ["/api/finance/payables", dateFilter],
     staleTime: 30000,
   });
 
   // Fetch loans
   const { data: loans = [] } = useQuery({
-    queryKey: ["/api/finance/loans"],
+    queryKey: ["/api/finance/loans", dateFilter],
     staleTime: 30000,
   });
 
@@ -51,6 +53,29 @@ export default function FinancePage() {
             <p className="text-muted-foreground">
               Manage your financial transactions, bills, and loans
             </p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Select period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="yesterday">Yesterday</SelectItem>
+                  <SelectItem value="this-week">This Week</SelectItem>
+                  <SelectItem value="last-week">Last Week</SelectItem>
+                  <SelectItem value="this-month">This Month</SelectItem>
+                  <SelectItem value="last-month">Last Month</SelectItem>
+                  <SelectItem value="this-quarter">This Quarter</SelectItem>
+                  <SelectItem value="last-quarter">Last Quarter</SelectItem>
+                  <SelectItem value="this-year">This Year</SelectItem>
+                  <SelectItem value="last-year">Last Year</SelectItem>
+                  <SelectItem value="all-time">All Time</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </div>

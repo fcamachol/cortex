@@ -127,6 +127,7 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 23, 2025: Added comprehensive date filter to Finance module with 11 time period options integrated into all API queries
 - June 23, 2025: Made Finance module fully scrollable with fixed header and overflow-handling content area
 - June 23, 2025: Successfully implemented complete finance schema with 6 tables, 4 enums, and full type safety
 - June 23, 2025: Created finance.categories (hierarchical), finance.transactions (ledger), finance.payables (bills), finance.recurring_bills (templates), finance.loans (credit instruments), and junction tables for payments
