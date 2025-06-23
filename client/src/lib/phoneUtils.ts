@@ -40,6 +40,11 @@ export function formatPhoneNumber(jid: string): string {
 export function getCountryCode(jid: string): string | undefined {
   if (!jid) return undefined;
 
+  // Skip invalid JID formats
+  if (!isValidWhatsAppJid(jid)) {
+    return undefined;
+  }
+
   try {
     const numberPart = jid.includes('@') ? jid.split('@')[0] : jid;
     
@@ -61,6 +66,11 @@ export function getCountryCode(jid: string): string | undefined {
  */
 export function getCallingCode(jid: string): string | undefined {
   if (!jid) return undefined;
+
+  // Skip invalid JID formats
+  if (!isValidWhatsAppJid(jid)) {
+    return undefined;
+  }
 
   try {
     const numberPart = jid.includes('@') ? jid.split('@')[0] : jid;
