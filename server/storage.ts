@@ -747,6 +747,34 @@ class DatabaseStorage {
         await db.delete(whatsappInstances)
             .where(eq(whatsappInstances.instanceId, instanceId));
     }
+
+    async updateConversation(chatId: string, instanceId: string, updates: any): Promise<void> {
+        await db.update(whatsappChats)
+            .set({
+                ...updates,
+                updatedAt: new Date()
+            })
+            .where(and(
+                eq(whatsappChats.chatId, chatId),
+                eq(whatsappChats.instanceId, instanceId)
+            ));
+    }
+
+    async deleteConversation(chatId: string, instanceId: string): Promise<void> {
+        // Delete messages first due to foreign key constraints
+        await db.delete(whatsappMessages)
+            .where(and(
+                eq(whatsappMessages.chatId, chatId),
+                eq(whatsappMessages.instanceId, instanceId)
+            ));
+        
+        // Then delete the chat
+        await db.delete(whatsappChats)
+            .where(and(
+                eq(whatsappChats.chatId, chatId),
+                eq(whatsappChats.instanceId, instanceId)
+            ));
+    }
 }
 
 export const storage = new DatabaseStorage();

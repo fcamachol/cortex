@@ -1205,6 +1205,116 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Chat management endpoints
+  app.patch('/api/whatsapp/conversations/:conversationId/archive', async (req: Request, res: Response) => {
+    try {
+      const { conversationId } = req.params;
+      const { instanceId, archived = true } = req.body;
+      
+      await storage.updateConversation(conversationId, instanceId, { isArchived: archived });
+      res.json({ success: true, message: archived ? 'Chat archived' : 'Chat unarchived' });
+    } catch (error) {
+      console.error('Error archiving chat:', error);
+      res.status(500).json({ error: 'Failed to archive chat' });
+    }
+  });
+
+  app.patch('/api/whatsapp/conversations/:conversationId/mute', async (req: Request, res: Response) => {
+    try {
+      const { conversationId } = req.params;
+      const { instanceId, muted = true } = req.body;
+      
+      await storage.updateConversation(conversationId, instanceId, { isMuted: muted });
+      res.json({ success: true, message: muted ? 'Chat muted' : 'Chat unmuted' });
+    } catch (error) {
+      console.error('Error muting chat:', error);
+      res.status(500).json({ error: 'Failed to mute chat' });
+    }
+  });
+
+  app.patch('/api/whatsapp/conversations/:conversationId/pin', async (req: Request, res: Response) => {
+    try {
+      const { conversationId } = req.params;
+      const { instanceId, pinned = true } = req.body;
+      
+      await storage.updateConversation(conversationId, instanceId, { isPinned: pinned });
+      res.json({ success: true, message: pinned ? 'Chat pinned' : 'Chat unpinned' });
+    } catch (error) {
+      console.error('Error pinning chat:', error);
+      res.status(500).json({ error: 'Failed to pin chat' });
+    }
+  });
+
+  app.patch('/api/whatsapp/conversations/:conversationId/read-status', async (req: Request, res: Response) => {
+    try {
+      const { conversationId } = req.params;
+      const { instanceId, unread = true } = req.body;
+      
+      await storage.updateConversation(conversationId, instanceId, { 
+        unreadCount: unread ? 1 : 0 
+      });
+      res.json({ success: true, message: unread ? 'Marked as unread' : 'Marked as read' });
+    } catch (error) {
+      console.error('Error updating read status:', error);
+      res.status(500).json({ error: 'Failed to update read status' });
+    }
+  });
+
+  app.patch('/api/whatsapp/conversations/:conversationId/favorite', async (req: Request, res: Response) => {
+    try {
+      const { conversationId } = req.params;
+      const { instanceId, favorite = true } = req.body;
+      
+      await storage.updateConversation(conversationId, instanceId, { isFavorite: favorite });
+      res.json({ success: true, message: favorite ? 'Added to favorites' : 'Removed from favorites' });
+    } catch (error) {
+      console.error('Error updating favorite status:', error);
+      res.status(500).json({ error: 'Failed to update favorite status' });
+    }
+  });
+
+  app.patch('/api/whatsapp/conversations/:conversationId/block', async (req: Request, res: Response) => {
+    try {
+      const { conversationId } = req.params;
+      const { instanceId, blocked = true } = req.body;
+      
+      await storage.updateConversation(conversationId, instanceId, { isBlocked: blocked });
+      res.json({ success: true, message: blocked ? 'Contact blocked' : 'Contact unblocked' });
+    } catch (error) {
+      console.error('Error blocking contact:', error);
+      res.status(500).json({ error: 'Failed to block contact' });
+    }
+  });
+
+  app.patch('/api/whatsapp/conversations/:conversationId/close', async (req: Request, res: Response) => {
+    try {
+      const { conversationId } = req.params;
+      const { instanceId } = req.body;
+      
+      await storage.updateConversation(conversationId, instanceId, { 
+        isClosed: true,
+        closedAt: new Date()
+      });
+      res.json({ success: true, message: 'Chat closed' });
+    } catch (error) {
+      console.error('Error closing chat:', error);
+      res.status(500).json({ error: 'Failed to close chat' });
+    }
+  });
+
+  app.delete('/api/whatsapp/conversations/:conversationId', async (req: Request, res: Response) => {
+    try {
+      const { conversationId } = req.params;
+      const { instanceId } = req.body;
+      
+      await storage.deleteConversation(conversationId, instanceId);
+      res.json({ success: true, message: 'Chat deleted' });
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+      res.status(500).json({ error: 'Failed to delete chat' });
+    }
+  });
+
   // Evolution API webhook handlers - Use the new layered webhook controller
   app.post('/api/evolution/webhook/:instanceName/:eventType', async (req: Request, res: Response) => {
     await WebhookController.handleIncomingEvent(req, res);

@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +20,137 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   const [hoveredConversation, setHoveredConversation] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  // Chat management mutations
+  const archiveChatMutation = useMutation({
+    mutationFn: async ({ chatId, instanceId, archived }: { chatId: string; instanceId: string; archived: boolean }) => {
+      return apiRequest(`/api/whatsapp/conversations/${chatId}/archive`, {
+        method: 'PATCH',
+        body: { instanceId, archived }
+      });
+    },
+    onSuccess: (_, { archived }) => {
+      toast({
+        title: archived ? "Chat archivado" : "Chat desarchivado",
+        description: archived ? "El chat se movió al archivo" : "El chat se restauró del archivo"
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+    }
+  });
+
+  const muteChatMutation = useMutation({
+    mutationFn: async ({ chatId, instanceId, muted }: { chatId: string; instanceId: string; muted: boolean }) => {
+      return apiRequest(`/api/whatsapp/conversations/${chatId}/mute`, {
+        method: 'PATCH',
+        body: { instanceId, muted }
+      });
+    },
+    onSuccess: (_, { muted }) => {
+      toast({
+        title: muted ? "Chat silenciado" : "Chat no silenciado",
+        description: muted ? "No recibirás notificaciones" : "Recibirás notificaciones normalmente"
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+    }
+  });
+
+  const pinChatMutation = useMutation({
+    mutationFn: async ({ chatId, instanceId, pinned }: { chatId: string; instanceId: string; pinned: boolean }) => {
+      return apiRequest(`/api/whatsapp/conversations/${chatId}/pin`, {
+        method: 'PATCH',
+        body: { instanceId, pinned }
+      });
+    },
+    onSuccess: (_, { pinned }) => {
+      toast({
+        title: pinned ? "Chat fijado" : "Chat no fijado",
+        description: pinned ? "El chat aparecerá al principio" : "El chat se ordenará normalmente"
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+    }
+  });
+
+  const markUnreadMutation = useMutation({
+    mutationFn: async ({ chatId, instanceId, unread }: { chatId: string; instanceId: string; unread: boolean }) => {
+      return apiRequest(`/api/whatsapp/conversations/${chatId}/read-status`, {
+        method: 'PATCH',
+        body: { instanceId, unread }
+      });
+    },
+    onSuccess: (_, { unread }) => {
+      toast({
+        title: unread ? "Marcado como no leído" : "Marcado como leído",
+        description: unread ? "El chat aparecerá como nuevo" : "El chat aparecerá como leído"
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+    }
+  });
+
+  const favoriteChatMutation = useMutation({
+    mutationFn: async ({ chatId, instanceId, favorite }: { chatId: string; instanceId: string; favorite: boolean }) => {
+      return apiRequest(`/api/whatsapp/conversations/${chatId}/favorite`, {
+        method: 'PATCH',
+        body: { instanceId, favorite }
+      });
+    },
+    onSuccess: (_, { favorite }) => {
+      toast({
+        title: favorite ? "Añadido a favoritos" : "Eliminado de favoritos",
+        description: favorite ? "El chat está en tu lista de favoritos" : "El chat se eliminó de favoritos"
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+    }
+  });
+
+  const blockChatMutation = useMutation({
+    mutationFn: async ({ chatId, instanceId, blocked }: { chatId: string; instanceId: string; blocked: boolean }) => {
+      return apiRequest(`/api/whatsapp/conversations/${chatId}/block`, {
+        method: 'PATCH',
+        body: { instanceId, blocked }
+      });
+    },
+    onSuccess: (_, { blocked }) => {
+      toast({
+        title: blocked ? "Contacto bloqueado" : "Contacto desbloqueado",
+        description: blocked ? "No recibirás mensajes de este contacto" : "Puedes recibir mensajes normalmente"
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+    }
+  });
+
+  const closeChatMutation = useMutation({
+    mutationFn: async ({ chatId, instanceId }: { chatId: string; instanceId: string }) => {
+      return apiRequest(`/api/whatsapp/conversations/${chatId}/close`, {
+        method: 'PATCH',
+        body: { instanceId }
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Chat cerrado",
+        description: "El chat se cerró pero los datos se conservan"
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+    }
+  });
+
+  const deleteChatMutation = useMutation({
+    mutationFn: async ({ chatId, instanceId }: { chatId: string; instanceId: string }) => {
+      return apiRequest(`/api/whatsapp/conversations/${chatId}`, {
+        method: 'DELETE',
+        body: { instanceId }
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Chat eliminado",
+        description: "El chat y todos sus mensajes han sido eliminados",
+        variant: "destructive"
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+    }
+  });
 
   // Mock user ID - in real app this would come from auth context
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
@@ -336,7 +469,11 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setOpenDropdown(null);
-                                // Add archive functionality here
+                                archiveChatMutation.mutate({
+                                  chatId: conversation.chatId,
+                                  instanceId: conversation.instanceId,
+                                  archived: true
+                                });
                               }}
                             >
                               <Archive className="h-4 w-4" />
@@ -347,7 +484,11 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setOpenDropdown(null);
-                                // Add mute functionality here
+                                muteChatMutation.mutate({
+                                  chatId: conversation.chatId,
+                                  instanceId: conversation.instanceId,
+                                  muted: true
+                                });
                               }}
                             >
                               <BellOff className="h-4 w-4" />
@@ -358,7 +499,11 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setOpenDropdown(null);
-                                // Add pin functionality here
+                                pinChatMutation.mutate({
+                                  chatId: conversation.chatId,
+                                  instanceId: conversation.instanceId,
+                                  pinned: true
+                                });
                               }}
                             >
                               <Pin className="h-4 w-4" />
@@ -369,7 +514,11 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setOpenDropdown(null);
-                                // Add mark as unread functionality here
+                                markUnreadMutation.mutate({
+                                  chatId: conversation.chatId,
+                                  instanceId: conversation.instanceId,
+                                  unread: true
+                                });
                               }}
                             >
                               <CheckCheck className="h-4 w-4" />
@@ -380,7 +529,11 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setOpenDropdown(null);
-                                // Add favorites functionality here
+                                favoriteChatMutation.mutate({
+                                  chatId: conversation.chatId,
+                                  instanceId: conversation.instanceId,
+                                  favorite: true
+                                });
                               }}
                             >
                               <Heart className="h-4 w-4" />
@@ -391,7 +544,11 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setOpenDropdown(null);
-                                // Add block functionality here
+                                blockChatMutation.mutate({
+                                  chatId: conversation.chatId,
+                                  instanceId: conversation.instanceId,
+                                  blocked: true
+                                });
                               }}
                             >
                               <Ban className="h-4 w-4" />
@@ -402,7 +559,10 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setOpenDropdown(null);
-                                // Add close chat functionality here
+                                closeChatMutation.mutate({
+                                  chatId: conversation.chatId,
+                                  instanceId: conversation.instanceId
+                                });
                               }}
                             >
                               <X className="h-4 w-4" />
@@ -413,7 +573,10 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setOpenDropdown(null);
-                                // Add delete chat functionality here
+                                deleteChatMutation.mutate({
+                                  chatId: conversation.chatId,
+                                  instanceId: conversation.instanceId
+                                });
                               }}
                             >
                               <Trash2 className="h-4 w-4" />
