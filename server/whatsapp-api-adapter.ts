@@ -1000,6 +1000,29 @@ export const WebhookApiAdapter = {
     
     async mapApiPayloadToWhatsappMessage(rawMessage: any, instanceId: string): Promise<Omit<WhatsappMessages, 'createdAt'> | null> {
         if (!rawMessage.key?.id || !rawMessage.key?.remoteJid) return null;
+        
+        // Debug and fix malformed chat IDs
+        const remoteJid = rawMessage.key.remoteJid;
+        if (remoteJid && !remoteJid.includes('@') && remoteJid.length > 20) {
+            console.error(`🚨 MALFORMED CHAT ID DETECTED: "${remoteJid}"`);
+            console.error(`Full message structure:`, JSON.stringify({
+                messageType: rawMessage.messageType,
+                key: rawMessage.key,
+                pushName: rawMessage.pushName,
+                instanceId: instanceId
+            }, null, 2));
+            
+            // Try to find the correct JID in the message data
+            const correctJid = this.extractCorrectJid(rawMessage);
+            if (correctJid) {
+                console.log(`🔧 Found correct JID: "${correctJid}", replacing malformed ID`);
+                rawMessage.key.remoteJid = correctJid;
+            } else {
+                console.error(`❌ Could not find correct JID, skipping message`);
+                return null;
+            }
+        }
+        
         const timestamp = rawMessage.messageTimestamp;
 
         const getMessageType = (type?: string): WhatsappMessages['messageType'] => {
