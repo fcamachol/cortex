@@ -1130,14 +1130,19 @@ export const WebhookApiAdapter = {
             console.log(`   - contextInfo:`, JSON.stringify(rawMessage.contextInfo, null, 2));
         }
 
+        const messageType = getMessageType(rawMessage);
+        const content = this.extractMessageContent(rawMessage);
+        
+        console.log(`📨 Processing message ${rawMessage.key.id}: type="${messageType}", content="${content}"`);
+
         return {
             messageId: rawMessage.key.id,
             instanceId: instanceId,
             chatId: rawMessage.key.remoteJid,
             senderJid: rawMessage.key.participant || rawMessage.key.remoteJid,
             fromMe: correctedFromMe,
-            messageType: getMessageType(rawMessage),
-            content: this.extractMessageContent(rawMessage),
+            messageType: messageType,
+            content: content,
             timestamp: timestamp && typeof timestamp === 'number' ? new Date(timestamp * 1000) : new Date(),
             quotedMessageId: rawMessage.message?.extendedTextMessage?.contextInfo?.quotedMessage?.key?.id,
             isForwarded: isForwarded,

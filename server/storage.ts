@@ -6,6 +6,7 @@ import {
     // WhatsApp Schema
     whatsappInstances, whatsappContacts, whatsappChats, whatsappMessages,
     whatsappGroups, whatsappGroupParticipants, whatsappMessageReactions,
+    whatsappMessageMedia,
     // Legacy Schema
     tasks, contacts,
     // Actions Schema
@@ -21,6 +22,7 @@ import {
     type WhatsappGroup, type InsertWhatsappGroup,
     type WhatsappGroupParticipant, type InsertWhatsappGroupParticipant,
     type WhatsappMessageReaction, type InsertWhatsappMessageReaction,
+    type WhatsappMessageMedia, type InsertWhatsappMessageMedia,
     whatsappDrafts, type WhatsappDraft, type InsertWhatsappDraft
 } from "../shared/schema"; // Assuming a single, final schema definition file
 
@@ -426,6 +428,39 @@ class DatabaseStorage {
     // Alias for backward compatibility with existing webhook code
     async upsertWhatsappMessageReaction(reaction: InsertWhatsappMessageReaction): Promise<WhatsappMessageReaction> {
         return this.upsertWhatsappReaction(reaction);
+    }
+
+    async upsertWhatsappMessageMedia(media: InsertWhatsappMessageMedia): Promise<WhatsappMessageMedia> {
+        const [result] = await db.insert(whatsappMessageMedia)
+            .values(media)
+            .onConflictDoUpdate({
+                target: [whatsappMessageMedia.messageId, whatsappMessageMedia.instanceId],
+                set: {
+                    mimetype: media.mimetype,
+                    fileSizeBytes: media.fileSizeBytes,
+                    fileUrl: media.fileUrl,
+                    fileLocalPath: media.fileLocalPath,
+                    mediaKey: media.mediaKey,
+                    caption: media.caption,
+                    thumbnailUrl: media.thumbnailUrl,
+                    height: media.height,
+                    width: media.width,
+                    durationSeconds: media.durationSeconds,
+                    isViewOnce: media.isViewOnce,
+                }
+            })
+            .returning();
+        return result;
+    }
+
+    async getWhatsappMessageMedia(messageId: string, instanceId: string): Promise<WhatsappMessageMedia | undefined> {
+        const [result] = await db.select().from(whatsappMessageMedia)
+            .where(and(
+                eq(whatsappMessageMedia.messageId, messageId),
+                eq(whatsappMessageMedia.instanceId, instanceId)
+            ))
+            .limit(1);
+        return result;
     }
 
     // Task management methods
