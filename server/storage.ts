@@ -20,7 +20,8 @@ import {
     type WhatsappMessage, type InsertWhatsappMessage,
     type WhatsappGroup, type InsertWhatsappGroup,
     type WhatsappGroupParticipant, type InsertWhatsappGroupParticipant,
-    type WhatsappMessageReaction, type InsertWhatsappMessageReaction
+    type WhatsappMessageReaction, type InsertWhatsappMessageReaction,
+    whatsappDrafts, type WhatsappDraft, type InsertWhatsappDraft
 } from "../shared/schema"; // Assuming a single, final schema definition file
 
 /**
@@ -768,12 +769,115 @@ class DatabaseStorage {
                 eq(whatsappMessages.instanceId, instanceId)
             ));
         
+        // Delete drafts for this chat
+        await db.delete(whatsappDrafts)
+            .where(and(
+                eq(whatsappDrafts.chatId, chatId),
+                eq(whatsappDrafts.instanceId, instanceId)
+            ));
+        
         // Then delete the chat
         await db.delete(whatsappChats)
             .where(and(
                 eq(whatsappChats.chatId, chatId),
                 eq(whatsappChats.instanceId, instanceId)
             ));
+    }
+
+    // =========================================================================
+    // DRAFT MANAGEMENT METHODS
+    // =========================================================================
+
+    async getAllDrafts(instanceId: string): Promise<WhatsappDraft[]> {
+        return await db.select()
+            .from(whatsappDrafts)
+            .where(eq(whatsappDrafts.instanceId, instanceId))
+            .orderBy(desc(whatsappDrafts.updatedAt));
+    }
+
+    async getDraft(chatId: string, instanceId: string): Promise<WhatsappDraft | null> {
+        const [draft] = await db.select()
+            .from(whatsappDrafts)
+            .where(and(
+                eq(whatsappDrafts.chatId, chatId),
+                eq(whatsappDrafts.instanceId, instanceId)
+            ));
+        return draft || null;
+    }
+
+    private async generateDraftMessageId(): Promise<string> {
+        // Get the highest existing draft ID to generate the next one
+        const result = await db.select({ messageId: whatsappDrafts.messageId })
+            .from(whatsappDrafts)
+            .where(sql`${whatsappDrafts.messageId} LIKE 'DRAFT%'`)
+            .orderBy(desc(whatsappDrafts.messageId))
+            .limit(1);
+
+        if (result.length === 0) {
+            return 'DRAFT000001';
+        }
+
+        const lastId = result[0].messageId;
+        const numberPart = parseInt(lastId.replace('DRAFT', ''));
+        const nextNumber = numberPart + 1;
+        return `DRAFT${nextNumber.toString().padStart(6, '0')}`;
+    }
+
+    async upsertDraft(draftData: InsertWhatsappDraft): Promise<WhatsappDraft> {
+        // If content is empty, delete the draft instead of upserting
+        if (!draftData.content || draftData.content.trim() === '') {
+            await this.deleteDraft(draftData.chatId, draftData.instanceId);
+            // Return a dummy draft object for API consistency
+            return {
+                messageId: '',
+                chatId: draftData.chatId,
+                instanceId: draftData.instanceId,
+                content: '',
+                replyToMessageId: null,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            };
+        }
+
+        // Check if draft already exists for this chat/instance
+        const existingDraft = await this.getDraft(draftData.chatId, draftData.instanceId);
+        
+        if (existingDraft) {
+            // Update existing draft
+            const [draft] = await db.update(whatsappDrafts)
+                .set({
+                    content: draftData.content,
+                    replyToMessageId: draftData.replyToMessageId,
+                    updatedAt: new Date()
+                })
+                .where(eq(whatsappDrafts.messageId, existingDraft.messageId))
+                .returning();
+            return draft;
+        } else {
+            // Create new draft with generated ID
+            const messageId = await this.generateDraftMessageId();
+            const [draft] = await db.insert(whatsappDrafts)
+                .values({
+                    messageId,
+                    ...draftData,
+                    updatedAt: new Date()
+                })
+                .returning();
+            return draft;
+        }
+    }
+
+    async deleteDraft(chatId: string, instanceId: string): Promise<void> {
+        await db.delete(whatsappDrafts)
+            .where(and(
+                eq(whatsappDrafts.chatId, chatId),
+                eq(whatsappDrafts.instanceId, instanceId)
+            ));
+    }
+
+    async deleteDraftById(messageId: string): Promise<void> {
+        await db.delete(whatsappDrafts)
+            .where(eq(whatsappDrafts.messageId, messageId));
     }
 }
 

@@ -243,6 +243,7 @@ export const whatsappMessageDeletions = whatsappSchema.table("message_deletions"
 }));
 
 export const whatsappDrafts = whatsappSchema.table("drafts", {
+  messageId: varchar("message_id", { length: 255 }).primaryKey(), // DRAFT000001 format
   chatId: varchar("chat_id", { length: 100 }).notNull(),
   instanceId: varchar("instance_id", { length: 100 }).notNull(),
   content: text("content").notNull(),
@@ -250,10 +251,7 @@ export const whatsappDrafts = whatsappSchema.table("drafts", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
-  pk: {
-    name: "drafts_pkey",
-    columns: [table.chatId, table.instanceId]
-  },
+  chatInstanceIdx: index("drafts_chat_instance_idx").on(table.chatId, table.instanceId),
   updatedAtIndex: index("drafts_updated_at_idx").on(table.updatedAt),
 }));
 
