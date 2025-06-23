@@ -153,11 +153,12 @@ export default function FinancePage() {
 
           {/* Main Content Tabs */}
           <Tabs defaultValue="dashboard" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
               <TabsTrigger value="transactions">Transactions</TabsTrigger>
               <TabsTrigger value="payables">Bills</TabsTrigger>
               <TabsTrigger value="loans">Loans</TabsTrigger>
+              <TabsTrigger value="accounts">Accounts</TabsTrigger>
               <TabsTrigger value="reports">Reports</TabsTrigger>
             </TabsList>
 
@@ -339,6 +340,23 @@ export default function FinancePage() {
               </Card>
             </TabsContent>
 
+            <TabsContent value="accounts" className="space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold">Accounts</h2>
+                  <p className="text-muted-foreground">
+                    Manage your bank accounts, credit cards, and other financial accounts
+                  </p>
+                </div>
+                <Button onClick={() => setShowAccountForm(true)} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Account
+                </Button>
+              </div>
+              
+              <AccountList spaceId={1} />
+            </TabsContent>
+
             <TabsContent value="reports" className="space-y-4">
               <Card>
                 <CardHeader>
@@ -371,6 +389,13 @@ export default function FinancePage() {
       <LoanForm 
         open={showLoanForm} 
         onClose={() => setShowLoanForm(false)} 
+      />
+
+      {/* Account Form Modal */}
+      <AccountForm 
+        open={showAccountForm} 
+        onClose={() => setShowAccountForm(false)} 
+        spaceId={1}
       />
     </div>
   );
