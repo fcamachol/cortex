@@ -174,6 +174,10 @@ export const WebhookApiAdapter = {
                 const storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
                 console.log(`✅ [${instanceId}] Message stored: ${storedMessage.messageId}`);
                 
+                // Handle media storage after message is saved to avoid foreign key constraint errors
+                const messageType = getMessageType(rawMessage);
+                await this.handleMediaStorage(rawMessage, instanceId, messageType);
+                
                 SseManager.notifyClientsOfNewMessage(storedMessage);
                 ActionService.processNewMessage(storedMessage);
 
@@ -1136,9 +1140,6 @@ export const WebhookApiAdapter = {
         const content = this.extractMessageContent(rawMessage);
         
         console.log(`📨 Processing message ${rawMessage.key.id}: type="${messageType}", content="${content}"`);
-
-        // Handle media storage for media messages
-        await this.handleMediaStorage(rawMessage, instanceId, messageType);
 
         return {
             messageId: rawMessage.key.id,
