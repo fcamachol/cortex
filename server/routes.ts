@@ -1384,12 +1384,15 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.patch('/api/whatsapp/conversations/:conversationId/read-status', async (req: Request, res: Response) => {
+  app.patch('/api/whatsapp/conversations/read-status', async (req: Request, res: Response) => {
     try {
-      const { conversationId } = req.params;
-      const { instanceId, unread = true } = req.body;
+      const { chatId, instanceId, unread = true } = req.body;
       
-      await storage.updateConversation(conversationId, instanceId, { 
+      if (!chatId || !instanceId) {
+        return res.status(400).json({ error: 'chatId and instanceId are required' });
+      }
+      
+      await storage.updateConversation(chatId, instanceId, { 
         unreadCount: unread ? 1 : 0 
       });
       res.json({ success: true, message: unread ? 'Marked as unread' : 'Marked as read' });
@@ -1399,12 +1402,15 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.patch('/api/whatsapp/conversations/:conversationId/favorite', async (req: Request, res: Response) => {
+  app.patch('/api/whatsapp/conversations/favorite', async (req: Request, res: Response) => {
     try {
-      const { conversationId } = req.params;
-      const { instanceId, favorite = true } = req.body;
+      const { chatId, instanceId, favorite = true } = req.body;
       
-      await storage.updateConversation(conversationId, instanceId, { isFavorite: favorite });
+      if (!chatId || !instanceId) {
+        return res.status(400).json({ error: 'chatId and instanceId are required' });
+      }
+      
+      await storage.updateConversation(chatId, instanceId, { isFavorite: favorite });
       res.json({ success: true, message: favorite ? 'Added to favorites' : 'Removed from favorites' });
     } catch (error) {
       console.error('Error updating favorite status:', error);
@@ -1441,12 +1447,15 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.delete('/api/whatsapp/conversations/:conversationId', async (req: Request, res: Response) => {
+  app.delete('/api/whatsapp/conversations/delete', async (req: Request, res: Response) => {
     try {
-      const { conversationId } = req.params;
-      const { instanceId } = req.body;
+      const { chatId, instanceId } = req.body;
       
-      await storage.deleteConversation(conversationId, instanceId);
+      if (!chatId || !instanceId) {
+        return res.status(400).json({ error: 'chatId and instanceId are required' });
+      }
+      
+      await storage.deleteConversation(chatId, instanceId);
       res.json({ success: true, message: 'Chat deleted' });
     } catch (error) {
       console.error('Error deleting chat:', error);

@@ -74,9 +74,9 @@ export default function ConversationList({ selectedConversation, onSelectConvers
 
   const markUnreadMutation = useMutation({
     mutationFn: async ({ chatId, instanceId, unread, silent = false }: { chatId: string; instanceId: string; unread: boolean; silent?: boolean }) => {
-      return apiRequest(`/api/whatsapp/conversations/${chatId}/read-status`, {
+      return apiRequest(`/api/whatsapp/conversations/read-status`, {
         method: 'PATCH',
-        body: { instanceId, unread }
+        body: { chatId, instanceId, unread }
       });
     },
     onSuccess: (_, { unread, silent = false }) => {
@@ -92,9 +92,9 @@ export default function ConversationList({ selectedConversation, onSelectConvers
 
   const favoriteChatMutation = useMutation({
     mutationFn: async ({ chatId, instanceId, favorite }: { chatId: string; instanceId: string; favorite: boolean }) => {
-      return apiRequest(`/api/whatsapp/conversations/${chatId}/favorite`, {
+      return apiRequest(`/api/whatsapp/conversations/favorite`, {
         method: 'PATCH',
-        body: { instanceId, favorite }
+        body: { chatId, instanceId, favorite }
       });
     },
     onSuccess: (_, { favorite }) => {
@@ -140,9 +140,9 @@ export default function ConversationList({ selectedConversation, onSelectConvers
 
   const deleteChatMutation = useMutation({
     mutationFn: async ({ chatId, instanceId }: { chatId: string; instanceId: string }) => {
-      return apiRequest(`/api/whatsapp/conversations/${chatId}`, {
+      return apiRequest(`/api/whatsapp/conversations/delete`, {
         method: 'DELETE',
-        body: { instanceId }
+        body: { chatId, instanceId }
       });
     },
     onSuccess: () => {
