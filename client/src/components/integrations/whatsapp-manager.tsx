@@ -426,7 +426,73 @@ export function WhatsAppInstanceManager() {
                   </Button>
                 </div>
                 <div className="flex items-center justify-between">
-                  {getStatusBadge(instance.instanceId)}
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(instance.instanceId)}
+                    {/* Instance indicator */}
+                    {(() => {
+                      const getInstanceIndicator = (instanceId: string) => {
+                        if (instance && (instance.customColor || instance.customLetter)) {
+                          return {
+                            color: instance.customColor || "",
+                            letter: instance.customLetter || "I"
+                          };
+                        }
+                        
+                        // Fallback to generated colors if no customization
+                        const colors = [
+                          'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-pink-500', 
+                          'bg-yellow-500', 'bg-orange-500', 'bg-red-500', 'bg-indigo-500',
+                          'bg-teal-500', 'bg-cyan-500', 'bg-lime-500', 'bg-amber-500'
+                        ];
+                        
+                        let hash = 0;
+                        for (let i = 0; i < instanceId.length; i++) {
+                          hash = instanceId.charCodeAt(i) + ((hash << 5) - hash);
+                        }
+                        const colorIndex = Math.abs(hash) % colors.length;
+                        
+                        let letter = 'I';
+                        if (instanceId.includes('live')) letter = 'L';
+                        else if (instanceId.includes('test')) letter = 'T';
+                        else if (instanceId.includes('prod')) letter = 'P';
+                        else if (instanceId.includes('instance')) {
+                          const match = instanceId.match(/\d+/);
+                          if (match) {
+                            const num = parseInt(match[0]);
+                            letter = String.fromCharCode(65 + (num % 26));
+                          }
+                        } else {
+                          letter = instanceId.charAt(0).toUpperCase();
+                        }
+                        
+                        return {
+                          color: colors[colorIndex],
+                          letter: letter
+                        };
+                      };
+
+                      const indicator = getInstanceIndicator(instance.instanceId);
+                      
+                      return (
+                        <div 
+                          className={`w-4 h-4 flex items-center justify-center ${
+                            indicator.color ? `${indicator.color} rounded-full text-white` : ''
+                          }`}
+                          style={{
+                            fontSize: indicator.letter.length > 1 ? '18px' : '10px',
+                            fontWeight: indicator.letter.length > 1 ? 'normal' : 'bold',
+                            lineHeight: '1',
+                            overflow: 'visible',
+                            fontFamily: indicator.letter.length > 1 ? 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' : 'inherit',
+                            color: indicator.color ? 'white' : '#666'
+                          }}
+                          title={`Instance: ${instance.instanceId}`}
+                        >
+                          {indicator.letter}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
