@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TransactionForm } from "@/components/finance/TransactionForm";
+import { LoanForm } from "@/components/finance/LoanForm";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Receipt, CreditCard, Filter } from "lucide-react";
 
 export default function FinancePage() {
@@ -361,6 +362,12 @@ export default function FinancePage() {
       <TransactionForm 
         open={showTransactionForm} 
         onClose={() => setShowTransactionForm(false)} 
+      />
+
+      {/* Loan Form Modal */}
+      <LoanForm 
+        open={showLoanForm} 
+        onClose={() => setShowLoanForm(false)} 
       />
     </div>
   );
