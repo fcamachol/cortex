@@ -696,7 +696,8 @@ export default function ConversationList({ selectedConversation, onSelectConvers
               {(() => {
                 const groupCount = conversations.filter((conv: any) => 
                   conv.chatId?.includes('@g.us') && 
-                  (selectedInstance === 'all' || conv.instanceId === selectedInstance)
+                  (selectedInstance === 'all' || conv.instanceId === selectedInstance) &&
+                  !hiddenChats.has(`${conv.instanceId}:${conv.chatId}`) // Exclude archived/hidden chats
                 ).length;
                 return groupCount > 0 ? (
                   <Badge variant="secondary" className="ml-1 h-4 text-xs">
