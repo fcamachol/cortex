@@ -2050,27 +2050,51 @@ export const WebhookApiAdapter = {
                 // Store media metadata in database
                 await storage.upsertWhatsappMessageMedia(mediaInfo as InsertWhatsappMessageMedia);
                 
-                // Check for base64 data in webhook payload first, then attempt external download
-                if (mediaData.base64 || mediaData.data) {
-                    console.log(`💾 [${instanceId}] Base64 media data found, caching directly: ${messageId} (${messageType})`);
+                // CORRECT APPROACH: Don't check for base64 in webhook - make API call to download media
+                console.log(`📥 [${instanceId}] Media message detected, initiating download process: ${messageId} (${messageType})`);
+                
+                try {
+                    // Import Evolution API and media downloader
+                    const { getEvolutionApi } = await import('./evolution-api');
+                    const { cacheBase64Media } = await import('./media-downloader');
+                    const evolutionApi = getEvolutionApi();
                     
-                    try {
-                        const { cacheBase64Media } = await import('./media-downloader');
-                        const base64Data = mediaData.base64 || mediaData.data;
-                        const cachedPath = await cacheBase64Media(instanceId, messageId, base64Data, mediaData.mimetype);
+                    // Get instance API key
+                    const instance = await storage.getWhatsappInstance(instanceId);
+                    if (!instance?.apiKey) {
+                        console.error(`❌ [${instanceId}] No API key found for media download: ${messageId}`);
+                        return;
+                    }
+                    
+                    // Step 2: Make API call to download media using the webhook message data
+                    const downloadResponse = await evolutionApi.downloadMedia(
+                        instanceId,
+                        instance.apiKey,
+                        {
+                            key: rawMessage.key,
+                            message: rawMessage.message
+                        }
+                    );
+                    
+                    if (downloadResponse?.base64) {
+                        console.log(`✅ [${instanceId}] Media downloaded successfully: ${messageId} (${downloadResponse.base64.length} chars)`);
+                        
+                        // Cache the base64 data as a local file
+                        const cachedPath = await cacheBase64Media(instanceId, messageId, downloadResponse.base64, downloadResponse.mimetype || mediaData.mimetype);
                         
                         if (cachedPath) {
                             // Update database with local file path
                             await storage.updateWhatsappMessageMediaPath(messageId, instanceId, cachedPath);
-                            console.log(`✅ [${instanceId}] Base64 media cached successfully: ${messageId}`);
+                            console.log(`✅ [${instanceId}] Media cached successfully: ${messageId} -> ${cachedPath}`);
                         } else {
-                            console.log(`⚠️ [${instanceId}] Failed to cache base64 media: ${messageId}`);
+                            console.log(`⚠️ [${instanceId}] Failed to cache downloaded media: ${messageId}`);
                         }
-                    } catch (error) {
-                        console.error(`❌ [${instanceId}] Error caching base64 media for ${messageId}:`, error);
+                    } else {
+                        console.log(`⚠️ [${instanceId}] Media download returned no base64 data: ${messageId}`);
                     }
-                } else {
-                    console.log(`📎 [${instanceId}] No base64 data in webhook, media will be unavailable: ${messageId} (${messageType})`);
+                } catch (error) {
+                    console.error(`❌ [${instanceId}] Media download failed for ${messageId}:`, error.message);
+                    // Media will remain unavailable, which is correct behavior for failed downloads
                 }
                 
                 console.log(`📎 [${instanceId}] Processed media for message: ${messageId} (${messageType})`);

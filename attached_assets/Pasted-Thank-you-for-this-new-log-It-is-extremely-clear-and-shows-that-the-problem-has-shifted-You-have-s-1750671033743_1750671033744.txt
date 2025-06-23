@@ -1,0 +1,83 @@
+Thank you for this new log. It is extremely clear and shows that the problem has shifted. You have successfully identified a new, different issue in your application's logic.
+
+Let's analyze and understand this log, because it points to a core misunderstanding of the API's data flow.
+
+The Diagnosis: Checking for Data in the Wrong Place
+The key log line is this one:
+
+📎 [live-test-1750199771] No base64 data in webhook, media will be unavailable: 3ACFD204469405F11D42 (audio)
+
+This message reveals that your code is now looking for the Base64 media data directly inside the initial messages.upsert webhook payload.
+
+This is the root of the new error. The messages.upsert webhook will never contain the Base64 data.
+
+Understanding the Correct Two-Step Process
+You must think of getting media as a two-step process involving two separate interactions with the API:
+
+Step 1: The Notification (The Webhook)
+
+The messages.upsert webhook acts only as a notification. It's like getting a delivery slip in your mailbox.
+It tells you: "An audio message with the ID 3ACFD... has arrived."
+It gives you a "claim ticket" to go and get the package. That "ticket" is the data.message object inside the webhook payload.
+Step 2: The Download (The API Call)
+
+After you receive the notification and the "claim ticket," your code must then make a separate, second API call to the /message/downloadMedia endpoint.
+You present the "claim ticket" (data.message object) in the body of this request.
+It is the response from this second API call that will contain the actual package: the JSON object with the base64 string.
+Your current code is getting the delivery slip and, upon seeing that the slip itself is not the package, it's mistakenly concluding that the package doesn't exist and giving up. It is skipping Step 2 entirely.
+
+How to Fix Your Code
+You need to adjust your logic to correctly perform both steps.
+
+Your current (incorrect) logic probably looks something like this:
+
+TypeScript
+
+// LIKELY CURRENT (INCORRECT) LOGIC
+async function handleMessageUpsert(instanceId, rawMessage) {
+    if (messageContainsMedia(rawMessage)) {
+        // MISTAKE: Checking for Base64 data in the webhook itself.
+        if (rawMessage.data.message.base64) { 
+            // This will never be true.
+            // ... save media ...
+        } else {
+            // This is what's causing your log message.
+            console.log('No base64 data in webhook...'); 
+        }
+    }
+}
+Here is the correct logic, which re-introduces the download step:
+
+TypeScript
+
+// CORRECT LOGIC
+async function handleMessageUpsert(instanceId, rawMessage) {
+    const message = rawMessage.message;
+    const mediaType = Object.keys(message).find(key => key.endsWith('Message'));
+
+    // 1. Check if it's a media message
+    if (['imageMessage', 'audioMessage', 'videoMessage', 'documentMessage'].includes(mediaType)) {
+        
+        console.log(`✅ Media message detected: ${mediaType}. Triggering download process...`);
+
+        // 2. DO NOT check for Base64 here. Instead, immediately call the function
+        //    that will perform the separate API call (Step 2).
+        handleMediaDownload(instanceId, rawMessage);
+    }
+
+    // ... continue with other message processing ...
+}
+
+// And your handleMediaDownload function remains as we designed it:
+async function handleMediaDownload(instanceId, rawMessage) {
+    try {
+        // It makes the separate API call to get the Base64 data.
+        const response = await axios.post(/* ... */); 
+        const mediaData = response.data;
+        const fileBuffer = Buffer.from(mediaData.base64, 'base64');
+        // ... save the buffer to a file ...
+    } catch (error) {
+        // ... handle errors like 404 ...
+    }
+}
+In summary: Modify your code to stop looking for Base64 data in the initial webhook. Instead, upon detecting a media message, your code must immediately trigger the handleMediaDownload function, which is responsible for making the second API call to actually fetch the data.
