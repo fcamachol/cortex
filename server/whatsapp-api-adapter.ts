@@ -1926,3 +1926,60 @@ export const WebhookApiAdapter = {
         }
     }
 };
+
+/**
+ * WhatsApp API Adapter for sending messages
+ */
+export const WhatsAppAPIAdapter = {
+    /**
+     * Send a WhatsApp message with optional reply
+     */
+    async sendMessage(instanceId: string, chatId: string, message: string, quotedMessageId?: string): Promise<{ success: boolean; data?: any; error?: string }> {
+        try {
+            const { getEvolutionApi } = await import('./evolution-api');
+            const evolutionApi = getEvolutionApi();
+            
+            // Get instance to retrieve API key
+            const instance = await storage.getWhatsappInstance(instanceId);
+            if (!instance?.apiKey) {
+                return { success: false, error: 'Instance API key not found' };
+            }
+
+            const payload: any = {
+                number: chatId,
+                textMessage: {
+                    text: message
+                }
+            };
+
+            // Add quoted message if replying
+            if (quotedMessageId) {
+                payload.textMessage.quoted = {
+                    key: {
+                        id: quotedMessageId
+                    }
+                };
+            }
+
+            console.log(`📤 [${instanceId}] Sending message to ${chatId}${quotedMessageId ? ' (reply)' : ''}`);
+            
+            const response = await evolutionApi.makeRequest(
+                `/message/sendText/${instanceId}`,
+                'POST',
+                payload,
+                instance.apiKey
+            );
+
+            if (response) {
+                console.log(`✅ [${instanceId}] Message sent successfully`);
+                return { success: true, data: response };
+            } else {
+                return { success: false, error: 'Failed to send message' };
+            }
+
+        } catch (error) {
+            console.error(`❌ [${instanceId}] Error sending message:`, error);
+            return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+    }
+};

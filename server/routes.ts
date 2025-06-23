@@ -471,6 +471,29 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Send WhatsApp message (with optional reply)
+  app.post('/api/whatsapp/send-message', async (req: Request, res: Response) => {
+    try {
+      const { instanceId, chatId, message, quotedMessageId } = req.body;
+      
+      if (!instanceId || !chatId || !message) {
+        return res.status(400).json({ error: 'instanceId, chatId, and message are required' });
+      }
+
+      const { WhatsAppAPIAdapter } = await import('./whatsapp-api-adapter');
+      const result = await WhatsAppAPIAdapter.sendMessage(instanceId, chatId, message, quotedMessageId);
+      
+      if (result.success) {
+        res.json(result.data);
+      } else {
+        res.status(400).json({ error: result.error });
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      res.status(500).json({ error: 'Failed to send message' });
+    }
+  });
+
   // Get message replies for a specific message
   app.get('/api/whatsapp/message-replies', async (req: Request, res: Response) => {
     try {
