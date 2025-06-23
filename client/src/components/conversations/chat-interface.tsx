@@ -1029,6 +1029,55 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
           contactName={conversation?.contactName}
         />
       )}
+
+      {/* Forward Message Modal */}
+      <Dialog open={forwardModalOpen} onOpenChange={setForwardModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reenviar mensaje</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm text-gray-600">
+              Selecciona una conversación para reenviar el mensaje:
+            </div>
+            <div className="max-h-64 overflow-y-auto space-y-2">
+              {allConversations?.map((conv: any) => (
+                <div
+                  key={`${conv.instanceId}:${conv.chatId}`}
+                  className="p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => {
+                    forwardMessageMutation.mutate({
+                      targetChatId: conv.chatId,
+                      targetInstanceId: conv.instanceId
+                    });
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                      <span className="text-xs font-medium">
+                        {conv.contactName?.charAt(0) || conv.chatId.charAt(0)}
+                      </span>
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">
+                        {conv.contactName || conv.chatId}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {conv.instanceId}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {forwardMessageMutation.isPending && (
+              <div className="text-sm text-gray-500 text-center">
+                Reenviando mensaje...
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
