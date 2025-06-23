@@ -377,6 +377,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     queryFn: async () => {
       if (!instanceId || !conversationId) return null;
       try {
+        console.log('Fetching draft for:', { instanceId, conversationId });
         const response = await fetch(`/api/whatsapp/drafts/${instanceId}`, {
           method: 'GET',
           headers: {
@@ -385,14 +386,19 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
         });
         if (response.ok) {
           const drafts = await response.json();
-          return drafts.find((d: any) => d.chatId === conversationId) || null;
+          console.log('All drafts for instance:', drafts);
+          const foundDraft = drafts.find((d: any) => d.chatId === conversationId);
+          console.log('Found draft for conversation:', foundDraft);
+          return foundDraft || null;
         }
       } catch (error) {
         console.error('Error loading draft:', error);
       }
       return null;
     },
-    enabled: !!instanceId && !!conversationId
+    enabled: !!instanceId && !!conversationId,
+    staleTime: 1000, // Reduce stale time for more responsive draft loading
+    refetchOnWindowFocus: true
   });
 
   // Save current draft when switching conversations
@@ -414,6 +420,8 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   // Load draft content when conversation changes
   useEffect(() => {
+    console.log('Draft loading effect triggered:', { currentDraft, conversationId, instanceId });
+    
     // Save draft for previous conversation if there was content
     if (prevConversationId.current && prevInstanceId.current && prevMessageInput.current.trim()) {
       saveDraftOnSwitch(prevConversationId.current, prevInstanceId.current, prevMessageInput.current);
@@ -421,11 +429,14 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
     // Load draft for new conversation
     if (currentDraft?.content) {
+      console.log('Loading draft content:', currentDraft.content);
       setMessageInput(currentDraft.content);
       if (currentDraft.replyToMessageId) {
         setReplyToMessage({ messageId: currentDraft.replyToMessageId });
       }
-    } else {
+    } else if (conversationId !== prevConversationId.current) {
+      // Only clear input when switching to a different conversation without draft
+      console.log('No draft found, clearing input');
       setMessageInput("");
       setReplyToMessage(null);
     }
