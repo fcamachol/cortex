@@ -442,7 +442,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                   isSelected ? 'active' : ''
                 } ${conversation.unreadCount > 0 ? 'bg-green-50 dark:bg-green-900/10 border-l-2 border-green-500' : ''} relative group`}
                 onClick={() => onSelectConversation(conversationKey)}
-              onMouseEnter={() => setHoveredConversation(conversation.chatId || conversation.id)}
+              onMouseEnter={() => setHoveredConversation(conversationKey)}
               onMouseLeave={() => setHoveredConversation(null)}
             >
               <div className="flex items-start space-x-3">
@@ -499,12 +499,12 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                         </Badge>
                       )}
                       {/* Dropdown arrow that appears on hover or when open */}
-                      {(hoveredConversation === (conversation.chatId || conversation.id) || openDropdown === (conversation.chatId || conversation.id)) && (
+                      {(hoveredConversation === conversationKey || openDropdown === conversationKey) && (
                         <DropdownMenu 
-                          open={openDropdown === (conversation.chatId || conversation.id)}
+                          open={openDropdown === conversationKey}
                           onOpenChange={(open) => {
                             if (open) {
-                              setOpenDropdown(conversation.chatId || conversation.id);
+                              setOpenDropdown(conversationKey);
                             } else {
                               setOpenDropdown(null);
                             }
@@ -518,7 +518,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                               onClick={(e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
-                                setOpenDropdown(conversation.chatId || conversation.id);
+                                setOpenDropdown(conversationKey);
                               }}
                             >
                               <ChevronDown className="h-3 w-3 text-gray-600 dark:text-gray-400" />
