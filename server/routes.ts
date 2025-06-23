@@ -1587,30 +1587,11 @@ export async function registerRoutes(app: Express): Promise<void> {
         return;
       }
 
-      // If no cached file found, try to download from Evolution API
-      if (!media.fileUrl) {
-        return res.status(404).json({ error: 'Media file not available' });
-      }
-
-      console.log(`⬇️ Media file not cached locally for ${messageId}, attempting download from Evolution API`);
-      
-      // Get instance credentials for Evolution API
-      const instance = await storage.getWhatsappInstance(instanceId);
-      if (!instance?.apiKey) {
-        return res.status(404).json({ error: 'Instance not found or missing API key' });
-      }
-
-      // Get the original message with raw API payload for media download
-      const message = await storage.getWhatsappMessageById(messageId, instanceId);
-      if (!message?.rawApiPayload) {
-        return res.status(404).json({ error: 'Original message data not found' });
-      }
-
-      // For uncached files, return graceful 404 since Evolution API doesn't support media download
-      console.log(`📎 Media file not cached for ${messageId}. Media download not supported by current Evolution API version.`);
+      // No cached file found - serve cached files only
+      console.log(`📎 Media file not cached for ${messageId}. Only cached media files can be served.`);
       return res.status(404).json({ 
         error: 'Media file not cached', 
-        message: 'Audio file needs to be cached locally to play. This file was not cached when the message was received.' 
+        message: 'This audio file was not cached when the message was received. Only cached files can be played.' 
       });
     } catch (error) {
       console.error('Error serving media:', error);
