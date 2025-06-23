@@ -338,12 +338,14 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
           isForwarded: true,
         };
         
+        console.log('Sending forward request:', payload);
         const response = await fetch('/api/whatsapp/send-message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
         
+        console.log('Forward response status:', response.status);
         if (!response.ok) throw new Error('Failed to forward message');
         return response.json();
       });
@@ -429,6 +431,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   const handleForwardMessage = (message: any) => {
     // Enter multi-select mode for forwarding
+    console.log('Starting multi-select forward mode with message:', message.messageId || message.id);
     setIsMultiSelectMode(true);
     setSelectedMessages(new Set([message.messageId || message.id]));
     setOpenMessageDropdown(null);
@@ -458,14 +461,16 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   const handleForwardSelectedMessages = () => {
     if (selectedMessages.size > 0) {
+      console.log('Opening forward modal with selected messages:', selectedMessages.size);
       const selectedMessageData = messages.filter(msg => 
         selectedMessages.has(msg.messageId || msg.id)
       );
+      console.log('Selected message data:', selectedMessageData);
       setSelectedMessageForForward(selectedMessageData);
       setForwardModalOpen(true);
       // Don't clear selection yet - do it after forwarding is complete
     }
-  };;
+  };
 
   const handleStarMessage = (message: any) => {
     // Implement star functionality
