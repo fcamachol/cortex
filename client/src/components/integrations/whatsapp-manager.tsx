@@ -652,13 +652,17 @@ export function WhatsAppInstanceManager() {
               <Input
                 id="customLetter"
                 value={customLetter}
-                onChange={(e) => setCustomLetter(e.target.value.slice(0, 2))}
-                placeholder="A, 1, 🔥, etc."
+                onChange={(e) => {
+                  // Allow up to 4 characters to support complex emojis like flags
+                  const value = e.target.value.slice(0, 4);
+                  setCustomLetter(value);
+                }}
+                placeholder="A, 1, 🔥, 🇲🇽, etc."
                 className="mt-1"
-                maxLength={2}
+                maxLength={4}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Use a single letter, number, or emoji to identify this instance
+                Use a letter, number, or emoji (including flags like 🇲🇽) to identify this instance
               </p>
             </div>
 
@@ -672,10 +676,15 @@ export function WhatsAppInstanceManager() {
                   </div>
                   {/* Preview indicator */}
                   <div 
-                    className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                      customColor || "bg-gray-400"
+                    className={`absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center ${
+                      customColor ? `${customColor} text-white` : 'text-gray-600'
                     }`}
-                    style={!customColor ? { backgroundColor: "transparent", border: "1px solid #ccc", color: "#666" } : {}}
+                    style={{
+                      fontSize: '12px',
+                      fontWeight: customLetter && customLetter.length > 1 ? 'normal' : 'bold',
+                      lineHeight: '1',
+                      fontFamily: customLetter && customLetter.length > 1 ? 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' : 'inherit'
+                    }}
                   >
                     {customLetter || "I"}
                   </div>
