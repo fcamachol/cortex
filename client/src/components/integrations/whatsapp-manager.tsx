@@ -691,10 +691,12 @@ export function WhatsAppInstanceManager() {
                       customColor ? `${customColor} text-white` : 'text-gray-600'
                     }`}
                     style={{
-                      fontSize: '14px',
+                      fontSize: '16px',
                       fontWeight: customLetter && customLetter.length > 1 ? 'normal' : 'bold',
                       lineHeight: '1',
-                      fontFamily: customLetter && customLetter.length > 1 ? 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' : 'inherit'
+                      overflow: 'visible',
+                      fontFamily: customLetter && customLetter.length > 1 ? 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' : 'inherit',
+                      ...((!customColor) ? { backgroundColor: "transparent", border: "1px solid #ccc", color: "#666" } : {})
                     }}
                   >
                     {customLetter || "I"}
