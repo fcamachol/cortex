@@ -327,7 +327,7 @@ export function FinanceLoanForm({ onClose, loan }: FinanceLoanFormProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">No contact</SelectItem>
+                      <SelectItem value="none">No contact</SelectItem>
                       {contacts?.map((contact: any) => (
                         <SelectItem key={contact.contactId} value={contact.contactId.toString()}>
                           {contact.firstName} {contact.lastName} - {contact.phoneNumber}
