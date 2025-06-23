@@ -214,26 +214,34 @@ export function AudioPlayer({ src, duration, className, variant = 'received' }: 
             {formatTime(currentTime)}
           </span>
           
-          <button
-            onClick={cyclePlaybackSpeed}
-            className={cn(
-              "text-xs px-2 py-0.5 rounded-full font-medium transition-colors",
-              variant === 'sent'
-                ? "text-green-700 hover:bg-green-200 dark:text-green-300 dark:hover:bg-green-800"
-                : "text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
-            )}
-          >
-            {playbackRate}x
-          </button>
-          
-          <span className={cn(
-            "text-xs font-mono",
-            variant === 'sent' 
-              ? "text-green-800 dark:text-green-200" 
-              : "text-gray-600 dark:text-gray-400"
-          )}>
-            {formatTime(totalDuration)}
-          </span>
+          {hasError ? (
+            <span className="text-xs text-red-500 dark:text-red-400">
+              Audio unavailable
+            </span>
+          ) : (
+            <>
+              <button
+                onClick={cyclePlaybackSpeed}
+                className={cn(
+                  "text-xs px-2 py-0.5 rounded-full font-medium transition-colors",
+                  variant === 'sent'
+                    ? "text-green-700 hover:bg-green-200 dark:text-green-300 dark:hover:bg-green-800"
+                    : "text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
+                )}
+              >
+                {playbackRate}x
+              </button>
+              
+              <span className={cn(
+                "text-xs font-mono",
+                variant === 'sent' 
+                  ? "text-green-800 dark:text-green-200" 
+                  : "text-gray-600 dark:text-gray-400"
+              )}>
+                {formatTime(totalDuration)}
+              </span>
+            </>
+          )}
         </div>
       </div>
     </div>

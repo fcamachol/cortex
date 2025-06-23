@@ -1,0 +1,123 @@
+Here is a comprehensive guide and a recommended coding pattern for handling media downloads in the Evolution API.
+
+The Core Strategy: Download Immediately, Store Persistently
+The fundamental principle is to treat the download link provided in the webhook as temporary and time-sensitive. Your goal is to download the media file as soon as you receive the notification and save it to your own persistent storage (your server's filesystem or a cloud storage service like Amazon S3).
+
+The Step-by-Step Workflow
+This workflow begins the moment your WebhookApiAdapter receives a messages.upsert event.
+
+Step 1: Identify the Media Message
+First, your code must inspect the incoming message object to see if it contains media. You can do this by checking for the presence of specific keys.
+
+Key Media Types:
+
+imageMessage
+audioMessage
+videoMessage
+documentMessage
+stickerMessage
+<!-- end list -->
+
+TypeScript
+
+// Inside your handleMessageUpsert function
+const message = rawMessage.message;
+const mediaType = Object.keys(message).find(key => key.endsWith('Message'));
+
+if (['imageMessage', 'audioMessage', 'videoMessage', 'documentMessage'].includes(mediaType)) {
+    console.log(`✅ Media message identified: ${mediaType}. Queueing for download.`);
+    // It's highly recommended to process this in the background
+    handleMediaDownload(instanceId, rawMessage); 
+}
+Step 2: Make the API Call to Download
+Use the /message/downloadMedia/{instanceName} endpoint. You need to send the entire message object from the webhook payload in the body of your POST request.
+
+The API will respond with a JSON object containing the file data encoded in Base64 and its mimetype.
+
+Step 3: Decode and Store the Media File
+Once you receive the Base64 string, you must decode it into a binary buffer and save it. This is the most critical step.
+
+Create a Unique Filename: Never use the original filename directly as it can cause conflicts. A good practice is to use the message ID (rawMessage.key.id).
+Determine the Correct File Extension: Use a library like mime-types or a simple switch statement to get the correct extension from the mimetype provided in the response.
+Save the File: Save the buffer to your chosen storage location.
+The Code: A Practical Implementation
+Here is a complete, self-contained function in TypeScript that implements this workflow. You can call this function from your handleMessageUpsert handler.
+
+TypeScript
+
+import axios from 'axios';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { lookup } from 'mime-types'; // A helpful library: npm install mime-types @types/mime-types
+
+// --- Configuration ---
+const EVOLUTION_API_URL = "http://{your_evolution_api_server}";
+const API_KEY = "{your_api_key}";
+const MEDIA_STORAGE_PATH = path.resolve(__dirname, 'media_storage'); // Local storage path
+
+/**
+ * Handles the entire media download process for a given message.
+ * @param instanceName - The name of the Evolution API instance.
+ * @param messageData - The full message object from the webhook.
+ */
+async function handleMediaDownload(instanceName: string, messageData: any) {
+    const messageId = messageData.key.id;
+    console.log(`[${instanceName}] Starting download for message ID: ${messageId}`);
+
+    try {
+        // --- Step 1 & 2: Make the API Call ---
+        const response = await axios.post(
+            `${EVOLUTION_API_URL}/message/downloadMedia/${instanceName}`,
+            {
+                message: messageData.message, // Send the entire message object
+            },
+            {
+                headers: {
+                    'apikey': API_KEY,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        const mediaData = response.data; // e.g., { base64: "...", mimetype: "audio/ogg" }
+
+        // --- Step 3: Decode and Store ---
+        if (mediaData && mediaData.base64) {
+            const fileBuffer = Buffer.from(mediaData.base64, 'base64');
+            const fileExtension = lookup(mediaData.mimetype) || '.bin'; // Get extension from mimetype
+            const fileName = `${messageId}.${fileExtension}`;
+            const filePath = path.join(MEDIA_STORAGE_PATH, fileName);
+            
+            // Ensure the storage directory exists
+            await fs.mkdir(MEDIA_STORAGE_PATH, { recursive: true });
+            
+            // Save the file
+            await fs.writeFile(filePath, fileBuffer);
+
+            console.log(`✅ [${instanceName}] Media saved successfully: ${filePath}`);
+            
+            // TODO: Update your database here to record the file path
+            // await storage.updateMessageMediaStatus(messageId, 'DOWNLOADED', filePath);
+
+        } else {
+            throw new Error("No Base64 data found in the API response.");
+        }
+
+    } catch (error) {
+        // --- Step 4: Robust Error Handling ---
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+            console.warn(`❌ [${instanceName}] Media for message ${messageId} has expired or is unavailable (404).`);
+            // TODO: Update your database to mark this media as 'UNAVAILABLE'
+            // await storage.updateMessageMediaStatus(messageId, 'UNAVAILABLE');
+        } else {
+            console.error(`❌ [${instanceName}] An error occurred during media download for message ${messageId}:`, error);
+        }
+    }
+}
+Best Practices and Recommendations
+Asynchronous Processing: As shown in the first snippet, it is highly recommended to offload the handleMediaDownload call to a background job queue (e.g., BullMQ, RabbitMQ). This prevents a slow download from blocking your webhook handler from processing other incoming messages.
+Database Tracking: Add columns to your messages table to track the media status.
+media_status: ENUM (PENDING, DOWNLOADED, UNAVAILABLE)
+media_url: A string to store the local path or cloud URL of the saved file.
+Cloud Storage: For production applications, instead of saving to a local filesystem, upload the fileBuffer to a cloud service like Amazon S3 or Google Cloud Storage. This is more scalable, reliable, and secure.
+Error Handling: The try...catch block is essential. Specifically handling the 404 Not Found error allows you to gracefully manage expired media links without crashing your system.

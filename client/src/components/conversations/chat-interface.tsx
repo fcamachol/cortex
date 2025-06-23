@@ -493,11 +493,10 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   // Load draft for current conversation
   const { data: currentDraft } = useQuery({
-    queryKey: [`/api/whatsapp/drafts/${finalInstanceId}/${chatId}`],
+    queryKey: [`/api/whatsapp/drafts`, finalInstanceId, chatId],
     queryFn: async () => {
       if (!finalInstanceId || !chatId) return null;
       try {
-        console.log('Fetching draft for:', { instanceId: finalInstanceId, chatId });
         const response = await fetch(`/api/whatsapp/drafts/${finalInstanceId}`, {
           method: 'GET',
           headers: {
@@ -506,9 +505,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
         });
         if (response.ok) {
           const drafts = await response.json();
-          console.log('All drafts for instance:', drafts);
           const foundDraft = drafts.find((d: any) => d.chatId === chatId);
-          console.log('Found draft for conversation:', foundDraft);
           return foundDraft || null;
         }
       } catch (error) {
@@ -517,8 +514,9 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       return null;
     },
     enabled: !!finalInstanceId && !!chatId,
-    staleTime: 1000, // Reduce stale time for more responsive draft loading
-    refetchOnWindowFocus: true
+    staleTime: 30000, // Increase stale time to reduce frequent refetching
+    refetchOnWindowFocus: false, // Disable refetch on window focus
+    refetchOnMount: false, // Only fetch once when component mounts
   });
 
   // Save current draft when switching conversations
