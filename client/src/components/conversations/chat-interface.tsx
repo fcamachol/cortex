@@ -257,28 +257,33 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   // Force invalidation when conversation changes and mark as read
   useEffect(() => {
-    if (conversationId && instanceId) {
+    if (conversationId && instanceId && chatId) {
       // Force invalidate all message queries when switching conversations
       queryClient.invalidateQueries({
         queryKey: [`/api/whatsapp/chat-messages`]
       });
       
       // Mark conversation as read when opening it if it has unread messages
-      const conversation = conversations.find(conv => 
-        conv.chatId === chatId && conv.instanceId === instanceId
-      );
+      // Use a timeout to avoid re-render loops
+      const timeoutId = setTimeout(() => {
+        const conversation = conversations.find(conv => 
+          conv.chatId === chatId && conv.instanceId === instanceId
+        );
+        
+        if (conversation && conversation.unreadCount > 0) {
+          // Mark as read silently (no toast notification)
+          markAsReadMutation.mutate({
+            chatId: chatId,
+            instanceId: instanceId,
+            unread: false,
+            silent: true
+          });
+        }
+      }, 100);
       
-      if (conversation && conversation.unreadCount > 0) {
-        // Mark as read silently (no toast notification)
-        markAsReadMutation.mutate({
-          chatId: chatId,
-          instanceId: instanceId,
-          unread: false,
-          silent: true
-        });
-      }
+      return () => clearTimeout(timeoutId);
     }
-  }, [conversationId, instanceId, queryClient, conversations, chatId]);
+  }, [conversationId, instanceId, chatId]);
 
   // Auto-resize textarea on mount and content changes
   const textareaRef = useRef<HTMLTextAreaElement>(null);
