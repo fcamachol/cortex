@@ -2166,6 +2166,83 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // =============================================================================
+  // CREDIT CARD MANAGEMENT ENDPOINTS
+  // =============================================================================
+
+  // Create credit card details for an account
+  app.post('/api/finance/credit-cards', async (req: Request, res: Response) => {
+    try {
+      const creditCardData = insertCreditCardDetailsSchema.parse(req.body);
+      const creditCard = await storage.createCreditCardDetails(creditCardData);
+      res.json(creditCard);
+    } catch (error) {
+      console.error('Error creating credit card:', error);
+      res.status(500).json({ error: 'Failed to create credit card' });
+    }
+  });
+
+  // Get credit card details for an account
+  app.get('/api/finance/credit-cards/:accountId', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const creditCard = await storage.getCreditCardDetails(accountId);
+      res.json(creditCard);
+    } catch (error) {
+      console.error('Error fetching credit card:', error);
+      res.status(500).json({ error: 'Failed to fetch credit card' });
+    }
+  });
+
+  // Update credit card details
+  app.put('/api/finance/credit-cards/:accountId', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const updates = req.body;
+      const creditCard = await storage.updateCreditCardDetails(accountId, updates);
+      res.json(creditCard);
+    } catch (error) {
+      console.error('Error updating credit card:', error);
+      res.status(500).json({ error: 'Failed to update credit card' });
+    }
+  });
+
+  // Get statements for a credit card account
+  app.get('/api/finance/statements/:accountId', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const statements = await storage.getStatements(accountId);
+      res.json(statements);
+    } catch (error) {
+      console.error('Error fetching statements:', error);
+      res.status(500).json({ error: 'Failed to fetch statements' });
+    }
+  });
+
+  // Create a new statement (for monthly statement generation)
+  app.post('/api/finance/statements', async (req: Request, res: Response) => {
+    try {
+      const statementData = insertStatementSchema.parse(req.body);
+      const statement = await storage.createStatement(statementData);
+      res.json(statement);
+    } catch (error) {
+      console.error('Error creating statement:', error);
+      res.status(500).json({ error: 'Failed to create statement' });
+    }
+  });
+
+  // Get latest statement for a credit card
+  app.get('/api/finance/statements/:accountId/latest', async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.accountId);
+      const statement = await storage.getLatestStatement(accountId);
+      res.json(statement);
+    } catch (error) {
+      console.error('Error fetching latest statement:', error);
+      res.status(500).json({ error: 'Failed to fetch latest statement' });
+    }
+  });
+
   // Evolution API webhook handlers - Use the new layered webhook controller
   app.post('/api/evolution/webhook/:instanceName/:eventType', async (req: Request, res: Response) => {
     await WebhookController.handleIncomingEvent(req, res);

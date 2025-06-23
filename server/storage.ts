@@ -14,7 +14,9 @@ import {
     // CRM Schema
     crmTasks, crmCompanies,
     // Finance Schema
-    financeAccounts,
+    financeAccounts, financeTransactions, financePayables, financeCategories,
+    financeRecurringBills, financeLoans, financeLoanPayments, financePayablePayments,
+    creditCardDetails, statements,
     // Type Imports
     type AppUser, type InsertAppUser,
     type WhatsappInstance, type InsertWhatsappInstance,
@@ -28,6 +30,13 @@ import {
     type WhatsappMessageUpdate, type InsertWhatsappMessageUpdate,
     whatsappDrafts, type WhatsappDraft, type InsertWhatsappDraft,
     type FinanceAccount, type InsertFinanceAccount,
+    type FinanceTransaction, type InsertFinanceTransaction,
+    type FinancePayable, type InsertFinancePayable,
+    type FinanceCategory, type InsertFinanceCategory,
+    type FinanceRecurringBill, type InsertFinanceRecurringBill,
+    type FinanceLoan, type InsertFinanceLoan,
+    type CreditCardDetails, type InsertCreditCardDetails,
+    type Statement, type InsertStatement,
     type CrmCompany, type InsertCrmCompany
 } from "../shared/schema"; // Assuming a single, final schema definition file
 
@@ -1467,6 +1476,95 @@ class DatabaseStorage {
                 .where(eq(crmCompanies.companyId, companyId));
         } catch (error) {
             console.error('Error deleting CRM company:', error);
+            throw error;
+        }
+    }
+
+    // =========================================================================
+    // CREDIT CARD DETAILS METHODS - For credit card specific information
+    // =========================================================================
+
+    async createCreditCardDetails(details: InsertCreditCardDetails): Promise<CreditCardDetails> {
+        try {
+            const [creditCard] = await db
+                .insert(creditCardDetails)
+                .values(details)
+                .returning();
+            return creditCard;
+        } catch (error) {
+            console.error('Error creating credit card details:', error);
+            throw error;
+        }
+    }
+
+    async getCreditCardDetails(accountId: number): Promise<CreditCardDetails | undefined> {
+        try {
+            const [creditCard] = await db
+                .select()
+                .from(creditCardDetails)
+                .where(eq(creditCardDetails.accountId, accountId));
+            return creditCard;
+        } catch (error) {
+            console.error('Error fetching credit card details:', error);
+            throw error;
+        }
+    }
+
+    async updateCreditCardDetails(accountId: number, updates: Partial<InsertCreditCardDetails>): Promise<CreditCardDetails> {
+        try {
+            const [creditCard] = await db
+                .update(creditCardDetails)
+                .set({ ...updates, updatedAt: new Date() })
+                .where(eq(creditCardDetails.accountId, accountId))
+                .returning();
+            return creditCard;
+        } catch (error) {
+            console.error('Error updating credit card details:', error);
+            throw error;
+        }
+    }
+
+    // =========================================================================
+    // STATEMENTS METHODS - For credit card monthly statements
+    // =========================================================================
+
+    async createStatement(statement: InsertStatement): Promise<Statement> {
+        try {
+            const [newStatement] = await db
+                .insert(statements)
+                .values(statement)
+                .returning();
+            return newStatement;
+        } catch (error) {
+            console.error('Error creating statement:', error);
+            throw error;
+        }
+    }
+
+    async getStatements(accountId: number): Promise<Statement[]> {
+        try {
+            return await db
+                .select()
+                .from(statements)
+                .where(eq(statements.accountId, accountId))
+                .orderBy(desc(statements.statementPeriodEnd));
+        } catch (error) {
+            console.error('Error fetching statements:', error);
+            throw error;
+        }
+    }
+
+    async getLatestStatement(accountId: number): Promise<Statement | undefined> {
+        try {
+            const [statement] = await db
+                .select()
+                .from(statements)
+                .where(eq(statements.accountId, accountId))
+                .orderBy(desc(statements.statementPeriodEnd))
+                .limit(1);
+            return statement;
+        } catch (error) {
+            console.error('Error fetching latest statement:', error);
             throw error;
         }
     }
