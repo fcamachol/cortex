@@ -212,7 +212,6 @@ export default function ChatInterface({
   // Stable references to prevent infinite re-renders
   const stableConversationId = useMemo(() => conversationId, [conversationId]);
   const stableUserId = useMemo(() => userId, [userId]);
-  const stableConversations = useMemo(() => conversations, [conversations]);
 
   // Mark as read mutation - moved before useEffect to fix reference error
   const markAsReadMutation = useMutation({
@@ -338,11 +337,11 @@ export default function ChatInterface({
   // Mark messages as read when they're actually viewed in the chat interface
   const messagesCount = useMemo(() => rawMessages?.length || 0, [rawMessages?.length]);
   const hasUnreadMessages = useMemo(() => {
-    const conversation = stableConversations.find(conv => 
+    const conversation = conversations?.find(conv => 
       conv.chatId === chatId && conv.instanceId === finalInstanceId
     );
     return conversation?.unreadCount > 0;
-  }, [stableConversations, chatId, finalInstanceId]);
+  }, [conversations, chatId, finalInstanceId]);
 
   // Track if chat is actively being viewed with intersection observer
   const messagesContainerRef = useRef<HTMLDivElement>(null);

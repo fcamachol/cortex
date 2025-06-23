@@ -14,7 +14,7 @@ export default function TaskModule() {
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
 
   const { data: tasks = [], isLoading } = useQuery<any[]>({
-    queryKey: [`/api/tasks/${userId}`],
+    queryKey: ['/api/crm/tasks'],
   });
 
   const filteredTasks = tasks.filter((task: any) => {
