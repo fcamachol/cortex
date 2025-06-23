@@ -1003,6 +1003,10 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                       : 'whatsapp-message-received'
                   } ${message.isPending ? 'opacity-70' : ''}`}
                 >
+                  {/* Blue corner indicator for waiting reply */}
+                  {waitingReplyMessages.has(message.messageId || message.id) && (
+                    <div className="absolute bottom-0 right-0 w-0 h-0 border-l-[12px] border-b-[12px] border-l-transparent border-b-blue-500 rounded-br-lg"></div>
+                  )}
                   {/* Sender name for group chats */}
                   {(conversation?.type === 'group' || conversation?.chatId?.includes('@g.us')) && !message.isFromMe && (
                     <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
