@@ -76,17 +76,27 @@ export function TaskBoard({
 
   const getTasksByStatus = (columnId: string) => {
     const column = statusColumns.find(col => col.id === columnId);
+    let filteredTasks;
+    
     if (column && column.includeStatuses) {
-      return tasks.filter(task => column.includeStatuses!.includes(task.status));
+      filteredTasks = tasks.filter(task => column.includeStatuses!.includes(task.status));
+    } else {
+      filteredTasks = tasks.filter(task => task.status === columnId);
     }
-    return tasks.filter(task => task.status === columnId);
+    
+    // Remove duplicates by taskId to prevent duplicate key warnings
+    const uniqueTasks = filteredTasks.filter((task, index, arr) => 
+      arr.findIndex(t => t.taskId === task.taskId) === index
+    );
+    
+    return uniqueTasks;
   };
 
   const handleDragEnd = (result: any) => {
     if (!result.destination) return;
 
     const { draggableId, destination } = result;
-    const taskId = parseInt(draggableId);
+    const taskId = parseInt(draggableId.split('-')[0]); // Extract task ID from composite key
     const newStatus = destination.droppableId;
 
     onStatusChange(taskId, newStatus);
@@ -107,13 +117,13 @@ export function TaskBoard({
     return new Date(dateString).toLocaleDateString();
   };
 
-  const renderTask = (task: Task, index: number) => {
+  const renderTask = (task: Task, index: number, columnId: string) => {
     if (!task || !task.taskId) {
       return null;
     }
     
     return (
-    <Draggable key={`${task.taskId}-${task.status}`} draggableId={`${task.taskId}-${task.status}`} index={index}>
+    <Draggable key={`${task.taskId}-${columnId}-${index}`} draggableId={`${task.taskId}-${columnId}`} index={index}>
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
