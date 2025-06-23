@@ -574,6 +574,37 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     }
   });
 
+  // Waiting reply mutations
+  const markWaitingReplyMutation = useMutation({
+    mutationFn: async ({ messageId, instanceId, chatId }: { messageId: string, instanceId: string, chatId: string }) => {
+      return apiRequest('POST', '/api/whatsapp/waiting-reply', { messageId, instanceId, chatId });
+    },
+    onSuccess: (_, { messageId }) => {
+      setWaitingReplyMessages(prev => new Set(prev).add(messageId));
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/waiting-reply/${currentInstanceId}`] });
+    },
+    onError: (error) => {
+      console.error('Failed to mark message as waiting reply:', error);
+    }
+  });
+
+  const unmarkWaitingReplyMutation = useMutation({
+    mutationFn: async ({ messageId }: { messageId: string }) => {
+      return apiRequest('DELETE', `/api/whatsapp/waiting-reply/${messageId}`, {});
+    },
+    onSuccess: (_, { messageId }) => {
+      setWaitingReplyMessages(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(messageId);
+        return newSet;
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/waiting-reply/${currentInstanceId}`] });
+    },
+    onError: (error) => {
+      console.error('Failed to unmark message from waiting reply:', error);
+    }
+  });
+
   // Save draft only when leaving window with unfinished message
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -823,6 +854,40 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   <div className={`flex items-center justify-end mt-1 space-x-1 ${
                     message.isFromMe ? 'justify-end' : 'justify-start'
                   }`}>
+                    {/* Waiting reply checkbox - appears on hover */}
+                    {(hoveredMessageId === (message.messageId || message.id)) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`h-4 w-4 p-0 rounded-sm transition-colors ${
+                          waitingReplyMessages.has(message.messageId || message.id) 
+                            ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                            : 'bg-transparent border border-blue-500 text-blue-500 hover:bg-blue-50'
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          const messageId = message.messageId || message.id;
+                          const isWaiting = waitingReplyMessages.has(messageId);
+                          
+                          if (isWaiting) {
+                            unmarkWaitingReplyMutation.mutate({ messageId });
+                          } else {
+                            markWaitingReplyMutation.mutate({ 
+                              messageId, 
+                              instanceId: currentInstanceId || '',
+                              chatId: chatId || ''
+                            });
+                          }
+                        }}
+                        title={waitingReplyMessages.has(message.messageId || message.id) ? 'Unmark awaiting reply' : 'Mark as awaiting reply'}
+                      >
+                        {waitingReplyMessages.has(message.messageId || message.id) && (
+                          <Check className="h-3 w-3" />
+                        )}
+                      </Button>
+                    )}
+                    
                     <span className="text-xs text-gray-500 dark:text-gray-400">
                       {new Date(message.timestamp).toLocaleTimeString([], { 
                         hour: '2-digit', 
