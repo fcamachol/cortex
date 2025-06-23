@@ -13,20 +13,24 @@ import { Building2, User, Search } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-// Enhanced loan schema with polymorphic creditor support
+// Enhanced loan schema matching the new design
 const loanSchema = z.object({
   spaceId: z.number(),
   principalAmount: z.string().min(1, "Principal amount is required"),
   interestRate: z.string().min(1, "Interest rate is required"),
-  issueDate: z.string().min(1, "Issue date is required"),
+  interestType: z.enum(["simple", "compound"]).default("simple"),
+  startDate: z.string().min(1, "Start date is required"),
   termMonths: z.number().min(1, "Term in months is required"),
+  paymentFrequency: z.enum(["weekly", "bi-weekly", "monthly", "quarterly", "annually"]).default("monthly"),
+  purpose: z.string().optional(),
+  collateral: z.string().optional(),
   status: z.enum(["active", "paid", "defaulted"]).default("active"),
-  creditorId: z.number().optional(),
-  creditorType: z.enum(["contact", "company"]).optional(),
+  lenderContactId: z.number().optional(),
+  lenderType: z.enum(["contact", "company"]).optional(),
   borrowerContactId: z.number().optional(),
+  borrowerType: z.enum(["contact", "company"]).optional(),
   moratoryInterestRate: z.string().optional(),
   moratoryInterestPeriod: z.enum(["daily", "monthly", "yearly"]).optional(),
-  notes: z.string().optional(),
 });
 
 type LoanFormData = z.infer<typeof loanSchema>;
@@ -41,8 +45,14 @@ interface PolymorphicLoanFormProps {
 export function PolymorphicLoanForm({ spaceId, onSuccess, onCancel, editingLoan }: PolymorphicLoanFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [creditorSearchTerm, setCreditorSearchTerm] = useState("");
-  const [selectedCreditor, setSelectedCreditor] = useState<{
+  const [lenderSearchTerm, setLenderSearchTerm] = useState("");
+  const [selectedLender, setSelectedLender] = useState<{
+    id: number;
+    name: string;
+    type: "contact" | "company";
+  } | null>(null);
+  const [borrowerSearchTerm, setBorrowerSearchTerm] = useState("");
+  const [selectedBorrower, setSelectedBorrower] = useState<{
     id: number;
     name: string;
     type: "contact" | "company";
@@ -67,15 +77,19 @@ export function PolymorphicLoanForm({ spaceId, onSuccess, onCancel, editingLoan 
       spaceId,
       principalAmount: editingLoan?.principalAmount || "",
       interestRate: editingLoan?.interestRate || "",
-      issueDate: editingLoan?.issueDate || new Date().toISOString().split('T')[0],
+      interestType: editingLoan?.interestType || "simple",
+      startDate: editingLoan?.startDate || new Date().toISOString().split('T')[0],
       termMonths: editingLoan?.termMonths || 12,
+      paymentFrequency: editingLoan?.paymentFrequency || "monthly",
+      purpose: editingLoan?.purpose || "",
+      collateral: editingLoan?.collateral || "",
       status: editingLoan?.status || "active",
-      creditorId: editingLoan?.creditorId,
-      creditorType: editingLoan?.creditorType,
+      lenderContactId: editingLoan?.lenderContactId,
+      lenderType: editingLoan?.lenderType,
       borrowerContactId: editingLoan?.borrowerContactId,
+      borrowerType: editingLoan?.borrowerType,
       moratoryInterestRate: editingLoan?.moratoryInterestRate || "",
       moratoryInterestPeriod: editingLoan?.moratoryInterestPeriod || "monthly",
-      notes: editingLoan?.notes || "",
     },
   });
 
@@ -83,8 +97,10 @@ export function PolymorphicLoanForm({ spaceId, onSuccess, onCancel, editingLoan 
     mutationFn: (data: LoanFormData) => 
       apiRequest("POST", "/api/finance/loans", {
         ...data,
-        creditorId: selectedCreditor?.id,
-        creditorType: selectedCreditor?.type,
+        lenderContactId: selectedLender?.id,
+        lenderType: selectedLender?.type,
+        borrowerContactId: selectedBorrower?.id,
+        borrowerType: selectedBorrower?.type,
         principalAmount: parseFloat(data.principalAmount),
         interestRate: parseFloat(data.interestRate),
         moratoryInterestRate: data.moratoryInterestRate ? parseFloat(data.moratoryInterestRate) : undefined,
@@ -141,16 +157,16 @@ export function PolymorphicLoanForm({ spaceId, onSuccess, onCancel, editingLoan 
     }
   };
 
-  // Filter and combine contacts and companies for creditor search
-  const getCreditorOptions = () => {
+  // Filter and combine contacts and companies for search
+  const getSearchOptions = (searchTerm: string) => {
     const filteredContacts = Array.isArray(contacts) ? contacts.filter((contact: any) =>
-      `${contact.firstName || ''} ${contact.lastName || ''}`.toLowerCase().includes(creditorSearchTerm.toLowerCase()) ||
-      (contact.email || '').toLowerCase().includes(creditorSearchTerm.toLowerCase())
+      `${contact.firstName || ''} ${contact.lastName || ''}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (contact.email || '').toLowerCase().includes(searchTerm.toLowerCase())
     ) : [];
 
     const filteredCompanies = Array.isArray(companies) ? companies.filter((company: any) =>
-      (company.companyName || '').toLowerCase().includes(creditorSearchTerm.toLowerCase()) ||
-      (company.email || '').toLowerCase().includes(creditorSearchTerm.toLowerCase())
+      (company.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (company.email || '').toLowerCase().includes(searchTerm.toLowerCase())
     ) : [];
 
     return [

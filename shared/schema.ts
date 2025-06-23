@@ -1337,13 +1337,19 @@ export const financeLoans = financeSchema.table("loans", {
   spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
   principalAmount: numeric("principal_amount", { precision: 12, scale: 2 }).notNull(),
   interestRate: numeric("interest_rate", { precision: 5, scale: 4 }).notNull(),
-  issueDate: varchar("issue_date", { length: 10 }).notNull(), // DATE as string (YYYY-MM-DD)
+  interestType: varchar("interest_type", { length: 20 }).notNull().default("simple"), // 'simple' or 'compound'
+  startDate: varchar("start_date", { length: 10 }).notNull(), // DATE as string (YYYY-MM-DD)
   termMonths: integer("term_months").notNull(),
+  paymentFrequency: varchar("payment_frequency", { length: 20 }).notNull().default("monthly"), // monthly, weekly, etc
+  purpose: varchar("purpose", { length: 100 }), // loan purpose
+  collateral: text("collateral"), // collateral description
   status: loanStatusEnum("status").notNull().default("active"),
-  // Polymorphic creditor relationship - can be a contact or company
-  creditorId: integer("creditor_id"), // ID of the contact or company
-  creditorType: varchar("creditor_type", { length: 20 }), // 'contact' or 'company'
-  borrowerContactId: integer("borrower_contact_id"), // References CRM contact when available
+  // Polymorphic lender relationship - can be a contact or company
+  lenderContactId: integer("lender_contact_id"), // ID of the contact or company (lender)
+  lenderType: varchar("lender_type", { length: 20 }), // 'contact' or 'company'
+  // Polymorphic borrower relationship - can be a contact or company
+  borrowerContactId: integer("borrower_contact_id"), // ID of the contact or company (borrower)
+  borrowerType: varchar("borrower_type", { length: 20 }), // 'contact' or 'company'
   moratoryInterestRate: numeric("moratory_interest_rate", { precision: 5, scale: 4 }),
   moratoryInterestPeriod: interestPeriodTypeEnum("moratory_interest_period"),
 });

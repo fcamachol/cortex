@@ -127,6 +127,10 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 23, 2025: Enhanced loan form with complete redesign matching user specifications - added interest type (simple/compound), moratory interests module, and improved field layout
+- June 23, 2025: Implemented comprehensive polymorphic lender/borrower relationships - both lenders and borrowers can be contacts or companies with dual search interfaces
+- June 23, 2025: Added loan form fields: start_date, payment_frequency, purpose, collateral, interest_type with proper database schema updates
+- June 23, 2025: Created EnhancedLoanForm component with visual contact/company differentiation and streamlined user experience matching design mockup
 - June 23, 2025: Successfully implemented polymorphic creditor relationship for loans - lenders can now be either contacts or companies
 - June 23, 2025: Created comprehensive PolymorphicLoanForm with universal search supporting both contact and company selection as creditors
 - June 23, 2025: Added CRM companies table with full CRUD operations including business type, tax ID, and contact information
