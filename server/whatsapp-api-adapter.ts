@@ -1076,6 +1076,17 @@ export const WebhookApiAdapter = {
 
         const correctedFromMe = await detectFromMe(rawMessage, instanceId);
 
+        const isForwarded = this.detectForwardedMessage(rawMessage);
+        const forwardingScore = this.extractForwardingScore(rawMessage);
+        
+        // Debug forwarded message detection
+        if (isForwarded || forwardingScore > 0) {
+            console.log(`🔄 Processing forwarded message: ${rawMessage.key?.id}`);
+            console.log(`   - isForwarded: ${isForwarded}`);
+            console.log(`   - forwardingScore: ${forwardingScore}`);
+            console.log(`   - contextInfo:`, JSON.stringify(rawMessage.contextInfo, null, 2));
+        }
+
         return {
             messageId: rawMessage.key.id,
             instanceId: instanceId,
@@ -1086,8 +1097,8 @@ export const WebhookApiAdapter = {
             content: this.extractMessageContent(rawMessage),
             timestamp: timestamp && typeof timestamp === 'number' ? new Date(timestamp * 1000) : new Date(),
             quotedMessageId: rawMessage.message?.extendedTextMessage?.contextInfo?.quotedMessage?.key?.id,
-            isForwarded: this.detectForwardedMessage(rawMessage),
-            forwardingScore: this.extractForwardingScore(rawMessage),
+            isForwarded: isForwarded,
+            forwardingScore: forwardingScore,
             isStarred: rawMessage.starred || false,
             isEdited: rawMessage.messageType === 'editedMessage',
             lastEditedAt: rawMessage.messageType === 'editedMessage' && timestamp && typeof timestamp === 'number'
@@ -1987,7 +1998,7 @@ export const WhatsAppAPIAdapter = {
     /**
      * Send a WhatsApp message with optional reply
      */
-    async sendMessage(instanceId: string, chatId: string, message: string, quotedMessageId?: string): Promise<{ success: boolean; data?: any; error?: string }> {
+    async sendMessage(instanceId: string, chatId: string, message: string, quotedMessageId?: string, isForwarded?: boolean): Promise<{ success: boolean; data?: any; error?: string }> {
         try {
             const { getEvolutionApi } = await import('./evolution-api');
             const evolutionApi = getEvolutionApi();
@@ -2012,7 +2023,11 @@ export const WhatsAppAPIAdapter = {
                 };
             }
 
-            console.log(`📤 [${instanceId}] Sending message to ${chatId}${quotedMessageId ? ' (reply)' : ''}`);
+            const messageTypeLog = quotedMessageId ? ' (reply)' : (isForwarded ? ' (forwarded)' : '');
+            console.log(`📤 [${instanceId}] Sending message to ${chatId}${messageTypeLog}`);
+            if (isForwarded) {
+                console.log(`🔄 [${instanceId}] Message marked as forwarded`);
+            }
             
             const response = await evolutionApi.makeRequest(
                 `/message/sendText/${instanceId}`,

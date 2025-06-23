@@ -481,7 +481,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       const { WhatsAppAPIAdapter } = await import('./whatsapp-api-adapter');
-      const result = await WhatsAppAPIAdapter.sendMessage(instanceId, chatId, message, quotedMessageId);
+      const result = await WhatsAppAPIAdapter.sendMessage(instanceId, chatId, message, quotedMessageId, isForwarded);
       
       if (result.success) {
         // Automatically delete draft when message is sent successfully
