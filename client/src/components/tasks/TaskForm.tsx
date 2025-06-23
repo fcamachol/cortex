@@ -256,14 +256,14 @@ export function TaskForm({ task, projects, onSubmit, onClose, isLoading }: TaskF
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Project</FormLabel>
-                    <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)} defaultValue={field.value?.toString()}>
+                    <Select onValueChange={(value) => field.onChange(value === "none" ? undefined : parseInt(value))} defaultValue={field.value?.toString()}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select project" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">No Project</SelectItem>
+                        <SelectItem value="none">No Project</SelectItem>
                         {projects?.map((project) => (
                           <SelectItem key={project.projectId} value={project.projectId.toString()}>
                             {project.projectName}
