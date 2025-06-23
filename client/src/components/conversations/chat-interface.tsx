@@ -206,12 +206,15 @@ export default function ChatInterface({
     staleTime: 0, // Force fresh data to pick up media objects
   });
 
-  // Set up Server-Sent Events for real-time message updates
+  // Set up Server-Sent Events for real-time message updates - stabilized with ref
+  const eventSourceRef = useRef<EventSource | null>(null);
+  
   useEffect(() => {
     if (!conversationId) return;
 
     console.log('Setting up SSE connection for real-time messages');
     const eventSource = new EventSource('/api/events');
+    eventSourceRef.current = eventSource;
 
     eventSource.onmessage = (event) => {
       try {
@@ -220,18 +223,28 @@ export default function ChatInterface({
         if (data.type === 'new_message') {
           const newMessage = data.payload;
           
-          // Get current conversation details to validate message
-          const currentConv = conversations.find(conv => 
-            `${conv.instanceId}:${conv.chatId}` === conversationId
-          );
+          // Always refresh conversation list for any new message to update unread counts
+          console.log('Refreshing conversation list due to new message');
+          queryClient.invalidateQueries({
+            queryKey: [`/api/whatsapp/conversations/${userId}`]
+          });
           
-          // Only process messages for the current conversation in chat interface
-          if (currentConv && newMessage.chatId === currentConv.chatId && newMessage.instanceId === currentConv.instanceId) {
-            console.log('Received real-time message update:', newMessage);
+          // If the new message is NOT from the currently open conversation, show green indicator
+          const isCurrentConversation = newMessage.chatId && newMessage.instanceId && 
+            conversationId === `${newMessage.instanceId}:${newMessage.chatId}`;
+          
+          if (!isCurrentConversation && !newMessage.isFromMe) {
+            console.log('New message from different conversation - will show green indicator');
+            // The conversation list will automatically show green indicator when it refreshes
+            // because the backend already updates unread counts for new messages
+          }
+          
+          // Update message cache for current conversation
+          if (isCurrentConversation) {
+            console.log('Received real-time message update for current conversation:', newMessage);
             
-            // Update the query cache with the new message
             queryClient.setQueryData(
-              [`/api/whatsapp/chat-messages`, conversationId, currentConv.instanceId],
+              [`/api/whatsapp/chat-messages`],
               (oldMessages: any[] = []) => {
                 // Check if message already exists to avoid duplicates
                 const messageExists = oldMessages.some(msg => msg.messageId === newMessage.messageId);
@@ -244,22 +257,6 @@ export default function ChatInterface({
                 );
               }
             );
-          }
-          
-          // Always refresh conversation list for any new message (regardless of current chat)
-          console.log('🔄 Refreshing conversation list due to new message');
-          queryClient.invalidateQueries({
-            queryKey: [`/api/whatsapp/conversations/${userId}`]
-          });
-          
-          // If the new message is NOT from the currently open conversation, mark it as unread
-          // This creates the green indicator immediately when messages arrive from other chats
-          if (currentConv && 
-              (newMessage.chatId !== currentConv.chatId || newMessage.instanceId !== currentConv.instanceId) &&
-              !newMessage.isFromMe) {
-            console.log('📬 New message from different conversation - will show green indicator');
-            // The conversation list will automatically show green indicator when it refreshes
-            // because the backend already updates unread counts for new messages
           }
           
           // Refresh contacts in case this is a new contact
@@ -276,7 +273,7 @@ export default function ChatInterface({
                  data.type === 'group_updated' ||
                  data.type === 'participant_updated') {
           
-          console.log(`🔄 Refreshing conversation list due to: ${data.type}`);
+          console.log(`Refreshing conversation list due to: ${data.type}`);
           queryClient.invalidateQueries({
             queryKey: [`/api/whatsapp/conversations/${userId}`]
           });
@@ -299,8 +296,9 @@ export default function ChatInterface({
     return () => {
       console.log('Closing SSE connection');
       eventSource.close();
+      eventSourceRef.current = null;
     };
-  }, [conversationId]); // Removed unstable dependencies
+  }, [conversationId, userId]); // Stable dependencies only
 
   // Force invalidation when conversation changes and mark as read
   useEffect(() => {
