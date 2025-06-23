@@ -729,6 +729,38 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                       {message.senderJid ? getSenderDisplayName(message.senderJid) : 'Unknown'}
                     </p>
                   )}
+
+                  {/* Forwarded message indicator */}
+                  {message.isForwarded && (
+                    <div className="message-forward-indicator">
+                      <Forward className="h-3 w-3" />
+                      <span>Forwarded</span>
+                    </div>
+                  )}
+
+                  {/* Reply to message indicator */}
+                  {message.quotedMessageId && (
+                    <div className="message-reply-indicator">
+                      <div className="text-xs">
+                        <p className="font-medium text-green-600 dark:text-green-400 mb-1">
+                          {(() => {
+                            const quotedMsg = messages.find(m => m.messageId === message.quotedMessageId);
+                            if (quotedMsg) {
+                              return quotedMsg.isFromMe ? 'You' : getSenderDisplayName(quotedMsg.senderJid);
+                            }
+                            return 'Unknown';
+                          })()}
+                        </p>
+                        <p className="text-gray-600 dark:text-gray-300 truncate">
+                          {(() => {
+                            const quotedMsg = messages.find(m => m.messageId === message.quotedMessageId);
+                            return quotedMsg?.content || 'Message not found';
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <p className="text-sm">{message.content}</p>
                   <div className={`flex items-center justify-end mt-1 space-x-1 ${
                     message.isFromMe ? 'justify-end' : 'justify-start'
