@@ -559,17 +559,16 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     prevInstanceId.current = finalInstanceId;
   }, [conversationId, finalInstanceId]); // Remove currentDraft dependency
 
-  // Load draft content once per conversation change
-  const [draftLoaded, setDraftLoaded] = useState(false);
+  // Track draft loading per conversation to prevent loops
+  const [loadedConversations, setLoadedConversations] = useState<Set<string>>(new Set());
   
   useEffect(() => {
-    setDraftLoaded(false);
-  }, [conversationId]);
-  
-  useEffect(() => {
-    if (!draftLoaded && conversationId && currentDraft && 
+    const conversationKey = `${chatId}-${finalInstanceId}`;
+    
+    if (conversationId && currentDraft && 
         currentDraft.chatId === chatId && 
-        currentDraft.instanceId === finalInstanceId) {
+        currentDraft.instanceId === finalInstanceId &&
+        !loadedConversations.has(conversationKey)) {
       
       if (currentDraft.content) {
         setMessageInput(currentDraft.content);
@@ -579,9 +578,14 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
         setReplyToMessage({ messageId: currentDraft.replyToMessageId });
       }
       
-      setDraftLoaded(true);
+      setLoadedConversations(prev => new Set(prev).add(conversationKey));
     }
-  }, [conversationId, currentDraft, draftLoaded, chatId, finalInstanceId]);
+  }, [conversationId, currentDraft?.id, chatId, finalInstanceId]);
+  
+  // Clear loaded conversations when switching chats
+  useEffect(() => {
+    setLoadedConversations(new Set());
+  }, [conversationId]);
 
   // Update message input ref when user types
   useEffect(() => {

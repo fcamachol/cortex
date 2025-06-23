@@ -24,9 +24,17 @@ export function AudioPlayer({ src, duration, className, variant = 'received' }: 
     const audio = audioRef.current;
     if (!audio) return;
 
+    // Reset states when source changes
+    setIsLoaded(false);
+    setHasError(false);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setTotalDuration(0);
+
     const handleLoadedData = () => {
       setTotalDuration(audio.duration);
       setIsLoaded(true);
+      setHasError(false);
     };
 
     const handleTimeUpdate = () => {
@@ -38,13 +46,25 @@ export function AudioPlayer({ src, duration, className, variant = 'received' }: 
       setCurrentTime(0);
     };
 
-    const handleError = () => {
-      setHasError(true);
-      setIsLoaded(false);
-      console.error('Audio playback error for:', src);
+    const handleError = (e: Event) => {
+      const target = e.target as HTMLAudioElement;
+      // Only mark as error for genuine media errors, not network timeouts
+      if (target?.error && (
+        target.error.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED ||
+        target.error.code === MediaError.MEDIA_ERR_DECODE
+      )) {
+        setHasError(true);
+        setIsLoaded(false);
+        console.error('Audio playback error for:', src);
+      }
     };
 
     const handleCanPlay = () => {
+      setHasError(false);
+      setIsLoaded(true);
+    };
+
+    const handleLoadStart = () => {
       setHasError(false);
     };
 
@@ -53,6 +73,7 @@ export function AudioPlayer({ src, duration, className, variant = 'received' }: 
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('error', handleError);
     audio.addEventListener('canplay', handleCanPlay);
+    audio.addEventListener('loadstart', handleLoadStart);
 
     return () => {
       audio.removeEventListener('loadeddata', handleLoadedData);
@@ -60,6 +81,7 @@ export function AudioPlayer({ src, duration, className, variant = 'received' }: 
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
       audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener('loadstart', handleLoadStart);
     };
   }, [src]);
 
