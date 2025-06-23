@@ -264,7 +264,19 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chat-messages`, conversationId, instanceId] });
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
       setMessageInput("");
-      setReplyToMessage(null); // Clear reply state after sending
+      setReplyToMessage(null);
+      
+      // Clear draft and reply state for current conversation
+      if (conversationId) {
+        setDrafts(prev => ({
+          ...prev,
+          [conversationId]: ""
+        }));
+        setReplyStates(prev => ({
+          ...prev,
+          [conversationId]: null
+        }));
+      }
     },
   });
 
@@ -718,7 +730,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       </div>
 
       {/* Message Input */}
-      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
+      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 mt-0">
         {/* Reply indicator */}
         {replyToMessage && (
           <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border-l-4 border-blue-500">
