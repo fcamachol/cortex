@@ -1524,38 +1524,87 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const { instanceId, messageId } = req.params;
       
-      // Get media metadata from database
+      // First try to serve from cached file
+      const fs = require('fs');
+      const path = require('path');
+      const mediaDir = path.join(process.cwd(), 'media', instanceId);
+      
+      // Check for cached file with various extensions
+      const possibleExtensions = ['.ogg', '.wav', '.mp3', '.m4a', '.webm'];
+      let cachedFilePath = null;
+      
+      for (const ext of possibleExtensions) {
+        const filePath = path.join(mediaDir, `${messageId}${ext}`);
+        if (fs.existsSync(filePath)) {
+          cachedFilePath = filePath;
+          break;
+        }
+      }
+      
+      if (cachedFilePath) {
+        console.log(`📁 Serving cached media file: ${cachedFilePath}`);
+        const stats = fs.statSync(cachedFilePath);
+        const ext = path.extname(cachedFilePath);
+        
+        // Determine MIME type from extension
+        let mimeType = 'audio/wav';
+        if (ext === '.ogg') mimeType = 'audio/ogg';
+        else if (ext === '.mp3') mimeType = 'audio/mpeg';
+        else if (ext === '.m4a') mimeType = 'audio/mp4';
+        else if (ext === '.webm') mimeType = 'audio/webm';
+        
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Content-Length', stats.size.toString());
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        
+        const fileStream = fs.createReadStream(cachedFilePath);
+        fileStream.pipe(res);
+        return;
+      }
+      
+      // If no cached file, get media metadata from database and fetch
       const media = await storage.getWhatsappMessageMedia(messageId, instanceId);
       if (!media || !media.fileUrl) {
         return res.status(404).json({ error: 'Media not found' });
       }
 
-      // For WhatsApp CDN URLs, proxy the request to avoid CORS issues
-      if (media.fileUrl.includes('whatsapp.net') || media.fileUrl.includes('mmg.whatsapp.net')) {
-        try {
-          const response = await fetch(media.fileUrl);
-          if (!response.ok) {
-            return res.status(404).json({ error: 'Media file not accessible' });
-          }
-
-          // Set appropriate headers
-          res.setHeader('Content-Type', media.mimetype);
-          if (media.fileSizeBytes) {
-            res.setHeader('Content-Length', media.fileSizeBytes.toString());
-          }
-          res.setHeader('Accept-Ranges', 'bytes');
-          res.setHeader('Cache-Control', 'public, max-age=3600');
-
-          // Stream the file
-          const buffer = await response.arrayBuffer();
-          res.send(Buffer.from(buffer));
-        } catch (fetchError) {
-          console.error('Error fetching media from WhatsApp CDN:', fetchError);
-          res.status(500).json({ error: 'Failed to fetch media file' });
+      console.log(`🌐 Fetching and streaming media from URL: ${media.fileUrl}`);
+      
+      try {
+        const response = await fetch(media.fileUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          },
+        });
+        
+        if (!response.ok) {
+          console.error(`Failed to fetch media: ${response.status} ${response.statusText}`);
+          return res.status(404).json({ error: 'Media file not accessible' });
         }
-      } else {
-        // For other URLs, redirect
-        res.redirect(media.fileUrl);
+
+        // Set appropriate headers for streaming
+        const contentType = response.headers.get('content-type') || media.mimetype || 'audio/wav';
+        const contentLength = response.headers.get('content-length');
+        
+        res.setHeader('Content-Type', contentType);
+        if (contentLength) {
+          res.setHeader('Content-Length', contentLength);
+        }
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+
+        // Stream the response body directly to the client
+        const buffer = await response.arrayBuffer();
+        res.send(Buffer.from(buffer));
+        
+      } catch (fetchError) {
+        console.error('Error fetching media:', fetchError);
+        res.status(500).json({ error: 'Failed to fetch media file' });
       }
     } catch (error) {
       console.error('Error serving media:', error);
