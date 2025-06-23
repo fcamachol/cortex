@@ -1115,9 +1115,17 @@ export const insertCrmTaskSchema = createInsertSchema(crmTasks).omit({
   updatedAt: true,
 });
 
+export const insertCrmCompanySchema = createInsertSchema(crmCompanies).omit({
+  companyId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // CRM Types
 export type CrmTask = typeof crmTasks.$inferSelect;
 export type InsertCrmTask = z.infer<typeof insertCrmTaskSchema>;
+export type CrmCompany = typeof crmCompanies.$inferSelect;
+export type InsertCrmCompany = z.infer<typeof insertCrmCompanySchema>;
 
 // =============================================================================
 // CALENDAR SCHEMA - External Calendar Integration
@@ -1332,7 +1340,9 @@ export const financeLoans = financeSchema.table("loans", {
   issueDate: varchar("issue_date", { length: 10 }).notNull(), // DATE as string (YYYY-MM-DD)
   termMonths: integer("term_months").notNull(),
   status: loanStatusEnum("status").notNull().default("active"),
-  lenderContactId: integer("lender_contact_id"), // References CRM contact when available
+  // Polymorphic creditor relationship - can be a contact or company
+  creditorId: integer("creditor_id"), // ID of the contact or company
+  creditorType: varchar("creditor_type", { length: 20 }), // 'contact' or 'company'
   borrowerContactId: integer("borrower_contact_id"), // References CRM contact when available
   moratoryInterestRate: numeric("moratory_interest_rate", { precision: 5, scale: 4 }),
   moratoryInterestPeriod: interestPeriodTypeEnum("moratory_interest_period"),

@@ -2109,6 +2109,63 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // ============================================
+  // CRM COMPANIES ENDPOINTS - For polymorphic creditor relationships
+  // ============================================
+
+  // Get companies
+  app.get('/api/crm/companies', async (req: Request, res: Response) => {
+    try {
+      const spaceId = parseInt(req.query.spaceId as string);
+      if (!spaceId) {
+        return res.status(400).json({ error: 'spaceId is required' });
+      }
+
+      const companies = await storage.getCrmCompanies(spaceId);
+      res.json(companies);
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+      res.status(500).json({ error: 'Failed to fetch companies' });
+    }
+  });
+
+  // Create company
+  app.post('/api/crm/companies', async (req: Request, res: Response) => {
+    try {
+      const companyData = req.body;
+      const company = await storage.createCrmCompany(companyData);
+      res.status(201).json(company);
+    } catch (error) {
+      console.error('Error creating company:', error);
+      res.status(500).json({ error: 'Failed to create company' });
+    }
+  });
+
+  // Update company
+  app.put('/api/crm/companies/:companyId', async (req: Request, res: Response) => {
+    try {
+      const companyId = parseInt(req.params.companyId);
+      const updates = req.body;
+      const company = await storage.updateCrmCompany(companyId, updates);
+      res.json(company);
+    } catch (error) {
+      console.error('Error updating company:', error);
+      res.status(500).json({ error: 'Failed to update company' });
+    }
+  });
+
+  // Delete company
+  app.delete('/api/crm/companies/:companyId', async (req: Request, res: Response) => {
+    try {
+      const companyId = parseInt(req.params.companyId);
+      await storage.deleteCrmCompany(companyId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting company:', error);
+      res.status(500).json({ error: 'Failed to delete company' });
+    }
+  });
+
   // Evolution API webhook handlers - Use the new layered webhook controller
   app.post('/api/evolution/webhook/:instanceName/:eventType', async (req: Request, res: Response) => {
     await WebhookController.handleIncomingEvent(req, res);

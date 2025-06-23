@@ -12,7 +12,7 @@ import {
     // Actions Schema
     actionRules,
     // CRM Schema
-    crmTasks,
+    crmTasks, crmCompanies,
     // Finance Schema
     financeAccounts,
     // Type Imports
@@ -27,7 +27,8 @@ import {
     type WhatsappMessageMedia, type InsertWhatsappMessageMedia,
     type WhatsappMessageUpdate, type InsertWhatsappMessageUpdate,
     whatsappDrafts, type WhatsappDraft, type InsertWhatsappDraft,
-    type FinanceAccount, type InsertFinanceAccount
+    type FinanceAccount, type InsertFinanceAccount,
+    type CrmCompany, type InsertCrmCompany
 } from "../shared/schema"; // Assuming a single, final schema definition file
 
 /**
@@ -1411,6 +1412,61 @@ class DatabaseStorage {
                 .where(eq(financeAccounts.accountId, accountId));
         } catch (error) {
             console.error('Error deleting finance account:', error);
+            throw error;
+        }
+    }
+
+    // =========================================================================
+    // CRM COMPANIES METHODS - For polymorphic creditor relationships
+    // =========================================================================
+
+    async getCrmCompanies(spaceId: number): Promise<CrmCompany[]> {
+        try {
+            return await db
+                .select()
+                .from(crmCompanies)
+                .where(eq(crmCompanies.spaceId, spaceId))
+                .orderBy(crmCompanies.companyName);
+        } catch (error) {
+            console.error('Error fetching CRM companies:', error);
+            throw error;
+        }
+    }
+
+    async createCrmCompany(company: InsertCrmCompany): Promise<CrmCompany> {
+        try {
+            const [newCompany] = await db
+                .insert(crmCompanies)
+                .values(company)
+                .returning();
+            return newCompany;
+        } catch (error) {
+            console.error('Error creating CRM company:', error);
+            throw error;
+        }
+    }
+
+    async updateCrmCompany(companyId: number, updates: Partial<InsertCrmCompany>): Promise<CrmCompany> {
+        try {
+            const [company] = await db
+                .update(crmCompanies)
+                .set({ ...updates, updatedAt: new Date() })
+                .where(eq(crmCompanies.companyId, companyId))
+                .returning();
+            return company;
+        } catch (error) {
+            console.error('Error updating CRM company:', error);
+            throw error;
+        }
+    }
+
+    async deleteCrmCompany(companyId: number): Promise<void> {
+        try {
+            await db
+                .delete(crmCompanies)
+                .where(eq(crmCompanies.companyId, companyId));
+        } catch (error) {
+            console.error('Error deleting CRM company:', error);
             throw error;
         }
     }
