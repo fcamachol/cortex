@@ -428,9 +428,9 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   };
 
   const handleForwardMessage = (message: any) => {
-    // Create a forward modal state
-    setSelectedMessageForForward(message);
-    setForwardModalOpen(true);
+    // Enter multi-select mode for forwarding
+    setIsMultiSelectMode(true);
+    setSelectedMessages(new Set([message.messageId || message.id]));
     setOpenMessageDropdown(null);
   }
 
@@ -825,14 +825,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 />
               </PopoverContent>
             </Popover>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={handleMultiSelectForward}
-              title="Select multiple messages to forward"
-            >
-              <Forward className="h-4 w-4" />
-            </Button>
+
             <Button variant="ghost" size="sm">
               <Plus className="h-4 w-4" />
             </Button>
@@ -1104,29 +1097,26 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
       {/* Multi-select control bar */}
       {isMultiSelectMode && (
-        <div className="bg-blue-500 text-white p-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCancelMultiSelect}
-              className="text-white hover:bg-blue-600"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-            <span className="font-medium">
-              {selectedMessages.size} seleccionados
-            </span>
-          </div>
+        <div className="bg-gray-100 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 p-3 flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCancelMultiSelect}
+            className="text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <span className="font-medium text-gray-700 dark:text-gray-200">
+            {selectedMessages.size} seleccionado{selectedMessages.size !== 1 ? 's' : ''}
+          </span>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleForwardSelectedMessages}
             disabled={selectedMessages.size === 0}
-            className="text-white hover:bg-blue-600 disabled:opacity-50"
+            className="text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
           >
-            <Forward className="h-4 w-4 mr-2" />
-            Reenviar
+            <Forward className="h-4 w-4" />
           </Button>
         </div>
       )}
