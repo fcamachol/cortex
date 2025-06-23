@@ -1241,12 +1241,12 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 }
               }}
               onKeyDown={(e) => {
-                // Send message on Shift+Enter
-                if (e.key === 'Enter' && e.shiftKey) {
+                // Send message on Enter (without Shift)
+                if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   handleSendMessage();
                 }
-                // Allow Enter for line breaks when not holding Shift
+                // Allow Shift+Enter for line breaks
               }}
               disabled={sendMessageMutation.isPending}
               className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none overflow-hidden min-h-[40px] max-h-[120px] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
