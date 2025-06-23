@@ -227,12 +227,17 @@ export class EvolutionApi {
     // Download and decrypt media from WhatsApp using the correct endpoint
     async downloadMedia(instanceName: string, instanceApiKey: string, messageData: any): Promise<any> {
         try {
-            // Try multiple Evolution API endpoint patterns for media download
+            const chatJid = messageData.key?.remoteJid;
+            if (!chatJid) {
+                throw new Error('Chat JID is required for media download');
+            }
+
+            // Try multiple Evolution API endpoint patterns for media download with chat JID
             const endpoints = [
-                `/chat/getBase64FromMediaMessage/${instanceName}`,
-                `/message/downloadMedia/${instanceName}`,
-                `/chat/downloadMedia/${instanceName}`,
-                `/media/download/${instanceName}`
+                `/chat/getBase64FromMediaMessage/${instanceName}/${chatJid}`,
+                `/message/downloadMedia/${instanceName}/${chatJid}`,
+                `/chat/downloadMedia/${instanceName}/${chatJid}`,
+                `/media/download/${instanceName}/${chatJid}`
             ];
 
             for (const endpoint of endpoints) {
