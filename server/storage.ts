@@ -251,6 +251,16 @@ class DatabaseStorage {
     }
 
     async upsertWhatsappMessage(message: InsertWhatsappMessage): Promise<WhatsappMessage> {
+        console.log(`🔊 LOUD DEBUG - upsertWhatsappMessage called with:`);
+        console.log(`🔊   messageId: "${message.messageId}"`);
+        console.log(`🔊   chatId: "${message.chatId}" (length: ${message.chatId?.length})`);
+        console.log(`🔊   instanceId: "${message.instanceId}"`);
+        console.log(`🔊   senderJid: "${message.senderJid}"`);
+        console.log(`🔊   content: "${message.content?.substring(0, 50)}..."`);
+        console.log(`🔊   fromMe: ${message.fromMe}`);
+        console.log(`🔊   messageType: "${message.messageType}"`);
+        console.log(`🔊   Full message object:`, JSON.stringify(message, null, 2));
+        
         // Ensure the chat exists before inserting the message
         await this.ensureChatExists(message.chatId, message.instanceId);
 
@@ -284,14 +294,22 @@ class DatabaseStorage {
     }
 
     async ensureChatExists(chatId: string, instanceId: string): Promise<void> {
+        console.log(`🔊 LOUD DEBUG - ensureChatExists called with:`);
+        console.log(`🔊   chatId: "${chatId}" (length: ${chatId?.length}, type: ${typeof chatId})`);
+        console.log(`🔊   instanceId: "${instanceId}" (length: ${instanceId?.length}, type: ${typeof instanceId})`);
+        console.log(`🔊   chatId ends with @g.us: ${chatId?.endsWith('@g.us')}`);
+        console.log(`🔊   chatId ends with @s.whatsapp.net: ${chatId?.endsWith('@s.whatsapp.net')}`);
+        
         // Check if chat already exists
         const existingChat = await this.getWhatsappChat(chatId, instanceId);
         if (existingChat) {
+            console.log(`🔊 LOUD DEBUG - Chat already exists: ${chatId}`);
             return; // Chat already exists
         }
 
         // Determine chat type based on JID format
         const chatType = chatId.endsWith('@g.us') ? 'group' as const : 'individual' as const;
+        console.log(`🔊 LOUD DEBUG - Determined chat type: ${chatType}`);
         
         // Create the chat record
         const newChat: InsertWhatsappChat = {
@@ -305,6 +323,7 @@ class DatabaseStorage {
             lastMessageTimestamp: null
         };
 
+        console.log(`🔊 LOUD DEBUG - Creating new chat with data:`, JSON.stringify(newChat, null, 2));
         await this.upsertWhatsappChat(newChat);
         console.log(`✅ Auto-created chat: ${chatId} (${chatType})`);
 

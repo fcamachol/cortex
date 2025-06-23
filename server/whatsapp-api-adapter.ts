@@ -1022,19 +1022,39 @@ export const WebhookApiAdapter = {
     },
     
     async mapApiPayloadToWhatsappMessage(rawMessage: any, instanceId: string): Promise<Omit<WhatsappMessages, 'createdAt'> | null> {
-        if (!rawMessage.key?.id || !rawMessage.key?.remoteJid) return null;
+        console.log(`🔊 LOUD DEBUG - mapApiPayloadToWhatsappMessage called:`);
+        console.log(`🔊   instanceId: "${instanceId}"`);
+        console.log(`🔊   rawMessage.key:`, JSON.stringify(rawMessage.key, null, 2));
+        console.log(`🔊   rawMessage.key.id: "${rawMessage.key?.id}"`);
+        console.log(`🔊   rawMessage.key.remoteJid: "${rawMessage.key?.remoteJid}" (length: ${rawMessage.key?.remoteJid?.length})`);
+        console.log(`🔊   rawMessage.key.participant: "${rawMessage.key?.participant}"`);
+        console.log(`🔊   rawMessage.messageType: "${rawMessage.messageType}"`);
+        console.log(`🔊   rawMessage.pushName: "${rawMessage.pushName}"`);
+        console.log(`🔊   Full rawMessage keys:`, Object.keys(rawMessage));
+        
+        if (!rawMessage.key?.id || !rawMessage.key?.remoteJid) {
+            console.log(`🔊 LOUD DEBUG - Missing required fields, returning null`);
+            return null;
+        }
         
         // Debug and fix malformed chat IDs
         const remoteJid = rawMessage.key.remoteJid;
+        console.log(`🔊 LOUD DEBUG - Analyzing remoteJid: "${remoteJid}"`);
+        console.log(`🔊   includes('@'): ${remoteJid.includes('@')}`);
+        console.log(`🔊   length: ${remoteJid.length}`);
+        console.log(`🔊   ends with @g.us: ${remoteJid.endsWith('@g.us')}`);
+        console.log(`🔊   ends with @s.whatsapp.net: ${remoteJid.endsWith('@s.whatsapp.net')}`);
+        
         if (remoteJid && !remoteJid.includes('@') && remoteJid.length > 20) {
             console.error(`🚨 MALFORMED CHAT ID DETECTED: "${remoteJid}"`);
-            console.error(`Full message structure:`, JSON.stringify({
+            console.error(`🔊 LOUD DEBUG - Full message structure for malformed ID:`, JSON.stringify({
                 messageType: rawMessage.messageType,
                 key: rawMessage.key,
                 pushName: rawMessage.pushName,
                 chat: rawMessage.chat,
                 groupData: rawMessage.groupData,
-                instanceId: instanceId
+                instanceId: instanceId,
+                fullRawMessage: rawMessage
             }, null, 2));
             
             // Try to find the correct JID in the message data
