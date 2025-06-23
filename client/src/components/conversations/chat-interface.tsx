@@ -540,8 +540,6 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   // Load draft content when conversation changes
   useEffect(() => {
-    console.log('Draft loading effect triggered:', { currentDraft, conversationId, instanceId: finalInstanceId });
-    
     // Save draft for previous conversation if there was content
     if (prevConversationId.current && prevInstanceId.current && prevMessageInput.current.trim()) {
       // Extract chatId from previous conversationId
@@ -553,25 +551,24 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
     // Always clear input first when switching conversations
     if (conversationId !== prevConversationId.current) {
-      console.log('Conversation changed, clearing input first');
       setMessageInput("");
       setReplyToMessage(null);
     }
 
-    // Load draft for new conversation only if it matches the current chat
+    // Update refs for next conversation switch
+    prevConversationId.current = conversationId;
+    prevInstanceId.current = finalInstanceId;
+  }, [conversationId, finalInstanceId]); // Remove currentDraft dependency
+
+  // Separate effect for loading draft content to prevent infinite loops
+  useEffect(() => {
     if (currentDraft?.content && currentDraft.chatId === chatId && currentDraft.instanceId === finalInstanceId) {
-      console.log('Loading draft content for correct chat:', currentDraft.content);
       setMessageInput(currentDraft.content);
       if (currentDraft.replyToMessageId) {
         setReplyToMessage({ messageId: currentDraft.replyToMessageId });
       }
     }
-
-    // Update refs for next conversation switch - use current values, not stale ones
-    prevConversationId.current = conversationId;
-    prevInstanceId.current = finalInstanceId;
-    // Don't update prevMessageInput here - it will be updated when user types
-  }, [currentDraft, conversationId, finalInstanceId, chatId]);
+  }, [currentDraft?.content, currentDraft?.chatId, currentDraft?.instanceId, chatId, finalInstanceId]);
 
   // Update message input ref when user types
   useEffect(() => {

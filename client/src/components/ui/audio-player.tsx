@@ -15,6 +15,7 @@ export function AudioPlayer({ src, duration, className, variant = 'received' }: 
   const [totalDuration, setTotalDuration] = useState(duration || 0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const playbackSpeeds = [1, 1.25, 1.5, 1.75, 2];
@@ -37,14 +38,28 @@ export function AudioPlayer({ src, duration, className, variant = 'received' }: 
       setCurrentTime(0);
     };
 
+    const handleError = () => {
+      setHasError(true);
+      setIsLoaded(false);
+      console.error('Audio playback error for:', src);
+    };
+
+    const handleCanPlay = () => {
+      setHasError(false);
+    };
+
     audio.addEventListener('loadeddata', handleLoadedData);
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
+    audio.addEventListener('canplay', handleCanPlay);
 
     return () => {
       audio.removeEventListener('loadeddata', handleLoadedData);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
+      audio.removeEventListener('canplay', handleCanPlay);
     };
   }, [src]);
 
