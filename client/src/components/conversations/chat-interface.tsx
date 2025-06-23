@@ -439,12 +439,20 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   // Draft saving mutation
   const saveDraftMutation = useMutation({
     mutationFn: async ({ chatId, instanceId, content, replyToMessageId }: any) => {
-      return apiRequest('/api/whatsapp/drafts', 'POST', {
-        chatId,
-        instanceId,
-        content,
-        replyToMessageId
+      const response = await fetch('/api/whatsapp/drafts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          chatId,
+          instanceId,
+          content,
+          replyToMessageId
+        })
       });
+      if (!response.ok) throw new Error('Failed to save draft');
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/drafts/${instanceId}/${conversationId}`] });
