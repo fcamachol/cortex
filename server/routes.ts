@@ -1570,31 +1570,12 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.send(fileBuffer);
       }
       
-      // Fall back to Evolution API download
-      const mediaData = await evolutionApi.downloadMedia(instanceId, instance.apiKey, rawPayload);
-
-      if (!mediaData?.base64) {
-        console.log(`❌ No media data returned from Evolution API for ${messageId}`);
-        return res.status(404).json({ 
-          error: 'Media not available', 
-          message: 'Unable to fetch media from Evolution API' 
-        });
-      }
-
-      // Convert base64 to binary
-      const fileBuffer = Buffer.from(mediaData.base64, 'base64');
-      
-      // Set appropriate headers
-      const mimeType = mediaData.mimetype || 'audio/ogg; codecs=opus';
-      res.setHeader('Content-Type', mimeType);
-      res.setHeader('Content-Length', fileBuffer.length.toString());
-      res.setHeader('Accept-Ranges', 'bytes');
-      res.setHeader('Cache-Control', 'public, max-age=3600');
-      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      
-      console.log(`✅ Serving media from Evolution API: ${messageId} (${fileBuffer.length} bytes)`);
-      res.send(fileBuffer);
+      // No base64 data available - cannot serve this media file
+      console.log(`❌ Media not available for ${messageId} - no base64 data in webhook payload`);
+      return res.status(404).json({ 
+        error: 'Media not available', 
+        message: 'This audio file was not cached during webhook processing. Only messages with base64 data can be played.' 
+      });
       
     } catch (error) {
       console.error(`❌ Error fetching media for ${req.params.messageId}:`, error.message);

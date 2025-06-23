@@ -232,7 +232,8 @@ export class EvolutionApi {
                 'POST',
                 {
                     key: messageData.key,
-                    message: messageData.message
+                    message: messageData.message,
+                    remoteJid: messageData.key?.remoteJid
                 },
                 instanceApiKey
             );
