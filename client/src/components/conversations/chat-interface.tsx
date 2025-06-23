@@ -450,15 +450,15 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (conversationId && instanceId && messageInput && messageInput.trim()) {
-        // Use sendBeacon with proper headers for beforeunload
-        const formData = new FormData();
-        formData.append('chatId', conversationId);
-        formData.append('instanceId', instanceId);
-        formData.append('content', messageInput);
-        if (replyToMessage?.messageId) {
-          formData.append('replyToMessageId', replyToMessage.messageId);
-        }
-        navigator.sendBeacon('/api/whatsapp/drafts', formData);
+        // Use sendBeacon with JSON blob for beforeunload
+        const data = JSON.stringify({
+          chatId: conversationId,
+          instanceId,
+          content: messageInput,
+          replyToMessageId: replyToMessage?.messageId || null
+        });
+        const blob = new Blob([data], { type: 'application/json' });
+        navigator.sendBeacon('/api/whatsapp/drafts', blob);
       }
     };
 

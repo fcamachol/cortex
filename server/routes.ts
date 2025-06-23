@@ -531,7 +531,14 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post('/api/whatsapp/drafts', async (req: Request, res: Response) => {
     try {
-      const { chatId, instanceId, content, replyToMessageId } = req.body;
+      let data = req.body;
+      
+      // Handle sendBeacon blob data if content-type is application/json
+      if (req.headers['content-type'] === 'application/json' && typeof req.body === 'string') {
+        data = JSON.parse(req.body);
+      }
+      
+      const { chatId, instanceId, content, replyToMessageId } = data;
       
       if (!chatId || !instanceId || content === undefined) {
         return res.status(400).json({ error: 'chatId, instanceId, and content are required' });
