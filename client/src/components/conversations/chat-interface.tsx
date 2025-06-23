@@ -173,18 +173,30 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     return formatPhoneNumber(senderJid.replace('@s.whatsapp.net', ''));
   };
 
-  // Parse the composite conversation identifier (instanceId:chatId)
-  const [instanceId, chatId] = conversationId?.includes(':') 
-    ? conversationId.split(':') 
-    : [null, conversationId];
+  // Parse the composite conversation identifier (instanceId:chatId) - stabilized with useMemo
+  const { instanceId, chatId } = useMemo(() => {
+    if (!conversationId) return { instanceId: null, chatId: null };
+    
+    const [parsedInstanceId, parsedChatId] = conversationId.includes(':') 
+      ? conversationId.split(':') 
+      : [null, conversationId];
+      
+    return { instanceId: parsedInstanceId, chatId: parsedChatId };
+  }, [conversationId]);
   
-  // Find the specific conversation, preferring exact instance match
-  const conversation = instanceId 
-    ? conversations.find(conv => conv.chatId === chatId && conv.instanceId === instanceId)
-    : conversations.find(conv => conv.chatId === chatId);
+  // Find the specific conversation, preferring exact instance match - stabilized with useMemo
+  const conversation = useMemo(() => {
+    if (!chatId || !conversations.length) return null;
+    
+    return instanceId 
+      ? conversations.find(conv => conv.chatId === chatId && conv.instanceId === instanceId)
+      : conversations.find(conv => conv.chatId === chatId);
+  }, [chatId, instanceId, conversations]);
   
-  // Use the conversation's instanceId if we found one, otherwise use the parsed instanceId
-  const finalInstanceId = conversation?.instanceId || instanceId;
+  // Use the conversation's instanceId if we found one, otherwise use the parsed instanceId - stabilized with useMemo
+  const finalInstanceId = useMemo(() => {
+    return conversation?.instanceId || instanceId;
+  }, [conversation?.instanceId, instanceId]);
 
   const { data: rawMessages = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/whatsapp/chat-messages`, conversationId, finalInstanceId],
@@ -202,7 +214,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   // Set up Server-Sent Events for real-time message updates
   useEffect(() => {
-    if (!conversationId || !instanceId) return;
+    if (!conversationId) return;
 
     console.log('Setting up SSE connection for real-time messages');
     const eventSource = new EventSource('/api/events');
@@ -214,13 +226,18 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
         if (data.type === 'new_message') {
           const newMessage = data.payload;
           
+          // Get current conversation details to validate message
+          const currentConv = conversations.find(conv => 
+            `${conv.instanceId}:${conv.chatId}` === conversationId
+          );
+          
           // Only process messages for the current conversation
-          if (newMessage.chatId === chatId && newMessage.instanceId === finalInstanceId) {
+          if (currentConv && newMessage.chatId === currentConv.chatId && newMessage.instanceId === currentConv.instanceId) {
             console.log('Received real-time message update:', newMessage);
             
             // Update the query cache with the new message
             queryClient.setQueryData(
-              [`/api/whatsapp/chat-messages`, conversationId, instanceId],
+              [`/api/whatsapp/chat-messages`, conversationId, currentConv.instanceId],
               (oldMessages: any[] = []) => {
                 // Check if message already exists to avoid duplicates
                 const messageExists = oldMessages.some(msg => msg.messageId === newMessage.messageId);
@@ -253,37 +270,37 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       console.log('Closing SSE connection');
       eventSource.close();
     };
-  }, [conversationId, instanceId, queryClient, userId]);
+  }, [conversationId]); // Removed unstable dependencies
 
   // Force invalidation when conversation changes and mark as read
   useEffect(() => {
-    if (conversationId && instanceId && chatId) {
-      // Force invalidate all message queries when switching conversations
-      queryClient.invalidateQueries({
-        queryKey: [`/api/whatsapp/chat-messages`]
-      });
+    if (!conversationId) return;
+    
+    // Force invalidate all message queries when switching conversations
+    queryClient.invalidateQueries({
+      queryKey: [`/api/whatsapp/chat-messages`]
+    });
+    
+    // Mark conversation as read when opening it if it has unread messages
+    // Use a timeout to avoid re-render loops
+    const timeoutId = setTimeout(() => {
+      const conversation = conversations.find(conv => 
+        `${conv.instanceId}:${conv.chatId}` === conversationId
+      );
       
-      // Mark conversation as read when opening it if it has unread messages
-      // Use a timeout to avoid re-render loops
-      const timeoutId = setTimeout(() => {
-        const conversation = conversations.find(conv => 
-          conv.chatId === chatId && conv.instanceId === instanceId
-        );
-        
-        if (conversation && conversation.unreadCount > 0) {
-          // Mark as read silently (no toast notification)
-          markAsReadMutation.mutate({
-            chatId: chatId,
-            instanceId: instanceId,
-            unread: false,
-            silent: true
-          });
-        }
-      }, 100);
-      
-      return () => clearTimeout(timeoutId);
-    }
-  }, [conversationId, instanceId, chatId]);
+      if (conversation && conversation.unreadCount > 0) {
+        // Mark as read silently (no toast notification)
+        markAsReadMutation.mutate({
+          chatId: conversation.chatId,
+          instanceId: conversation.instanceId,
+          unread: false,
+          silent: true
+        });
+      }
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [conversationId]); // Removed unstable dependencies
 
   // Auto-resize textarea on mount and content changes
   const textareaRef = useRef<HTMLTextAreaElement>(null);
