@@ -242,6 +242,21 @@ export const whatsappMessageDeletions = whatsappSchema.table("message_deletions"
   deletedAtIndex: index("message_deletions_deleted_at_idx").on(table.deletedAt),
 }));
 
+export const whatsappDrafts = whatsappSchema.table("drafts", {
+  chatId: varchar("chat_id", { length: 100 }).notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  content: text("content").notNull(),
+  replyToMessageId: varchar("reply_to_message_id", { length: 255 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  pk: {
+    name: "drafts_pkey",
+    columns: [table.chatId, table.instanceId]
+  },
+  updatedAtIndex: index("drafts_updated_at_idx").on(table.updatedAt),
+}));
+
 // Relations
 export const whatsappInstancesRelations = relations(whatsappInstances, ({ many }) => ({
   contacts: many(whatsappContacts),
@@ -414,6 +429,15 @@ export type InsertWhatsappCallLog = z.infer<typeof insertWhatsappCallLogSchema>;
 
 export type WhatsappMessageDeletion = typeof whatsappMessageDeletions.$inferSelect;
 export type InsertWhatsappMessageDeletion = z.infer<typeof insertWhatsappMessageDeletionSchema>;
+
+// Draft schemas
+export const insertWhatsappDraftSchema = createInsertSchema(whatsappDrafts).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type WhatsappDraft = typeof whatsappDrafts.$inferSelect;
+export type InsertWhatsappDraft = z.infer<typeof insertWhatsappDraftSchema>;
 
 // Legacy types for backward compatibility (to be removed after migration)
 export interface WhatsappInstanceLegacy {

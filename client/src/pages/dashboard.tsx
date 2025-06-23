@@ -36,8 +36,13 @@ export default function Dashboard() {
             <ConversationList
               selectedConversation={selectedConversation}
               onSelectConversation={setSelectedConversation}
+              drafts={drafts}
             />
-            <ChatInterface conversationId={selectedConversation} />
+            <ChatInterface 
+              conversationId={selectedConversation} 
+              drafts={drafts}
+              onDraftsChange={setDrafts}
+            />
           </div>
         );
       case "tasks":
