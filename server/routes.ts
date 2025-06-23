@@ -1519,6 +1519,50 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Media serving endpoint for audio, video, and document files
+  app.get('/api/whatsapp/media/:instanceId/:messageId', async (req: Request, res: Response) => {
+    try {
+      const { instanceId, messageId } = req.params;
+      
+      // Get media metadata from database
+      const media = await storage.getWhatsappMessageMedia(messageId, instanceId);
+      if (!media || !media.fileUrl) {
+        return res.status(404).json({ error: 'Media not found' });
+      }
+
+      // For WhatsApp CDN URLs, proxy the request to avoid CORS issues
+      if (media.fileUrl.includes('whatsapp.net') || media.fileUrl.includes('mmg.whatsapp.net')) {
+        try {
+          const response = await fetch(media.fileUrl);
+          if (!response.ok) {
+            return res.status(404).json({ error: 'Media file not accessible' });
+          }
+
+          // Set appropriate headers
+          res.setHeader('Content-Type', media.mimetype);
+          if (media.fileSizeBytes) {
+            res.setHeader('Content-Length', media.fileSizeBytes.toString());
+          }
+          res.setHeader('Accept-Ranges', 'bytes');
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+
+          // Stream the file
+          const buffer = await response.arrayBuffer();
+          res.send(Buffer.from(buffer));
+        } catch (fetchError) {
+          console.error('Error fetching media from WhatsApp CDN:', fetchError);
+          res.status(500).json({ error: 'Failed to fetch media file' });
+        }
+      } else {
+        // For other URLs, redirect
+        res.redirect(media.fileUrl);
+      }
+    } catch (error) {
+      console.error('Error serving media:', error);
+      res.status(500).json({ error: 'Failed to serve media' });
+    }
+  });
+
   // Evolution API webhook handlers - Use the new layered webhook controller
   app.post('/api/evolution/webhook/:instanceName/:eventType', async (req: Request, res: Response) => {
     await WebhookController.handleIncomingEvent(req, res);

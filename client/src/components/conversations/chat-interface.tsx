@@ -8,6 +8,7 @@ import { ContactTasksAndEvents } from "@/components/contacts/ContactTasksAndEven
 import { MessageReactions } from "@/components/conversations/MessageReactions";
 import { MessageHoverActions } from "@/components/conversations/MessageHoverActions";
 import { CreateTaskFromMessageModal } from "@/components/tasks/CreateTaskFromMessageModal";
+import { AudioPlayer } from "@/components/ui/audio-player";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -918,7 +919,21 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                     </div>
                   )}
 
-                  <p className="text-sm">{message.content}</p>
+                  {/* Audio message with audio player */}
+                  {message.messageType === 'audio' ? (
+                    <div className="space-y-2">
+                      <AudioPlayer 
+                        src={`/api/whatsapp/media/${message.instanceId}/${message.messageId}`}
+                        variant={message.isFromMe ? 'sent' : 'received'}
+                        className="w-full"
+                      />
+                      {message.content && message.content !== '[Audio]' && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400">{message.content}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm">{message.content}</p>
+                  )}
                   <div className={`flex items-center justify-end mt-1 space-x-1 ${
                     message.isFromMe ? 'justify-end' : 'justify-start'
                   }`}>
