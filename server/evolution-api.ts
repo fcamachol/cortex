@@ -227,43 +227,26 @@ export class EvolutionApi {
     // Download and decrypt media from WhatsApp using the correct endpoint
     async downloadMedia(instanceName: string, instanceApiKey: string, messageData: any): Promise<any> {
         try {
-            const chatJid = messageData.key?.remoteJid;
-            if (!chatJid) {
-                throw new Error('Chat JID is required for media download');
+            // Use the correct endpoint format: only instance name in URL, message data in body
+            const endpoint = `/message/downloadMedia/${instanceName}`;
+            
+            console.log(`🚀 Making correct API call to: POST ${this.apiUrl}${endpoint}`);
+            
+            const response = await this.makeRequest<any>(
+                endpoint,
+                'POST',
+                {
+                    message: messageData.message // Pass the nested message object from the webhook
+                },
+                instanceApiKey
+            );
+
+            if (response && (response.base64 || response.data)) {
+                console.log(`✅ Media download successful via: ${endpoint}`);
+                return response;
             }
 
-            // Try multiple Evolution API endpoint patterns for media download with chat JID
-            const endpoints = [
-                `/chat/getBase64FromMediaMessage/${instanceName}/${chatJid}`,
-                `/message/downloadMedia/${instanceName}/${chatJid}`,
-                `/chat/downloadMedia/${instanceName}/${chatJid}`,
-                `/media/download/${instanceName}/${chatJid}`
-            ];
-
-            for (const endpoint of endpoints) {
-                try {
-                    console.log(`🔄 Trying media download endpoint: ${endpoint}`);
-                    const response = await this.makeRequest<any>(
-                        endpoint,
-                        'POST',
-                        {
-                            key: messageData.key,
-                            message: messageData.message
-                        },
-                        instanceApiKey
-                    );
-
-                    if (response && (response.base64 || response.data)) {
-                        console.log(`✅ Media download successful via: ${endpoint}`);
-                        return response;
-                    }
-                } catch (endpointError) {
-                    console.log(`❌ Endpoint ${endpoint} failed: ${endpointError.message}`);
-                    continue;
-                }
-            }
-
-            throw new Error('All media download endpoints failed');
+            throw new Error('No media data in response');
         } catch (error) {
             console.error('Evolution API media download error:', error);
             throw error;

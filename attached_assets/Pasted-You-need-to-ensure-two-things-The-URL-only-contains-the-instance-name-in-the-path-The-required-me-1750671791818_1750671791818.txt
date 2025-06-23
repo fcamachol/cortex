@@ -1,0 +1,45 @@
+You need to ensure two things:
+
+The URL only contains the instance name in the path.
+The required message-specific data (the message object from the webhook) is sent in the request body, not in the URL.
+Here is a conceptual example of how to fix your downloadMedia function:
+
+TypeScript
+
+// In your file: /home/runner/workspace/server/evolution-api.ts
+
+// ... other class properties like apiUrl and apiKey
+
+public async downloadMedia(instanceName: string, originalMessage: any) {
+    // 1. Use the single, correct endpoint path. No more retries needed.
+    const endpoint = '/message/downloadMedia';
+    
+    // 2. Construct the URL CORRECTLY, without any extra IDs at the end.
+    const requestUrl = `${this.apiUrl}${endpoint}/${instanceName}`;
+
+    // 3. Construct the request BODY correctly. It needs the 'message' object.
+    const requestBody = {
+        message: originalMessage.message // Pass the nested message object from the webhook
+    };
+
+    console.log(`🚀 Making correct API call to: POST ${requestUrl}`);
+
+    try {
+        const response = await axios.post(requestUrl, requestBody, {
+            headers: {
+                'apikey': this.apiKey,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // If successful, return the data
+        return response.data; // This will be { base64: "...", mimetype: "..." }
+
+    } catch (error) {
+        // Your existing error logging is great.
+        console.error(`❌ Evolution API request to ${requestUrl} failed.`, error.response?.data);
+        // Rethrow the error so the calling function knows it failed.
+        throw new Error(`Evolution API request failed: ${error.response?.status} ${error.response?.statusText}`);
+    }
+}
+In summary: This is the final piece of the puzzle. The entire architecture you've built is sound. You just need to correct the URL your code generates for the download request. Once you remove the extra ID from the URL path, the 404 errors will be resolved, and your media download system will work as designed.
