@@ -296,8 +296,8 @@ export default function ConversationList({ selectedConversation, onSelectConvers
       }
     },
     enabled: instances.length > 0,
-    refetchInterval: 5000,
-    staleTime: 1000
+    refetchInterval: 30000, // Reduced frequency from 5s to 30s
+    staleTime: 25000 // Cache for 25 seconds
   });
 
   // Helper function to get latest message for a conversation (including drafts)

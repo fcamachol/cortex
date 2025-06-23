@@ -227,18 +227,38 @@ export class EvolutionApi {
     // Download and decrypt media from WhatsApp using the correct endpoint
     async downloadMedia(instanceName: string, instanceApiKey: string, messageData: any): Promise<any> {
         try {
-            const response = await this.makeRequest<any>(
+            // Try multiple Evolution API endpoint patterns for media download
+            const endpoints = [
+                `/chat/getBase64FromMediaMessage/${instanceName}`,
                 `/message/downloadMedia/${instanceName}`,
-                'POST',
-                {
-                    key: messageData.key,
-                    message: messageData.message,
-                    remoteJid: messageData.key?.remoteJid
-                },
-                instanceApiKey
-            );
+                `/chat/downloadMedia/${instanceName}`,
+                `/media/download/${instanceName}`
+            ];
 
-            return response;
+            for (const endpoint of endpoints) {
+                try {
+                    console.log(`🔄 Trying media download endpoint: ${endpoint}`);
+                    const response = await this.makeRequest<any>(
+                        endpoint,
+                        'POST',
+                        {
+                            key: messageData.key,
+                            message: messageData.message
+                        },
+                        instanceApiKey
+                    );
+
+                    if (response && (response.base64 || response.data)) {
+                        console.log(`✅ Media download successful via: ${endpoint}`);
+                        return response;
+                    }
+                } catch (endpointError) {
+                    console.log(`❌ Endpoint ${endpoint} failed: ${endpointError.message}`);
+                    continue;
+                }
+            }
+
+            throw new Error('All media download endpoints failed');
         } catch (error) {
             console.error('Evolution API media download error:', error);
             throw error;
