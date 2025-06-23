@@ -115,6 +115,41 @@ function getFileExtension(mimetype: string): string {
 }
 
 /**
+ * Cache base64 media data directly from webhook payload
+ */
+export async function cacheBase64Media(instanceId: string, messageId: string, base64Data: string, mimetype: string): Promise<string | null> {
+    try {
+        if (!base64Data) {
+            console.error('No base64 data provided');
+            return null;
+        }
+
+        // Create storage directory
+        const instanceDir = path.join(MEDIA_STORAGE_PATH, instanceId);
+        await fs.mkdir(instanceDir, { recursive: true });
+
+        // Determine file extension
+        const fileExtension = getFileExtension(mimetype);
+        const fileName = `${messageId}.${fileExtension}`;
+        const filePath = path.join(instanceDir, fileName);
+
+        // Clean base64 data (remove data URL prefix if present)
+        const cleanBase64 = base64Data.replace(/^data:[^;]+;base64,/, '');
+        
+        // Convert base64 to buffer and save
+        const fileBuffer = Buffer.from(cleanBase64, 'base64');
+        await fs.writeFile(filePath, fileBuffer);
+
+        console.log(`✅ [${instanceId}] Base64 media cached: ${filePath} (${fileBuffer.length} bytes)`);
+        return filePath;
+
+    } catch (error) {
+        console.error(`❌ [${instanceId}] Error caching base64 media for ${messageId}:`, error);
+        return null;
+    }
+}
+
+/**
  * Mark media as unavailable in the database
  */
 async function markMediaAsUnavailable(messageId: string, instanceId: string) {
