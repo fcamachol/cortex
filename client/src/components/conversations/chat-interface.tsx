@@ -1046,6 +1046,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                             <Forward className="h-4 w-4" />
                             Reenviar
                           </DropdownMenuItem>
+
                           <DropdownMenuItem 
                             className="flex items-center gap-2 cursor-pointer"
                             onClick={(e) => {
