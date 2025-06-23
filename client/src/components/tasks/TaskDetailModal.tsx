@@ -452,7 +452,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
   useEffect(() => {
     if (task) {
       setEditedTask(task);
-      setDueDate(task.due_date ? new Date(task.due_date) : undefined);
+      setDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
       setIsEditing(false); // Reset editing state when task changes
     }
   }, [task]);
@@ -479,13 +479,13 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
   const handleStatusChange = (newStatus: string) => {
     const updates = { status: newStatus };
     setEditedTask(prev => ({ ...prev, status: newStatus }));
-    onUpdate(task.task_id, updates);
+    onUpdate(task.taskId, updates);
   };
 
   const handlePriorityChange = (newPriority: string) => {
     const updates = { priority: newPriority };
     setEditedTask(prev => ({ ...prev, priority: newPriority }));
-    onUpdate(task.task_id, updates);
+    onUpdate(task.taskId, updates);
   };
 
   const getStatusIcon = (status: string) => {
@@ -622,7 +622,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                   </Button>
                   <Button 
                     onClick={() => {
-                      onDelete(task.task_id);
+                      onDelete(task.taskId);
                       onClose();
                     }} 
                     variant="outline" 
@@ -717,7 +717,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                       onSelect={(date) => {
                         setDueDate(date);
                         if (!isEditing && date) {
-                          onUpdate(task.task_id, { due_date: date.toISOString() });
+                          onUpdate(task.taskId, { due_date: date.toISOString() });
                         }
                       }}
                       initialFocus
@@ -1154,14 +1154,14 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                   <div className="space-y-2">
                     {task.subtasks.map((subtask) => (
                       <div 
-                        key={subtask.task_id} 
+                        key={subtask.taskId} 
                         className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border cursor-pointer hover:bg-gray-100 transition-colors"
                         onClick={() => onTaskClick && onTaskClick(subtask)}
                       >
                         <Checkbox
                           checked={subtask.status === 'completed'}
                           onCheckedChange={(checked) => {
-                            onUpdate(subtask.task_id, { 
+                            onUpdate(subtask.taskId, { 
                               status: checked ? 'completed' : 'todo' 
                             });
                             // Trigger parent task refresh to show updated subtask status
