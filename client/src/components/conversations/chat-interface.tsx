@@ -325,7 +325,7 @@ export default function ChatInterface({
     };
   }, [stableConversationId, stableUserId]); // Use stable references
 
-  // Force invalidation when conversation changes and mark as read
+  // Force invalidation when conversation changes
   useEffect(() => {
     if (!stableConversationId) return;
     
@@ -333,27 +333,53 @@ export default function ChatInterface({
     queryClient.invalidateQueries({
       queryKey: [`/api/whatsapp/chat-messages`]
     });
-    
-    // Mark conversation as read when opening it if it has unread messages
-    // Use a timeout to avoid re-render loops
-    const timeoutId = setTimeout(() => {
-      const conversation = stableConversations.find(conv => 
-        `${conv.instanceId}:${conv.chatId}` === stableConversationId
-      );
+  }, [stableConversationId]);
+
+  // Mark messages as read when they're actually viewed in the chat interface
+  const messagesCount = useMemo(() => rawMessages?.length || 0, [rawMessages?.length]);
+  const hasUnreadMessages = useMemo(() => {
+    const conversation = stableConversations.find(conv => 
+      conv.chatId === chatId && conv.instanceId === finalInstanceId
+    );
+    return conversation?.unreadCount > 0;
+  }, [stableConversations, chatId, finalInstanceId]);
+
+  // Track if chat is actively being viewed with intersection observer
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [isChatVisible, setIsChatVisible] = useState(false);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsChatVisible(entry.isIntersecting);
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  // Mark as read when chat is visible and has unread messages
+  useEffect(() => {
+    if (!isChatVisible || !hasUnreadMessages || !chatId || !finalInstanceId) return;
+
+    const readTimer = setTimeout(() => {
+      console.log(`📖 Marking chat as read - user is actively viewing messages: ${chatId}`);
       
-      if (conversation && conversation.unreadCount > 0) {
-        // Mark as read silently (no toast notification)
-        markAsReadMutation.mutate({
-          chatId: conversation.chatId,
-          instanceId: conversation.instanceId,
-          unread: false,
-          silent: true
-        });
-      }
-    }, 100);
-    
-    return () => clearTimeout(timeoutId);
-  }, [stableConversationId, stableConversations, markAsReadMutation]); // Use stable references
+      markAsReadMutation.mutate({
+        chatId: chatId,
+        instanceId: finalInstanceId,
+        unread: false,
+        silent: true
+      });
+    }, 1500); // 1.5 second delay when chat is visible
+
+    return () => clearTimeout(readTimer);
+  }, [isChatVisible, hasUnreadMessages, chatId, finalInstanceId]); // Only trigger when visibility or unread status changes
 
   // Auto-resize textarea on mount and content changes
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -380,26 +406,6 @@ export default function ChatInterface({
   }));
 
   // Audio messages now include proper media data for playback
-
-  // Mark as read mutation - triggers immediate green indicator updates
-  const markAsReadMutation = useMutation({
-    mutationFn: async ({ chatId, instanceId, unread, silent = false }: { chatId: string; instanceId: string; unread: boolean; silent?: boolean }) => {
-      return apiRequest('PATCH', '/api/whatsapp/conversations/read-status', { chatId, instanceId, unread, silent });
-    },
-    onSuccess: (_, { chatId, instanceId, unread }) => {
-      // Immediately invalidate conversation queries to update green indicators
-      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
-      
-      // If marking as unread, trigger immediate visual update to show green indicator
-      if (unread) {
-        // Force conversation list to show green indicator immediately
-        queryClient.refetchQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
-      }
-    },
-    onError: (error) => {
-      console.error('Failed to update read status:', error);
-    },
-  });
 
   const sendMessageMutation = useMutation({
     mutationFn: async (text: string) => {
@@ -1072,7 +1078,10 @@ export default function ChatInterface({
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 chat-area scroll-smooth scrollbar-thin chat-messages-scroll relative">
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 chat-area scroll-smooth scrollbar-thin chat-messages-scroll relative"
+      >
         {/* Floating Scroll to Bottom Button */}
         {showScrollToBottom && (
           <Button
