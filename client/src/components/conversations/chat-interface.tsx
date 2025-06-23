@@ -209,8 +209,33 @@ export default function ChatInterface({
   // Set up Server-Sent Events for real-time message updates - stabilized with ref
   const eventSourceRef = useRef<EventSource | null>(null);
   
+  // Stable references to prevent infinite re-renders
+  const stableConversationId = useMemo(() => conversationId, [conversationId]);
+  const stableUserId = useMemo(() => userId, [userId]);
+  const stableConversations = useMemo(() => conversations, [conversations]);
+
+  // Mark as read mutation - moved before useEffect to fix reference error
+  const markAsReadMutation = useMutation({
+    mutationFn: async ({ chatId, instanceId, unread, silent = false }: { chatId: string; instanceId: string; unread: boolean; silent?: boolean }) => {
+      return apiRequest('PATCH', '/api/whatsapp/conversations/read-status', { chatId, instanceId, unread, silent });
+    },
+    onSuccess: (_, { chatId, instanceId, unread }) => {
+      // Immediately invalidate conversation queries to update green indicators
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+      
+      // If marking as unread, trigger immediate visual update to show green indicator
+      if (unread) {
+        // Force conversation list to show green indicator immediately
+        queryClient.refetchQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+      }
+    },
+    onError: (error) => {
+      console.error('Failed to update read status:', error);
+    },
+  });
+  
   useEffect(() => {
-    if (!conversationId) return;
+    if (!stableConversationId) return;
 
     console.log('Setting up SSE connection for real-time messages');
     const eventSource = new EventSource('/api/events');
@@ -226,12 +251,12 @@ export default function ChatInterface({
           // Always refresh conversation list for any new message to update unread counts
           console.log('Refreshing conversation list due to new message');
           queryClient.invalidateQueries({
-            queryKey: [`/api/whatsapp/conversations/${userId}`]
+            queryKey: [`/api/whatsapp/conversations/${stableUserId}`]
           });
           
           // If the new message is NOT from the currently open conversation, show green indicator
           const isCurrentConversation = newMessage.chatId && newMessage.instanceId && 
-            conversationId === `${newMessage.instanceId}:${newMessage.chatId}`;
+            stableConversationId === `${newMessage.instanceId}:${newMessage.chatId}`;
           
           if (!isCurrentConversation && !newMessage.isFromMe) {
             console.log('New message from different conversation - will show green indicator');
@@ -298,11 +323,11 @@ export default function ChatInterface({
       eventSource.close();
       eventSourceRef.current = null;
     };
-  }, [conversationId, userId]); // Stable dependencies only
+  }, [stableConversationId, stableUserId]); // Use stable references
 
   // Force invalidation when conversation changes and mark as read
   useEffect(() => {
-    if (!conversationId) return;
+    if (!stableConversationId) return;
     
     // Force invalidate all message queries when switching conversations
     queryClient.invalidateQueries({
@@ -312,8 +337,8 @@ export default function ChatInterface({
     // Mark conversation as read when opening it if it has unread messages
     // Use a timeout to avoid re-render loops
     const timeoutId = setTimeout(() => {
-      const conversation = conversations.find(conv => 
-        `${conv.instanceId}:${conv.chatId}` === conversationId
+      const conversation = stableConversations.find(conv => 
+        `${conv.instanceId}:${conv.chatId}` === stableConversationId
       );
       
       if (conversation && conversation.unreadCount > 0) {
@@ -328,7 +353,7 @@ export default function ChatInterface({
     }, 100);
     
     return () => clearTimeout(timeoutId);
-  }, [conversationId]); // Removed unstable dependencies
+  }, [stableConversationId, stableConversations, markAsReadMutation]); // Use stable references
 
   // Auto-resize textarea on mount and content changes
   const textareaRef = useRef<HTMLTextAreaElement>(null);
