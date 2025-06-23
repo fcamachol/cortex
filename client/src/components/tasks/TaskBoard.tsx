@@ -140,11 +140,11 @@ export function TaskBoard({
                     <DropdownMenuItem onClick={() => onEditTask(task)}>
                       Edit Task
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onCreateSubtask(task.task_id, { title: 'New Subtask' })}>
+                    <DropdownMenuItem onClick={() => onCreateSubtask(task.taskId, { title: 'New Subtask' })}>
                       Add Subtask
                     </DropdownMenuItem>
                     <DropdownMenuItem 
-                      onClick={() => onPriorityChange(task.task_id, 'urgent')}
+                      onClick={() => onPriorityChange(task.taskId, 'urgent')}
                       className="text-red-600"
                     >
                       Mark Urgent
@@ -164,21 +164,21 @@ export function TaskBoard({
                   {task.priority && (
                     <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`} />
                   )}
-                  {task.due_date && (
+                  {task.dueDate && (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Calendar className="h-3 w-3" />
-                      {formatDate(task.due_date)}
+                      {formatDate(task.dueDate)}
                     </div>
                   )}
-                  {task.related_chat_jid && (
+                  {task.relatedChatJid && (
                     <MessageSquare className="h-3 w-3 text-blue-500" />
                   )}
                 </div>
                 
-                {task.assigned_to_user_id && (
+                {task.assignedToUserId && (
                   <Avatar className="h-5 w-5">
                     <AvatarFallback className="text-xs">
-                      {task.assigned_to_user_id.slice(0, 2).toUpperCase()}
+                      {task.assignedToUserId.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 )}
@@ -190,9 +190,9 @@ export function TaskBoard({
                     variant="ghost"
                     size="sm"
                     className="h-6 text-xs p-0 hover:bg-transparent"
-                    onClick={() => toggleTaskExpansion(task.task_id)}
+                    onClick={() => toggleTaskExpansion(task.taskId)}
                   >
-                    {expandedTasks.has(task.task_id) ? (
+                    {expandedTasks.has(task.taskId) ? (
                       <ChevronDown className="h-3 w-3 mr-1" />
                     ) : (
                       <ChevronRight className="h-3 w-3 mr-1" />
@@ -200,10 +200,10 @@ export function TaskBoard({
                     {task.subtasks.length} subtask{task.subtasks.length !== 1 ? 's' : ''}
                   </Button>
                   
-                  {expandedTasks.has(task.task_id) && (
+                  {expandedTasks.has(task.taskId) && (
                     <div className="mt-2 space-y-1">
                       {task.subtasks.map((subtask) => (
-                        <div key={subtask.task_id} className="text-xs p-2 bg-gray-50 rounded border-l-2 border-gray-300">
+                        <div key={subtask.taskId} className="text-xs p-2 bg-gray-50 rounded border-l-2 border-gray-300">
                           <div className="flex items-center justify-between">
                             <span className="flex-1">{subtask.title}</span>
                             <Badge variant="outline" className="text-xs py-0">

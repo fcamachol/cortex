@@ -262,27 +262,8 @@ export function TasksPage() {
     const matchesProject = !selectedProject || task.projectId === selectedProject;
     const matchesInstance = instanceFilter === 'all' || task.instanceId === instanceFilter;
     
-    // Debug filtering
-    if (!matchesSearch || !matchesStatus || !matchesPriority || !matchesProject || !matchesInstance) {
-      console.log('Task filtered out:', {
-        taskId: task.taskId,
-        title: task.title,
-        status: task.status,
-        statusFilter,
-        matchesStatus,
-        priority: task.priority,
-        priorityFilter,
-        matchesPriority,
-        instanceId: task.instanceId,
-        instanceFilter,
-        matchesInstance
-      });
-    }
-    
     return matchesSearch && matchesStatus && matchesPriority && matchesProject && matchesInstance;
   }) || [];
-  
-  console.log('Total filtered tasks:', filteredTasks.length);
 
   const handleTaskStatusChange = (taskId: number, newStatus: string) => {
     updateTaskMutation.mutate({ taskId, updates: { status: newStatus } });

@@ -8,18 +8,18 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Calendar, MessageSquare, User, MoreHorizontal, Plus, ChevronDown, ChevronRight, Clock, Flag } from 'lucide-react';
 
 interface Task {
-  task_id: number;
+  taskId: number;
   title: string;
   description?: string;
   status: string;
   priority?: string;
-  due_date?: string;
-  project_id?: number;
-  parent_task_id?: number;
-  assigned_to_user_id?: string;
-  related_chat_jid?: string;
-  created_at: string;
-  updated_at: string;
+  dueDate?: string;
+  projectId?: number;
+  parentTaskId?: number;
+  assignedToUserId?: string;
+  relatedChatJid?: string;
+  createdAt: string;
+  updatedAt: string;
   subtasks?: Task[];
   checklist_items?: ChecklistItem[];
 }
