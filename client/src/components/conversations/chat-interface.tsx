@@ -255,15 +255,30 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     };
   }, [conversationId, instanceId, queryClient, userId]);
 
-  // Force invalidation when conversation changes
+  // Force invalidation when conversation changes and mark as read
   useEffect(() => {
     if (conversationId && instanceId) {
       // Force invalidate all message queries when switching conversations
       queryClient.invalidateQueries({
         queryKey: [`/api/whatsapp/chat-messages`]
       });
+      
+      // Mark conversation as read when opening it if it has unread messages
+      const conversation = conversations.find(conv => 
+        conv.chatId === chatId && conv.instanceId === instanceId
+      );
+      
+      if (conversation && conversation.unreadCount > 0) {
+        // Mark as read silently (no toast notification)
+        markAsReadMutation.mutate({
+          chatId: chatId,
+          instanceId: instanceId,
+          unread: false,
+          silent: true
+        });
+      }
     }
-  }, [conversationId, instanceId, queryClient]);
+  }, [conversationId, instanceId, queryClient, conversations, chatId]);
 
   // Auto-resize textarea on mount and content changes
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -290,6 +305,20 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   }));
 
   // Audio messages now include proper media data for playback
+
+  // Mark as read mutation
+  const markAsReadMutation = useMutation({
+    mutationFn: async ({ chatId, instanceId, unread, silent = false }: { chatId: string; instanceId: string; unread: boolean; silent?: boolean }) => {
+      return apiRequest('PATCH', '/api/whatsapp/conversations/read-status', { chatId, instanceId, unread, silent });
+    },
+    onSuccess: () => {
+      // Refresh conversations to update unread indicators
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+    },
+    onError: (error) => {
+      console.error('Failed to update read status:', error);
+    },
+  });
 
   const sendMessageMutation = useMutation({
     mutationFn: async (text: string) => {
