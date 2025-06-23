@@ -1559,11 +1559,15 @@ export async function registerRoutes(app: Express): Promise<void> {
       if (localFilePath) {
         console.log(`✅ Found locally cached file: ${localFilePath}`);
         
+        // Decode WhatsApp audio to browser-compatible format
+        const { ensureDecodedMedia } = await import('./whatsapp-media-decoder');
+        const decodedFilePath = await ensureDecodedMedia(localFilePath);
+        
         // Get media metadata from database
         const mediaInfo = await storage.getWhatsappMessageMedia(messageId, instanceId);
         const mimeType = mediaInfo?.mimetype || 'audio/ogg; codecs=opus';
         
-        // Serve the local file with enhanced headers for browser compatibility
+        // Serve the decoded file with enhanced headers for browser compatibility
         res.setHeader('Content-Type', mimeType);
         res.setHeader('Cache-Control', 'public, max-age=3600');
         res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
@@ -1576,8 +1580,8 @@ export async function registerRoutes(app: Express): Promise<void> {
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('Referrer-Policy', 'no-referrer-when-downgrade');
         
-        console.log(`✅ Serving cached file: ${messageId} from ${localFilePath}`);
-        return res.sendFile(localFilePath);
+        console.log(`✅ Serving decoded file: ${messageId} from ${decodedFilePath}`);
+        return res.sendFile(decodedFilePath);
       }
       
       // Second, check if base64 data is in the webhook payload
