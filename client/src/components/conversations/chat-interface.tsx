@@ -324,18 +324,14 @@ export default function ChatInterface({
     };
   }, [stableConversationId, stableUserId]); // Use stable references
 
-  // Force invalidation when conversation changes - using useCallback to stabilize
-  const invalidateMessages = useCallback(() => {
+  // Force invalidation when conversation changes - simplified to prevent loops
+  useEffect(() => {
     if (!stableConversationId) return;
     
     queryClient.invalidateQueries({
       queryKey: [`/api/whatsapp/chat-messages`]
     });
-  }, [stableConversationId, queryClient]);
-
-  useEffect(() => {
-    invalidateMessages();
-  }, [invalidateMessages]);
+  }, [stableConversationId]); // Remove queryClient dependency to prevent infinite loop
 
   // Mark messages as read when they're actually viewed in the chat interface
   const messagesCount = useMemo(() => rawMessages?.length || 0, [rawMessages?.length]);

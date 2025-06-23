@@ -113,7 +113,7 @@ export function TaskBoard({
     }
     
     return (
-    <Draggable key={task.taskId} draggableId={task.taskId.toString()} index={index}>
+    <Draggable key={`${task.taskId}-${task.status}`} draggableId={`${task.taskId}-${task.status}`} index={index}>
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
@@ -249,7 +249,7 @@ export function TaskBoard({
                     }`}
                   >
                     {getTasksByStatus(column.id).map((task, index) => 
-                      renderTask(task, index)
+                      renderTask(task, index, column.id)
                     )}
                     {provided.placeholder}
                     

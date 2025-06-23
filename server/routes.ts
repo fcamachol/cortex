@@ -1785,7 +1785,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         title,
         description: description || messageContent,
         priority: priority || 'medium',
-        status: 'pending',
+        status: 'to_do',
         taskType: taskType || 'task',
         dueDate: dueDate ? new Date(dueDate) : null,
         // Link to WhatsApp message metadata
