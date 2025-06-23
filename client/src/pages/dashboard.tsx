@@ -8,16 +8,38 @@ import CalendarModule from "@/components/calendar/calendar-module";
 import IntegrationModule from "@/components/integrations/integration-module";
 import { ActionsDashboard } from "@/components/actions/actions-dashboard";
 import SimpleDBViewer from "@/pages/SimpleDBViewer";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export default function Dashboard() {
   const [activeModule, setActiveModule] = useState("conversations");
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  // Auto-select the first conversation with messages when none is selected
+  // Central data fetching for conversations module - eliminates duplicate polling
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
-  const { data: conversations = [] } = useQuery<any[]>({
+  
+  // Fetch conversations once at dashboard level
+  const { data: conversations = [], isLoading: conversationsLoading } = useQuery<any[]>({
     queryKey: [`/api/whatsapp/conversations/${userId}`],
+    refetchInterval: false, // No polling - updates via SSE from ChatInterface
+    refetchOnWindowFocus: false,
+    staleTime: 0, // Fresh when invalidated by SSE
+  });
+  
+  // Fetch contacts once at dashboard level
+  const { data: contacts = [], isLoading: contactsLoading } = useQuery<any[]>({
+    queryKey: [`/api/contacts/${userId}`],
+    refetchInterval: false, // No polling - updates via SSE from ChatInterface
+    refetchOnWindowFocus: false,
+    staleTime: 300000, // 5 minutes - contacts change less frequently
+  });
+  
+  // Fetch instances once at dashboard level
+  const { data: instances = [], isLoading: instancesLoading } = useQuery<any[]>({
+    queryKey: [`/api/whatsapp/instances/${userId}`],
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    staleTime: 600000, // 10 minutes - instances rarely change
   });
 
   useEffect(() => {
@@ -38,9 +60,18 @@ export default function Dashboard() {
             <ConversationList
               selectedConversation={selectedConversation}
               onSelectConversation={setSelectedConversation}
+              conversations={conversations}
+              contacts={contacts}
+              instances={instances}
+              isLoading={conversationsLoading || contactsLoading || instancesLoading}
+              userId={userId}
             />
             <ChatInterface 
-              conversationId={selectedConversation} 
+              conversationId={selectedConversation}
+              conversations={conversations}
+              contacts={contacts}
+              instances={instances}
+              userId={userId}
             />
           </div>
         );

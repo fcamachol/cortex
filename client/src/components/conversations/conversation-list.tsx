@@ -16,9 +16,22 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 interface ConversationListProps {
   selectedConversation: string | null;
   onSelectConversation: (conversationId: string) => void;
+  conversations: any[];
+  contacts: any[];
+  instances: any[];
+  isLoading: boolean;
+  userId: string;
 }
 
-export default function ConversationList({ selectedConversation, onSelectConversation }: ConversationListProps) {
+export default function ConversationList({ 
+  selectedConversation, 
+  onSelectConversation, 
+  conversations, 
+  contacts, 
+  instances, 
+  isLoading, 
+  userId 
+}: ConversationListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredConversation, setHoveredConversation] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -230,13 +243,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
     }
   });
 
-  // Mock user ID - in real app this would come from auth context
-  const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
-
-  // Fetch instances with customization data
-  const { data: instances = [] } = useQuery({
-    queryKey: [`/api/whatsapp/instances/${userId}`],
-  });
+  // Remove duplicate API calls - data now comes from props
 
   // Real-time waiting reply messages state
   const [waitingReplyMessages, setWaitingReplyMessages] = useState<any[]>([]);
@@ -404,22 +411,7 @@ export default function ConversationList({ selectedConversation, onSelectConvers
     return conv.chatId || 'Unknown';
   };
 
-  const { data: conversations = [], isLoading } = useQuery<any[]>({
-    queryKey: [`/api/whatsapp/conversations/${userId}`],
-    refetchInterval: false, // Disable polling - use SSE for updates
-    staleTime: 0, // Always fresh data when invalidated by SSE
-    refetchOnWindowFocus: false, // Prevent unnecessary refetches
-  });
-
-  // Also fetch contacts for display names - no polling
-  const { data: contacts = [] } = useQuery<any[]>({
-    queryKey: [`/api/contacts/${userId}`],
-    refetchInterval: false, // Disable polling completely
-    refetchOnWindowFocus: false, // Don't refetch on focus
-    staleTime: Infinity, // Keep data fresh - updates come via SSE
-  });
-
-  // Use conversations data directly since it already contains message info
+  // Data now comes from props - no duplicate API calls
   const messages = conversations;
 
   // Real-time drafts state
