@@ -513,10 +513,11 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       }
       return null;
     },
-    enabled: !!finalInstanceId && !!chatId,
-    staleTime: 30000, // Increase stale time to reduce frequent refetching
-    refetchOnWindowFocus: false, // Disable refetch on window focus
-    refetchOnMount: false, // Only fetch once when component mounts
+    enabled: !!finalInstanceId && !!chatId && finalInstanceId !== 'undefined' && chatId !== 'undefined',
+    staleTime: 60000, // Increase stale time significantly
+    refetchOnWindowFocus: false,
+    refetchOnMount: 'always',
+    refetchInterval: false
   });
 
   // Save current draft when switching conversations

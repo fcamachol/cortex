@@ -1606,32 +1606,12 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(404).json({ error: 'Original message data not found' });
       }
 
-      // Attempt to download the media using the new media downloader
-      const { downloadMediaForMessage } = await import('./media-downloader');
-      const downloadedPath = await downloadMediaForMessage(instanceId, messageId);
-      
-      if (downloadedPath) {
-        console.log(`✅ Successfully downloaded media for ${messageId}, serving file`);
-        
-        // Now serve the downloaded file
-        const fs = require('fs');
-        const fileBuffer = fs.readFileSync(downloadedPath);
-        
-        res.setHeader('Content-Type', media.mimetype || 'audio/ogg');
-        res.setHeader('Content-Length', fileBuffer.length.toString());
-        res.setHeader('Accept-Ranges', 'bytes');
-        res.setHeader('Cache-Control', 'public, max-age=3600');
-        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        
-        res.send(fileBuffer);
-      } else {
-        console.log(`❌ Failed to download media for ${messageId}`);
-        return res.status(404).json({ 
-          error: 'Media file not available', 
-          message: 'Unable to download audio file from WhatsApp servers' 
-        });
-      }
+      // For uncached files, return graceful 404 since Evolution API doesn't support media download
+      console.log(`📎 Media file not cached for ${messageId}. Media download not supported by current Evolution API version.`);
+      return res.status(404).json({ 
+        error: 'Media file not cached', 
+        message: 'Audio file needs to be cached locally to play. This file was not cached when the message was received.' 
+      });
     } catch (error) {
       console.error('Error serving media:', error);
       res.status(500).json({ error: 'Failed to serve media' });
