@@ -1558,8 +1558,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
       
       // First, check for Evolution API downloaded media files
-      const currentDir = path.dirname(new URL(import.meta.url).pathname);
-      const mediaStoragePath = path.resolve(currentDir, '../media_storage', instanceId);
+      const mediaStoragePath = path.resolve(process.cwd(), 'media_storage', instanceId);
       try {
         const mediaFiles = await fsPromises.readdir(mediaStoragePath);
         const mediaFile = mediaFiles.find(file => file.startsWith(messageId));
@@ -1586,7 +1585,7 @@ export async function registerRoutes(app: Express): Promise<void> {
           return res.sendFile(filePath);
         }
       } catch (err) {
-        // Directory doesn't exist or other error - continue to download
+        // Directory doesn't exist or other error - continue to fallback
       }
       
       // Second, try to download from Evolution API if not cached

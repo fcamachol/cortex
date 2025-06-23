@@ -3,6 +3,9 @@ import { storage } from './storage'; // Your database access layer
 import { SseManager } from './sse-manager'; // Your real-time notification manager
 import { ActionService } from './action-service'; // Your business logic engine
 import { getEvolutionApi } from './evolution-api'; // Evolution API client
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { lookup } from 'mime-types';
 import {
     type WhatsappMessages,
     type WhatsappContacts,
@@ -177,6 +180,11 @@ export const WebhookApiAdapter = {
                 // Handle media storage after message is saved to avoid foreign key constraint errors
                 if (['image', 'video', 'audio', 'document', 'sticker'].includes(cleanMessage.messageType)) {
                     await this.handleMediaStorage(rawMessage, instanceId, cleanMessage.messageType);
+                }
+                
+                // Handle audio message processing using Evolution API downloadMedia method
+                if (cleanMessage.messageType === 'audio') {
+                    await this.handleNewAudioMessage(instanceId, rawMessage);
                 }
                 
                 SseManager.notifyClientsOfNewMessage(storedMessage);
@@ -1839,6 +1847,54 @@ export const WebhookApiAdapter = {
         } catch (error) {
             console.warn(`❌ [${instanceId}] Error requesting group metadata for ${groupJid}:`, error.message);
             return null;
+        }
+    },
+
+    /**
+     * Download and save audio media using Evolution API's downloadMedia method
+     * This implements your exact solution approach
+     */
+    async handleNewAudioMessage(instanceId: string, messageData: any): Promise<void> {
+        try {
+            const evolutionApi = getEvolutionApi();
+            const messageId = messageData.key?.id;
+            
+            if (!messageId) {
+                return;
+            }
+
+            // Check if this is an audio message
+            const audioMessage = messageData.message?.audioMessage;
+            if (!audioMessage) {
+                return;
+            }
+
+            console.log(`🎵 Processing audio message: ${messageId}`);
+
+            // 1. Call Evolution API downloadMedia method
+            const downloadedMedia = await evolutionApi.downloadMedia(instanceId, process.env.EVOLUTION_API_KEY!, messageData);
+
+            if (downloadedMedia && downloadedMedia.buffer) {
+                // 2. Determine file extension from mimetype
+                const extension = downloadedMedia.mimetype.split('/')[1] || 'ogg';
+                const fileName = `${messageId}.${extension}`;
+                const storagePath = path.resolve(process.cwd(), 'media_storage', instanceId);
+
+                // 3. Save the buffer to file
+                await fs.mkdir(storagePath, { recursive: true });
+                await fs.writeFile(path.join(storagePath, fileName), downloadedMedia.buffer);
+
+                console.log(`✅ Playable audio file saved: ${fileName}`);
+                console.log(`📁 File size: ${downloadedMedia.buffer.length} bytes`);
+                console.log(`🎧 MIME type: ${downloadedMedia.mimetype}`);
+
+                // The audio file is now ready for the frontend to play
+                // No conversion needed - Evolution API provides browser-compatible format
+            } else {
+                console.warn(`⚠️ No media data returned for audio message: ${messageId}`);
+            }
+        } catch (error) {
+            console.error(`❌ Error processing audio message:`, error.message);
         }
     },
 
