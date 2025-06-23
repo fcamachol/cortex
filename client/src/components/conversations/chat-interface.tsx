@@ -3,12 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Paperclip, Smile, Send, CheckSquare, Plus, MoreVertical } from "lucide-react";
+import { Paperclip, Smile, Send, CheckSquare, Plus, MoreVertical, ChevronDown, Reply, Copy, Forward, Pin, Star, Trash2 } from "lucide-react";
 import { ContactTasksAndEvents } from "@/components/contacts/ContactTasksAndEvents";
 import { MessageReactions } from "@/components/conversations/MessageReactions";
 import { MessageHoverActions } from "@/components/conversations/MessageHoverActions";
 import { CreateTaskFromMessageModal } from "@/components/tasks/CreateTaskFromMessageModal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 // WebSocket functionality removed - using webhook-based system
 import { apiRequest } from "@/lib/queryClient";
 import { formatPhoneNumber } from "@/lib/phoneUtils";
@@ -483,6 +484,53 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                       </div>
                     )}
                   </div>
+
+                  {/* Dropdown arrow in top-right corner */}
+                  {hoveredMessageId === (message.messageId || message.id) && (
+                    <div className="absolute -top-2 -right-2 z-20">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 rounded-full bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          >
+                            <ChevronDown className="h-3 w-3 text-gray-600 dark:text-gray-400" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                            <Reply className="h-4 w-4" />
+                            Responder
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                            <Copy className="h-4 w-4" />
+                            Copiar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                            <Smile className="h-4 w-4" />
+                            Reaccionar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                            <Forward className="h-4 w-4" />
+                            Reenviar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                            <Pin className="h-4 w-4" />
+                            Fijar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                            <Star className="h-4 w-4" />
+                            Destacar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="flex items-center gap-2 cursor-pointer text-red-600 dark:text-red-400">
+                            <Trash2 className="h-4 w-4" />
+                            Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
                   
                   {/* Message Hover Actions */}
                   <MessageHoverActions
