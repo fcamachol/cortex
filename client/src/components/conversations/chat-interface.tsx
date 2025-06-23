@@ -1038,6 +1038,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                             className="flex items-center gap-2 cursor-pointer"
                             onClick={(e) => {
                               e.stopPropagation();
+                              console.log('Reenviar clicked for message:', message.messageId || message.id);
                               handleForwardMessage(message);
                               setOpenMessageDropdown(null);
                             }}
@@ -1106,7 +1107,10 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleCancelMultiSelect}
+            onClick={() => {
+              console.log('Cancel multi-select clicked');
+              handleCancelMultiSelect();
+            }}
             className="text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
           >
             <X className="h-4 w-4" />
@@ -1117,7 +1121,10 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleForwardSelectedMessages}
+            onClick={() => {
+              console.log('Forward arrow clicked in bottom bar');
+              handleForwardSelectedMessages();
+            }}
             disabled={selectedMessages.size === 0}
             className="text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
           >
