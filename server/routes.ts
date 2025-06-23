@@ -491,11 +491,38 @@ export async function registerRoutes(app: Express): Promise<void> {
         // This ensures the sender sees their message immediately
         try {
           console.log(`📝 [${instanceId}] Creating local record for sent message`);
+          
+          // First, ensure sender contact exists or find an existing valid sender
+          let senderJid = result.data?.key?.participant || `${instanceId}@bot`;
+          
+          // Try to find an existing contact for this instance to use as sender
+          const existingContacts = await storage.getContacts('', instanceId);
+          if (existingContacts.length > 0) {
+            // Use the first existing contact as the sender to avoid FK constraint issues
+            senderJid = existingContacts[0].jid;
+          } else {
+            // Create a bot/system contact for this instance
+            try {
+              await storage.upsertContact({
+                jid: `${instanceId}@bot`,
+                instanceId,
+                pushName: 'System',
+                isGroup: false,
+                profilePictureUrl: null
+              });
+              senderJid = `${instanceId}@bot`;
+            } catch (contactError) {
+              console.warn(`Could not create system contact, using placeholder: ${contactError}`);
+              // Fall back to webhook processing
+              return;
+            }
+          }
+          
           const sentMessage = {
             messageId: result.data?.key?.id || `SENT_${Date.now()}`,
             instanceId,
             chatId,
-            senderJid: result.data?.key?.fromMe ? `${instanceId}@sender` : (result.data?.key?.participant || `sender@${instanceId}`), 
+            senderJid,
             fromMe: true,
             messageType: 'text' as const,
             content: message,
@@ -510,7 +537,7 @@ export async function registerRoutes(app: Express): Promise<void> {
             rawApiPayload: result.data || {}
           };
           
-          console.log(`📝 [${instanceId}] Storing message with ID: ${sentMessage.messageId}`);
+          console.log(`📝 [${instanceId}] Storing message with sender: ${sentMessage.senderJid}`);
           
           // Store the sent message immediately
           const storedMessage = await storage.upsertWhatsappMessage(sentMessage);
@@ -522,7 +549,6 @@ export async function registerRoutes(app: Express): Promise<void> {
           console.log(`📡 [${instanceId}] SSE notification sent for message: ${storedMessage.messageId}`);
         } catch (localStorageError) {
           console.error(`⚠️ [${instanceId}] Failed to store sent message locally:`, localStorageError);
-          console.error('Full error details:', JSON.stringify(localStorageError, null, 2));
           // Continue anyway - the webhook will eventually catch it
         }
         

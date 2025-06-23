@@ -413,10 +413,10 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   });
 
   // Save current draft when switching conversations
-  const saveDraftOnSwitch = (oldConversationId: string, oldInstanceId: string, messageContent: string) => {
-    if (oldConversationId && oldInstanceId && messageContent && messageContent.trim()) {
+  const saveDraftOnSwitch = (oldChatId: string, oldInstanceId: string, messageContent: string) => {
+    if (oldChatId && oldInstanceId && messageContent && messageContent.trim()) {
       saveDraftMutation.mutate({
-        chatId: oldConversationId,
+        chatId: oldChatId, // Use raw chatId, not conversationId
         instanceId: oldInstanceId,
         content: messageContent,
         replyToMessageId: replyToMessage?.messageId || null
@@ -436,9 +436,9 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     // Save draft for previous conversation if there was content
     if (prevConversationId.current && prevInstanceId.current && prevMessageInput.current.trim()) {
       // Extract chatId from previous conversationId
-      const [, prevChatId] = prevConversationId.current?.includes(':') 
-        ? prevConversationId.current.split(':') 
-        : [null, prevConversationId.current];
+      const prevChatId = prevConversationId.current?.includes(':') 
+        ? prevConversationId.current.split(':')[1] 
+        : prevConversationId.current;
       saveDraftOnSwitch(prevChatId, prevInstanceId.current, prevMessageInput.current);
     }
 
@@ -465,13 +465,16 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
   // Draft saving mutation
   const saveDraftMutation = useMutation({
     mutationFn: async ({ chatId, instanceId, content, replyToMessageId }: any) => {
+      // Ensure we always use raw chatId, never composite identifier
+      const rawChatId = chatId?.includes(':') ? chatId.split(':')[1] : chatId;
+      
       const response = await fetch('/api/whatsapp/drafts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          chatId,
+          chatId: rawChatId, // Always use raw chat ID
           instanceId,
           content,
           replyToMessageId
