@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -324,15 +324,18 @@ export default function ChatInterface({
     };
   }, [stableConversationId, stableUserId]); // Use stable references
 
-  // Force invalidation when conversation changes
-  useEffect(() => {
+  // Force invalidation when conversation changes - using useCallback to stabilize
+  const invalidateMessages = useCallback(() => {
     if (!stableConversationId) return;
     
-    // Force invalidate all message queries when switching conversations
     queryClient.invalidateQueries({
       queryKey: [`/api/whatsapp/chat-messages`]
     });
-  }, [stableConversationId]);
+  }, [stableConversationId, queryClient]);
+
+  useEffect(() => {
+    invalidateMessages();
+  }, [invalidateMessages]);
 
   // Mark messages as read when they're actually viewed in the chat interface
   const messagesCount = useMemo(() => rawMessages?.length || 0, [rawMessages?.length]);
