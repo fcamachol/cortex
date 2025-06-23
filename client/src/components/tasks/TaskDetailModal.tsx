@@ -168,12 +168,12 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
     };
 
     fetchMessageThread();
-  }, [task?.related_chat_jid, task?.instance_id, task?.triggering_message_id, task?.created_at]);
+  }, [task?.relatedChatJid, task?.instanceId, task?.triggeringMessageId, task?.createdAt]);
 
   // Fetch chat information when task changes
   useEffect(() => {
     const fetchChatInfo = async () => {
-      if (!task?.related_chat_jid || !task?.instance_id) {
+      if (!task?.relatedChatJid || !task?.instanceId) {
         setChatInfo(null);
         return;
       }
@@ -182,9 +182,9 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
 
       try {
         // Check if it's a group (ends with @g.us) or individual chat (ends with @s.whatsapp.net)
-        if (task.related_chat_jid.includes('@g.us')) {
+        if (task.relatedChatJid.includes('@g.us')) {
           // Fetch group information
-          const response = await fetch(`/api/whatsapp/groups/${task.instance_id}/${encodeURIComponent(task.related_chat_jid)}`, {
+          const response = await fetch(`/api/whatsapp/groups/${task.instanceId}/${encodeURIComponent(task.relatedChatJid)}`, {
             method: 'GET',
             headers: {
               'Cache-Control': 'no-cache',
@@ -197,12 +197,12 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
             setChatInfo({
               type: 'group',
               name: groupData.subject || 'Unknown Group',
-              jid: task.related_chat_jid
+              jid: task.relatedChatJid
             });
           }
         } else {
           // Fetch contact information
-          const response = await fetch(`/api/whatsapp/conversations/7804247f-3ae8-4eb2-8c6d-2c44f967ad42?instanceId=${task.instance_id}`, {
+          const response = await fetch(`/api/whatsapp/conversations/7804247f-3ae8-4eb2-8c6d-2c44f967ad42?instanceId=${task.instanceId}`, {
             method: 'GET',
             headers: {
               'Cache-Control': 'no-cache',
@@ -212,13 +212,13 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
 
           if (response.ok) {
             const conversations = await response.json();
-            const conversation = conversations.find((conv: any) => conv.chatJid === task.related_chat_jid);
+            const conversation = conversations.find((conv: any) => conv.chatJid === task.relatedChatJid);
             
             if (conversation) {
               setChatInfo({
                 type: 'contact',
                 name: conversation.contactName || conversation.pushName || 'Unknown Contact',
-                jid: task.related_chat_jid
+                jid: task.relatedChatJid
               });
             }
           }
@@ -232,7 +232,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
     };
 
     fetchChatInfo();
-  }, [task?.related_chat_jid, task?.instance_id]);
+  }, [task?.relatedChatJid, task?.instanceId]);
 
   // Create checklist item mutation
   const createChecklistItemMutation = useMutation({
