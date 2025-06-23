@@ -185,7 +185,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
           const newMessage = data.payload;
           
           // Only process messages for the current conversation
-          if (newMessage.chatId === conversationId && newMessage.instanceId === instanceId) {
+          if (newMessage.chatId === chatId && newMessage.instanceId === finalInstanceId) {
             console.log('Received real-time message update:', newMessage);
             
             // Update the query cache with the new message
@@ -252,11 +252,11 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (text: string) => {
-      if (!conversationId || !instanceId) throw new Error('Missing conversation or instance ID');
+      if (!chatId || !finalInstanceId) throw new Error('Missing conversation or instance ID');
       
       const payload: any = {
-        instanceId,
-        chatId: conversationId,
+        instanceId: finalInstanceId,
+        chatId: chatId,
         message: text,
       };
 
@@ -275,7 +275,7 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chat-messages`, conversationId, instanceId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chat-messages`, conversationId, finalInstanceId] });
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
       setMessageInput("");
       setReplyToMessage(null);
@@ -296,15 +296,15 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   const addReactionMutation = useMutation({
     mutationFn: async ({ messageId, reaction }: { messageId: string; reaction: string }) => {
-      if (!conversationId || !instanceId) throw new Error('Missing conversation or instance ID');
+      if (!chatId || !finalInstanceId) throw new Error('Missing conversation or instance ID');
       
       const response = await fetch('/api/whatsapp/add-reaction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messageId,
-          instanceId,
-          chatId: conversationId,
+          instanceId: finalInstanceId,
+          chatId: chatId,
           reaction,
         }),
       });
@@ -315,13 +315,13 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
     onSuccess: (_, variables) => {
       // Refresh message reactions
       queryClient.invalidateQueries({ 
-        queryKey: [`/api/whatsapp/message-reactions`, variables.messageId, instanceId] 
+        queryKey: [`/api/whatsapp/message-reactions`, variables.messageId, finalInstanceId] 
       });
     },
   });
 
   const handleSendMessage = () => {
-    if (!messageInput.trim() || !conversationId || !instanceId) return;
+    if (!messageInput.trim() || !chatId || !finalInstanceId) return;
     sendMessageMutation.mutate(messageInput.trim());
   };
 
@@ -430,11 +430,15 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   // Load draft content when conversation changes
   useEffect(() => {
-    console.log('Draft loading effect triggered:', { currentDraft, conversationId, instanceId });
+    console.log('Draft loading effect triggered:', { currentDraft, conversationId, instanceId: finalInstanceId });
     
     // Save draft for previous conversation if there was content
     if (prevConversationId.current && prevInstanceId.current && prevMessageInput.current.trim()) {
-      saveDraftOnSwitch(prevConversationId.current, prevInstanceId.current, prevMessageInput.current);
+      // Extract chatId from previous conversationId
+      const [, prevChatId] = prevConversationId.current?.includes(':') 
+        ? prevConversationId.current.split(':') 
+        : [null, prevConversationId.current];
+      saveDraftOnSwitch(prevChatId, prevInstanceId.current, prevMessageInput.current);
     }
 
     // Load draft for new conversation
@@ -453,9 +457,9 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
     // Update refs for next conversation switch
     prevConversationId.current = conversationId;
-    prevInstanceId.current = instanceId;
+    prevInstanceId.current = finalInstanceId;
     prevMessageInput.current = messageInput;
-  }, [currentDraft, conversationId, instanceId]);
+  }, [currentDraft, conversationId, finalInstanceId]);
 
   // Draft saving mutation
   const saveDraftMutation = useMutation({
@@ -903,8 +907,8 @@ export default function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 // If message is manually cleared (empty), delete any existing draft
                 if (newValue.trim() === '' && currentDraft) {
                   deleteDraftMutation.mutate({
-                    instanceId: instanceId!,
-                    chatId: conversationId!
+                    instanceId: finalInstanceId!,
+                    chatId: chatId!
                   });
                 }
               }}
