@@ -80,16 +80,16 @@ export function TaskForm({ task, projects, onSubmit, onClose, isLoading }: TaskF
       description: task?.description || '',
       status: (task?.status as any) || 'to_do',
       priority: (task?.priority as any) || 'medium',
-      due_date: task?.due_date ? new Date(task.due_date) : undefined,
-      project_id: task?.project_id || undefined,
-      parent_task_id: task?.parent_task_id || undefined,
-      assigned_to_user_id: task?.assigned_to_user_id || undefined,
+      due_date: task?.dueDate ? new Date(task.dueDate) : undefined,
+      project_id: task?.projectId || undefined,
+      parent_task_id: task?.parentTaskId || undefined,
+      assigned_to_user_id: task?.assignedToUserId || undefined,
     },
   });
 
   useEffect(() => {
-    if (task?.checklist_items) {
-      setChecklistItems(task.checklist_items.map(item => item.content));
+    if (task?.checklistItems) {
+      setChecklistItems(task.checklistItems.map(item => item.content));
     }
   }, [task]);
 
@@ -264,9 +264,9 @@ export function TaskForm({ task, projects, onSubmit, onClose, isLoading }: TaskF
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="">No Project</SelectItem>
-                        {projects.map((project) => (
-                          <SelectItem key={project.project_id} value={project.project_id.toString()}>
-                            {project.project_name}
+                        {projects?.map((project) => (
+                          <SelectItem key={project.projectId} value={project.projectId.toString()}>
+                            {project.projectName}
                           </SelectItem>
                         ))}
                       </SelectContent>
