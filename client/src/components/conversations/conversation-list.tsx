@@ -251,16 +251,42 @@ export default function ConversationList({ selectedConversation, onSelectConvers
   // Ensure messages is always an array
   const messages = Array.isArray(messagesResponse) ? messagesResponse : [];
 
+  // Fetch all drafts for display in conversation list
+  const { data: allDrafts = [] } = useQuery({
+    queryKey: [`/api/whatsapp/drafts/all/${userId}`],
+    queryFn: async () => {
+      try {
+        const draftsPromises = instances.map(async (instance: any) => {
+          const response = await fetch(`/api/whatsapp/drafts/${instance.instanceId}`);
+          if (response.ok) {
+            return response.json();
+          }
+          return [];
+        });
+        const draftsArrays = await Promise.all(draftsPromises);
+        return draftsArrays.flat();
+      } catch (error) {
+        console.error('Error loading all drafts:', error);
+        return [];
+      }
+    },
+    enabled: instances.length > 0,
+    refetchInterval: false,
+    staleTime: 300000
+  });
+
   // Helper function to get latest message for a conversation (including drafts)
   const getLatestMessage = (conversation: any) => {
     // Check if there's a draft message for this conversation
-    const draftMessage = drafts[conversation.chatId];
-    if (draftMessage && draftMessage.trim()) {
+    const draftMessage = allDrafts.find((draft: any) => 
+      draft.chatId === conversation.chatId && draft.instanceId === conversation.instanceId
+    );
+    if (draftMessage && draftMessage.content && draftMessage.content.trim()) {
       return {
-        content: draftMessage,
+        content: draftMessage.content,
         fromMe: true,
         messageType: 'draft',
-        timestamp: new Date().toISOString(),
+        timestamp: draftMessage.updatedAt || new Date().toISOString(),
         isDraft: true
       };
     }
