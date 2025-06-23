@@ -22,8 +22,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!selectedConversation && conversations.length > 0) {
-      // Set to a specific conversation that has messages
-      setSelectedConversation("5214422501780@s.whatsapp.net");
+      // Find the first conversation with messages and use proper instanceId:chatId format
+      const firstConversation = conversations.find(conv => conv.lastMessageTimestamp);
+      if (firstConversation) {
+        setSelectedConversation(`${firstConversation.instanceId}:${firstConversation.chatId}`);
+      }
     }
   }, [conversations, selectedConversation]);
 
