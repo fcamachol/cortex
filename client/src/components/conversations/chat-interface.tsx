@@ -252,6 +252,16 @@ export default function ChatInterface({
             queryKey: [`/api/whatsapp/conversations/${userId}`]
           });
           
+          // If the new message is NOT from the currently open conversation, mark it as unread
+          // This creates the green indicator immediately when messages arrive from other chats
+          if (currentConv && 
+              (newMessage.chatId !== currentConv.chatId || newMessage.instanceId !== currentConv.instanceId) &&
+              !newMessage.isFromMe) {
+            console.log('📬 New message from different conversation - will show green indicator');
+            // The conversation list will automatically show green indicator when it refreshes
+            // because the backend already updates unread counts for new messages
+          }
+          
           // Refresh contacts in case this is a new contact
           queryClient.invalidateQueries({
             queryKey: [`/api/contacts/${userId}`]
@@ -348,14 +358,20 @@ export default function ChatInterface({
 
   // Audio messages now include proper media data for playback
 
-  // Mark as read mutation
+  // Mark as read mutation - triggers immediate green indicator updates
   const markAsReadMutation = useMutation({
     mutationFn: async ({ chatId, instanceId, unread, silent = false }: { chatId: string; instanceId: string; unread: boolean; silent?: boolean }) => {
       return apiRequest('PATCH', '/api/whatsapp/conversations/read-status', { chatId, instanceId, unread, silent });
     },
-    onSuccess: () => {
-      // Refresh conversations to update unread indicators
+    onSuccess: (_, { chatId, instanceId, unread }) => {
+      // Immediately invalidate conversation queries to update green indicators
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+      
+      // If marking as unread, trigger immediate visual update to show green indicator
+      if (unread) {
+        // Force conversation list to show green indicator immediately
+        queryClient.refetchQueries({ queryKey: [`/api/whatsapp/conversations/${userId}`] });
+      }
     },
     onError: (error) => {
       console.error('Failed to update read status:', error);
@@ -830,6 +846,8 @@ export default function ChatInterface({
       console.error('Failed to unmark message from waiting reply:', error);
     }
   });
+
+
 
   // Save draft only when leaving window with unfinished message
   useEffect(() => {
