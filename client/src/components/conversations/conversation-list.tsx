@@ -264,9 +264,15 @@ export default function ConversationList({ selectedConversation, onSelectConvers
                     const indicator = getInstanceIndicator(conversation.instanceId);
                     return (
                       <div 
-                        className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                          indicator.color ? `${indicator.color} text-white` : 'border border-gray-400 text-gray-600 bg-white dark:bg-gray-800'
+                        className={`absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center ${
+                          indicator.color ? `${indicator.color} text-white` : 'text-gray-600 dark:text-gray-400'
                         }`}
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: indicator.letter.length > 1 ? 'normal' : 'bold',
+                          lineHeight: '1',
+                          fontFamily: indicator.letter.length > 1 ? 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' : 'inherit'
+                        }}
                         title={`Instance: ${conversation.instanceId}`}
                       >
                         {indicator.letter}
