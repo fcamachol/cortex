@@ -11,7 +11,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, ChevronDown, ChevronRight, User, Briefcase, Heart, Phone, Mail, FileText, X, Trash2, MapPin } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, User, Briefcase, Heart, Phone, Mail, FileText, X, Trash2, MapPin, Building2, Calendar } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 // Enhanced Contact Schema with all possible fields
@@ -534,7 +534,7 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
                 className="w-full justify-start p-0 h-auto font-normal text-left"
                 type="button"
               >
-                <div className="flex items-center gap-2 py-3 px-1">
+                <div className="flex items-center gap-2 py-2 px-1">
                   {isProfessionalOpen ? (
                     <ChevronDown className="h-4 w-4" />
                   ) : (
