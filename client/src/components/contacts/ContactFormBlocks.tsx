@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Phone, Mail, MapPin, Building2, Users, Link as LinkIcon, Calendar, Tag, MessageSquare, Plus, MoreHorizontal, X } from "lucide-react";
+import { Phone, Mail, MapPin, Building2, Users, Link as LinkIcon, Calendar, Tag, MessageSquare, Plus, MoreHorizontal, X, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -173,7 +173,13 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
   };
 
   return (
-    <div className="space-y-4 max-w-5xl mx-auto px-4 py-6">
+    <div className="space-y-4 px-6 py-6">
+      {/* Header with person icon */}
+      <div className="flex items-center gap-3 mb-6">
+        <User className="h-6 w-6 text-gray-700" />
+        <h2 className="text-xl font-semibold text-gray-900">Add New Contact</h2>
+      </div>
+      
       <form onSubmit={onSubmit} className="space-y-4">
         {/* Contact Name - Fill Box Style */}
         <div className="space-y-4">
