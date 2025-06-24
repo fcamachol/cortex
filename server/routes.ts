@@ -717,8 +717,33 @@ export async function registerRoutes(app: Express): Promise<void> {
         'Expires': '0'
       });
       
-      const tasks = await storage.getTasks();
-      res.json(tasks);
+      const { instanceId } = req.query;
+      const tasks = await storage.getTasks(instanceId as string);
+      
+      // Transform snake_case field names to camelCase for frontend compatibility
+      const transformedTasks = tasks.map(task => ({
+        id: task.task_id || task.taskId,
+        taskId: task.task_id || task.taskId,
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        dueDate: task.due_date || task.dueDate,
+        projectId: task.project_id || task.projectId,
+        parentTaskId: task.parent_task_id || task.parentTaskId,
+        assignedToUserId: task.assigned_to_user_id || task.assignedToUserId,
+        relatedChatJid: task.related_chat_jid || task.relatedChatJid,
+        createdAt: task.created_at || task.createdAt,
+        updatedAt: task.updated_at || task.updatedAt,
+        subtasks: task.subtasks || [],
+        checklistItems: task.checklist_items || task.checklistItems || [],
+        triggeringMessageId: task.triggering_message_id || task.triggeringMessageId,
+        instanceId: task.instance_id || task.instanceId,
+        senderJid: task.sender_jid || task.senderJid,
+        taskType: task.task_type || task.taskType
+      }));
+      
+      res.json(transformedTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
       res.status(500).json({ error: 'Failed to fetch tasks' });
