@@ -358,7 +358,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
 
               {/* Item Count Badge */}
               {hasItems && (
-                <Badge variant="outline" className="text-xs h-3 px-1 opacity-60">
+                <Badge variant="outline" className="text-sm h-4 px-1 opacity-60">
                   {items.length}
                 </Badge>
               )}
@@ -627,7 +627,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
         <div className="space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            <h3 className="text-base font-medium text-gray-600 dark:text-gray-400">
               Teamspaces
             </h3>
             <Button
@@ -665,10 +665,10 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                           <ChevronRight className="h-3 w-3" />
                         )}
                       </Button>
-                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
                         {categoryName}
                       </span>
-                      <Badge variant="outline" className="text-xs h-4 px-1 opacity-60">
+                      <Badge variant="outline" className="text-sm h-5 px-2 opacity-60">
                         {categorySpaces.length}
                       </Badge>
                     </div>
@@ -706,11 +706,11 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                           {/* Empty state for category */}
                           {categorySpaces.length === 0 && (
                             <div className="text-center py-4 text-gray-400">
-                              <div className="text-xs">No spaces in {categoryName.toLowerCase()}</div>
+                              <div className="text-sm">No spaces in {categoryName.toLowerCase()}</div>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="mt-2 text-xs"
+                                className="mt-2 text-sm"
                                 onClick={handleCreateRootSpace}
                               >
                                 <Plus className="h-3 w-3 mr-1" />
