@@ -66,7 +66,13 @@ export function SpacesPage() {
   // Fetch spaces
   const { data: spaces, isLoading: spacesLoading } = useQuery({
     queryKey: ['/api/spaces'],
-    select: (data: any) => data || []
+    select: (data: any) => {
+      if (!data) return [];
+      // Handle both array format and object format (categorized)
+      if (Array.isArray(data)) return data;
+      // If it's an object with categories, flatten to array
+      return Object.values(data).flat();
+    }
   });
 
   // Fetch space templates
@@ -125,8 +131,11 @@ export function SpacesPage() {
     }
   });
 
-  // Filter spaces based on current filter and search
-  const filteredSpaces = spaces?.filter((space: Space) => {
+  // Convert spaces to array format and filter
+  const spacesArray = Array.isArray(spaces) ? spaces : 
+    spaces ? Object.values(spaces).flat() : [];
+  
+  const filteredSpaces = spacesArray.filter((space: Space) => {
     const matchesSearch = !searchQuery || 
       space.spaceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       space.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -138,7 +147,7 @@ export function SpacesPage() {
       (filter === 'team' && space.spaceType === 'team');
     
     return matchesSearch && matchesFilter && !space.isArchived;
-  }) || [];
+  });
 
   const handleSpaceCreate = (spaceData: any) => {
     createSpaceMutation.mutate(spaceData);
@@ -252,7 +261,7 @@ export function SpacesPage() {
   );
 
   const renderHierarchicalView = (spaces: Space[], level = 0) => {
-    const rootSpaces = spaces.filter(space => !space.parentSpaceId);
+    const rootSpaces = (spaces || []).filter(space => !space.parentSpaceId);
     
     return rootSpaces.map(space => (
       <div key={space.spaceId} className={`${level > 0 ? 'ml-6' : ''}`}>
@@ -436,9 +445,15 @@ export function SpacesPage() {
             setShowSpaceForm(false);
             setEditingSpace(null);
           }}
-          onSubmit={editingSpace ? handleSpaceUpdate : handleSpaceCreate}
+          onSubmit={(spaceId: number | undefined, data: any) => {
+            if (spaceId) {
+              handleSpaceUpdate(spaceId, data);
+            } else {
+              handleSpaceCreate(data);
+            }
+          }}
           space={editingSpace}
-          spaces={spaces}
+          spaces={spacesArray}
         />
       )}
 
