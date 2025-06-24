@@ -883,29 +883,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
             </div>
           )}
 
-          {/* Collapse All / Expand All */}
-          {hierarchicalSpaces.length > 0 && (
-            <div className="flex justify-center pt-2 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-6 px-2"
-                  onClick={() => setExpandedCategories(new Set(['work', 'personal', 'uncategorized']))}
-                >
-                  Expand All
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-6 px-2"
-                  onClick={() => setExpandedCategories(new Set())}
-                >
-                  Collapse All
-                </Button>
-              </div>
-            </div>
-          )}
+
         </div>
       </DragDropContext>
 
