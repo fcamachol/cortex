@@ -306,7 +306,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
+    <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-auto">
       {/* Header */}
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-10">
         <div className="p-6">
