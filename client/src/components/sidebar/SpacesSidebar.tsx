@@ -282,7 +282,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
       hasChildren,
       itemsCount: items?.length || 0,
       childrenCount: children?.length || 0,
-      children: children?.map(c => `${c.spaceName} (${c.category})`) || []
+      children: children?.map(c => c.spaceName) || []
     });
 
     return (
@@ -355,12 +355,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                 </Badge>
               )}
 
-              {/* Category Badge */}
-              {space.category && level === 0 && (
-                <Badge variant="outline" className="text-xs h-4 px-1">
-                  {space.category}
-                </Badge>
-              )}
+              {/* Category badge removed per user request - redundant with section headers */}
 
               {/* Actions */}
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
