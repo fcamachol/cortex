@@ -278,10 +278,10 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                 onClick={() => navigate(`/spaces/${parentSpaceId}`)}
                 className="hover:text-gray-900 dark:hover:text-gray-100"
               >
-                {parentSpace.spaceName}
+                {parentSpace.spaceName || 'Unnamed Parent'}
               </button>
               <ChevronRight className="h-4 w-4" />
-              <span className="text-gray-900 dark:text-gray-100">{space.spaceName}</span>
+              <span className="text-gray-900 dark:text-gray-100">{space.spaceName || 'Unnamed Space'}</span>
             </div>
           )}
 
@@ -292,12 +292,12 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                   className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-semibold"
                   style={{ backgroundColor: space.color || '#3b82f6' }}
                 >
-                  {space.icon || space.spaceName.charAt(0).toUpperCase()}
+                  {space.icon || (space.spaceName ? space.spaceName.charAt(0).toUpperCase() : 'S')}
                 </div>
                 <div>
                   {isEditing ? (
                     <Input
-                      value={editedSpace.spaceName || space.spaceName}
+                      value={editedSpace.spaceName || space.spaceName || ''}
                       onChange={(e) => setEditedSpace({...editedSpace, spaceName: e.target.value})}
                       className="text-2xl font-bold h-8 border-none p-0 focus:ring-0"
                       onBlur={() => setIsEditing(false)}
@@ -308,10 +308,10 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                       className="text-2xl font-bold cursor-pointer hover:text-gray-600 dark:hover:text-gray-300"
                       onClick={() => setIsEditing(true)}
                     >
-                      {space.spaceName}
+                      {space.spaceName || 'Unnamed Space'}
                     </h1>
                   )}
-                  <p className="text-gray-600 dark:text-gray-400">{space.description}</p>
+                  <p className="text-gray-600 dark:text-gray-400">{space.description || 'No description'}</p>
                 </div>
               </div>
             </div>
