@@ -571,6 +571,7 @@ function PersonalDetailsSection({ blocks, onUpdate, onRemove, onAddSubBlock, own
               block={block}
               onUpdate={onUpdate}
               onRemove={onRemove}
+              ownerUserId={ownerUserId}
             />
           ))}
         </div>
@@ -745,7 +746,11 @@ function CompanyBlock({ block, onUpdate }: {
 }
 
 // Block Content based on type
-function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: string, field: string, value: any) => void }) {
+function BlockContent({ block, onUpdate, ownerUserId }: { 
+  block: Block; 
+  onUpdate: (blockId: string, field: string, value: any) => void;
+  ownerUserId?: string;
+}) {
   switch (block.type) {
     case 'phone':
       return (
