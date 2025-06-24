@@ -118,7 +118,8 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
   }
 
   // Categorize items
-  const subspaces = allSpaces.filter((s: Space) => s.parentSpaceId === spaceId);
+  const allSpacesArray = Array.isArray(allSpaces) ? allSpaces : (allSpaces ? Object.values(allSpaces).flat() : []);
+  const subspaces = allSpacesArray.filter((s: Space) => s.parentSpaceId === spaceId);
   const projects = spaceItems.filter((item: SpaceItem) => item.itemType === 'project');
   const tasks = spaceItems.filter((item: SpaceItem) => item.itemType === 'task');
   const files = spaceItems.filter((item: SpaceItem) => item.itemType === 'file');
@@ -127,7 +128,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
   const events = spaceItems.filter((item: SpaceItem) => item.itemType === 'event');
 
   // Find parent space
-  const parentSpace = parentSpaceId ? allSpaces.find((s: Space) => s.spaceId === parentSpaceId) : null;
+  const parentSpace = parentSpaceId ? allSpacesArray.find((s: Space) => s.spaceId === parentSpaceId) : null;
 
   // Get status icon for tasks
   const getStatusIcon = (status: string) => {
@@ -413,7 +414,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                     {subspaces.map((childSpace: Space) => (
                       <Card key={childSpace.spaceId} className="hover:shadow-md transition-shadow cursor-pointer"
                             onClick={() => {
-                              const currentPath = buildSpacePath(space.spaceId, allSpaces);
+                              const currentPath = buildSpacePath(space.spaceId, allSpacesArray);
                               navigate(`/spaces/${currentPath}/${childSpace.spaceId}`);
                             }}>
                         <CardContent className="p-4">
@@ -497,7 +498,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                       {subspaces.map((subspace: Space) => (
                         <Card key={subspace.spaceId} className="hover:shadow-md transition-shadow cursor-pointer"
                               onClick={() => {
-                                const currentPath = buildSpacePath(space.spaceId, allSpaces);
+                                const currentPath = buildSpacePath(space.spaceId, allSpacesArray);
                                 navigate(`/spaces/${currentPath}/${subspace.spaceId}`);
                               }}>
                           <CardContent className="p-4">
