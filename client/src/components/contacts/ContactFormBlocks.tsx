@@ -11,19 +11,28 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
-// Block types available in the system
-const BLOCK_TYPES = [
+// Block types organized by categories for consistent order across all contacts
+const CONTACT_INFO_BLOCKS = [
   { id: 'phone', label: 'Phone Number', icon: Phone },
   { id: 'email', label: 'Email Address', icon: Mail },
   { id: 'address', label: 'Physical Address', icon: MapPin },
+];
+
+const RELATIONSHIP_BLOCKS = [
   { id: 'company', label: 'Company / Workplace', icon: Building2 },
   { id: 'group', label: 'Group Membership', icon: Users },
   { id: 'link', label: 'Link to Another Contact', icon: LinkIcon },
+];
+
+const PERSONAL_DETAILS_BLOCKS = [
   { id: 'date', label: 'Special Date (Birthday, etc.)', icon: Calendar },
   { id: 'interest', label: 'Interest', icon: Tag },
   { id: 'alias', label: 'Alias / Nickname', icon: Tag },
   { id: 'note', label: 'Context Note', icon: MessageSquare },
 ];
+
+// All block types combined for reference
+const BLOCK_TYPES = [...CONTACT_INFO_BLOCKS, ...RELATIONSHIP_BLOCKS, ...PERSONAL_DETAILS_BLOCKS];
 
 interface Block {
   id: string;
@@ -247,52 +256,63 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-80" align="center">
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <h4 className="font-medium text-sm">Add a block:</h4>
-                    <div className="border-t border-dashed my-2"></div>
                     
-                    {BLOCK_TYPES.slice(0, 3).map((blockType) => (
-                      <Button
-                        key={blockType.id}
-                        variant="ghost"
-                        className="w-full justify-start"
-                        onClick={() => addBlock(blockType.id)}
-                        type="button"
-                      >
-                        <blockType.icon className="h-4 w-4 mr-2" />
-                        {blockType.label}
-                      </Button>
-                    ))}
+                    {/* Contact Info Section */}
+                    <div>
+                      <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Contact Info</h5>
+                      {CONTACT_INFO_BLOCKS.map((blockType) => (
+                        <Button
+                          key={blockType.id}
+                          variant="ghost"
+                          className="w-full justify-start mb-1"
+                          onClick={() => addBlock(blockType.id)}
+                          type="button"
+                        >
+                          <blockType.icon className="h-4 w-4 mr-2" />
+                          {blockType.label}
+                        </Button>
+                      ))}
+                    </div>
                     
-                    <div className="border-t border-dashed my-2"></div>
+                    <div className="border-t border-gray-200"></div>
                     
-                    {BLOCK_TYPES.slice(3, 6).map((blockType) => (
-                      <Button
-                        key={blockType.id}
-                        variant="ghost"
-                        className="w-full justify-start"
-                        onClick={() => addBlock(blockType.id)}
-                        type="button"
-                      >
-                        <blockType.icon className="h-4 w-4 mr-2" />
-                        {blockType.label}
-                      </Button>
-                    ))}
+                    {/* Relationships & Groups Section */}
+                    <div>
+                      <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Relationships & Groups</h5>
+                      {RELATIONSHIP_BLOCKS.map((blockType) => (
+                        <Button
+                          key={blockType.id}
+                          variant="ghost"
+                          className="w-full justify-start mb-1"
+                          onClick={() => addBlock(blockType.id)}
+                          type="button"
+                        >
+                          <blockType.icon className="h-4 w-4 mr-2" />
+                          {blockType.label}
+                        </Button>
+                      ))}
+                    </div>
                     
-                    <div className="border-t border-dashed my-2"></div>
+                    <div className="border-t border-gray-200"></div>
                     
-                    {BLOCK_TYPES.slice(6).map((blockType) => (
-                      <Button
-                        key={blockType.id}
-                        variant="ghost"
-                        className="w-full justify-start"
-                        onClick={() => addBlock(blockType.id)}
-                        type="button"
-                      >
-                        <blockType.icon className="h-4 w-4 mr-2" />
-                        {blockType.label}
-                      </Button>
-                    ))}
+                    {/* Personal Details Section */}
+                    <div>
+                      <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Personal Details</h5>
+                      {PERSONAL_DETAILS_BLOCKS.map((blockType) => (
+                        <Button
+                          key={blockType.id}
+                          variant="ghost"
+                          className="w-full justify-start mb-1"
+                          onClick={() => addBlock(blockType.id)}
+                          type="button"
+                        >
+                          <blockType.icon className="h-4 w-4 mr-2" />
+                          {blockType.label}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                 </PopoverContent>
               </Popover>
