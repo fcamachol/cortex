@@ -380,7 +380,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
 
               {/* Actions */}
               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
@@ -391,7 +391,12 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                       <MoreHorizontal className="h-2.5 w-2.5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="z-[9999]">
+                  <DropdownMenuContent 
+                    align="end" 
+                    className="z-[9999]"
+                    container={document.body}
+                    sideOffset={5}
+                  >
                     <DropdownMenuItem>
                       <Edit2 className="h-4 w-4 mr-2" />
                       Rename
@@ -454,32 +459,72 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                       <Plus className="h-2.5 w-2.5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="z-[100]">
-                    <DropdownMenuItem onClick={() => handleCreateItem(space.spaceId, 'subspace')}>
+                  <DropdownMenuContent 
+                    align="end" 
+                    className="z-[9999]"
+                    container={document.body}
+                    sideOffset={5}
+                  >
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedSpaceId(space.spaceId);
+                      setSelectedItemType('subspace');
+                      setShowCreateItemDialog(true);
+                    }}>
                       <Folder className="h-4 w-4 mr-2" />
                       Subspace
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleCreateItem(space.spaceId, 'project')}>
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedSpaceId(space.spaceId);
+                      setSelectedItemType('project');
+                      setShowCreateItemDialog(true);
+                    }}>
                       <Briefcase className="h-4 w-4 mr-2" />
                       Project
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleCreateItem(space.spaceId, 'task')}>
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedSpaceId(space.spaceId);
+                      setSelectedItemType('task');
+                      setShowCreateItemDialog(true);
+                    }}>
                       <CheckSquare className="h-4 w-4 mr-2" />
                       Task
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleCreateItem(space.spaceId, 'file')}>
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedSpaceId(space.spaceId);
+                      setSelectedItemType('file');
+                      setShowCreateItemDialog(true);
+                    }}>
                       <FileText className="h-4 w-4 mr-2" />
                       File
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleCreateItem(space.spaceId, 'document')}>
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedSpaceId(space.spaceId);
+                      setSelectedItemType('document');
+                      setShowCreateItemDialog(true);
+                    }}>
                       <FileText className="h-4 w-4 mr-2" />
                       Document
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleCreateItem(space.spaceId, 'note')}>
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedSpaceId(space.spaceId);
+                      setSelectedItemType('note');
+                      setShowCreateItemDialog(true);
+                    }}>
                       <FileText className="h-4 w-4 mr-2" />
                       Note
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleCreateItem(space.spaceId, 'event')}>
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedSpaceId(space.spaceId);
+                      setSelectedItemType('event');
+                      setShowCreateItemDialog(true);
+                    }}>
                       <Calendar className="h-4 w-4 mr-2" />
                       Event
                     </DropdownMenuItem>
