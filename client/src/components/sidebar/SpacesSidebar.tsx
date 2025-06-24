@@ -387,7 +387,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                       <MoreHorizontal className="h-2.5 w-2.5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="z-[100]">
                     <DropdownMenuItem>
                       <Edit2 className="h-4 w-4 mr-2" />
                       Rename
