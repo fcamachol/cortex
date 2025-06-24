@@ -75,19 +75,148 @@ class DatabaseStorage {
         }
     }
 
+    // Enhanced Spaces Management (Notion/ClickUp style)
+    async getSpaces(userId: string): Promise<any[]> {
+        try {
+            const spaces = await db.select({
+                spaceId: appSpaces.spaceId,
+                spaceName: appSpaces.spaceName,
+                description: appSpaces.description,
+                icon: appSpaces.icon,
+                color: appSpaces.color,
+                coverImage: appSpaces.coverImage,
+                spaceType: appSpaces.spaceType,
+                privacy: appSpaces.privacy,
+                parentSpaceId: appSpaces.parentSpaceId,
+                isArchived: appSpaces.isArchived,
+                isFavorite: appSpaces.isFavorite,
+                displayOrder: appSpaces.displayOrder,
+                templateId: appSpaces.templateId,
+                creatorUserId: appSpaces.creatorUserId,
+                createdAt: appSpaces.createdAt,
+                updatedAt: appSpaces.updatedAt,
+            })
+            .from(appSpaces)
+            .where(and(
+                eq(appSpaces.creatorUserId, userId),
+                eq(appSpaces.isArchived, false)
+            ))
+            .orderBy(appSpaces.displayOrder, appSpaces.createdAt);
+
+            // Build hierarchical structure
+            const spacesMap = new Map();
+            const rootSpaces: any[] = [];
+
+            spaces.forEach(space => {
+                spacesMap.set(space.spaceId, { ...space, childSpaces: [] });
+            });
+
+            spaces.forEach(space => {
+                if (space.parentSpaceId) {
+                    const parent = spacesMap.get(space.parentSpaceId);
+                    if (parent) {
+                        parent.childSpaces.push(spacesMap.get(space.spaceId));
+                    }
+                } else {
+                    rootSpaces.push(spacesMap.get(space.spaceId));
+                }
+            });
+
+            return rootSpaces;
+        } catch (error) {
+            console.error('Error fetching spaces:', error);
+            throw error;
+        }
+    }
+
     async createSpace(spaceData: any): Promise<any> {
         try {
             const [newSpace] = await db.insert(appSpaces).values({
                 spaceName: spaceData.spaceName,
+                description: spaceData.description,
+                icon: spaceData.icon || "📁",
+                color: spaceData.color || "#3B82F6",
+                coverImage: spaceData.coverImage,
+                spaceType: spaceData.spaceType || "workspace",
+                privacy: spaceData.privacy || "private",
+                parentSpaceId: spaceData.parentSpaceId,
+                isArchived: false,
+                isFavorite: spaceData.isFavorite || false,
+                displayOrder: spaceData.displayOrder || 0,
+                templateId: spaceData.templateId,
                 creatorUserId: spaceData.creatorUserId,
                 workspaceId: spaceData.workspaceId,
-                icon: spaceData.icon,
-                color: spaceData.color,
-                displayOrder: spaceData.displayOrder || 0
+                settings: spaceData.settings || {}
             }).returning();
             return newSpace;
         } catch (error) {
             console.error('Error creating space:', error);
+            throw error;
+        }
+    }
+
+    async updateSpace(spaceId: number, updates: any): Promise<any> {
+        try {
+            const [updatedSpace] = await db.update(appSpaces)
+                .set({
+                    ...updates,
+                    updatedAt: new Date()
+                })
+                .where(eq(appSpaces.spaceId, spaceId))
+                .returning();
+            return updatedSpace;
+        } catch (error) {
+            console.error('Error updating space:', error);
+            throw error;
+        }
+    }
+
+    async deleteSpace(spaceId: number): Promise<void> {
+        try {
+            await db.delete(appSpaces).where(eq(appSpaces.spaceId, spaceId));
+        } catch (error) {
+            console.error('Error deleting space:', error);
+            throw error;
+        }
+    }
+
+    async getSpaceTemplates(): Promise<any[]> {
+        try {
+            return await db.select().from(appSpaceTemplates)
+                .where(eq(appSpaceTemplates.isPublic, true))
+                .orderBy(appSpaceTemplates.usageCount);
+        } catch (error) {
+            console.error('Error fetching space templates:', error);
+            return [];
+        }
+    }
+
+    async createSpaceFromTemplate(templateId: number, spaceData: any): Promise<any> {
+        try {
+            const [template] = await db.select().from(appSpaceTemplates)
+                .where(eq(appSpaceTemplates.templateId, templateId));
+            
+            if (!template) {
+                throw new Error('Template not found');
+            }
+
+            // Merge template config with custom data
+            const mergedData = {
+                ...template.config,
+                ...spaceData,
+                templateId: templateId
+            };
+
+            const newSpace = await this.createSpace(mergedData);
+
+            // Increment template usage
+            await db.update(appSpaceTemplates)
+                .set({ usageCount: template.usageCount + 1 })
+                .where(eq(appSpaceTemplates.templateId, templateId));
+
+            return newSpace;
+        } catch (error) {
+            console.error('Error creating space from template:', error);
             throw error;
         }
     }

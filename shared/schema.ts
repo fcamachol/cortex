@@ -15,6 +15,9 @@ export const financeSchema = pgSchema("finance");
 export const workspaceRoleEnum = appSchema.enum("workspace_role", ["admin", "member", "viewer"]);
 export const spaceRoleEnum = appSchema.enum("space_role", ["admin", "editor", "viewer"]);
 export const channelTypeEnum = appSchema.enum("channel_type", ["whatsapp", "email", "slack", "sms"]);
+export const spaceTypeEnum = appSchema.enum("space_type", ["workspace", "project", "team", "personal", "archive"]);
+export const spacePrivacyEnum = appSchema.enum("space_privacy", ["public", "private", "restricted"]);
+export const templateTypeEnum = appSchema.enum("template_type", ["space", "project", "task", "document"]);
 
 // Enums for Calendar schema
 export const providerTypeEnum = calendarSchema.enum("provider_type", ["google", "outlook", "apple"]);
@@ -634,15 +637,54 @@ export const appWorkspaces = appSchema.table("workspaces", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-// Spaces table
+// Enhanced Spaces table (Notion/ClickUp style)
 export const appSpaces = appSchema.table("spaces", {
   spaceId: serial("space_id").primaryKey(),
   workspaceId: uuid("workspace_id").references(() => appWorkspaces.workspaceId),
   creatorUserId: uuid("creator_user_id").notNull().references(() => appUsers.userId),
+  parentSpaceId: integer("parent_space_id").references(() => appSpaces.spaceId), // For hierarchical spaces
   spaceName: varchar("space_name", { length: 100 }).notNull(),
-  icon: varchar("icon", { length: 50 }),
-  color: varchar("color", { length: 7 }),
+  description: text("description"),
+  icon: varchar("icon", { length: 50 }).default("📁"),
+  color: varchar("color", { length: 7 }).default("#3B82F6"),
+  coverImage: varchar("cover_image", { length: 512 }),
+  spaceType: spaceTypeEnum("space_type").notNull().default("workspace"),
+  privacy: spacePrivacyEnum("privacy").notNull().default("private"),
   displayOrder: integer("display_order").notNull().default(0),
+  isArchived: boolean("is_archived").notNull().default(false),
+  isFavorite: boolean("is_favorite").notNull().default(false),
+  settings: jsonb("settings").default({}), // Custom space settings
+  templateId: integer("template_id").references(() => appSpaceTemplates.templateId),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Space Templates table
+export const appSpaceTemplates = appSchema.table("space_templates", {
+  templateId: serial("template_id").primaryKey(),
+  templateName: varchar("template_name", { length: 100 }).notNull(),
+  description: text("description"),
+  icon: varchar("icon", { length: 50 }).default("📋"),
+  category: varchar("category", { length: 50 }).notNull(),
+  templateType: templateTypeEnum("template_type").notNull(),
+  config: jsonb("config").notNull(), // Template configuration
+  isPublic: boolean("is_public").notNull().default(false),
+  creatorUserId: uuid("creator_user_id").references(() => appUsers.userId),
+  usageCount: integer("usage_count").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Space Views table (different ways to view space content)
+export const appSpaceViews = appSchema.table("space_views", {
+  viewId: serial("view_id").primaryKey(),
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId),
+  viewName: varchar("view_name", { length: 100 }).notNull(),
+  viewType: varchar("view_type", { length: 50 }).notNull(), // list, board, calendar, timeline, table
+  config: jsonb("config").notNull(), // View configuration (filters, sorting, grouping)
+  isDefault: boolean("is_default").notNull().default(false),
+  displayOrder: integer("display_order").notNull().default(0),
+  creatorUserId: uuid("creator_user_id").notNull().references(() => appUsers.userId),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -768,7 +810,39 @@ export const appSpacesRelations = relations(appSpaces, ({ one, many }) => ({
     fields: [appSpaces.creatorUserId],
     references: [appUsers.userId],
   }),
+  parentSpace: one(appSpaces, {
+    fields: [appSpaces.parentSpaceId],
+    references: [appSpaces.spaceId],
+    relationName: "parentSpace",
+  }),
+  childSpaces: many(appSpaces, { relationName: "parentSpace" }),
+  template: one(appSpaceTemplates, {
+    fields: [appSpaces.templateId],
+    references: [appSpaceTemplates.templateId],
+  }),
   members: many(appSpaceMembers),
+  views: many(appSpaceViews),
+  tasks: many(crmTasks),
+  projects: many(crmProjects),
+}));
+
+export const appSpaceTemplatesRelations = relations(appSpaceTemplates, ({ one, many }) => ({
+  creator: one(appUsers, {
+    fields: [appSpaceTemplates.creatorUserId],
+    references: [appUsers.userId],
+  }),
+  spaces: many(appSpaces),
+}));
+
+export const appSpaceViewsRelations = relations(appSpaceViews, ({ one }) => ({
+  space: one(appSpaces, {
+    fields: [appSpaceViews.spaceId],
+    references: [appSpaces.spaceId],
+  }),
+  creator: one(appUsers, {
+    fields: [appSpaceViews.creatorUserId],
+    references: [appUsers.userId],
+  }),
 }));
 
 export const appChannelsRelations = relations(appChannels, ({ one }) => ({
