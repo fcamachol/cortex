@@ -127,7 +127,7 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
-- June 24, 2025: Created comprehensive Expo React Native setup guide with WhatsApp-style mobile app architecture - includes step-by-step instructions for native mobile development using Replit's Expo template with bottom tab navigation, real API integration, and authentic CRM data connectivity
+- June 24, 2025: Updated Expo React Native setup guide to use WhatsApp-style bottom tab navigation - replaced material top tabs with bottom tabs featuring proper icons, badge indicators for unread counts, and improved mobile UX following user preference
 - June 24, 2025: Updated ContactModal to match platform's clean modern UX/UI style - removed dashed borders, implemented clean gray sections with proper hover states, updated activity tabs with icons and green accent color matching the contacts page design
 - June 24, 2025: Successfully implemented "Link to Another Contact" functionality - added LinkBlock component with contact selection dropdown, relationship type selection, and modal interface for creating contact-to-contact relationships within the CRM system
 - June 24, 2025: Added ContactModal with collapsible sections and Activity module with Tasks, Events, Finance, and Notes & Docs tabs - provides comprehensive contact view with organized information blocks

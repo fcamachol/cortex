@@ -15,12 +15,11 @@
 Once your Expo project is created, install these dependencies in the Shell:
 
 ```bash
-# Navigation dependencies (WhatsApp-style)
+# Navigation dependencies (WhatsApp-style bottom tabs)
 npx expo install @react-navigation/native
-npx expo install @react-navigation/material-top-tabs
+npx expo install @react-navigation/bottom-tabs
 npx expo install @react-navigation/stack
 npx expo install react-native-screens react-native-safe-area-context
-npx expo install react-native-tab-view react-native-pager-view
 
 # UI and Icons
 npx expo install react-native-vector-icons
@@ -111,14 +110,14 @@ export const Colors = {
 };
 ```
 
-## Step 5: WhatsApp-Style Navigation Structure
+## Step 5: WhatsApp-Style Bottom Tab Navigation
 
-Replace your App.js with WhatsApp-style top tab navigation:
+Replace your App.js with WhatsApp-style bottom tab navigation:
 
 ```javascript
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar, View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -133,11 +132,11 @@ import ChatScreen from './src/screens/ChatScreen';
 
 import { Colors } from './src/constants/Colors';
 
-const Tab = createMaterialTopTabNavigator();
+const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
 // WhatsApp-style header component
-const WhatsAppHeader = ({ navigation, title = "Cortex CRM" }) => (
+const WhatsAppHeader = ({ navigation, title = "Cortex CRM", showBackButton = false }) => (
   <View style={{
     backgroundColor: Colors.primaryDark,
     height: 110,
@@ -145,85 +144,111 @@ const WhatsAppHeader = ({ navigation, title = "Cortex CRM" }) => (
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: showBackButton ? 'flex-start' : 'space-between',
   }}>
+    {showBackButton && (
+      <TouchableOpacity 
+        onPress={() => navigation.goBack()}
+        style={{ marginRight: 12 }}
+      >
+        <Ionicons name="arrow-back" size={24} color="white" />
+      </TouchableOpacity>
+    )}
+    
     <Text style={{
       color: 'white',
       fontSize: 20,
       fontWeight: 'bold',
+      flex: showBackButton ? 1 : 0,
     }}>
       {title}
     </Text>
     
-    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-      <TouchableOpacity 
-        style={{ marginRight: 20 }}
-        onPress={() => {/* Camera action */}}
-      >
-        <Ionicons name="camera" size={24} color="white" />
-      </TouchableOpacity>
-      
-      <TouchableOpacity 
-        style={{ marginRight: 20 }}
-        onPress={() => {/* Search action */}}
-      >
-        <Ionicons name="search" size={24} color="white" />
-      </TouchableOpacity>
-      
-      <TouchableOpacity 
-        onPress={() => navigation.navigate('Settings')}
-      >
-        <Ionicons name="ellipsis-vertical" size={24} color="white" />
-      </TouchableOpacity>
-    </View>
+    {!showBackButton && (
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <TouchableOpacity 
+          style={{ marginRight: 20 }}
+          onPress={() => {/* Camera action */}}
+        >
+          <Ionicons name="camera" size={24} color="white" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={{ marginRight: 20 }}
+          onPress={() => {/* Search action */}}
+        >
+          <Ionicons name="search" size={24} color="white" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Settings')}
+        >
+          <Ionicons name="ellipsis-vertical" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
+    )}
   </View>
 );
 
-// Main tab navigator with WhatsApp-style tabs
+// Bottom tab navigator with WhatsApp-style icons
 function MainTabs() {
   return (
     <Tab.Navigator
-      screenOptions={{
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+
+          switch (route.name) {
+            case 'Chats':
+              iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
+              break;
+            case 'Tasks':
+              iconName = focused ? 'checkmark-circle' : 'checkmark-circle-outline';
+              break;
+            case 'Contacts':
+              iconName = focused ? 'people' : 'people-outline';
+              break;
+            case 'Finance':
+              iconName = focused ? 'card' : 'card-outline';
+              break;
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textSecondary,
         tabBarStyle: {
-          backgroundColor: Colors.primaryDark,
-          elevation: 0,
-          shadowOpacity: 0,
+          backgroundColor: Colors.background,
+          borderTopColor: Colors.border,
+          paddingBottom: 5,
+          height: 60,
         },
-        tabBarIndicatorStyle: {
-          backgroundColor: 'white',
-          height: 3,
-        },
-        tabBarLabelStyle: {
-          color: 'white',
-          fontSize: 14,
-          fontWeight: '600',
-          textTransform: 'uppercase',
-        },
-        tabBarActiveTintColor: 'white',
-        tabBarInactiveTintColor: 'rgba(255,255,255,0.7)',
-        tabBarPressColor: 'rgba(255,255,255,0.1)',
-      }}
+        headerShown: false, // Headers managed by stack navigator
+      })}
       initialRouteName="Chats"
     >
       <Tab.Screen 
-        name="Tasks" 
-        component={TasksScreen}
-        options={{ tabBarLabel: 'TASKS' }}
-      />
-      <Tab.Screen 
         name="Chats" 
         component={ConversationsScreen}
-        options={{ tabBarLabel: 'CHATS' }}
+        options={{ 
+          tabBarLabel: 'Chats',
+          tabBarBadge: 3, // Optional: unread count
+        }}
+      />
+      <Tab.Screen 
+        name="Tasks" 
+        component={TasksScreen}
+        options={{ tabBarLabel: 'Tasks' }}
       />
       <Tab.Screen 
         name="Contacts" 
         component={ContactsScreen}
-        options={{ tabBarLabel: 'CONTACTS' }}
+        options={{ tabBarLabel: 'Contacts' }}
       />
       <Tab.Screen 
         name="Finance" 
         component={FinanceScreen}
-        options={{ tabBarLabel: 'FINANCE' }}
+        options={{ tabBarLabel: 'Finance' }}
       />
     </Tab.Navigator>
   );
@@ -234,23 +259,19 @@ export default function App() {
   return (
     <NavigationContainer>
       <StatusBar barStyle="light-content" backgroundColor={Colors.primaryDark} />
-      <Stack.Navigator
-        screenOptions={{
-          header: ({ navigation, route }) => (
-            <WhatsAppHeader navigation={navigation} title="Cortex CRM" />
-          ),
-        }}
-      >
+      <Stack.Navigator>
         <Stack.Screen 
           name="Main" 
           component={MainTabs}
-          options={{ headerShown: true }}
+          options={({ navigation }) => ({
+            header: () => <WhatsAppHeader navigation={navigation} title="Cortex CRM" />
+          })}
         />
         <Stack.Screen 
           name="Chat" 
           component={ChatScreen}
-          options={({ route }) => ({
-            header: ({ navigation }) => (
+          options={({ route, navigation }) => ({
+            header: () => (
               <View style={{
                 backgroundColor: Colors.primaryDark,
                 height: 110,
@@ -307,28 +328,15 @@ export default function App() {
         <Stack.Screen 
           name="Settings" 
           component={SettingsScreen}
-          options={{
-            header: ({ navigation }) => (
-              <View style={{
-                backgroundColor: Colors.primaryDark,
-                height: 110,
-                paddingTop: 40,
-                paddingHorizontal: 16,
-                flexDirection: 'row',
-                alignItems: 'center',
-              }}>
-                <TouchableOpacity 
-                  onPress={() => navigation.goBack()}
-                  style={{ marginRight: 12 }}
-                >
-                  <Ionicons name="arrow-back" size={24} color="white" />
-                </TouchableOpacity>
-                <Text style={{ color: 'white', fontSize: 20, fontWeight: 'bold' }}>
-                  Settings
-                </Text>
-              </View>
+          options={({ navigation }) => ({
+            header: () => (
+              <WhatsAppHeader 
+                navigation={navigation} 
+                title="Settings" 
+                showBackButton={true}
+              />
             ),
-          }}
+          })}
         />
       </Stack.Navigator>
     </NavigationContainer>
