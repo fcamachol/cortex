@@ -384,10 +384,73 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                       className="h-5 w-5 p-0"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <Plus className="h-2.5 w-2.5" />
+                      <MoreHorizontal className="h-2.5 w-2.5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem>
+                      <Edit2 className="h-4 w-4 mr-2" />
+                      Rename
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Link className="h-4 w-4 mr-2" />
+                      Copy Link
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>
+                      <Palette className="h-4 w-4 mr-2" />
+                      Color & Icon
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Settings className="h-4 w-4 mr-2" />
+                      Space Settings
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Templates
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>
+                      <Star className="h-4 w-4 mr-2" />
+                      Add to Favorites
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <EyeOff className="h-4 w-4 mr-2" />
+                      Hide Space
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Duplicate
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Archive className="h-4 w-4 mr-2" />
+                      Archive
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-red-600">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>
+                      <Users className="h-4 w-4 mr-2" />
+                      Sharing & Permissions
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 w-5 p-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Plus className="h-2.5 w-2.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="z-[100]">
                     <DropdownMenuItem onClick={() => handleCreateItem(space.spaceId, 'subspace')}>
                       <Folder className="h-4 w-4 mr-2" />
                       Subspace
@@ -415,33 +478,6 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                     <DropdownMenuItem onClick={() => handleCreateItem(space.spaceId, 'event')}>
                       <Calendar className="h-4 w-4 mr-2" />
                       Event
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 w-5 p-0"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <MoreHorizontal className="h-2.5 w-2.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleCreateSubspace(space.spaceId)}>
-                      <Folder className="h-4 w-4 mr-2" />
-                      Add Subspace
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Edit Space
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-red-600">
-                      <Folder className="h-4 w-4 mr-2" />
-                      Archive Space
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
