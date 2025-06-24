@@ -502,27 +502,18 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
               </div>
             )}
 
-            {/* Render Children with Drop Zone - Recursive Multi-level Nesting */}
+            {/* Render Children - No separate drop zone, just use individual space targets */}
             {isExpanded && hasChildren && (
-              <Droppable droppableId={`space-children-${space.spaceId}`} type="SPACE">
-                {(provided, snapshot) => (
-                  <div
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    className={`space-y-0.5 mt-0.5 ${
-                      snapshot.isDraggingOver ? 'bg-blue-100 dark:bg-blue-900/30 border-2 border-dashed border-blue-400 rounded-md p-1' : ''
-                    }`}
-                    style={{ marginLeft: `${4 + level * 6}px` }}
-                  >
-                    {children.map((childSpace, childIndex) => (
-                      <div key={childSpace.spaceId}>
-                        {renderSpace(childSpace, level + 1, childIndex)}
-                      </div>
-                    ))}
-                    {provided.placeholder}
+              <div
+                className="space-y-0.5 mt-0.5"
+                style={{ marginLeft: `${4 + level * 6}px` }}
+              >
+                {children.map((childSpace, childIndex) => (
+                  <div key={childSpace.spaceId}>
+                    {renderSpace(childSpace, level + 1, childIndex)}
                   </div>
-                )}
-              </Droppable>
+                ))}
+              </div>
             )}
 
             {/* Space Items Preview */}
@@ -599,28 +590,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
               </div>
             )}
 
-            {/* Always show drop zone for spaces (whether they have children or not) */}
-            <Droppable droppableId={`space-children-${space.spaceId}`} type="SPACE">
-              {(provided, snapshot) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  className={`min-h-[8px] ${
-                    snapshot.isDraggingOver 
-                      ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-dashed border-blue-300 rounded-md p-1 my-1' 
-                      : ''
-                  }`}
-                  style={{ marginLeft: `${24 + level * 12}px` }}
-                >
-                  {snapshot.isDraggingOver && (
-                    <div className="text-xs text-blue-600 dark:text-blue-400 text-center py-1">
-                      Drop here to make subspace
-                    </div>
-                  )}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
+
           </div>
         )}
       </Draggable>
