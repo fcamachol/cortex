@@ -27,56 +27,64 @@ function AuthenticatedRoutes() {
       <Route path="/actions" component={ActionsPage} />
       <Route path="/tasks" component={TasksPage} />
       <Route path="/finance" component={FinancePage} />
-      <Route path="/spaces" component={SpacesPage} />
+      <Route path="/spaces">
+        {() => (
+          <Layout>
+            <SpacesPage />
+          </Layout>
+        )}
+      </Route>
       {/* Single level spaces */}
       <Route path="/spaces/:spaceId">
-        {(params) => {
-          return <SpacesPage selectedSpaceId={parseInt(params.spaceId)} />;
-        }}
+        {(params) => (
+          <Layout>
+            <SpacesPage selectedSpaceId={parseInt(params.spaceId)} />
+          </Layout>
+        )}
       </Route>
       {/* Two level spaces */}
       <Route path="/spaces/:parentId/:spaceId">
-        {(params) => {
-          return (
+        {(params) => (
+          <Layout>
             <SpacesPage 
               selectedSpaceId={parseInt(params.spaceId)}
               parentSpaceId={parseInt(params.parentId)}
             />
-          );
-        }}
+          </Layout>
+        )}
       </Route>
       {/* Three level spaces */}
       <Route path="/spaces/:grandParentId/:parentId/:spaceId">
-        {(params) => {
-          return (
+        {(params) => (
+          <Layout>
             <SpacesPage 
               selectedSpaceId={parseInt(params.spaceId)}
               parentSpaceId={parseInt(params.parentId)}
             />
-          );
-        }}
+          </Layout>
+        )}
       </Route>
       {/* Four level spaces */}
       <Route path="/spaces/:level1/:level2/:level3/:spaceId">
-        {(params) => {
-          return (
+        {(params) => (
+          <Layout>
             <SpacesPage 
               selectedSpaceId={parseInt(params.spaceId)}
               parentSpaceId={parseInt(params.level3)}
             />
-          );
-        }}
+          </Layout>
+        )}
       </Route>
       {/* Five level spaces */}
       <Route path="/spaces/:level1/:level2/:level3/:level4/:spaceId">
-        {(params) => {
-          return (
+        {(params) => (
+          <Layout>
             <SpacesPage 
               selectedSpaceId={parseInt(params.spaceId)}
               parentSpaceId={parseInt(params.level4)}
             />
-          );
-        }}
+          </Layout>
+        )}
       </Route>
       <Route path="/contacts" component={() => <ContactsPage userId="7804247f-3ae8-4eb2-8c6d-2c44f967ad42" />} />
       <Route path="/groups" component={() => <GroupManagement spaceId="7804247f-3ae8-4eb2-8c6d-2c44f967ad42" />} />

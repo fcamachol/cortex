@@ -329,7 +329,7 @@ export function SpacesPage({ selectedSpaceId, parentSpaceId }: SpacesPageProps) 
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
+    <div className="flex-1 container mx-auto p-6 max-w-7xl">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
