@@ -175,50 +175,50 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-6">
       <form onSubmit={onSubmit} className="space-y-6">
-        {/* Header with avatar placeholder and name */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-400">
+        {/* Header with avatar and contact info */}
+        <div className="space-y-6">
+          <div className="flex items-start gap-4">
+            <div className="w-16 h-16 bg-pink-100 dark:bg-pink-900 rounded-full flex items-center justify-center text-pink-600 dark:text-pink-400 text-sm font-medium">
               (AVATAR)
             </div>
-            <div className="flex-1 space-y-1">
-              <Input
-                placeholder="Dr. Ana Rodriguez"
-                value={contactName}
-                onChange={(e) => setContactName(e.target.value)}
-                className="text-lg font-semibold border-none bg-transparent p-0 focus-visible:ring-0 text-gray-900 dark:text-gray-100"
-                required
-              />
-              <div className="flex items-center gap-2">
+            <div className="flex-1 space-y-2">
+              <div className="flex items-center justify-between">
+                <Input
+                  placeholder="Dr. Ana Rodriguez"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  className="text-xl font-semibold border-none bg-transparent p-0 focus-visible:ring-0 text-gray-900 dark:text-gray-100 placeholder-gray-400"
+                  required
+                />
+                <div className="flex items-center gap-3 ml-4">
+                  <Button variant="ghost" size="sm" onClick={() => setIsPreviewMode(!isPreviewMode)} type="button" className="text-gray-400 hover:text-gray-600 text-sm">
+                    [ {isPreviewMode ? 'Edit' : 'Preview'} ]
+                  </Button>
+                  <Button variant="ghost" size="sm" type="button" className="text-gray-400 hover:text-gray-600 text-sm">
+                    [ Message ]
+                  </Button>
+                  <Button variant="ghost" size="sm" type="button" className="text-gray-400 hover:text-gray-600 text-sm">
+                    [ ... ]
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                 <Input
                   placeholder="Cardiologist (Doctor)"
                   value={profession}
                   onChange={(e) => setProfession(e.target.value)}
-                  className="text-sm text-gray-500 dark:text-gray-400 border-none bg-transparent p-0 focus-visible:ring-0 flex-1"
+                  className="text-base border-none bg-transparent p-0 focus-visible:ring-0 flex-1 placeholder-gray-400"
                 />
-                <span className="text-sm text-gray-400">at</span>
+                <span className="text-base">at</span>
                 <Input
                   placeholder="@Hospital Angeles"
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
-                  className="text-sm text-gray-500 dark:text-gray-400 border-none bg-transparent p-0 focus-visible:ring-0 flex-1"
+                  className="text-base border-none bg-transparent p-0 focus-visible:ring-0 flex-1 placeholder-gray-400"
                 />
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setIsPreviewMode(!isPreviewMode)} type="button" className="text-gray-500 hover:text-gray-700">
-                [ {isPreviewMode ? 'Edit' : 'Preview'} ]
-              </Button>
-              <Button variant="ghost" size="sm" type="button" className="text-gray-500 hover:text-gray-700">
-                [ Message ]
-              </Button>
-              <Button variant="ghost" size="sm" type="button" className="text-gray-500 hover:text-gray-700">
-                [ ... ]
-              </Button>
-            </div>
           </div>
-          
-          <div className="border-t border-dashed border-gray-300 dark:border-gray-600"></div>
         </div>
 
         {/* Dynamic Blocks - Edit Mode vs View Mode */}
