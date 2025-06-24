@@ -173,7 +173,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
   };
 
   return (
-    <div className="space-y-4 max-w-4xl mx-auto p-6">
+    <div className="space-y-4 max-w-5xl mx-auto px-4 py-6">
       <form onSubmit={onSubmit} className="space-y-4">
         {/* Contact Name - Fill Box Style */}
         <div className="space-y-4">
