@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
@@ -21,7 +21,7 @@ export default function App() {
       <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ focused, color, size }) => {
-            let iconName: keyof typeof Ionicons.glyphMap;
+            let iconName;
 
             if (route.name === 'Conversations') {
               iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
@@ -35,8 +35,6 @@ export default function App() {
               iconName = focused ? 'card' : 'card-outline';
             } else if (route.name === 'Settings') {
               iconName = focused ? 'settings' : 'settings-outline';
-            } else {
-              iconName = 'circle';
             }
 
             return <Ionicons name={iconName} size={size} color={color} />;
