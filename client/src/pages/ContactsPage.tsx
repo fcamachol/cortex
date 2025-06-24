@@ -23,6 +23,8 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
   const [searchTerm, setSearchTerm] = React.useState("");
   const [activeTab, setActiveTab] = React.useState("contacts");
   const [isAddContactOpen, setIsAddContactOpen] = React.useState(false);
+  const [selectedContact, setSelectedContact] = React.useState<CrmContact | null>(null);
+  const [showContactModal, setShowContactModal] = React.useState(false);
 
   const { data: contactsList = [], isLoading: contactsLoading } = useQuery({
     queryKey: ['/api/crm/contacts', userId],
@@ -55,7 +57,8 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
 
   const handleContactClick = (contact: CrmContact) => {
     console.log('Contact clicked:', contact);
-    // TODO: Implement contact detail view
+    setSelectedContact(contact);
+    setShowContactModal(true);
   };
 
   const handleCompanyClick = (company: any) => {
@@ -472,6 +475,21 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
           </Card>
         </div>
       </div>
+
+      {/* Contact Modal */}
+      <ContactModal
+        contact={selectedContact}
+        isOpen={showContactModal}
+        onClose={() => {
+          setShowContactModal(false);
+          setSelectedContact(null);
+        }}
+        onEdit={(contact) => {
+          setSelectedContact(contact);
+          setShowContactModal(false);
+          setIsAddContactOpen(true);
+        }}
+      />
     </div>
   );
 }
