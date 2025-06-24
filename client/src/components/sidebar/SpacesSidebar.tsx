@@ -44,6 +44,9 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['work', 'personal']));
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [parentSpaceId, setParentSpaceId] = useState<number | undefined>();
+  const [showCreateItemDialog, setShowCreateItemDialog] = useState(false);
+  const [selectedSpaceId_, setSelectedSpaceId] = useState<number | undefined>();
+  const [selectedItemType, setSelectedItemType] = useState<string>('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -388,7 +391,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                       <MoreHorizontal className="h-2.5 w-2.5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="z-[100]">
+                  <DropdownMenuContent align="end" className="z-[9999]">
                     <DropdownMenuItem>
                       <Edit2 className="h-4 w-4 mr-2" />
                       Rename
