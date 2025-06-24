@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { CreateSpaceDialog } from '@/components/spaces/CreateSpaceDialog';
 import { CreateItemDialog } from '@/components/spaces/CreateItemDialog';
 import { useToast } from '@/hooks/use-toast';
-import { useLocation } from 'wouter';
+
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -326,12 +326,6 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                     }}
                     onClick={() => {
                       onSpaceSelect?.(space);
-                      // Simple routing: if space has parent, use /spaces/parentId/spaceId, otherwise /spaces/spaceId
-                      if (space.parentSpaceId) {
-                        setLocation(`/spaces/${space.parentSpaceId}/${space.spaceId}`);
-                      } else {
-                        setLocation(`/spaces/${space.spaceId}`);
-                      }
                     }}
                   >
               {/* Drag Handle */}
@@ -557,7 +551,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                       key={item.itemId}
                       className="flex items-center gap-2 px-2 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer transition-colors group"
                       onClick={() => {
-                        setLocation(`/spaces/${space.spaceId}?item=${item.itemId}`);
+                        onSpaceSelect?.(space);
                       }}
                     >
                       <IconComponent className="h-4 w-4 text-gray-500 dark:text-gray-400" />
