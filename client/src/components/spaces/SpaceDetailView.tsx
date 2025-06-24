@@ -92,14 +92,8 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch space data
-  const { data: space, isLoading: spaceLoading } = useQuery({
-    queryKey: ['/api/spaces', spaceId],
-    enabled: !!spaceId,
-  });
-
-  // Fetch all spaces for navigation
-  const { data: allSpaces = [] } = useQuery({
+  // Fetch all spaces first
+  const { data: allSpaces = [], isLoading: spacesLoading } = useQuery({
     queryKey: ['/api/spaces'],
   });
 
@@ -109,8 +103,28 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
     enabled: !!spaceId,
   });
 
-  if (spaceLoading) {
+  console.log('SpaceDetailView - spaceId:', spaceId, 'allSpaces:', allSpaces);
+
+  // Find the specific space from all spaces
+  const spacesArray = Array.isArray(allSpaces) ? allSpaces : 
+    allSpaces ? Object.values(allSpaces).flat() : [];
+  const space = spacesArray.find((s: Space) => s.spaceId === spaceId);
+
+  console.log('Found space:', space);
+
+  if (spacesLoading) {
     return <div className="flex-1 flex items-center justify-center">Loading space...</div>;
+  }
+
+  if (!space) {
+    return <div className="flex-1 flex items-center justify-center">
+      <div className="text-center">
+        <div>Space not found (ID: {spaceId})</div>
+        <div className="text-sm text-gray-500 mt-2">
+          Available spaces: {spacesArray.map(s => `${s.spaceName} (${s.spaceId})`).join(', ')}
+        </div>
+      </div>
+    </div>;
   }
 
   if (!space) {
