@@ -16,13 +16,14 @@ import {
 } from "lucide-react";
 
 interface CreateItemDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  spaceId: number | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  spaceId: number;
   itemType: string;
+  onSuccess?: () => void;
 }
 
-export function CreateItemDialog({ isOpen, onClose, spaceId, itemType }: CreateItemDialogProps) {
+export function CreateItemDialog({ open, onOpenChange, spaceId, itemType, onSuccess }: CreateItemDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const { toast } = useToast();
@@ -47,7 +48,7 @@ export function CreateItemDialog({ isOpen, onClose, spaceId, itemType }: CreateI
 
   const createItemMutation = useMutation({
     mutationFn: async (data: { title: string; description: string; itemType: string; spaceId: number }) => {
-      if (itemType === 'subspace') {
+      if (data.itemType === 'subspace') {
         // Create subspace
         return await apiRequest('/api/spaces', 'POST', {
           spaceName: data.title,
