@@ -53,6 +53,7 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
   const [isContactInfoOpen, setIsContactInfoOpen] = useState(false);
   const [isProfessionalOpen, setIsProfessionalOpen] = useState(false);
   const [isPersonalOpen, setIsPersonalOpen] = useState(false);
+  const [isSpecialDatesOpen, setIsSpecialDatesOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   
   // State for managing notes
@@ -62,6 +63,7 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
   const [phones, setPhones] = useState<Array<{ id: string; number: string; type: string; isPrimary?: boolean }>>([]);
   const [emails, setEmails] = useState<Array<{ id: string; address: string; type: string; isPrimary?: boolean }>>([]);
   const [addresses, setAddresses] = useState<Array<{ id: string; street: string; city: string; state: string; zipCode: string; country: string; type: string; isPrimary?: boolean }>>([]);
+  const [specialDates, setSpecialDates] = useState<Array<{ id: string; title: string; date: string; type: string }>>([]);
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
@@ -213,6 +215,28 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
     setNotes(notes.filter(note => note.id !== id));
   };
 
+  // Functions for managing special dates
+  const addSpecialDate = () => {
+    const newDate = {
+      id: Date.now().toString(),
+      title: "",
+      date: "",
+      type: "birthday", // default type
+    };
+    setSpecialDates([...specialDates, newDate]);
+    setIsSpecialDatesOpen(true);
+  };
+
+  const updateSpecialDate = (id: string, field: string, value: string) => {
+    setSpecialDates(specialDates.map(date => 
+      date.id === id ? { ...date, [field]: value } : date
+    ));
+  };
+
+  const removeSpecialDate = (id: string) => {
+    setSpecialDates(specialDates.filter(date => date.id !== id));
+  };
+
   return (
     <div className="space-y-6">
       <Form {...form}>
@@ -269,7 +293,7 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
                 className="w-full justify-start p-0 h-auto font-normal text-left"
                 type="button"
               >
-                <div className="flex items-center gap-2 py-3 px-1">
+                <div className="flex items-center gap-2 py-2 px-1">
                   {isContactInfoOpen ? (
                     <ChevronDown className="h-4 w-4" />
                   ) : (
@@ -595,7 +619,7 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
                 className="w-full justify-start p-0 h-auto font-normal text-left"
                 type="button"
               >
-                <div className="flex items-center gap-2 py-3 px-1">
+                <div className="flex items-center gap-2 py-2 px-1">
                   {isPersonalOpen ? (
                     <ChevronDown className="h-4 w-4" />
                   ) : (
@@ -654,6 +678,89 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
             </CollapsibleContent>
           </Collapsible>
 
+          {/* Special Dates - Collapsible */}
+          <Collapsible open={isSpecialDatesOpen} onOpenChange={setIsSpecialDatesOpen}>
+            <CollapsibleTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start p-0 h-auto font-normal text-left"
+                type="button"
+              >
+                <div className="flex items-center gap-2 py-2 px-1">
+                  {isSpecialDatesOpen ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                  <Calendar className="h-4 w-4" />
+                  <span className="font-medium">Special Dates</span>
+                  {specialDates.length > 0 && (
+                    <span className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+                      {specialDates.length}
+                    </span>
+                  )}
+                  {!isSpecialDatesOpen && (
+                    <Plus className="h-4 w-4 ml-auto text-blue-600" />
+                  )}
+                </div>
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-3 pl-6 pt-2">
+              {specialDates.map((specialDate) => (
+                <Card key={specialDate.id} className="p-3">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={specialDate.type}
+                        onValueChange={(value) => updateSpecialDate(specialDate.id, "type", value)}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="birthday">🎂 Birthday</SelectItem>
+                          <SelectItem value="anniversary">❤️ Anniversary</SelectItem>
+                          <SelectItem value="other">📅 Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        placeholder="Title (optional)"
+                        value={specialDate.title}
+                        onChange={(e) => updateSpecialDate(specialDate.id, "title", e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeSpecialDate(specialDate.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Input
+                      type="date"
+                      value={specialDate.date}
+                      onChange={(e) => updateSpecialDate(specialDate.id, "date", e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+                </Card>
+              ))}
+              
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addSpecialDate}
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Date
+              </Button>
+            </CollapsibleContent>
+          </Collapsible>
+
           {/* Notes - Collapsible */}
           <Collapsible open={isNotesOpen} onOpenChange={setIsNotesOpen}>
             <CollapsibleTrigger asChild>
@@ -662,7 +769,7 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
                 className="w-full justify-start p-0 h-auto font-normal text-left"
                 type="button"
               >
-                <div className="flex items-center gap-2 py-3 px-1">
+                <div className="flex items-center gap-2 py-2 px-1">
                   {isNotesOpen ? (
                     <ChevronDown className="h-4 w-4" />
                   ) : (
@@ -681,9 +788,9 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
                 </div>
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-4 pl-6 pt-2">
+            <CollapsibleContent className="space-y-3 pl-6 pt-2">
               {notes.map((note) => (
-                <Card key={note.id} className="p-4">
+                <Card key={note.id} className="p-3">
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Input
