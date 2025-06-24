@@ -277,12 +277,12 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
     const items = getSpaceItems(space.spaceId);
     const hasItems = items.length > 0;
     
-    console.log(`${'  '.repeat(level)}Space "${space.spaceName}" (ID: ${space.spaceId}, Level: ${level}):`, {
+    console.log(`${'  '.repeat(level)}Space "${space.spaceName}" (ID: ${space.spaceId}, Level: ${level}, Category: ${space.category}):`, {
       hasItems,
       hasChildren,
       itemsCount: items?.length || 0,
       childrenCount: children?.length || 0,
-      children: children?.map(c => c.spaceName) || []
+      children: children?.map(c => `${c.spaceName} (${c.category})`) || []
     });
 
     return (

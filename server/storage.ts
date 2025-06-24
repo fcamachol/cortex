@@ -90,14 +90,22 @@ class DatabaseStorage {
             const spacesMap = new Map();
             const rootSpaces: any[] = [];
 
+            // Apply category inheritance: subspaces inherit parent's category
+            const applyInheritedCategory = (space: any, parentCategory?: string) => {
+                const inheritedCategory = parentCategory || space.category || 'work';
+                return { ...space, category: inheritedCategory, childSpaces: [], items: [] };
+            };
+
             spaces.forEach(space => {
-                spacesMap.set(space.spaceId, { ...space, childSpaces: [], items: [] });
+                spacesMap.set(space.spaceId, applyInheritedCategory(space));
             });
 
             spaces.forEach(space => {
                 if (space.parentSpaceId) {
                     const parent = spacesMap.get(space.parentSpaceId);
                     if (parent) {
+                        const childWithInheritedCategory = applyInheritedCategory(space, parent.category);
+                        spacesMap.set(space.spaceId, childWithInheritedCategory);
                         parent.childSpaces.push(spacesMap.get(space.spaceId));
                     }
                 } else {
