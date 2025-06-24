@@ -15,6 +15,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 export default function Dashboard() {
   const [activeModule, setActiveModule] = useState("conversations");
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [selectedSpaceId, setSelectedSpaceId] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
   // Central data fetching for conversations module - eliminates duplicate polling
@@ -54,6 +55,18 @@ export default function Dashboard() {
     }
   }, [conversations, selectedConversation]);
 
+  // Listen for space selection events
+  useEffect(() => {
+    const handleSpaceSelection = (event: CustomEvent) => {
+      setSelectedSpaceId(event.detail.spaceId);
+    };
+
+    window.addEventListener('spaceSelected', handleSpaceSelection as EventListener);
+    return () => {
+      window.removeEventListener('spaceSelected', handleSpaceSelection as EventListener);
+    };
+  }, []);
+
   const renderModule = () => {
     switch (activeModule) {
       case "conversations":
@@ -90,7 +103,7 @@ export default function Dashboard() {
       case "integrations":
         return <IntegrationModule />;
       case "spaces":
-        return <SpacesPage />;
+        return <SpacesPage selectedSpaceId={selectedSpaceId || undefined} />;
       case "database":
         return <SimpleDBViewer />;
       default:

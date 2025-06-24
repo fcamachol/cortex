@@ -137,8 +137,10 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
           <div className="p-3 border-b border-gray-200 dark:border-gray-800">
             <SpacesSidebar 
               onSpaceSelect={(space) => {
-                // Set active module to spaces instead of navigating
+                // Set active module to spaces and pass the selected space
                 onSetActiveModule("spaces");
+                // We need to communicate the selected space to Dashboard
+                window.dispatchEvent(new CustomEvent('spaceSelected', { detail: space }));
               }}
             />
           </div>
