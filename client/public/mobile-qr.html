@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cortex CRM Mobile</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #075E54, #25D366);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            max-width: 400px;
+            margin: 20px;
+            color: #333;
+        }
+        
+        .logo {
+            background: #075E54;
+            color: white;
+            width: 80px;
+            height: 80px;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0 auto 20px;
+        }
+        
+        h1 {
+            color: #075E54;
+            margin: 0 0 10px;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+        
+        .qr-container {
+            background: #f9f9f9;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        
+        .qr-code {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+            line-height: 1.4;
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            text-align: left;
+        }
+        
+        .step {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f0f9ff;
+            border-radius: 8px;
+            border-left: 4px solid #25D366;
+        }
+        
+        .step-number {
+            background: #25D366;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        
+        .step-text {
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .mobile-link {
+            background: #e8f5e8;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        
+        .mobile-link h3 {
+            color: #075E54;
+            margin: 0 0 10px;
+            font-size: 16px;
+        }
+        
+        .link-button {
+            display: inline-block;
+            background: #25D366;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.2s;
+            margin-top: 10px;
+        }
+        
+        .link-button:hover {
+            background: #128C7E;
+            transform: translateY(-2px);
+        }
+        
+        .url-display {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">C</div>
+        <h1>Cortex CRM</h1>
+        <p class="subtitle">Mobile Access</p>
+        
+        <div class="qr-container">
+            <div class="qr-code">
+                <div>
+                    <div style="font-size: 18px; margin-bottom: 10px;">📱</div>
+                    <div>Use the direct link below for instant mobile access</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mobile-link">
+            <h3>Access Your Mobile CRM</h3>
+            <p style="margin: 0; color: #666; font-size: 14px; margin-bottom: 10px;">
+                Open directly on any device:
+            </p>
+            <a href="/mobile.html" class="link-button">Launch Mobile App</a>
+            <div class="url-display" id="current-url">
+                Loading URL...
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-text">
+                    <strong>Open on Mobile</strong><br>
+                    Copy the URL above and open it in your phone's browser
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-text">
+                    <strong>Add to Home Screen</strong><br>
+                    For app-like experience, add to your home screen
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-text">
+                    <strong>Enjoy WhatsApp-style CRM</strong><br>
+                    Full access to conversations, tasks, contacts, and finance
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Update URL display with current host
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentUrl = window.location.origin + '/mobile.html';
+            document.getElementById('current-url').textContent = currentUrl;
+        });
+    </script>
+</body>
+</html>

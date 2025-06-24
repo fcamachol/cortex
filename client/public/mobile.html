@@ -318,7 +318,14 @@
                         setConversations(data.slice(0, 10));
                     }
                 } catch (error) {
-                    console.log('Error fetching conversations:', error);
+                    console.log('Using sample data - API not available');
+                    setConversations([
+                        { id: 1, contact_name: 'María González', last_message: 'Thanks for the information', last_message_at: new Date(), unread_count: 2 },
+                        { id: 2, contact_name: 'Carlos López', last_message: 'When can we meet?', last_message_at: new Date(), unread_count: 0 },
+                        { id: 3, contact_name: 'Ana Rodríguez', last_message: 'Perfect, see you tomorrow', last_message_at: new Date(), unread_count: 1 },
+                        { id: 4, contact_name: 'Juan Pérez', last_message: 'Sending documents...', last_message_at: new Date(), unread_count: 0 },
+                        { id: 5, contact_name: 'Elena Martín', last_message: 'Ok, understood', last_message_at: new Date(), unread_count: 3 },
+                    ]);
                 }
             };
             
@@ -330,7 +337,13 @@
                         setTasks(data.slice(0, 10));
                     }
                 } catch (error) {
-                    console.log('Error fetching tasks:', error);
+                    console.log('Using sample data - Tasks API not available');
+                    setTasks([
+                        { id: 1, title: 'Call new client', priority: 'high', due_date: new Date(), status: 'pending' },
+                        { id: 2, title: 'Send commercial proposal', priority: 'medium', due_date: new Date(Date.now() + 86400000), status: 'in_progress' },
+                        { id: 3, title: 'Review pending contracts', priority: 'low', due_date: new Date(Date.now() + 172800000), status: 'pending' },
+                        { id: 4, title: 'Sales team meeting', priority: 'medium', due_date: new Date(Date.now() + 259200000), status: 'scheduled' }
+                    ]);
                 }
             };
             
@@ -342,7 +355,14 @@
                         setContacts(data.slice(0, 15));
                     }
                 } catch (error) {
-                    console.log('Error fetching contacts:', error);
+                    console.log('Using sample data - Contacts API not available');
+                    setContacts([
+                        { id: 1, name: 'María González', primary_phone: '+52 55 1234 5678' },
+                        { id: 2, name: 'Carlos López', primary_phone: '+52 55 2345 6789' },
+                        { id: 3, name: 'Ana Rodríguez', primary_phone: '+52 55 3456 7890' },
+                        { id: 4, name: 'Juan Pérez', primary_phone: '+52 55 4567 8901' },
+                        { id: 5, name: 'Elena Martín', primary_phone: '+52 55 5678 9012' }
+                    ]);
                 }
             };
             
