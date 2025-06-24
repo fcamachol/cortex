@@ -60,11 +60,16 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
   });
 
   // Fetch space items for each space
-  const { data: spaceItems } = useQuery({
+  const { data: spaceItems, isLoading: itemsLoading } = useQuery({
     queryKey: ['/api/space-items'],
     queryFn: async () => {
       const response = await fetch('/api/space-items');
+      if (!response.ok) {
+        console.warn('Failed to fetch space items:', response.status);
+        return [];
+      }
       const data = await response.json();
+      console.log('Fetched space items:', data);
       return Array.isArray(data) ? data : [];
     },
     enabled: !!spaces && spaces.length > 0
@@ -231,7 +236,9 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
 
   const getSpaceItems = (spaceId: number) => {
     if (!spaceItems) return [];
-    return spaceItems.filter((item: SpaceItem) => item.spaceId === spaceId);
+    const items = spaceItems.filter((item: SpaceItem) => item.spaceId === spaceId);
+    console.log(`Space ${spaceId} items:`, items);
+    return items;
   };
 
   const renderSpace = (space: Space, level: number = 0, index: number = 0) => {
