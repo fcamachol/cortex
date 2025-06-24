@@ -60,7 +60,7 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
   const [notes, setNotes] = useState<Array<{ id: string; title: string; content: string; createdAt?: string }>>([]);
   
   // State for managing contact information
-  const [phones, setPhones] = useState<Array<{ id: string; number: string; type: string; isPrimary?: boolean }>>([]);
+  const [phones, setPhones] = useState<Array<{ id: string; number: string; type: string; isPrimary?: boolean; hasWhatsApp?: boolean; isValidatingWhatsApp?: boolean }>>([]);
   const [emails, setEmails] = useState<Array<{ id: string; address: string; type: string; isPrimary?: boolean }>>([]);
   const [addresses, setAddresses] = useState<Array<{ id: string; street: string; city: string; state: string; zipCode: string; country: string; type: string; isPrimary?: boolean }>>([]);
   const [specialDates, setSpecialDates] = useState<Array<{ id: string; title: string; date: string; type: string }>>([]);
@@ -124,6 +124,57 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
     createContactMutation.mutate(data);
   };
 
+  // WhatsApp validation function
+  const validateWhatsApp = async (phoneId: string, phoneNumber: string) => {
+    if (!phoneNumber.trim()) return;
+    
+    // Set loading state
+    setPhones(prev => prev.map(phone => 
+      phone.id === phoneId 
+        ? { ...phone, isValidatingWhatsApp: true }
+        : phone
+    ));
+
+    try {
+      // Normalize phone number (remove formatting)
+      const normalizedNumber = phoneNumber.replace(/[^\d+]/g, '');
+      
+      // Call WhatsApp validation endpoint
+      const response = await apiRequest('/api/whatsapp/validate-number', {
+        method: 'POST',
+        body: JSON.stringify({ phoneNumber: normalizedNumber })
+      });
+
+      const hasWhatsApp = response?.hasWhatsApp || false;
+      
+      // Update phone with validation result
+      setPhones(prev => prev.map(phone => 
+        phone.id === phoneId 
+          ? { 
+              ...phone, 
+              hasWhatsApp, 
+              isValidatingWhatsApp: false,
+              number: normalizedNumber // Update with normalized number
+            }
+          : phone
+      ));
+
+      if (hasWhatsApp) {
+        toast({
+          title: "WhatsApp Found",
+          description: "This number is linked to a WhatsApp account",
+        });
+      }
+    } catch (error) {
+      console.error('WhatsApp validation error:', error);
+      setPhones(prev => prev.map(phone => 
+        phone.id === phoneId 
+          ? { ...phone, isValidatingWhatsApp: false }
+          : phone
+      ));
+    }
+  };
+
   // Functions for managing phones
   const addPhone = () => {
     const newPhone = {
@@ -131,6 +182,8 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
       number: "",
       type: "Mobile",
       isPrimary: phones.length === 0,
+      hasWhatsApp: undefined,
+      isValidatingWhatsApp: false
     };
     setPhones([...phones, newPhone]);
     setIsContactInfoOpen(true);
@@ -380,9 +433,27 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
                           placeholder="+1 (555) 123-4567"
                           value={phone.number}
                           onChange={(e) => updatePhone(phone.id, "number", e.target.value)}
+                          onBlur={(e) => {
+                            if (e.target.value.trim()) {
+                              validateWhatsApp(phone.id, e.target.value);
+                            }
+                          }}
                           className="flex-1 h-6 border-none bg-transparent p-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
                         />
+                        
+                        {/* WhatsApp Status Indicator */}
+                        {phone.isValidatingWhatsApp && (
+                          <span className="text-xs text-muted-foreground">⏳</span>
+                        )}
+                        {phone.hasWhatsApp === true && (
+                          <span className="text-xs text-green-600" title="WhatsApp verified">✅</span>
+                        )}
+                        {phone.hasWhatsApp === false && (
+                          <span className="text-xs text-muted-foreground" title="No WhatsApp">❌</span>
+                        )}
+                        
                         {phone.isPrimary && <span className="text-xs text-blue-600">(Primary)</span>}
+                        
                         <button
                           type="button"
                           onClick={() => removePhone(phone.id)}

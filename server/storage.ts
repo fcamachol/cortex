@@ -2162,6 +2162,25 @@ class DatabaseStorage {
         .where(eq(crmCompanyMembers.companyId, companyId))
         .orderBy(asc(crmContacts.fullName));
     }
+
+    // WhatsApp contact validation method
+    async getWhatsAppContactByPhone(phoneNumber: string): Promise<any> {
+        // Normalize the phone number for comparison
+        const normalizedPhone = phoneNumber.replace(/[^\d+]/g, '');
+        
+        // Search in WhatsApp contacts table
+        const [contact] = await db.select()
+            .from(contacts)
+            .where(
+                or(
+                    eq(contacts.jid, `${normalizedPhone}@s.whatsapp.net`),
+                    like(contacts.jid, `${normalizedPhone}%`)
+                )
+            )
+            .limit(1);
+        
+        return contact;
+    }
 }
 
 export const storage = new DatabaseStorage();

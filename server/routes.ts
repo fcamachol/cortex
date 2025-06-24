@@ -2119,6 +2119,28 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // WhatsApp number validation endpoint
+  app.post('/api/whatsapp/validate-number', async (req, res) => {
+    try {
+      const { phoneNumber } = req.body;
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ error: 'Phone number is required' });
+      }
+
+      // Check if phone number exists in our WhatsApp contacts
+      const contact = await storage.getWhatsAppContactByPhone(phoneNumber);
+      
+      res.json({ 
+        hasWhatsApp: !!contact,
+        contactData: contact || null
+      });
+    } catch (error) {
+      console.error('WhatsApp validation error:', error);
+      res.status(500).json({ error: 'Failed to validate WhatsApp number' });
+    }
+  });
+
   // ============================================
   // CRM COMPANIES ENDPOINTS - For polymorphic creditor relationships
   // ============================================
