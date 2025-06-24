@@ -241,11 +241,11 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
                 <PopoverTrigger asChild>
                   <Button 
                     variant="outline" 
-                    className="border-dashed border-2 py-6 px-8"
+                    className="border-dashed border-2 py-8 px-12 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
                     type="button"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Information Block
+                    <Plus className="h-5 w-5 mr-3" />
+                    <span className="font-medium">Add Information Block</span>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-80" align="center">
@@ -333,22 +333,24 @@ function BlockComponent({ block, onUpdate, onRemove }: BlockComponentProps) {
   const Icon = blockType.icon;
 
   return (
-    <Card className="border-2 border-dashed border-gray-300 dark:border-gray-600 p-4">
-      <div className="space-y-3">
+    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-white dark:bg-gray-900">
+      <div className="space-y-4">
         {/* Block Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Icon className="h-4 w-4" />
-            <span className="font-medium text-sm">{blockType.label.toUpperCase()}</span>
+            <Icon className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+            <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 uppercase tracking-wide">
+              {blockType.label}
+            </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
               className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
               type="button"
             >
-              <MoreHorizontal className="h-3 w-3" />
+              <MoreHorizontal className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
@@ -357,7 +359,7 @@ function BlockComponent({ block, onUpdate, onRemove }: BlockComponentProps) {
               className="h-6 w-6 p-0 text-gray-400 hover:text-red-600"
               type="button"
             >
-              <X className="h-3 w-3" />
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -365,7 +367,7 @@ function BlockComponent({ block, onUpdate, onRemove }: BlockComponentProps) {
         {/* Block Content */}
         <BlockContent block={block} onUpdate={onUpdate} />
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -374,15 +376,15 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
   switch (block.type) {
     case 'phone':
       return (
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium mb-1">Label</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Label</label>
               <Select
                 value={block.data.type}
                 onValueChange={(value) => onUpdate(block.id, 'type', value)}
               >
-                <SelectTrigger className="h-8">
+                <SelectTrigger className="h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -393,23 +395,23 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
               </Select>
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1">Phone Number</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Phone Number</label>
               <Input
                 placeholder="+1-555-123-4567"
                 value={block.data.number}
                 onChange={(e) => onUpdate(block.id, 'number', e.target.value)}
-                className="h-8"
+                className="h-10"
               />
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
             <div className="flex items-center space-x-2">
               <Checkbox
                 id={`whatsapp-${block.id}`}
                 checked={block.data.hasWhatsApp}
                 onCheckedChange={(checked) => onUpdate(block.id, 'hasWhatsApp', checked)}
               />
-              <label htmlFor={`whatsapp-${block.id}`} className="text-xs">
+              <label htmlFor={`whatsapp-${block.id}`} className="text-sm text-gray-700 dark:text-gray-300">
                 This number has WhatsApp
               </label>
             </div>
@@ -419,7 +421,7 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
                 checked={block.data.isPrimary}
                 onCheckedChange={(checked) => onUpdate(block.id, 'isPrimary', checked)}
               />
-              <label htmlFor={`primary-${block.id}`} className="text-xs">
+              <label htmlFor={`primary-${block.id}`} className="text-sm text-gray-700 dark:text-gray-300">
                 Set as primary number for this contact
               </label>
             </div>
@@ -429,15 +431,15 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
 
     case 'email':
       return (
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium mb-1">Label</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Label</label>
               <Select
                 value={block.data.type}
                 onValueChange={(value) => onUpdate(block.id, 'type', value)}
               >
-                <SelectTrigger className="h-8">
+                <SelectTrigger className="h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -447,12 +449,12 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
               </Select>
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1">Email Address</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
               <Input
                 placeholder="isabella@email.com"
                 value={block.data.address}
                 onChange={(e) => onUpdate(block.id, 'address', e.target.value)}
-                className="h-8"
+                className="h-10"
               />
             </div>
           </div>
@@ -462,7 +464,7 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
               checked={block.data.isPrimary}
               onCheckedChange={(checked) => onUpdate(block.id, 'isPrimary', checked)}
             />
-            <label htmlFor={`primary-email-${block.id}`} className="text-xs">
+            <label htmlFor={`primary-email-${block.id}`} className="text-sm text-gray-700 dark:text-gray-300">
               Set as primary email for this contact
             </label>
           </div>
@@ -471,23 +473,23 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
 
     case 'company':
       return (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium mb-1">Company</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Company</label>
             <Input
               placeholder="CreativeCo"
               value={block.data.name}
               onChange={(e) => onUpdate(block.id, 'name', e.target.value)}
-              className="h-8"
+              className="h-10"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1">Role</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Role</label>
             <Input
               placeholder="Lead Designer"
               value={block.data.role}
               onChange={(e) => onUpdate(block.id, 'role', e.target.value)}
-              className="h-8"
+              className="h-10"
             />
           </div>
         </div>
@@ -495,25 +497,38 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
 
     case 'note':
       return (
-        <div className="space-y-2">
-          <Input
-            placeholder="Note title (e.g., Cuenta de banco)"
-            value={block.data.title}
-            onChange={(e) => onUpdate(block.id, 'title', e.target.value)}
-            className="h-8"
-          />
-          <Textarea
-            placeholder="Note content..."
-            value={block.data.content}
-            onChange={(e) => onUpdate(block.id, 'content', e.target.value)}
-            className="min-h-[60px]"
-          />
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Note Title</label>
+            <Input
+              placeholder="Note title (e.g., Cuenta de banco)"
+              value={block.data.title}
+              onChange={(e) => onUpdate(block.id, 'title', e.target.value)}
+              className="h-10"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Content</label>
+            <Textarea
+              placeholder="Note content..."
+              value={block.data.content}
+              onChange={(e) => onUpdate(block.id, 'content', e.target.value)}
+              className="min-h-[80px]"
+            />
+          </div>
+        </div>
+      );
+
+    case 'group':
+      return (
+        <div className="text-sm text-gray-500 py-4 text-center">
+          Block type "group" not yet implemented
         </div>
       );
 
     default:
       return (
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-gray-500 py-4 text-center">
           Block type "{block.type}" not yet implemented
         </div>
       );
