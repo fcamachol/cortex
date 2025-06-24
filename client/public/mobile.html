@@ -275,9 +275,7 @@
             const [tasks, setTasks] = useState([]);
             const [contacts, setContacts] = useState([]);
             
-            // Fetch real data from your backend
             useEffect(() => {
-                // Replace with your actual API endpoints
                 fetchConversations();
                 fetchTasks();
                 fetchContacts();
@@ -285,22 +283,13 @@
             
             const fetchConversations = async () => {
                 try {
-                    // Using your existing API
                     const response = await fetch('/api/whatsapp/conversations/7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
                     if (response.ok) {
                         const data = await response.json();
-                        setConversations(data.slice(0, 10)); // Show first 10
+                        setConversations(data.slice(0, 10));
                     }
                 } catch (error) {
-                    console.log('Using sample data');
-                    // Sample data for demo
-                    setConversations([
-                        { id: 1, name: 'María González', lastMessage: 'Gracias por la información', time: '14:30', unread: 2, avatar: 'MG' },
-                        { id: 2, name: 'Carlos López', lastMessage: '¿Cuándo podemos reunirnos?', time: '13:45', unread: 0, avatar: 'CL' },
-                        { id: 3, name: 'Ana Rodríguez', lastMessage: 'Perfecto, nos vemos mañana', time: '12:20', unread: 1, avatar: 'AR' },
-                        { id: 4, name: 'Juan Pérez', lastMessage: 'Enviando documentos...', time: '11:15', unread: 0, avatar: 'JP' },
-                        { id: 5, name: 'Elena Martín', lastMessage: 'Ok, entendido', time: '10:30', unread: 3, avatar: 'EM' }
-                    ]);
+                    console.log('Error fetching conversations:', error);
                 }
             };
             
@@ -312,13 +301,7 @@
                         setTasks(data.slice(0, 10));
                     }
                 } catch (error) {
-                    // Sample tasks
-                    setTasks([
-                        { id: 1, title: 'Llamar a cliente nuevo', priority: 'high', due: 'Hoy 15:00', status: 'pending' },
-                        { id: 2, title: 'Enviar propuesta comercial', priority: 'medium', due: 'Mañana', status: 'in_progress' },
-                        { id: 3, title: 'Revisar contratos pendientes', priority: 'low', due: '25 Jun', status: 'pending' },
-                        { id: 4, title: 'Reunión equipo ventas', priority: 'medium', due: '26 Jun', status: 'scheduled' }
-                    ]);
+                    console.log('Error fetching tasks:', error);
                 }
             };
             
@@ -330,14 +313,7 @@
                         setContacts(data.slice(0, 15));
                     }
                 } catch (error) {
-                    // Sample contacts
-                    setContacts([
-                        { id: 1, name: 'María González', phone: '+52 55 1234 5678', avatar: 'MG' },
-                        { id: 2, name: 'Carlos López', phone: '+52 55 2345 6789', avatar: 'CL' },
-                        { id: 3, name: 'Ana Rodríguez', phone: '+52 55 3456 7890', avatar: 'AR' },
-                        { id: 4, name: 'Juan Pérez', phone: '+52 55 4567 8901', avatar: 'JP' },
-                        { id: 5, name: 'Elena Martín', phone: '+52 55 5678 9012', avatar: 'EM' }
-                    ]);
+                    console.log('Error fetching contacts:', error);
                 }
             };
             
@@ -346,38 +322,46 @@
                     case 'conversations':
                         return (
                             <div>
-                                {conversations.map(conv => (
+                                {conversations.length > 0 ? conversations.map(conv => (
                                     <div key={conv.id} className="conversation-item">
-                                        <div className="avatar">{conv.avatar || conv.name?.charAt(0) || '?'}</div>
+                                        <div className="avatar">{conv.contact_name?.charAt(0) || '?'}</div>
                                         <div className="conversation-content">
                                             <div className="conversation-header">
-                                                <span className="contact-name">{conv.name || conv.contact_name || 'Unknown'}</span>
+                                                <span className="contact-name">{conv.contact_name || 'Unknown'}</span>
                                                 <div style={{display: 'flex', alignItems: 'center'}}>
-                                                    <span className="timestamp">{conv.time || '00:00'}</span>
-                                                    {conv.unread > 0 && <span className="unread-badge">{conv.unread}</span>}
+                                                    <span className="timestamp">{new Date(conv.last_message_at).toLocaleTimeString('es-MX', {hour: '2-digit', minute: '2-digit'})}</span>
+                                                    {conv.unread_count > 0 && <span className="unread-badge">{conv.unread_count}</span>}
                                                 </div>
                                             </div>
-                                            <div className="last-message">{conv.lastMessage || conv.last_message || 'No messages'}</div>
+                                            <div className="last-message">{conv.last_message || 'No messages'}</div>
                                         </div>
                                     </div>
-                                ))}
+                                )) : (
+                                    <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
+                                        <p>No conversations available</p>
+                                    </div>
+                                )}
                             </div>
                         );
                     
                     case 'tasks':
                         return (
                             <div>
-                                {tasks.map(task => (
+                                {tasks.length > 0 ? tasks.map(task => (
                                     <div key={task.id} className="task-item">
                                         <div className="task-header">
-                                            <div className="task-title">{task.title || task.name || 'Untitled Task'}</div>
+                                            <div className="task-title">{task.title || 'Untitled Task'}</div>
                                             <span className={`priority-badge priority-${task.priority || 'medium'}`}>
                                                 {task.priority || 'Medium'}
                                             </span>
                                         </div>
-                                        <div className="task-due">{task.due || task.due_date || 'No due date'}</div>
+                                        <div className="task-due">{task.due_date ? new Date(task.due_date).toLocaleDateString('es-MX') : 'No due date'}</div>
                                     </div>
-                                ))}
+                                )) : (
+                                    <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
+                                        <p>No tasks available</p>
+                                    </div>
+                                )}
                             </div>
                         );
                     
@@ -389,15 +373,19 @@
                                     placeholder="Buscar contactos..." 
                                     className="search-bar"
                                 />
-                                {contacts.map(contact => (
+                                {contacts.length > 0 ? contacts.map(contact => (
                                     <div key={contact.id} className="contact-item">
-                                        <div className="avatar">{contact.avatar || contact.name?.charAt(0) || '?'}</div>
+                                        <div className="avatar">{contact.name?.charAt(0) || '?'}</div>
                                         <div className="contact-info">
                                             <div className="contact-name-mobile">{contact.name || 'Unknown Contact'}</div>
-                                            <div className="contact-phone">{contact.phone || contact.primary_phone || 'No phone'}</div>
+                                            <div className="contact-phone">{contact.primary_phone || 'No phone'}</div>
                                         </div>
                                     </div>
-                                ))}
+                                )) : (
+                                    <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
+                                        <p>No contacts available</p>
+                                    </div>
+                                )}
                             </div>
                         );
                     
@@ -419,13 +407,6 @@
                                         <span style={{color: '#25D366', fontWeight: '600'}}>+$1,200</span>
                                     </div>
                                     <div className="task-due">Hoy 14:30</div>
-                                </div>
-                                <div className="task-item">
-                                    <div className="task-header">
-                                        <div className="task-title">Gastos oficina</div>
-                                        <span style={{color: '#d32f2f', fontWeight: '600'}}>-$350</span>
-                                    </div>
-                                    <div className="task-due">Ayer 16:45</div>
                                 </div>
                             </div>
                         );
