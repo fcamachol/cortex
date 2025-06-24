@@ -1,190 +1,75 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Users, Building2, Calendar, Heart, MapPin, Phone, Mail, Star } from "lucide-react";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Plus, Search, Users, Heart, Star, Building2, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import ContactForm from "@/components/contacts/ContactForm";
-import ContactDetailView from "@/components/contacts/ContactDetailView";
-import ContactGroupsManager from "@/components/contacts/ContactGroupsManager";
-// Import placeholder for missing components - will be created later
-// import ContactForm from "@/components/contacts/ContactForm";
-// import ContactDetailView from "@/components/contacts/ContactDetailView"; 
-// import ContactGroupsManager from "@/components/contacts/ContactGroupsManager";
-// import CompanyForm from "@/components/contacts/CompanyForm";
-// import CompanyDetailView from "@/components/contacts/CompanyDetailView";
-import { apiRequest } from "@/lib/queryClient";
-import type { CrmContact, ContactWithRelations } from "@shared/schema";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import type { CrmContact } from "@shared/schema";
 
 interface ContactsPageProps {
   userId: string;
 }
 
 export default function ContactsPage({ userId }: ContactsPageProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedContact, setSelectedContact] = useState<ContactWithRelations | null>(null);
-  const [isContactFormOpen, setIsContactFormOpen] = useState(false);
-  const [isCompanyFormOpen, setIsCompanyFormOpen] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState("all");
-  
-  const queryClient = useQueryClient();
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const [activeTab, setActiveTab] = React.useState("contacts");
 
-  // Fetch all contacts
-  const { data: contacts = [], isLoading } = useQuery({
+  const { data: contactsList = [], isLoading: contactsLoading } = useQuery({
     queryKey: ['/api/crm/contacts', userId],
-    queryFn: () => apiRequest('GET', `/api/crm/contacts?ownerUserId=${userId}`),
-    staleTime: 30000,
+    enabled: !!userId,
   });
 
-  // Ensure contacts is always an array
-  const contactsList = Array.isArray(contacts) ? contacts : [];
-
-  // Fetch companies
-  const { data: companies = [], isLoading: companiesLoading } = useQuery({
+  const { data: companiesList = [], isLoading: companiesLoading } = useQuery({
     queryKey: ['/api/crm/companies', userId],
-    queryFn: () => apiRequest('GET', `/api/crm/companies?spaceId=${userId}`),
-    staleTime: 30000,
+    enabled: !!userId,
   });
 
-  // Ensure companies is always an array
-  const companiesList = Array.isArray(companies) ? companies : [];
-
-  // Fetch upcoming special dates
   const { data: upcomingDates = [] } = useQuery({
     queryKey: ['/api/crm/contacts/upcoming-dates', userId],
-    queryFn: () => apiRequest('GET', `/api/crm/contacts/upcoming-dates?ownerUserId=${userId}&days=30`),
-    staleTime: 60000,
+    enabled: !!userId,
   });
-
-  // Fetch interests
-  const { data: interests = [] } = useQuery({
-    queryKey: ['/api/crm/interests'],
-    queryFn: () => apiRequest('GET', '/api/crm/interests'),
-    staleTime: 300000, // 5 minutes
-  });
-
-  // Search contacts
-  const { data: searchResults = [] } = useQuery({
-    queryKey: ['/api/crm/contacts/search', userId, searchTerm],
-    queryFn: () => apiRequest('GET', `/api/crm/contacts/search?ownerUserId=${userId}&q=${searchTerm}`),
-    enabled: searchTerm.length >= 2,
-    staleTime: 10000,
-  });
-
-  // Create contact mutation
-  const createContactMutation = useMutation({
-    mutationFn: (contactData: any) => apiRequest('POST', '/api/crm/contacts', contactData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts', userId] });
-      setIsContactFormOpen(false);
-    },
-  });
-
-  // Company mutations
-  const createCompanyMutation = useMutation({
-    mutationFn: (companyData: any) => apiRequest('POST', '/api/crm/companies', companyData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/crm/companies', userId] });
-      setIsCompanyFormOpen(false);
-    },
-  });
-
-  const handleCompanyClick = async (company: any) => {
-    try {
-      const fullCompany = await apiRequest('GET', `/api/crm/companies/${company.companyId}`);
-      setSelectedCompany(fullCompany);
-    } catch (error) {
-      console.error('Error fetching company details:', error);
-    }
-  };
-
-  // Filter contacts based on active tab
-  const getFilteredContacts = () => {
-    const dataToFilter = searchTerm.length >= 2 ? searchResults : contactsList;
-    
-    // Ensure we have an array
-    if (!Array.isArray(dataToFilter)) {
-      return [];
-    }
-    
-    switch (activeTab) {
-      case "family":
-        return dataToFilter.filter((c: CrmContact) => c.relationship === "Family");
-      case "clients":
-        return dataToFilter.filter((c: CrmContact) => c.relationship === "Client");
-      case "friends":
-        return dataToFilter.filter((c: CrmContact) => c.relationship === "Friend");
-      default:
-        return dataToFilter;
-    }
-  };
-
-  const handleContactClick = async (contact: CrmContact) => {
-    try {
-      const fullContact = await apiRequest('GET', `/api/crm/contacts/${contact.contactId}/details`);
-      setSelectedContact(fullContact);
-    } catch (error) {
-      console.error('Error fetching contact details:', error);
-    }
-  };
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const getRelationshipColor = (relationship: string) => {
-    switch (relationship) {
-      case "Family": return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      case "Client": return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      case "Friend": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      default: return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-    }
+  const getFilteredContacts = () => {
+    if (!searchTerm) return contactsList;
+    return contactsList.filter((contact: CrmContact) =>
+      contact.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  const handleContactClick = (contact: CrmContact) => {
+    console.log('Contact clicked:', contact);
+    // TODO: Implement contact detail view
+  };
+
+  const handleCompanyClick = (company: any) => {
+    console.log('Company clicked:', company);
+    // TODO: Implement company detail view
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex items-center justify-between space-y-2">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Contacts</h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Manage your network with 360-degree intelligence
+          <h2 className="text-3xl font-bold tracking-tight">Contacts</h2>
+          <p className="text-muted-foreground">
+            Manage your contacts, companies, and relationships
           </p>
         </div>
-        
-        <div className="flex gap-2">
-          <Dialog open={isContactFormOpen} onOpenChange={setIsContactFormOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Contact
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Add New Contact</DialogTitle>
-                <DialogDescription>
-                  Create a comprehensive contact profile with full details
-                </DialogDescription>
-              </DialogHeader>
-              <ContactForm
-                userId={userId}
-                interests={interests}
-                onSubmit={(data) => createContactMutation.mutate({ ...data, ownerUserId: userId })}
-                onCancel={() => setIsContactFormOpen(false)}
-                isLoading={createContactMutation.isPending}
-              />
-            </DialogContent>
-          </Dialog>
-          
-          <Button variant="outline" onClick={() => setIsCompanyFormOpen(true)}>
+        <div className="flex items-center space-x-2">
+          <Button onClick={() => console.log('Add contact')}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Contact
+          </Button>
+          <Button variant="outline" onClick={() => console.log('Add company')}>
             <Building2 className="w-4 h-4 mr-2" />
             Add Company
           </Button>
@@ -192,284 +77,349 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
       </div>
 
       {/* Search Bar */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-        <Input
-          placeholder="Search contacts by name or nickname..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
+      <div className="flex items-center space-x-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search contacts..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+        </div>
       </div>
 
-      <div className="space-y-6">
-        {/* Main Content Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-6 w-full max-w-2xl">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="family">Family</TabsTrigger>
-            <TabsTrigger value="clients">Clients</TabsTrigger>
-            <TabsTrigger value="friends">Friends</TabsTrigger>
-            <TabsTrigger value="companies">Companies</TabsTrigger>
-            <TabsTrigger value="groups">Groups</TabsTrigger>
-          </TabsList>
+      {/* Main Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Main Content Area */}
+        <div className="lg:col-span-3">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="contacts">All Contacts</TabsTrigger>
+              <TabsTrigger value="family">Family</TabsTrigger>
+              <TabsTrigger value="clients">Clients</TabsTrigger>
+              <TabsTrigger value="friends">Friends</TabsTrigger>
+              <TabsTrigger value="companies">Companies</TabsTrigger>
+            </TabsList>
 
-          {/* Contacts Tab Content */}
-          <TabsContent value="all" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  All Contacts ({contactsList.length})
-                </CardTitle>
-              </CardHeader>
-            
-            <CardContent>
-              {isLoading ? (
-                <div className="text-center py-8">Loading contacts...</div>
-              ) : getFilteredContacts().length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  {searchTerm ? "No contacts found" : "No contacts yet"}
-                </div>
-              ) : (
-                <ScrollArea className="h-[600px]">
-                  <div className="space-y-3">
-                    {getFilteredContacts().map((contact: CrmContact) => (
-                      <div
-                        key={contact.contactId}
-                        className="flex items-center p-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                        onClick={() => handleContactClick(contact)}
-                      >
-                        <Avatar className="w-12 h-12 mr-4">
-                          <AvatarImage src={contact.profilePictureUrl || ""} />
-                          <AvatarFallback className="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
-                            {getInitials(contact.fullName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                              {contact.fullName}
-                            </h3>
-                            {contact.relationship && (
-                              <Badge variant="secondary" className={getRelationshipColor(contact.relationship)}>
-                                {contact.relationship}
-                              </Badge>
-                            )}
+            {/* All Contacts Tab */}
+            <TabsContent value="contacts" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    All Contacts ({getFilteredContacts().length})
+                  </CardTitle>
+                  <CardDescription>
+                    Your complete contact directory
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {contactsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    </div>
+                  ) : getFilteredContacts().length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No contacts found. Start by adding your first contact.</p>
+                    </div>
+                  ) : (
+                    <ScrollArea className="h-[600px]">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {getFilteredContacts().map((contact: CrmContact) => (
+                          <Card key={contact.contactId} className="cursor-pointer hover:shadow-md transition-shadow"
+                                onClick={() => handleContactClick(contact)}>
+                            <CardContent className="p-4">
+                              <div className="flex items-start gap-3">
+                                <Avatar className="w-12 h-12">
+                                  <AvatarFallback className="bg-blue-100 text-blue-600">
+                                    {getInitials(contact.fullName)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                                    {contact.fullName}
+                                  </h3>
+                                  {contact.relationship && (
+                                    <Badge variant="secondary" className="mt-1 text-xs">
+                                      {contact.relationship}
+                                    </Badge>
+                                  )}
+                                  {contact.notes && (
+                                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                      {contact.notes}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Family Tab */}
+            <TabsContent value="family" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Heart className="w-5 h-5" />
+                    Family ({contactsList.filter((c: CrmContact) => c.relationship === "Family").length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[600px]">
+                    <div className="space-y-3">
+                      {contactsList.filter((c: CrmContact) => c.relationship === "Family").map((contact: CrmContact) => (
+                        <div
+                          key={contact.contactId}
+                          className="flex items-center p-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                          onClick={() => handleContactClick(contact)}
+                        >
+                          <Avatar className="w-12 h-12 mr-4">
+                            <AvatarFallback className="bg-red-100 text-red-600">
+                              {getInitials(contact.fullName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <h3 className="font-semibold">{contact.fullName}</h3>
+                            {contact.notes && <p className="text-sm text-gray-600">{contact.notes}</p>}
                           </div>
-                          {contact.notes && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-1">
-                              {contact.notes}
-                            </p>
-                          )}
-                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                            Added {new Date(contact.createdAt).toLocaleDateString()}
-                          </p>
                         </div>
-                        
-                        <div className="flex items-center gap-2 text-gray-400">
-                          <Phone className="w-4 h-4" />
-                          <Mail className="w-4 h-4" />
-                          <MapPin className="w-4 h-4" />
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Clients Tab */}
+            <TabsContent value="clients" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Briefcase className="w-5 h-5" />
+                    Clients ({contactsList.filter((c: CrmContact) => c.relationship === "Client").length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[600px]">
+                    <div className="space-y-3">
+                      {contactsList.filter((c: CrmContact) => c.relationship === "Client").map((contact: CrmContact) => (
+                        <div
+                          key={contact.contactId}
+                          className="flex items-center p-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                          onClick={() => handleContactClick(contact)}
+                        >
+                          <Avatar className="w-12 h-12 mr-4">
+                            <AvatarFallback className="bg-blue-100 text-blue-600">
+                              {getInitials(contact.fullName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <h3 className="font-semibold">{contact.fullName}</h3>
+                            {contact.notes && <p className="text-sm text-gray-600">{contact.notes}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Friends Tab */}
+            <TabsContent value="friends" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Star className="w-5 h-5" />
+                    Friends ({contactsList.filter((c: CrmContact) => c.relationship === "Friend").length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[600px]">
+                    <div className="space-y-3">
+                      {contactsList.filter((c: CrmContact) => c.relationship === "Friend").map((contact: CrmContact) => (
+                        <div
+                          key={contact.contactId}
+                          className="flex items-center p-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                          onClick={() => handleContactClick(contact)}
+                        >
+                          <Avatar className="w-12 h-12 mr-4">
+                            <AvatarFallback className="bg-green-100 text-green-600">
+                              {getInitials(contact.fullName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <h3 className="font-semibold">{contact.fullName}</h3>
+                            {contact.notes && <p className="text-sm text-gray-600">{contact.notes}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Companies Tab */}
+            <TabsContent value="companies" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Building2 className="w-5 h-5" />
+                        Companies ({companiesList.length})
+                      </CardTitle>
+                      <CardDescription>
+                        Manage your business relationships and company contacts
+                      </CardDescription>
+                    </div>
+                    <Button onClick={() => console.log('Add company')}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Company
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {companiesLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    </div>
+                  ) : companiesList.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No companies found. Start by adding your first company.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {companiesList.map((company: any) => (
+                        <Card key={company.companyId} className="cursor-pointer hover:shadow-md transition-shadow"
+                              onClick={() => handleCompanyClick(company)}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <Avatar className="w-12 h-12">
+                                <AvatarFallback className="bg-blue-100 text-blue-600">
+                                  <Building2 className="w-6 h-6" />
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                                  {company.companyName}
+                                </h3>
+                                {company.businessType && (
+                                  <Badge variant="secondary" className="mt-1 text-xs">
+                                    {company.businessType}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Upcoming Events */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Heart className="w-5 h-5" />
+                Upcoming Events
+              </CardTitle>
+              <CardDescription>
+                Special dates in the next 30 days
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {upcomingDates.length === 0 ? (
+                <p className="text-sm text-gray-500">No upcoming events</p>
+              ) : (
+                <div className="space-y-3">
+                  {upcomingDates.slice(0, 5).map((event: any) => (
+                    <div key={`${event.contactId}-${event.eventName}`} className="flex items-center gap-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
+                          <Heart className="w-4 h-4 text-red-600 dark:text-red-400" />
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                          {event.contactName}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {event.eventName} • {new Date(event.eventDate).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
-          </TabsContent>
 
-          {/* Family Tab */}
-          <TabsContent value="family" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Heart className="w-5 h-5" />
-                  Family ({contactsList.filter((c: CrmContact) => c.relationship === "Family").length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[600px]">
-                  <div className="space-y-3">
-                    {contactsList.filter((c: CrmContact) => c.relationship === "Family").map((contact: CrmContact) => (
-                      <div
-                        key={contact.contactId}
-                        className="flex items-center p-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                        onClick={() => handleContactClick(contact)}
-                      >
-                        <Avatar className="w-12 h-12 mr-4">
-                          <AvatarFallback className="bg-red-100 text-red-600">
-                            {getInitials(contact.fullName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <h3 className="font-semibold">{contact.fullName}</h3>
-                          {contact.notes && <p className="text-sm text-gray-600">{contact.notes}</p>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* Quick Stats */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Network Overview</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Total Contacts</span>
+                <span className="font-semibold">{contactsList.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Family</span>
+                <span className="font-semibold">
+                  {contactsList.filter((c: CrmContact) => c.relationship === "Family").length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Clients</span>
+                <span className="font-semibold">
+                  {contactsList.filter((c: CrmContact) => c.relationship === "Client").length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Friends</span>
+                <span className="font-semibold">
+                  {contactsList.filter((c: CrmContact) => c.relationship === "Friend").length}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Clients Tab */}
-          <TabsContent value="clients" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Briefcase className="w-5 h-5" />
-                  Clients ({contactsList.filter((c: CrmContact) => c.relationship === "Client").length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[600px]">
-                  <div className="space-y-3">
-                    {contactsList.filter((c: CrmContact) => c.relationship === "Client").map((contact: CrmContact) => (
-                      <div
-                        key={contact.contactId}
-                        className="flex items-center p-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                        onClick={() => handleContactClick(contact)}
-                      >
-                        <Avatar className="w-12 h-12 mr-4">
-                          <AvatarFallback className="bg-blue-100 text-blue-600">
-                            {getInitials(contact.fullName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <h3 className="font-semibold">{contact.fullName}</h3>
-                          {contact.notes && <p className="text-sm text-gray-600">{contact.notes}</p>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Friends Tab */}
-          <TabsContent value="friends" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Star className="w-5 h-5" />
-                  Friends ({contactsList.filter((c: CrmContact) => c.relationship === "Friend").length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[600px]">
-                  <div className="space-y-3">
-                    {contactsList.filter((c: CrmContact) => c.relationship === "Friend").map((contact: CrmContact) => (
-                      <div
-                        key={contact.contactId}
-                        className="flex items-center p-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                        onClick={() => handleContactClick(contact)}
-                      >
-                        <Avatar className="w-12 h-12 mr-4">
-                          <AvatarFallback className="bg-green-100 text-green-600">
-                            {getInitials(contact.fullName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <h3 className="font-semibold">{contact.fullName}</h3>
-                          {contact.notes && <p className="text-sm text-gray-600">{contact.notes}</p>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Companies Tab */}
-          <TabsContent value="companies" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Building2 className="w-5 h-5" />
-                      Companies ({companiesList.length})
-                    </CardTitle>
-                    <CardDescription>
-                      Manage your business relationships and company contacts
-                    </CardDescription>
-                  </div>
-                  <Button onClick={() => setIsCompanyFormOpen(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Company
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {companiesLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                  </div>
-                ) : companiesList.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No companies found. Start by adding your first company.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {companiesList.map((company: any) => (
-                      <Card key={company.companyId} className="cursor-pointer hover:shadow-md transition-shadow"
-                            onClick={() => handleCompanyClick(company)}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-3">
-                            <Avatar className="w-12 h-12">
-                              <AvatarFallback className="bg-blue-100 text-blue-600">
-                                <Building2 className="w-6 h-6" />
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                                {company.companyName}
-                              </h3>
-                              {company.businessType && (
-                                <Badge variant="secondary" className="mt-1 text-xs">
-                                  {company.businessType}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Groups Tab */}
-          <TabsContent value="groups" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Contact Groups</CardTitle>
-                <CardDescription>
-                  Organize your contacts into custom groups for better management
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Contact Groups feature coming soon</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+          {/* Contact Groups */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Contact Groups</CardTitle>
+              <CardDescription>
+                Organize your contacts into custom groups
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8 text-gray-500">
+                <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>Contact Groups feature coming soon</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-
-      {/* TODO: Add modals when components are created */}
     </div>
   );
 }
