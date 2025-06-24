@@ -696,7 +696,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                         <div
                           ref={provided.innerRef}
                           {...provided.droppableProps}
-                          className={`space-y-1 ml-2 ${
+                          className={`space-y-1 ml-0.5 ${
                             snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/20 rounded-lg p-1' : ''
                           }`}
                         >
