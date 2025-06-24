@@ -47,6 +47,12 @@ export function ActionsDashboard() {
     queryKey: ['/api/actions/stats'],
   });
 
+  // Fetch GTD templates
+  const { data: gtdTemplates = [] } = useQuery({
+    queryKey: ['/api/actions/gtd-templates'],
+    staleTime: 10 * 60 * 1000,
+  });
+
   const toggleRuleMutation = useMutation({
     mutationFn: (ruleId: string) => apiRequest(`/api/actions/rules/${ruleId}/toggle`, {
       method: 'PATCH',
@@ -179,12 +185,131 @@ export function ActionsDashboard() {
         </div>
       )}
 
-      <Tabs defaultValue="rules" className="space-y-4">
+      <Tabs defaultValue="gtd-templates" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="rules">My Rules</TabsTrigger>
+          <TabsTrigger value="gtd-templates">GTD Templates</TabsTrigger>
+          <TabsTrigger value="rules">Custom Rules</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="executions">Execution Log</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="gtd-templates" className="space-y-6">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">GTD Enhanced Emoji System</h3>
+                <p className="text-sm text-muted-foreground">
+                  Getting Things Done methodology with emoji triggers for WhatsApp messages
+                </p>
+              </div>
+              <Badge variant="secondary">{gtdTemplates.length} templates</Badge>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {gtdTemplates.map((template: any) => (
+                <Card key={template.templateId} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
+                          <span className="text-xl">{template.defaultConfig.triggerConditions.emoji}</span>
+                        </div>
+                        <div>
+                          <CardTitle className="text-base">{template.templateName}</CardTitle>
+                          <Badge variant="outline" className="text-xs mt-1">
+                            {template.actionType.replace('create_', '')}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <CardDescription className="text-sm mt-2">
+                      {template.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Category:</span>
+                        <Badge variant="secondary" size="sm">
+                          {template.category.replace('gtd-', '')}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Priority:</span>
+                        <Badge variant="outline" size="sm">
+                          {template.defaultConfig.actionConfig.priority || 'medium'}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Status:</span>
+                        <Badge variant="outline" size="sm" className="text-green-600 border-green-300">
+                          Active
+                        </Badge>
+                      </div>
+                      {template.defaultConfig.actionConfig.tags && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {template.defaultConfig.actionConfig.tags.slice(0, 3).map((tag: string) => (
+                            <Badge key={tag} variant="secondary" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {gtdTemplates.length === 0 && (
+              <Card>
+                <CardContent className="flex items-center justify-center py-8">
+                  <div className="text-center space-y-2">
+                    <Zap className="w-8 h-8 mx-auto text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      No GTD templates found. Click "Init GTD System" to initialize all emoji templates.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* How to Use GTD */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="w-5 h-5" />
+                  How to Use GTD System
+                </CardTitle>
+                <CardDescription>
+                  Transform any WhatsApp message into organized tasks with simple emoji reactions
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <h4 className="font-semibold">1. Find a Message</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Navigate to any WhatsApp conversation and find a message you want to convert
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold">2. React with Emoji</h4>
+                    <p className="text-sm text-muted-foreground">
+                      React to the message with the appropriate GTD emoji (✅ for tasks, 🎯 for projects, etc.)
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold">3. Auto-Creation</h4>
+                    <p className="text-sm text-muted-foreground">
+                      The system automatically creates the appropriate item with full context and details
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
         <TabsContent value="rules" className="space-y-4 h-full overflow-auto">
           {rulesLoading ? (
