@@ -68,12 +68,10 @@ export function SpaceDetailView({ space, onBack, onCreateItem }: SpaceDetailView
   };
 
   const itemTypes = [
-    { type: 'task', label: 'Tasks', icon: CheckSquare },
     { type: 'project', label: 'Projects', icon: Briefcase },
+    { type: 'task', label: 'Tasks', icon: CheckSquare },
     { type: 'note', label: 'Notes', icon: FileText },
-    { type: 'document', label: 'Documents', icon: FileText },
-    { type: 'event', label: 'Events', icon: Calendar },
-    { type: 'finance', label: 'Finance', icon: DollarSign }
+    { type: 'document', label: 'Documents', icon: FileText }
   ];
 
   return (
@@ -131,10 +129,11 @@ export function SpaceDetailView({ space, onBack, onCreateItem }: SpaceDetailView
       {/* Content */}
       <div className="flex-1 p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="items">Items ({spaceItems.length})</TabsTrigger>
             <TabsTrigger value="subspaces">Subspaces ({childSpaces.length})</TabsTrigger>
+            <TabsTrigger value="projects">Projects ({getItemsByType('project').length})</TabsTrigger>
+            <TabsTrigger value="content">Content ({getItemsByType('task').length + getItemsByType('note').length + getItemsByType('document').length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-6 space-y-6">
@@ -168,106 +167,220 @@ export function SpaceDetailView({ space, onBack, onCreateItem }: SpaceDetailView
               </Card>
             </div>
 
-            {/* Items by Type */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Items by Type</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {itemTypes.map(({ type, label, icon: Icon }) => {
-                    const count = getItemsByType(type).length;
-                    return (
-                      <div key={type} className="flex items-center gap-3 p-3 rounded-lg border">
+            {/* Content Summary */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {itemTypes.map(({ type, label, icon: Icon }) => {
+                const count = getItemsByType(type).length;
+                if (count === 0) return null; // Only show if there are items
+                return (
+                  <Card key={type}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
                         <Icon className="h-5 w-5 text-gray-600" />
                         <div>
                           <div className="font-medium">{label}</div>
                           <div className="text-sm text-gray-600">{count} items</div>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </TabsContent>
 
-          <TabsContent value="items" className="mt-6">
+          <TabsContent value="projects" className="mt-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold">Space Items</h3>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Item
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {itemTypes.map(({ type, label, icon: Icon }) => (
-                    <DropdownMenuItem 
-                      key={type}
-                      onClick={() => onCreateItem?.(type)}
-                    >
-                      <Icon className="h-4 w-4 mr-2" />
-                      {label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <h3 className="text-lg font-semibold">Projects</h3>
+              <Button onClick={() => onCreateItem?.('project')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Project
+              </Button>
             </div>
 
-            {spaceItems.length === 0 ? (
+            {getItemsByType('project').length === 0 ? (
               <div className="text-center py-12 text-gray-500">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <h3 className="text-lg font-medium mb-2">No items yet</h3>
-                <p className="text-sm mb-4">Start by adding your first item to this space</p>
-                <Button onClick={() => onCreateItem?.('note')}>
+                <Briefcase className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <h3 className="text-lg font-medium mb-2">No projects yet</h3>
+                <p className="text-sm mb-4">Create your first project to organize your work</p>
+                <Button onClick={() => onCreateItem?.('project')}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Add First Item
+                  Create First Project
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
-                {itemTypes.map(({ type, label, icon: Icon }) => {
-                  const items = getItemsByType(type);
-                  if (items.length === 0) return null;
-
-                  return (
-                    <Card key={type}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Icon className="h-5 w-5" />
-                          {label} ({items.length})
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          {items.map((item: SpaceItem) => (
-                            <div 
-                              key={item.itemId} 
-                              className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                            >
-                              <div className="flex items-center gap-3">
-                                <Icon className="h-4 w-4 text-gray-600" />
-                                <div>
-                                  <div className="font-medium">{item.title}</div>
-                                  {item.description && (
-                                    <div className="text-sm text-gray-600">{item.description}</div>
-                                  )}
-                                </div>
-                              </div>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {getItemsByType('project').map((project: SpaceItem) => (
+                  <Card key={project.itemId} className="hover:shadow-md transition-shadow cursor-pointer">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Briefcase className="h-5 w-5" />
+                        {project.title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {project.description && (
+                        <p className="text-sm text-gray-600 mb-3">{project.description}</p>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline">Active</Badge>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="content" className="mt-6">
+            <div className="space-y-6">
+              {/* Tasks Section */}
+              {getItemsByType('task').length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <CheckSquare className="h-5 w-5" />
+                        Tasks ({getItemsByType('task').length})
+                      </CardTitle>
+                      <Button size="sm" onClick={() => onCreateItem?.('task')}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Task
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {getItemsByType('task').map((task: SpaceItem) => (
+                        <div 
+                          key={task.itemId} 
+                          className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <CheckSquare className="h-4 w-4 text-gray-600" />
+                            <div>
+                              <div className="font-medium">{task.title}</div>
+                              {task.description && (
+                                <div className="text-sm text-gray-600">{task.description}</div>
+                              )}
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Notes Section */}
+              {getItemsByType('note').length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        Notes ({getItemsByType('note').length})
+                      </CardTitle>
+                      <Button size="sm" onClick={() => onCreateItem?.('note')}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Note
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {getItemsByType('note').map((note: SpaceItem) => (
+                        <div 
+                          key={note.itemId} 
+                          className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <FileText className="h-4 w-4 text-gray-600" />
+                            <div>
+                              <div className="font-medium">{note.title}</div>
+                              {note.description && (
+                                <div className="text-sm text-gray-600">{note.description}</div>
+                              )}
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Documents Section */}
+              {getItemsByType('document').length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        Documents ({getItemsByType('document').length})
+                      </CardTitle>
+                      <Button size="sm" onClick={() => onCreateItem?.('document')}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Document
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {getItemsByType('document').map((document: SpaceItem) => (
+                        <div 
+                          key={document.itemId} 
+                          className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <FileText className="h-4 w-4 text-gray-600" />
+                            <div>
+                              <div className="font-medium">{document.title}</div>
+                              {document.description && (
+                                <div className="text-sm text-gray-600">{document.description}</div>
+                              )}
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Empty state for content tab */}
+              {getItemsByType('task').length === 0 && 
+               getItemsByType('note').length === 0 && 
+               getItemsByType('document').length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-medium mb-2">No content yet</h3>
+                  <p className="text-sm mb-4">Add tasks, notes, or documents to this space</p>
+                  <div className="flex justify-center gap-2">
+                    <Button onClick={() => onCreateItem?.('task')}>
+                      <CheckSquare className="h-4 w-4 mr-2" />
+                      Add Task
+                    </Button>
+                    <Button variant="outline" onClick={() => onCreateItem?.('note')}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Add Note
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="subspaces" className="mt-6">
