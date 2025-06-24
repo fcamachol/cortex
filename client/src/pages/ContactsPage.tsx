@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { CrmContact } from "@shared/schema";
-import { ContactForm } from "@/components/contacts/ContactForm";
+import { ContactFormBlocks } from "@/components/contacts/ContactFormBlocks";
 import { CompanyForm } from "@/components/contacts/CompanyForm";
 
 interface ContactsPageProps {
@@ -80,11 +80,11 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                 Add Contact
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add New Contact</DialogTitle>
               </DialogHeader>
-              <ContactForm 
+              <ContactFormBlocks 
                 ownerUserId={userId} 
                 spaceId={selectedSpace?.id}
                 onSuccess={() => setIsAddContactOpen(false)}

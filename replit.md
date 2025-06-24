@@ -127,6 +127,7 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 24, 2025: Completely redesigned contact form to use Notion-style block system - replaced collapsible sections with dynamic information blocks that can be added through a central "Add Information Block" menu with phone, email, address, company, and note blocks
 - June 24, 2025: Updated address display to match unified design pattern with label-based format like phones and emails - shows custom name or type with primary designation and condensed address format
 - June 24, 2025: Enhanced Contact Information section to support multiple phones, emails, and addresses with dynamic add/remove functionality - users can now add unlimited contact methods with type classification and primary designation
 - June 24, 2025: Redesigned contact form with collapsible sections approach - moved phone/email to collapsible "Contact Information" section, added expandable Professional, Personal, and Notes sections with plus sign indicators for intuitive form expansion
