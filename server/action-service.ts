@@ -69,7 +69,7 @@ export const ActionService = {
             const matchingRules = await storage.getActionRulesByTrigger(triggerType, triggerValue, instanceId);
             
             console.log(`🔍 Debug: Found ${matchingRules.length} rules for ${triggerType}:${triggerValue}:${instanceId}`);
-            console.log(`🔍 Rules data:`, JSON.stringify(matchingRules, null, 2));
+            console.log(`🔍 Rules data:`, matchingRules);
             
             // Debug: Check individual rule field access
             if (matchingRules.length > 0) {
