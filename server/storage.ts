@@ -78,27 +78,7 @@ class DatabaseStorage {
     // Enhanced Spaces Management (Notion/ClickUp style) with unlimited hierarchy
     async getSpaces(userId: string): Promise<any[]> {
         try {
-            const spaces = await db.select({
-                spaceId: appSpaces.spaceId,
-                spaceName: appSpaces.spaceName,
-                description: appSpaces.description,
-                category: appSpaces.category,
-                level: appSpaces.level,
-                path: appSpaces.path,
-                icon: appSpaces.icon,
-                color: appSpaces.color,
-                coverImage: appSpaces.coverImage,
-                spaceType: appSpaces.spaceType,
-                privacy: appSpaces.privacy,
-                parentSpaceId: appSpaces.parentSpaceId,
-                isArchived: appSpaces.isArchived,
-                isFavorite: appSpaces.isFavorite,
-                displayOrder: appSpaces.displayOrder,
-                templateId: appSpaces.templateId,
-                creatorUserId: appSpaces.creatorUserId,
-                createdAt: appSpaces.createdAt,
-                updatedAt: appSpaces.updatedAt,
-            })
+            const spaces = await db.select()
             .from(appSpaces)
             .where(and(
                 eq(appSpaces.creatorUserId, userId),
@@ -2325,8 +2305,6 @@ class DatabaseStorage {
     // Space Items Management - projects, tasks, notes, documents, events, finance
     async createSpaceItem(itemData: any): Promise<any> {
         try {
-            const { appSpaceItems } = await import("@shared/schema");
-            
             const [newItem] = await db.insert(appSpaceItems).values({
                 spaceId: itemData.spaceId,
                 itemType: itemData.itemType,
@@ -2352,8 +2330,6 @@ class DatabaseStorage {
 
     async getSpaceItems(spaceId: number, itemType?: string): Promise<any[]> {
         try {
-            const { appSpaceItems } = await import("@shared/schema");
-            
             let query = db.select().from(appSpaceItems).where(eq(appSpaceItems.spaceId, spaceId));
             
             if (itemType) {
@@ -2393,8 +2369,6 @@ class DatabaseStorage {
 
     async updateSpaceItem(itemId: number, updates: any): Promise<any> {
         try {
-            const { appSpaceItems } = await import("@shared/schema");
-            
             const [updatedItem] = await db.update(appSpaceItems)
                 .set({ ...updates, updatedAt: new Date() })
                 .where(eq(appSpaceItems.itemId, itemId))
@@ -2409,7 +2383,6 @@ class DatabaseStorage {
 
     async deleteSpaceItem(itemId: number): Promise<void> {
         try {
-            const { appSpaceItems } = await import("@shared/schema");
             await db.delete(appSpaceItems).where(eq(appSpaceItems.itemId, itemId));
         } catch (error) {
             console.error('Error deleting space item:', error);
