@@ -127,6 +127,8 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 24, 2025: Fixed mobile app scrolling issue by removing overflow:hidden from body and adding proper overflow-y:auto with touch scrolling support for iOS devices
+- June 24, 2025: Fixed contact editing bug - now opens proper edit mode instead of create new contact modal, uses ContactDetailView with ContactFormBlocks in edit mode
 - June 24, 2025: Implemented collapsible sidebar with icon-only mode - added toggle button in header, smooth transition animations, collapsed state with tooltips, and proper badge indicators for icon mode to improve space utilization
 - June 24, 2025: Updated Expo React Native setup guide to use WhatsApp-style bottom tab navigation - replaced material top tabs with bottom tabs featuring proper icons, badge indicators for unread counts, and improved mobile UX following user preference
 - June 24, 2025: Updated ContactModal to match platform's clean modern UX/UI style - removed dashed borders, implemented clean gray sections with proper hover states, updated activity tabs with icons and green accent color matching the contacts page design
