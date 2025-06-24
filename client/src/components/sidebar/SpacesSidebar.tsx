@@ -54,8 +54,10 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
       if (!data) return [];
       // Handle both array format and object format (categorized)
       if (Array.isArray(data)) return data;
-      // If it's an object with categories, flatten to array
-      return Object.values(data).flat();
+      // If it's an object with categories, flatten to array but preserve childSpaces
+      const flatSpaces = Object.values(data).flat();
+      console.log('Spaces with children:', flatSpaces.filter(s => s.childSpaces && s.childSpaces.length > 0).map(s => `${s.spaceName}: ${s.childSpaces.length} children`));
+      return flatSpaces;
     }
   });
 
@@ -243,11 +245,14 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
 
   const getChildSpaces = (parentSpaceId: number): Space[] => {
     if (!spaces) return [];
-    // Find all spaces that have this space as their parent
-    const allSpaces = Object.values(spaces).flat();
-    const children = allSpaces.filter(space => space.parentSpaceId === parentSpaceId);
-    console.log(`Getting children for space ${parentSpaceId}:`, children.map(c => `${c.spaceName} (ID: ${c.spaceId})`));
-    return children;
+    // Find the parent space first
+    const parentSpace = spaces.find(space => space.spaceId === parentSpaceId);
+    if (parentSpace && parentSpace.childSpaces) {
+      console.log(`Found children for space ${parentSpaceId}:`, parentSpace.childSpaces.map(c => `${c.spaceName} (ID: ${c.spaceId})`));
+      return parentSpace.childSpaces;
+    }
+    console.log(`No children found for space ${parentSpaceId}`);
+    return [];
   };
 
   const renderSpace = (space: Space, level: number = 0, index: number = 0) => {
