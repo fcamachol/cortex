@@ -15,11 +15,12 @@
 Once your Expo project is created, install these dependencies in the Shell:
 
 ```bash
-# Navigation dependencies
+# Navigation dependencies (WhatsApp-style)
 npx expo install @react-navigation/native
-npx expo install @react-navigation/bottom-tabs
+npx expo install @react-navigation/material-top-tabs
 npx expo install @react-navigation/stack
 npx expo install react-native-screens react-native-safe-area-context
+npx expo install react-native-tab-view react-native-pager-view
 
 # UI and Icons
 npx expo install react-native-vector-icons
@@ -62,6 +63,7 @@ src/
 │       └── ContactItem.js
 ├── screens/
 │   ├── ConversationsScreen.js
+│   ├── ChatScreen.js
 │   ├── TasksScreen.js
 │   ├── ContactsScreen.js
 │   ├── CalendarScreen.js
@@ -109,15 +111,16 @@ export const Colors = {
 };
 ```
 
-## Step 5: Main App.js Structure
+## Step 5: WhatsApp-Style Navigation Structure
 
-Replace your App.js with:
+Replace your App.js with WhatsApp-style top tab navigation:
 
 ```javascript
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StatusBar } from 'expo-status-bar';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
+import { StatusBar, View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import ConversationsScreen from './src/screens/ConversationsScreen';
@@ -126,67 +129,208 @@ import ContactsScreen from './src/screens/ContactsScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
 import FinanceScreen from './src/screens/FinanceScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import ChatScreen from './src/screens/ChatScreen';
 
 import { Colors } from './src/constants/Colors';
 
-const Tab = createBottomTabNavigator();
+const Tab = createMaterialTopTabNavigator();
+const Stack = createStackNavigator();
 
+// WhatsApp-style header component
+const WhatsAppHeader = ({ navigation, title = "Cortex CRM" }) => (
+  <View style={{
+    backgroundColor: Colors.primaryDark,
+    height: 110,
+    paddingTop: 40,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  }}>
+    <Text style={{
+      color: 'white',
+      fontSize: 20,
+      fontWeight: 'bold',
+    }}>
+      {title}
+    </Text>
+    
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <TouchableOpacity 
+        style={{ marginRight: 20 }}
+        onPress={() => {/* Camera action */}}
+      >
+        <Ionicons name="camera" size={24} color="white" />
+      </TouchableOpacity>
+      
+      <TouchableOpacity 
+        style={{ marginRight: 20 }}
+        onPress={() => {/* Search action */}}
+      >
+        <Ionicons name="search" size={24} color="white" />
+      </TouchableOpacity>
+      
+      <TouchableOpacity 
+        onPress={() => navigation.navigate('Settings')}
+      >
+        <Ionicons name="ellipsis-vertical" size={24} color="white" />
+      </TouchableOpacity>
+    </View>
+  </View>
+);
+
+// Main tab navigator with WhatsApp-style tabs
+function MainTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        tabBarStyle: {
+          backgroundColor: Colors.primaryDark,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
+        tabBarIndicatorStyle: {
+          backgroundColor: 'white',
+          height: 3,
+        },
+        tabBarLabelStyle: {
+          color: 'white',
+          fontSize: 14,
+          fontWeight: '600',
+          textTransform: 'uppercase',
+        },
+        tabBarActiveTintColor: 'white',
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.7)',
+        tabBarPressColor: 'rgba(255,255,255,0.1)',
+      }}
+      initialRouteName="Chats"
+    >
+      <Tab.Screen 
+        name="Tasks" 
+        component={TasksScreen}
+        options={{ tabBarLabel: 'TASKS' }}
+      />
+      <Tab.Screen 
+        name="Chats" 
+        component={ConversationsScreen}
+        options={{ tabBarLabel: 'CHATS' }}
+      />
+      <Tab.Screen 
+        name="Contacts" 
+        component={ContactsScreen}
+        options={{ tabBarLabel: 'CONTACTS' }}
+      />
+      <Tab.Screen 
+        name="Finance" 
+        component={FinanceScreen}
+        options={{ tabBarLabel: 'FINANCE' }}
+      />
+    </Tab.Navigator>
+  );
+}
+
+// Main app with stack navigation
 export default function App() {
   return (
     <NavigationContainer>
-      <StatusBar style="light" backgroundColor={Colors.primaryDark} />
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused, color, size }) => {
-            let iconName;
-
-            switch (route.name) {
-              case 'Conversations':
-                iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
-                break;
-              case 'Tasks':
-                iconName = focused ? 'checkmark-circle' : 'checkmark-circle-outline';
-                break;
-              case 'Contacts':
-                iconName = focused ? 'people' : 'people-outline';
-                break;
-              case 'Calendar':
-                iconName = focused ? 'calendar' : 'calendar-outline';
-                break;
-              case 'Finance':
-                iconName = focused ? 'card' : 'card-outline';
-                break;
-              case 'Settings':
-                iconName = focused ? 'settings' : 'settings-outline';
-                break;
-            }
-
-            return <Ionicons name={iconName} size={size} color={color} />;
-          },
-          tabBarActiveTintColor: Colors.primary,
-          tabBarInactiveTintColor: Colors.textSecondary,
-          tabBarStyle: {
-            backgroundColor: Colors.background,
-            borderTopColor: Colors.border,
-            paddingBottom: 5,
-            height: 60,
-          },
-          headerStyle: {
-            backgroundColor: Colors.primaryDark,
-          },
-          headerTintColor: Colors.background,
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-        })}
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primaryDark} />
+      <Stack.Navigator
+        screenOptions={{
+          header: ({ navigation, route }) => (
+            <WhatsAppHeader navigation={navigation} title="Cortex CRM" />
+          ),
+        }}
       >
-        <Tab.Screen name="Conversations" component={ConversationsScreen} />
-        <Tab.Screen name="Tasks" component={TasksScreen} />
-        <Tab.Screen name="Contacts" component={ContactsScreen} />
-        <Tab.Screen name="Calendar" component={CalendarScreen} />
-        <Tab.Screen name="Finance" component={FinanceScreen} />
-        <Tab.Screen name="Settings" component={SettingsScreen} />
-      </Tab.Navigator>
+        <Stack.Screen 
+          name="Main" 
+          component={MainTabs}
+          options={{ headerShown: true }}
+        />
+        <Stack.Screen 
+          name="Chat" 
+          component={ChatScreen}
+          options={({ route }) => ({
+            header: ({ navigation }) => (
+              <View style={{
+                backgroundColor: Colors.primaryDark,
+                height: 110,
+                paddingTop: 40,
+                paddingHorizontal: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}>
+                <TouchableOpacity 
+                  onPress={() => navigation.goBack()}
+                  style={{ marginRight: 12 }}
+                >
+                  <Ionicons name="arrow-back" size={24} color="white" />
+                </TouchableOpacity>
+                
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: 12,
+                }}>
+                  <Text style={{ color: 'white', fontWeight: 'bold' }}>
+                    {route.params?.contactName?.charAt(0) || '?'}
+                  </Text>
+                </View>
+                
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: 'white', fontSize: 18, fontWeight: '600' }}>
+                    {route.params?.contactName || 'Chat'}
+                  </Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>
+                    online
+                  </Text>
+                </View>
+                
+                <View style={{ flexDirection: 'row' }}>
+                  <TouchableOpacity style={{ marginRight: 16 }}>
+                    <Ionicons name="videocam" size={24} color="white" />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={{ marginRight: 16 }}>
+                    <Ionicons name="call" size={24} color="white" />
+                  </TouchableOpacity>
+                  <TouchableOpacity>
+                    <Ionicons name="ellipsis-vertical" size={24} color="white" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ),
+          })}
+        />
+        <Stack.Screen 
+          name="Settings" 
+          component={SettingsScreen}
+          options={{
+            header: ({ navigation }) => (
+              <View style={{
+                backgroundColor: Colors.primaryDark,
+                height: 110,
+                paddingTop: 40,
+                paddingHorizontal: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}>
+                <TouchableOpacity 
+                  onPress={() => navigation.goBack()}
+                  style={{ marginRight: 12 }}
+                >
+                  <Ionicons name="arrow-back" size={24} color="white" />
+                </TouchableOpacity>
+                <Text style={{ color: 'white', fontSize: 20, fontWeight: 'bold' }}>
+                  Settings
+                </Text>
+              </View>
+            ),
+          }}
+        />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }
@@ -256,7 +400,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
 import { apiService } from '../services/api';
 
-const ConversationsScreen = () => {
+const ConversationsScreen = ({ navigation }) => {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -294,7 +438,10 @@ const ConversationsScreen = () => {
   const renderConversation = ({ item }) => (
     <TouchableOpacity 
       style={styles.conversationItem}
-      onPress={() => Alert.alert('Open Chat', `Chat with ${item.contact_name}`)}
+      onPress={() => navigation.navigate('Chat', { 
+        contactName: item.contact_name,
+        chatId: item.id 
+      })}
     >
       <View style={styles.avatar}>
         <Text style={styles.avatarText}>
@@ -424,7 +571,192 @@ const styles = StyleSheet.create({
 export default ConversationsScreen;
 ```
 
-## Step 8: Running Your App
+## Step 8: ChatScreen Component
+
+Create `src/screens/ChatScreen.js` for individual chat interface:
+
+```javascript
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../constants/Colors';
+
+const ChatScreen = ({ route }) => {
+  const { contactName, chatId } = route.params;
+  const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState('');
+
+  useEffect(() => {
+    // Load chat messages
+    loadMessages();
+  }, [chatId]);
+
+  const loadMessages = () => {
+    // Sample messages - replace with API call
+    setMessages([
+      {
+        id: 1,
+        text: 'Hello! How can I help you today?',
+        fromMe: false,
+        timestamp: new Date(Date.now() - 300000),
+      },
+      {
+        id: 2,
+        text: 'Hi! I need information about your services.',
+        fromMe: true,
+        timestamp: new Date(Date.now() - 240000),
+      },
+      {
+        id: 3,
+        text: 'Of course! What specific service are you interested in?',
+        fromMe: false,
+        timestamp: new Date(Date.now() - 180000),
+      },
+    ]);
+  };
+
+  const sendMessage = () => {
+    if (inputText.trim()) {
+      const newMessage = {
+        id: Date.now(),
+        text: inputText,
+        fromMe: true,
+        timestamp: new Date(),
+      };
+      setMessages([...messages, newMessage]);
+      setInputText('');
+    }
+  };
+
+  const renderMessage = ({ item }) => (
+    <View style={[
+      styles.messageContainer,
+      item.fromMe ? styles.myMessage : styles.otherMessage
+    ]}>
+      <Text style={[
+        styles.messageText,
+        item.fromMe ? styles.myMessageText : styles.otherMessageText
+      ]}>
+        {item.text}
+      </Text>
+      <Text style={styles.messageTime}>
+        {item.timestamp.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}
+      </Text>
+    </View>
+  );
+
+  return (
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <FlatList
+        data={messages}
+        renderItem={renderMessage}
+        keyExtractor={(item) => item.id.toString()}
+        style={styles.messagesList}
+        inverted
+      />
+      
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.textInput}
+          value={inputText}
+          onChangeText={setInputText}
+          placeholder="Type a message..."
+          multiline
+        />
+        <TouchableOpacity 
+          style={styles.sendButton}
+          onPress={sendMessage}
+        >
+          <Ionicons name="send" size={20} color="white" />
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#E5DDD5', // WhatsApp chat background
+  },
+  messagesList: {
+    flex: 1,
+    padding: 10,
+  },
+  messageContainer: {
+    maxWidth: '80%',
+    marginVertical: 2,
+    padding: 10,
+    borderRadius: 10,
+  },
+  myMessage: {
+    alignSelf: 'flex-end',
+    backgroundColor: Colors.primaryLight,
+  },
+  otherMessage: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'white',
+  },
+  messageText: {
+    fontSize: 16,
+  },
+  myMessageText: {
+    color: Colors.text,
+  },
+  otherMessageText: {
+    color: Colors.text,
+  },
+  messageTime: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    alignSelf: 'flex-end',
+    marginTop: 4,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    padding: 10,
+    backgroundColor: 'white',
+    alignItems: 'flex-end',
+  },
+  textInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    maxHeight: 100,
+    marginRight: 10,
+  },
+  sendButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
+
+export default ChatScreen;
+```
+
+## Step 9: Running Your App
 
 1. **Start the Expo development server**:
    ```bash
