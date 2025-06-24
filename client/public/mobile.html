@@ -70,7 +70,8 @@
         .content {
             flex: 1;
             overflow-y: auto;
-            padding: 16px;
+            padding: 0;
+            background: white;
         }
         
         .bottom-nav {
@@ -140,18 +141,20 @@
             color: #000;
         }
         
-        .timestamp {
+        .time {
             font-size: 12px;
-            color: #999;
+            color: #6b7280;
+            margin-bottom: 4px;
+            white-space: nowrap;
         }
         
         .last-message {
-            color: #666;
+            color: #6b7280;
             font-size: 14px;
-            display: -webkit-box;
-            -webkit-line-clamp: 1;
-            -webkit-box-orient: vertical;
             overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            line-height: 1.3;
         }
         
         .unread-badge {
@@ -238,24 +241,37 @@
         }
         
         .search-bar {
-            background: #f0f0f0;
-            border: none;
-            padding: 12px 16px;
-            border-radius: 20px;
-            margin-bottom: 16px;
-            font-size: 16px;
             width: 100%;
+            padding: 12px 16px;
+            border: none;
+            border-bottom: 1px solid #e5e7eb;
+            background: #f9fafb;
+            font-size: 16px;
+            outline: none;
+            margin: 0;
+        }
+        
+        .search-bar:focus {
+            background: white;
+            border-bottom-color: #25D366;
         }
         
         .empty-state {
             text-align: center;
             padding: 60px 20px;
-            color: #666;
+            color: #6b7280;
         }
         
         .empty-state h3 {
+            font-size: 18px;
             margin-bottom: 8px;
-            color: #333;
+            color: #374151;
+            font-weight: 500;
+        }
+        
+        .empty-state p {
+            font-size: 14px;
+            color: #9ca3af;
         }
         
         .finance-card {
@@ -384,13 +400,42 @@
                                     const isGroup = conv.type === 'group' || (conv.chatId && conv.chatId.includes('@g.us'));
                                     const unreadCount = conv.unreadCount || 0;
                                     
-                                    // Format timestamp properly
-                                    const lastMessageTime = conv.lastMessageTimestamp ? 
-                                        new Date(conv.lastMessageTimestamp).toLocaleTimeString('en-US', { 
-                                            hour: 'numeric', 
-                                            minute: '2-digit',
-                                            hour12: true 
-                                        }) : '';
+                                    // Format timestamp to show relative time like WhatsApp
+                                    let displayTime = '';
+                                    if (conv.lastMessageTimestamp) {
+                                        const messageDate = new Date(conv.lastMessageTimestamp);
+                                        const now = new Date();
+                                        const diffInHours = (now - messageDate) / (1000 * 60 * 60);
+                                        
+                                        if (diffInHours < 24) {
+                                            // Same day - show time
+                                            displayTime = messageDate.toLocaleTimeString('en-US', { 
+                                                hour: 'numeric', 
+                                                minute: '2-digit',
+                                                hour12: true 
+                                            });
+                                        } else if (diffInHours < 168) {
+                                            // Within a week - show day
+                                            displayTime = messageDate.toLocaleDateString('en-US', { weekday: 'short' });
+                                        } else {
+                                            // Older - show date
+                                            displayTime = messageDate.toLocaleDateString('en-US', { 
+                                                month: 'short', 
+                                                day: 'numeric' 
+                                            });
+                                        }
+                                    }
+                                    
+                                    // Format last message preview like WhatsApp
+                                    let messagePreview = lastMessage;
+                                    if (conv.lastMessageFromMe) {
+                                        messagePreview = `You: ${lastMessage}`;
+                                    }
+                                    
+                                    // Truncate long messages
+                                    if (messagePreview.length > 35) {
+                                        messagePreview = messagePreview.substring(0, 35) + '...';
+                                    }
                                     
                                     return (
                                         <div key={conv.chatId || index} className="chat-item">
@@ -399,10 +444,10 @@
                                             </div>
                                             <div className="chat-info">
                                                 <div className="chat-name">{displayName}</div>
-                                                <div className="last-message">{lastMessage}</div>
+                                                <div className="last-message">{messagePreview}</div>
                                             </div>
                                             <div className="chat-meta">
-                                                {lastMessageTime && <div className="time">{lastMessageTime}</div>}
+                                                {displayTime && <div className="time">{displayTime}</div>}
                                                 {unreadCount > 0 && <div className="unread-badge">{unreadCount}</div>}
                                             </div>
                                         </div>
