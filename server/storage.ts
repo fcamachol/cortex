@@ -2514,6 +2514,43 @@ class DatabaseStorage {
             .returning();
         return template;
     }
+
+    // Action Rules Operations
+    async getActionRules(): Promise<any[]> {
+        const rules = await db.select().from(actionRules);
+        return rules;
+    }
+
+    async createActionRule(ruleData: any): Promise<any> {
+        const [rule] = await db.insert(actionRules)
+            .values({
+                ruleName: ruleData.ruleName,
+                description: ruleData.description,
+                triggerType: ruleData.triggerType,
+                triggerConditions: ruleData.triggerConditions,
+                actionType: ruleData.actionType,
+                actionConfig: ruleData.actionConfig,
+                isActive: ruleData.isActive !== false,
+                instanceFilters: ruleData.instanceFilters || null,
+                gtdTemplate: ruleData.gtdTemplate || false,
+                category: ruleData.category || null
+            })
+            .returning();
+        return rule;
+    }
+
+    async updateActionRule(ruleId: string, updates: any): Promise<any> {
+        const [rule] = await db.update(actionRules)
+            .set(updates)
+            .where(eq(actionRules.ruleId, ruleId))
+            .returning();
+        return rule;
+    }
+
+    async deleteActionRule(ruleId: string): Promise<void> {
+        await db.delete(actionRules)
+            .where(eq(actionRules.ruleId, ruleId));
+    }
 }
 
 export const storage = new DatabaseStorage();

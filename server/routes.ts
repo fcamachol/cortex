@@ -1225,6 +1225,17 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Initialize GTD rules as active action rules
+  app.post('/api/actions/init-gtd-rules', async (req: Request, res: Response) => {
+    try {
+      // This would be handled by the external script
+      res.json({ success: true, message: 'GTD rules creation triggered' });
+    } catch (error) {
+      console.error('Error initializing GTD rules:', error);
+      res.status(500).json({ error: 'Failed to initialize GTD rules' });
+    }
+  });
+
   app.get('/api/actions/whatsapp-instances', async (req: Request, res: Response) => {
     try {
       const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';

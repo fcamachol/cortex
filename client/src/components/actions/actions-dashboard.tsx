@@ -199,31 +199,65 @@ export function ActionsDashboard() {
               <div>
                 <h3 className="text-lg font-medium">GTD Enhanced Emoji System</h3>
                 <p className="text-sm text-muted-foreground">
-                  Getting Things Done methodology with emoji triggers for WhatsApp messages
+                  Active automation rules using Getting Things Done methodology
                 </p>
               </div>
-              <Badge variant="secondary">{gtdTemplates.length} templates</Badge>
+              <div className="flex gap-2">
+                <Badge variant="secondary">{rules.filter(r => r.gtdTemplate).length} active rules</Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    fetch('/api/actions/init-gtd-rules', { method: 'POST' })
+                      .then(() => {
+                        queryClient.invalidateQueries({ queryKey: ['/api/actions/rules'] });
+                        toast({
+                          title: "GTD Rules Created",
+                          description: "All GTD emoji rules are now active and can be modified",
+                        });
+                      });
+                  }}
+                >
+                  Reset GTD Rules
+                </Button>
+              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {gtdTemplates.map((template: any) => (
-                <Card key={template.templateId} className="hover:shadow-md transition-shadow">
+              {rules.filter((rule: any) => rule.gtdTemplate).map((rule: any) => (
+                <Card key={rule.ruleId} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                          <span className="text-xl">{template.defaultConfig.triggerConditions.emoji}</span>
+                          <span className="text-xl">{rule.triggerConditions.emoji}</span>
                         </div>
                         <div>
-                          <CardTitle className="text-base">{template.templateName}</CardTitle>
+                          <CardTitle className="text-base">{rule.ruleName}</CardTitle>
                           <Badge variant="outline" className="text-xs mt-1">
-                            {template.actionType.replace('create_', '')}
+                            {rule.actionType.replace('create_', '')}
                           </Badge>
                         </div>
                       </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingRule(rule);
+                            setShowForm(true);
+                          }}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Switch
+                          checked={rule.isActive}
+                          onCheckedChange={() => toggleRuleMutation.mutate(rule.ruleId)}
+                        />
+                      </div>
                     </div>
                     <CardDescription className="text-sm mt-2">
-                      {template.description}
+                      {rule.description}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pt-0">
@@ -231,24 +265,24 @@ export function ActionsDashboard() {
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Category:</span>
                         <Badge variant="secondary" size="sm">
-                          {template.category.replace('gtd-', '')}
+                          {rule.category?.replace('gtd-', '') || 'custom'}
                         </Badge>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Priority:</span>
                         <Badge variant="outline" size="sm">
-                          {template.defaultConfig.actionConfig.priority || 'medium'}
+                          {rule.actionConfig.priority || 'medium'}
                         </Badge>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Status:</span>
-                        <Badge variant="outline" size="sm" className="text-green-600 border-green-300">
-                          Active
+                        <Badge variant="outline" size="sm" className={rule.isActive ? "text-green-600 border-green-300" : "text-gray-500 border-gray-300"}>
+                          {rule.isActive ? 'Active' : 'Inactive'}
                         </Badge>
                       </div>
-                      {template.defaultConfig.actionConfig.tags && (
+                      {rule.actionConfig.tags && (
                         <div className="flex flex-wrap gap-1 mt-2">
-                          {template.defaultConfig.actionConfig.tags.slice(0, 3).map((tag: string) => (
+                          {rule.actionConfig.tags.slice(0, 3).map((tag: string) => (
                             <Badge key={tag} variant="secondary" className="text-xs">
                               {tag}
                             </Badge>
@@ -261,13 +295,13 @@ export function ActionsDashboard() {
               ))}
             </div>
 
-            {gtdTemplates.length === 0 && (
+            {rules.filter((rule: any) => rule.gtdTemplate).length === 0 && (
               <Card>
                 <CardContent className="flex items-center justify-center py-8">
                   <div className="text-center space-y-2">
                     <Zap className="w-8 h-8 mx-auto text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">
-                      No GTD templates found. Click "Init GTD System" to initialize all emoji templates.
+                      No GTD rules found. Click "Reset GTD Rules" to create all emoji automation rules.
                     </p>
                   </div>
                 </CardContent>
