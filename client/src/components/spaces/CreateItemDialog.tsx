@@ -108,7 +108,7 @@ export function CreateItemDialog({ open, onOpenChange, spaceId, itemType, onSucc
   const Icon = getItemIcon(itemType);
 
   return (
-    <Sheet open={isOpen} onOpenChange={handleClose}>
+    <Sheet open={open} onOpenChange={handleClose}>
       <SheetContent side="right" className="w-[400px] sm:w-[540px]">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
