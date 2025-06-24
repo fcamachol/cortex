@@ -1171,7 +1171,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
               </div>
             )}
           </TabsContent>
-        ))}
+          ))}
         </div>
       </Tabs>
     </div>
