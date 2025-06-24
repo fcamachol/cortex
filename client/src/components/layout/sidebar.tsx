@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, CheckSquare, Users, Calendar, Plug, Settings, User, Activity, Zap, LogOut, Plus, Hash, Database, DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
+import { MessageCircle, CheckSquare, Users, Calendar, Plug, Settings, User, Activity, Zap, LogOut, Plus, Hash, DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatPhoneNumber } from "@/lib/phoneUtils";
@@ -101,7 +101,6 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
       badge: "247",
       badgeColor: "bg-gray-500"
     },
-
     {
       id: "calendar",
       label: "Calendar",
@@ -123,7 +122,6 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
       badge: null,
       badgeColor: null
     },
-
   ];
 
   return (
@@ -162,7 +160,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto custom-scrollbar">
-        {/* Spaces - moved to top */}
+        {/* Spaces - Full View */}
         {!isCollapsed && (
           <div className="p-3 border-b border-gray-200 dark:border-gray-800">
             <div className="p-3">
@@ -176,84 +174,82 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
                       <Plus className="h-3 w-3" />
                     </Button>
                   </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create New Space</DialogTitle>
-                    <DialogDescription>
-                      Create a new workspace to organize your projects and tasks.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form
-                    onSubmit={handleCreateSpace}
-                    className="space-y-4"
-                  >
-                    <div className="space-y-2">
-                      <Label htmlFor="space-name">Space Name</Label>
-                      <Input
-                        id="space-name"
-                        placeholder="e.g., Personal Projects"
-                        value={spaceForm.name}
-                        onChange={(e) => setSpaceForm(prev => ({ ...prev, name: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="space-description">Description (Optional)</Label>
-                      <Textarea
-                        id="space-description"
-                        placeholder="Describe what this space is for..."
-                        value={spaceForm.description}
-                        onChange={(e) => setSpaceForm(prev => ({ ...prev, description: e.target.value }))}
-                        rows={3}
-                      />
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsCreateSpaceOpen(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={createSpaceMutation.isPending || !spaceForm.name.trim()}
-                      >
-                        {createSpaceMutation.isPending ? 'Creating...' : 'Create Space'}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-            <div className="space-y-2">
-              {spaces.length === 0 ? (
-                <div className="flex items-center px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <Hash className="w-3 h-3 text-blue-500 mr-3" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                      No spaces yet
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Create your first space
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                spaces.map((space: any) => (
-                  <div key={space.spaceId} className="flex items-center px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 cursor-pointer transition-colors">
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Create New Space</DialogTitle>
+                      <DialogDescription>
+                        Create a new workspace to organize your projects and tasks.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateSpace} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="space-name">Space Name</Label>
+                        <Input
+                          id="space-name"
+                          placeholder="e.g., Personal Projects"
+                          value={spaceForm.name}
+                          onChange={(e) => setSpaceForm(prev => ({ ...prev, name: e.target.value }))}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="space-description">Description (Optional)</Label>
+                        <Textarea
+                          id="space-description"
+                          placeholder="Describe what this space is for..."
+                          value={spaceForm.description}
+                          onChange={(e) => setSpaceForm(prev => ({ ...prev, description: e.target.value }))}
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsCreateSpaceOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={createSpaceMutation.isPending || !spaceForm.name.trim()}
+                        >
+                          {createSpaceMutation.isPending ? 'Creating...' : 'Create Space'}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <div className="space-y-2">
+                {spaces.length === 0 ? (
+                  <div className="flex items-center px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                     <Hash className="w-3 h-3 text-blue-500 mr-3" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {space.name}
+                        No spaces yet
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        {space.description || 'No description'}
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Create your first space
                       </p>
                     </div>
                   </div>
-                ))
-              )}
+                ) : (
+                  spaces.map((space: any) => (
+                    <div key={space.spaceId} className="flex items-center px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 cursor-pointer transition-colors">
+                      <Hash className="w-3 h-3 text-blue-500 mr-3" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                          {space.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {space.description || 'No description'}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -283,7 +279,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
                 <Button
                   key={item.id}
                   variant="ghost"
-                  className={`w-full ${isCollapsed ? 'justify-center px-0' : 'justify-start'} ${isActive ? 'nav-item active' : 'nav-item'}`}
+                  className={`w-full ${isCollapsed ? 'justify-center px-0 relative' : 'justify-start'} ${isActive ? 'nav-item active' : 'nav-item'}`}
                   onClick={() => onSetActiveModule(item.id)}
                   title={isCollapsed ? item.label : undefined}
                 >
