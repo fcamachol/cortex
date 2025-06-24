@@ -7,11 +7,13 @@ import {
   actionRules,
   actionExecutions,
   tasks,
+  crmTasks,
   type ActionRule,
   type InsertActionExecution
 } from '../shared/schema';
 import * as chrono from 'chrono-node';
 import { calendarService } from './calendar-service';
+import { GTD_TEMPLATES, GTD_ACTION_PROCESSOR } from './gtd-templates';
 
 export interface TriggerContext {
   messageId: string;
