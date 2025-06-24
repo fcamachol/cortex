@@ -319,7 +319,8 @@
                     const response = await fetch('/api/whatsapp/conversations/7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
                     if (response.ok) {
                         const data = await response.json();
-                        console.log('Loaded real conversations:', data.length);
+                        console.log('Raw conversations data:', data);
+                        console.log('First conversation:', data[0]);
                         setConversations(data.slice(0, 10));
                     } else {
                         throw new Error('Conversations API not available');
@@ -376,20 +377,23 @@
                                     placeholder="Search chats..." 
                                     className="search-bar"
                                 />
-                                {conversations.length > 0 ? conversations.map(conv => {
-                                    const displayName = conv.contact_name || conv.displayName || conv.phone || 'Unknown';
-                                    const lastMessage = conv.last_message || 'No messages';
-                                    const isGroup = conv.is_group || conv.isGroup || false;
-                                    const unreadCount = conv.unread_count || 0;
-                                    const lastMessageTime = conv.last_message_at ? 
-                                        new Date(conv.last_message_at).toLocaleTimeString('en-US', { 
+                                {conversations.length > 0 ? conversations.map((conv, index) => {
+                                    // Use correct field names from API response
+                                    const displayName = conv.displayName || conv.chatId || 'Unknown Contact';
+                                    const lastMessage = conv.lastMessageContent || 'No messages yet';
+                                    const isGroup = conv.type === 'group' || (conv.chatId && conv.chatId.includes('@g.us'));
+                                    const unreadCount = conv.unreadCount || 0;
+                                    
+                                    // Format timestamp properly
+                                    const lastMessageTime = conv.lastMessageTimestamp ? 
+                                        new Date(conv.lastMessageTimestamp).toLocaleTimeString('en-US', { 
                                             hour: 'numeric', 
                                             minute: '2-digit',
                                             hour12: true 
                                         }) : '';
                                     
                                     return (
-                                        <div key={conv.id} className="chat-item">
+                                        <div key={conv.chatId || index} className="chat-item">
                                             <div className="avatar">
                                                 {isGroup ? '👥' : (displayName.charAt(0).toUpperCase() || '?')}
                                             </div>
