@@ -298,9 +298,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                 isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''
               } ${snapshot.isDragging ? 'shadow-lg bg-white dark:bg-gray-800 border border-blue-300' : ''}`}
               style={{ 
-                paddingLeft: `${8 + level * 12}px`,
-                borderLeft: level > 0 ? '2px solid #e5e7eb' : 'none',
-                marginLeft: level > 0 ? '8px' : '0px'
+                paddingLeft: `${6 + level * 8}px`
               }}
               onClick={() => {
                 onSpaceSelect?.(space);
@@ -500,7 +498,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                     className={`space-y-0.5 mt-0.5 ${
                       snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/20 rounded-md p-1' : ''
                     }`}
-                    style={{ marginLeft: `${8 + level * 12}px` }}
+                    style={{ marginLeft: `${4 + level * 6}px` }}
                   >
                     {children.map((childSpace, childIndex) => (
                       <div key={childSpace.spaceId}>
