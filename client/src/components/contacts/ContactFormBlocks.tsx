@@ -1068,3 +1068,143 @@ function ContactViewMode({ blocks, contactName, profession, company }: ContactVi
     </div>
   );
 }
+
+function LinkBlock({ block, onUpdate, ownerUserId }: { 
+  block: Block; 
+  onUpdate: (blockId: string, field: string, value: any) => void;
+  ownerUserId: string;
+}) {
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+
+  const { data: contactsList = [] } = useQuery({
+    queryKey: ['/api/crm/contacts', ownerUserId],
+    queryFn: () => fetch(`/api/crm/contacts?ownerUserId=${ownerUserId}`).then(res => res.json()),
+    enabled: !!ownerUserId,
+  });
+
+  const selectedContact = contactsList.find((c: any) => c.contactId === block.data.contactId);
+
+  return (
+    <div className="space-y-3">
+      {/* Contact Selection */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-600 mb-1">Linked Contact</label>
+          {selectedContact ? (
+            <div className="flex items-center gap-2 p-2 border border-gray-200 rounded-lg bg-gray-50">
+              <User className="h-4 w-4 text-blue-500" />
+              <span className="text-sm font-medium">{selectedContact.fullName}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsLinkModalOpen(true)}
+                className="text-xs text-blue-600 hover:text-blue-700 p-1 h-auto ml-auto"
+              >
+                Change
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => setIsLinkModalOpen(true)}
+              className="w-full justify-start text-sm text-gray-500"
+            >
+              <LinkIcon className="h-4 w-4 mr-2" />
+              Select contact to link...
+            </Button>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-600 mb-1">Relationship Type</label>
+          <Select
+            value={block.data.relationshipType || ''}
+            onValueChange={(value) => onUpdate(block.id, 'relationshipType', value)}
+          >
+            <SelectTrigger className="h-10 border-gray-300 rounded-lg">
+              <SelectValue placeholder="Select relationship..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="spouse">Spouse</SelectItem>
+              <SelectItem value="partner">Partner</SelectItem>
+              <SelectItem value="parent">Parent</SelectItem>
+              <SelectItem value="child">Child</SelectItem>
+              <SelectItem value="sibling">Sibling</SelectItem>
+              <SelectItem value="friend">Friend</SelectItem>
+              <SelectItem value="colleague">Colleague</SelectItem>
+              <SelectItem value="business_partner">Business Partner</SelectItem>
+              <SelectItem value="mentor">Mentor</SelectItem>
+              <SelectItem value="mentee">Mentee</SelectItem>
+              <SelectItem value="neighbor">Neighbor</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div>
+        <label className="block text-sm font-medium text-gray-600 mb-1">Notes (Optional)</label>
+        <Textarea
+          placeholder="Add notes about this relationship..."
+          value={block.data.notes || ''}
+          onChange={(e) => onUpdate(block.id, 'notes', e.target.value)}
+          rows={2}
+          className="border-gray-300 rounded-lg"
+        />
+      </div>
+
+      {/* Link to Contact Modal */}
+      <Dialog open={isLinkModalOpen} onOpenChange={setIsLinkModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LinkIcon className="h-5 w-5" />
+              Link to Another Contact
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="contact-select" className="text-sm font-medium">Select Contact</Label>
+              <Select
+                value={block.data.contactId?.toString() || ''}
+                onValueChange={(value) => onUpdate(block.id, 'contactId', parseInt(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a contact..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {contactsList.map((contact: any) => (
+                    <SelectItem key={contact.contactId} value={contact.contactId.toString()}>
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        <span>{contact.fullName}</span>
+                        {contact.relationship && (
+                          <span className="text-xs text-gray-500">({contact.relationship})</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setIsLinkModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => setIsLinkModalOpen(false)}
+              disabled={!block.data.contactId}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Link Contact
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
