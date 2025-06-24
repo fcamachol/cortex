@@ -2534,7 +2534,7 @@ class DatabaseStorage {
         }
     }
 
-    async getActionRules(): Promise<any[]> {
+    async getActionRules(userId?: string): Promise<any[]> {
         try {
             const result = await db.execute(sql`
                 SELECT 
@@ -2548,11 +2548,14 @@ class DatabaseStorage {
                     is_active as "isActive",
                     total_executions as "totalExecutions",
                     last_executed_at as "lastExecutedAt",
-                    created_at as "createdAt"
+                    created_at as "createdAt",
+                    user_id as "userId"
                 FROM actions.action_rules
                 WHERE is_active = true
+                ${userId ? sql`AND user_id = ${userId}` : sql``}
                 ORDER BY rule_name ASC
             `);
+            console.log('🔍 Raw action rules from DB:', result.rows);
             return result.rows;
         } catch (error) {
             console.error('Error fetching action rules:', error);
