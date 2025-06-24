@@ -60,9 +60,21 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
   };
 
   const handleCreateSubspace = (parentId: number) => {
+    // Auto-expand parent when creating subspace
+    setExpandedSpaces(prev => new Set([...prev, parentId]));
     setParentSpaceId(parentId);
     setShowCreateDialog(true);
   };
+
+  // Expose expand function globally for CreateSpaceDialog
+  React.useEffect(() => {
+    window.expandSpace = (spaceId: number) => {
+      setExpandedSpaces(prev => new Set([...prev, spaceId]));
+    };
+    return () => {
+      delete window.expandSpace;
+    };
+  }, []);
 
   const handleCreateRootSpace = () => {
     setParentSpaceId(undefined);
@@ -77,8 +89,14 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedSpace) => {
       queryClient.invalidateQueries({ queryKey: ['/api/spaces'] });
+      
+      // Auto-expand parent space when a subspace is created
+      if (updatedSpace.parentSpaceId) {
+        setExpandedSpaces(prev => new Set([...prev, updatedSpace.parentSpaceId]));
+      }
+      
       toast({
         title: "Space moved",
         description: "Space hierarchy updated successfully.",
@@ -170,7 +188,11 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
               className={`group flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors ${
                 isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''
               } ${snapshot.isDragging ? 'shadow-lg bg-white dark:bg-gray-800 border border-blue-300' : ''}`}
-              style={{ paddingLeft: `${8 + level * 16}px` }}
+              style={{ 
+                paddingLeft: `${8 + level * 12}px`,
+                borderLeft: level > 0 ? '2px solid #e5e7eb' : 'none',
+                marginLeft: level > 0 ? '8px' : '0px'
+              }}
               onClick={() => {
                 onSpaceSelect?.(space);
                 setLocation(`/spaces?spaceId=${space.spaceId}`);
@@ -272,12 +294,38 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className={`space-y-1 ml-4 pl-2 border-l border-gray-200 dark:border-gray-700 ${
-                      snapshot.isDraggingOver ? 'border-blue-300 bg-blue-50 dark:bg-blue-900/20' : ''
+                    className={`space-y-1 ${
+                      snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/20 rounded-md p-1' : ''
                     }`}
+                    style={{ marginLeft: `${16 + level * 8}px` }}
                   >
                     {space.childSpaces!.map((childSpace, childIndex) => 
                       renderSpace(childSpace, level + 1, childIndex)
+                    )}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            )}
+
+            {/* Show empty drop zone when expanded but no children */}
+            {isExpanded && !hasChildren && (
+              <Droppable droppableId={`space-children-${space.spaceId}`} type="SPACE">
+                {(provided, snapshot) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className={`min-h-[20px] ${
+                      snapshot.isDraggingOver 
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-dashed border-blue-300 rounded-md p-2' 
+                        : 'border-2 border-dashed border-transparent'
+                    }`}
+                    style={{ marginLeft: `${24 + level * 16}px` }}
+                  >
+                    {snapshot.isDraggingOver && (
+                      <div className="text-xs text-blue-600 dark:text-blue-400 text-center">
+                        Drop here to create subspace
+                      </div>
                     )}
                     {provided.placeholder}
                   </div>
