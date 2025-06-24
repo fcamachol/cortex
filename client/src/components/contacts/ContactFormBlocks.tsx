@@ -194,21 +194,21 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
                   <Button 
                     onClick={() => setIsPreviewMode(!isPreviewMode)} 
                     type="button" 
-                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 text-sm font-medium rounded-md"
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm font-medium rounded-lg shadow-sm"
                   >
-                    {isPreviewMode ? 'Edit' : 'Preview'}
+                    + {isPreviewMode ? 'Edit' : 'Preview'}
                   </Button>
                   <Button 
                     variant="outline" 
                     type="button" 
-                    className="text-gray-700 border-gray-300 hover:bg-gray-50 px-4 py-2 text-sm font-medium rounded-md"
+                    className="text-gray-600 border-gray-300 hover:bg-gray-50 hover:text-gray-700 px-4 py-2 text-sm font-medium rounded-lg bg-white"
                   >
                     Message
                   </Button>
                   <Button 
                     variant="outline" 
                     type="button" 
-                    className="text-gray-700 border-gray-300 hover:bg-gray-50 px-3 py-2 text-sm font-medium rounded-md"
+                    className="text-gray-600 border-gray-300 hover:bg-gray-50 hover:text-gray-700 px-3 py-2 text-sm font-medium rounded-lg bg-white"
                   >
                     ⋯
                   </Button>
@@ -319,7 +319,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
           <div className="flex justify-center pt-6">
             <Button 
               type="submit"
-              className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 text-base font-medium rounded-md"
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 text-sm font-medium rounded-lg shadow-sm"
               disabled={createContactMutation.isPending}
             >
               {createContactMutation.isPending ? "Creating Contact..." : "Create Contact"}
