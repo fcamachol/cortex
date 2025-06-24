@@ -246,6 +246,21 @@ export function TasksPage() {
     }
   });
 
+  // Update project mutation
+  const updateProjectMutation = useMutation({
+    mutationFn: ({ projectId, updates }: { projectId: number; updates: any }) => 
+      apiRequest('PATCH', `/api/crm/projects/${projectId}`, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/projects'] });
+      toast({ title: 'Project updated successfully' });
+      setShowProjectForm(false);
+      setEditingProject(null);
+    },
+    onError: () => {
+      toast({ title: 'Failed to update project', variant: 'destructive' });
+    }
+  });
+
   // Filter tasks based on search and filters
   const filteredTasks = tasks?.filter(task => {
     const matchesSearch = !searchQuery || 
@@ -282,6 +297,15 @@ export function TasksPage() {
 
   const handleTaskDelete = (taskId: number) => {
     deleteTaskMutation.mutate(taskId);
+  };
+
+  const handleProjectCreate = (projectData: any) => {
+    createProjectMutation.mutate(projectData);
+  };
+
+  const handleProjectUpdate = (projectId: number, updates: any) => {
+    // Add project update mutation if needed
+    updateProjectMutation.mutate({ projectId, updates });
   };
 
   if (tasksLoading || projectsLoading) {

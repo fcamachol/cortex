@@ -39,7 +39,7 @@ const projectFormSchema = z.object({
 
 type ProjectFormData = z.infer<typeof projectFormSchema>;
 
-export function ProjectForm({ project, onSubmit, onClose, isLoading }: ProjectFormProps) {
+export function ProjectForm({ project, onSubmit, onClose, isLoading, isOpen = true }: ProjectFormProps) {
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectFormSchema),
     defaultValues: {
@@ -61,7 +61,7 @@ export function ProjectForm({ project, onSubmit, onClose, isLoading }: ProjectFo
   };
 
   return (
-    <Dialog open={true} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
