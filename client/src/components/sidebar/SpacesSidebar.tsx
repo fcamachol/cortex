@@ -31,6 +31,7 @@ interface SpacesSidebarProps {
 
 export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarProps) {
   const [expandedSpaces, setExpandedSpaces] = useState<Set<number>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['work', 'personal']));
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [parentSpaceId, setParentSpaceId] = useState<number | undefined>();
   const { toast } = useToast();
@@ -59,6 +60,16 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
     setExpandedSpaces(newExpanded);
   };
 
+  const toggleCategory = (category: string) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(category)) {
+      newExpanded.delete(category);
+    } else {
+      newExpanded.add(category);
+    }
+    setExpandedCategories(newExpanded);
+  };
+
   const handleCreateSubspace = (parentId: number) => {
     // Auto-expand parent when creating subspace
     setExpandedSpaces(prev => new Set([...prev, parentId]));
@@ -71,8 +82,12 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
     window.expandSpace = (spaceId: number) => {
       setExpandedSpaces(prev => new Set([...prev, spaceId]));
     };
+    window.expandCategory = (category: string) => {
+      setExpandedCategories(prev => new Set([...prev, category]));
+    };
     return () => {
       delete window.expandSpace;
+      delete window.expandCategory;
     };
   }, []);
 
@@ -391,33 +406,93 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
           </div>
 
           {/* Spaces List */}
-          <div className="space-y-3">
-            {Object.entries(categorizedSpaces).map(([category, categorySpaces]) => (
-              <div key={category} className="space-y-1">
-                {category !== 'uncategorized' && (
-                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide px-2">
-                    {category}
-                  </div>
-                )}
-                <Droppable droppableId={`category-${category}`} type="SPACE">
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={`space-y-1 ${
-                        snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2' : ''
-                      }`}
-                    >
-                      {categorySpaces.map((space, index) => renderSpace(space, 0, index))}
-                      {provided.placeholder}
+          <div className="space-y-2">
+            {Object.entries(categorizedSpaces).map(([category, categorySpaces]) => {
+              const isCategoryExpanded = expandedCategories.has(category);
+              const categoryName = category === 'uncategorized' ? 'Other' : category.charAt(0).toUpperCase() + category.slice(1);
+              
+              return (
+                <div key={category} className="space-y-1">
+                  {/* Category Header */}
+                  <div 
+                    className="flex items-center justify-between px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer group transition-colors"
+                    onClick={() => toggleCategory(category)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0 opacity-60 hover:opacity-100"
+                      >
+                        {isCategoryExpanded ? (
+                          <ChevronDown className="h-3 w-3" />
+                        ) : (
+                          <ChevronRight className="h-3 w-3" />
+                        )}
+                      </Button>
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                        {categoryName}
+                      </span>
+                      <Badge variant="outline" className="text-xs h-4 px-1 opacity-60">
+                        {categorySpaces.length}
+                      </Badge>
                     </div>
+                    
+                    {/* Category Actions */}
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCreateRootSpace();
+                        }}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Category Content */}
+                  {isCategoryExpanded && (
+                    <Droppable droppableId={`category-${category}`} type="SPACE">
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={`space-y-1 ml-4 ${
+                            snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2' : ''
+                          }`}
+                        >
+                          {categorySpaces.map((space, index) => renderSpace(space, 0, index))}
+                          {provided.placeholder}
+                          
+                          {/* Empty state for category */}
+                          {categorySpaces.length === 0 && (
+                            <div className="text-center py-4 text-gray-400">
+                              <div className="text-xs">No spaces in {categoryName.toLowerCase()}</div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="mt-2 text-xs"
+                                onClick={handleCreateRootSpace}
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                Add Space
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </Droppable>
                   )}
-                </Droppable>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
 
-          {/* Empty State */}
+          {/* Global Empty State */}
           {hierarchicalSpaces.length === 0 && (
             <div className="text-center py-8">
               <div className="text-gray-400 mb-2">
@@ -432,8 +507,32 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                 onClick={handleCreateRootSpace}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Create Space
+                Create First Space
               </Button>
+            </div>
+          )}
+
+          {/* Collapse All / Expand All */}
+          {hierarchicalSpaces.length > 0 && (
+            <div className="flex justify-center pt-2 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-6 px-2"
+                  onClick={() => setExpandedCategories(new Set(['work', 'personal', 'uncategorized']))}
+                >
+                  Expand All
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-6 px-2"
+                  onClick={() => setExpandedCategories(new Set())}
+                >
+                  Collapse All
+                </Button>
+              </div>
             </div>
           )}
         </div>
