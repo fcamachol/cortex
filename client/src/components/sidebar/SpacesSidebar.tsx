@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { CreateSpaceDialog } from '@/components/spaces/CreateSpaceDialog';
+import { CreateItemDialog } from '@/components/spaces/CreateItemDialog';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
