@@ -112,9 +112,26 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   });
 
   const onSubmit = (values: z.infer<typeof actionRuleSchema>) => {
+    // Clean trigger conditions based on trigger type
+    let cleanedTriggerConditions = { ...triggerConditions };
+    
+    if (values.triggerType === 'reaction') {
+      cleanedTriggerConditions = {
+        reactions: triggerConditions.reactions || []
+      };
+    } else if (values.triggerType === 'keyword') {
+      cleanedTriggerConditions = {
+        keywords: triggerConditions.keywords || []
+      };
+    } else if (values.triggerType === 'hashtag') {
+      cleanedTriggerConditions = {
+        hashtag: triggerConditions.hashtag || ''
+      };
+    }
+
     const payload = {
       ...values,
-      triggerConditions,
+      triggerConditions: cleanedTriggerConditions,
       actionConfig,
       performerFilters: {
         allowedPerformers: [values.performerFilter]
@@ -124,6 +141,8 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
       } : null
     };
 
+    console.log('Submitting payload:', payload);
+
     if (rule) {
       updateMutation.mutate(payload);
     } else {
@@ -132,10 +151,28 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   };
 
   const handleTriggerConditionChange = (key: string, value: any) => {
-    setTriggerConditions((prev: any) => ({
-      ...prev,
-      [key]: value
-    }));
+    setTriggerConditions((prev: any) => {
+      // Clear irrelevant conditions when trigger type changes
+      const currentTriggerType = form.getValues('triggerType');
+      let cleanedConditions = { ...prev };
+      
+      // Remove conditions that don't apply to current trigger type
+      if (currentTriggerType === 'reaction') {
+        delete cleanedConditions.keywords;
+        delete cleanedConditions.hashtag;
+      } else if (currentTriggerType === 'keyword') {
+        delete cleanedConditions.reactions;
+        delete cleanedConditions.hashtag;
+      } else if (currentTriggerType === 'hashtag') {
+        delete cleanedConditions.reactions;
+        delete cleanedConditions.keywords;
+      }
+      
+      return {
+        ...cleanedConditions,
+        [key]: value
+      };
+    });
   };
 
   const handleActionConfigChange = (key: string, value: any) => {
