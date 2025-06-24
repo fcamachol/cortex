@@ -145,7 +145,7 @@ class DatabaseStorage {
                 displayOrder: spaceData.displayOrder || 0,
                 templateId: spaceData.templateId,
                 creatorUserId: spaceData.creatorUserId,
-                workspaceId: spaceData.workspaceId,
+                workspaceId: null, // Make optional for now
                 settings: spaceData.settings || {}
             }).returning();
             return newSpace;

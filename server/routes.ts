@@ -696,7 +696,6 @@ export async function registerRoutes(app: Express): Promise<void> {
       
       // In a real app, get userId from authentication
       spaceData.creatorUserId = spaceData.creatorUserId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      spaceData.workspaceId = spaceData.workspaceId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
 
       console.log('Creating space with data:', spaceData);
       const space = await storage.createSpace(spaceData);
@@ -2739,6 +2738,59 @@ export async function registerRoutes(app: Express): Promise<void> {
     };
     
     await WebhookController.handleIncomingEvent(modifiedReq as Request, res);
+  });
+
+  // Enhanced Spaces API endpoints
+  app.patch('/api/spaces/:spaceId', async (req: Request, res: Response) => {
+    try {
+      const { spaceId } = req.params;
+      const updates = req.body;
+      
+      const updatedSpace = await storage.updateSpace(parseInt(spaceId), updates);
+      res.json(updatedSpace);
+    } catch (error) {
+      console.error('Error updating space:', error);
+      res.status(500).json({ error: 'Failed to update space' });
+    }
+  });
+
+  app.delete('/api/spaces/:spaceId', async (req: Request, res: Response) => {
+    try {
+      const { spaceId } = req.params;
+      await storage.deleteSpace(parseInt(spaceId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting space:', error);
+      res.status(500).json({ error: 'Failed to delete space' });
+    }
+  });
+
+  app.get('/api/space-templates', async (req: Request, res: Response) => {
+    try {
+      const templates = await storage.getSpaceTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching space templates:', error);
+      res.status(500).json({ error: 'Failed to fetch space templates' });
+    }
+  });
+
+  app.post('/api/spaces/from-template', async (req: Request, res: Response) => {
+    try {
+      const { templateId, spaceData } = req.body;
+      
+      if (!templateId) {
+        return res.status(400).json({ error: 'Template ID is required' });
+      }
+
+      spaceData.creatorUserId = spaceData.creatorUserId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+
+      const space = await storage.createSpaceFromTemplate(templateId, spaceData);
+      res.status(201).json(space);
+    } catch (error) {
+      console.error('Error creating space from template:', error);
+      res.status(500).json({ error: 'Failed to create space from template' });
+    }
   });
 
   // Error handling middleware
