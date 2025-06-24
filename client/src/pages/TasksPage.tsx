@@ -55,7 +55,7 @@ interface ChecklistItem {
 }
 
 export function TasksPage() {
-  const [view, setView] = useState<'board' | 'list'>('board');
+  const [view, setView] = useState<'board' | 'list' | 'projects'>('board');
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -411,10 +411,11 @@ export function TasksPage() {
       </Card>
 
       {/* Task Display */}
-      <Tabs defaultValue="board" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+      <Tabs value={view} onValueChange={(value) => setView(value as 'board' | 'list' | 'projects')} className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="board">Board View</TabsTrigger>
           <TabsTrigger value="list">List View</TabsTrigger>
+          <TabsTrigger value="projects">Projects</TabsTrigger>
         </TabsList>
         <TabsContent value="board" className="space-y-4 h-[calc(100vh-220px)] overflow-hidden">
           <TaskBoard 
@@ -444,6 +445,90 @@ export function TasksPage() {
               onTaskClick={setSelectedTask}
             />
           )}
+        </TabsContent>
+
+        <TabsContent value="projects">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {(projects || []).map((project: any) => (
+              <Card key={project.project_id} className="cursor-pointer hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{project.project_name}</CardTitle>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setEditingProject(project);
+                            setShowProjectForm(true);
+                          }}
+                        >
+                          Edit Project
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          setSelectedProject(project.project_id);
+                          setView('board');
+                        }}>
+                          View Tasks
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <Badge 
+                    variant={
+                      project.status === 'active' ? 'default' :
+                      project.status === 'completed' ? 'secondary' :
+                      project.status === 'on_hold' ? 'outline' : 'destructive'
+                    }
+                    className="w-fit"
+                  >
+                    {project.status}
+                  </Badge>
+                </CardHeader>
+                <CardContent>
+                  {project.description && (
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                      {project.description}
+                    </p>
+                  )}
+                  <div className="space-y-2 text-xs text-muted-foreground">
+                    {project.start_date && (
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        Started: {new Date(project.start_date).toLocaleDateString()}
+                      </div>
+                    )}
+                    {project.end_date && (
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        Due: {new Date(project.end_date).toLocaleDateString()}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <Tag className="h-3 w-3" />
+                      {tasks?.filter(task => task.projectId === project.project_id).length || 0} tasks
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            
+            {/* Create New Project Card */}
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-shadow border-dashed border-2 flex items-center justify-center min-h-[200px]"
+              onClick={() => setShowProjectForm(true)}
+            >
+              <div className="text-center">
+                <Plus className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm font-medium">Create New Project</p>
+                <p className="text-xs text-muted-foreground">Organize your tasks</p>
+              </div>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
