@@ -173,60 +173,60 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto p-6">
-      <form onSubmit={onSubmit} className="space-y-6">
+    <div className="space-y-4 max-w-2xl mx-auto p-6">
+      <form onSubmit={onSubmit} className="space-y-4">
         {/* Header with avatar and contact info */}
-        <div className="space-y-6">
-          <div className="flex items-start gap-4">
-            <div className="w-16 h-16 bg-pink-100 dark:bg-pink-900 rounded-full flex items-center justify-center text-pink-600 dark:text-pink-400 text-sm font-medium">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-12 h-12 bg-pink-100 dark:bg-pink-900 rounded-full flex items-center justify-center text-pink-600 dark:text-pink-400 text-xs font-medium">
               (AVATAR)
             </div>
-            <div className="flex-1 space-y-2">
+            <div className="flex-1 space-y-1">
               <div className="flex items-center justify-between">
                 <Input
                   placeholder="Dr. Ana Rodriguez"
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
-                  className="text-xl font-semibold border-none bg-transparent p-0 focus-visible:ring-0 text-gray-900 dark:text-gray-100 placeholder-gray-400"
+                  className="text-lg font-semibold border-none bg-transparent p-0 focus-visible:ring-0 text-gray-900 dark:text-gray-100 placeholder-gray-400"
                   required
                 />
-                <div className="flex items-center gap-2 ml-4">
+                <div className="flex items-center gap-2 ml-3">
                   <Button 
                     onClick={() => setIsPreviewMode(!isPreviewMode)} 
                     type="button" 
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm font-medium rounded-lg shadow-sm"
+                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 text-sm font-medium rounded-lg"
                   >
                     + {isPreviewMode ? 'Edit' : 'Preview'}
                   </Button>
                   <Button 
                     variant="outline" 
                     type="button" 
-                    className="text-gray-600 border-gray-300 hover:bg-gray-50 hover:text-gray-700 px-4 py-2 text-sm font-medium rounded-lg bg-white"
+                    className="text-gray-600 border-gray-300 hover:bg-gray-50 px-3 py-1.5 text-sm font-medium rounded-lg"
                   >
                     Message
                   </Button>
                   <Button 
                     variant="outline" 
                     type="button" 
-                    className="text-gray-600 border-gray-300 hover:bg-gray-50 hover:text-gray-700 px-3 py-2 text-sm font-medium rounded-lg bg-white"
+                    className="text-gray-600 border-gray-300 hover:bg-gray-50 px-2 py-1.5 text-sm font-medium rounded-lg"
                   >
                     ⋯
                   </Button>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-base">
+              <div className="flex items-center gap-2 text-gray-500 text-sm">
                 <Input
                   placeholder="Cardiologist (Doctor)"
                   value={profession}
                   onChange={(e) => setProfession(e.target.value)}
-                  className="text-base border-none bg-transparent p-0 focus-visible:ring-0 flex-1 placeholder-gray-400 text-gray-500"
+                  className="text-sm border-none bg-transparent p-0 focus-visible:ring-0 flex-1 placeholder-gray-400 text-gray-500"
                 />
-                <span className="text-base text-gray-500">at</span>
+                <span className="text-sm text-gray-500">at</span>
                 <Input
                   placeholder="@Hospital Angeles"
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
-                  className="text-base border-none bg-transparent p-0 focus-visible:ring-0 flex-1 placeholder-gray-400 text-gray-500"
+                  className="text-sm border-none bg-transparent p-0 focus-visible:ring-0 flex-1 placeholder-gray-400 text-gray-500"
                 />
               </div>
             </div>
@@ -253,7 +253,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
                 <PopoverTrigger asChild>
                   <Button 
                     variant="outline" 
-                    className="border-dashed border-2 border-gray-300 dark:border-gray-600 py-8 px-12 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 font-medium"
+                    className="border-dashed border-2 border-gray-300 py-8 px-12 bg-gray-50 hover:bg-gray-100 text-gray-600 font-medium rounded-lg"
                     type="button"
                   >
                     <Plus className="h-5 w-5 mr-3" />
@@ -316,10 +316,17 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
 
         {/* Submit Button - Only show in edit mode */}
         {!isPreviewMode && (
-          <div className="flex justify-center pt-6">
+          <div className="flex justify-end gap-3 pt-4 mt-6 border-t border-gray-200">
+            <Button 
+              type="button"
+              variant="outline"
+              className="px-4 py-2 text-sm font-medium rounded-lg"
+            >
+              Cancel
+            </Button>
             <Button 
               type="submit"
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 text-sm font-medium rounded-lg shadow-sm"
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm font-medium rounded-lg"
               disabled={createContactMutation.isPending}
             >
               {createContactMutation.isPending ? "Creating Contact..." : "Create Contact"}
@@ -345,8 +352,8 @@ function BlockComponent({ block, onUpdate, onRemove }: BlockComponentProps) {
   const Icon = blockType.icon;
 
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-white dark:bg-gray-900">
-      <div className="space-y-4">
+    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-900">
+      <div className="space-y-3">
         {/* Block Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
