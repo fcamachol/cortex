@@ -2501,6 +2501,19 @@ class DatabaseStorage {
             throw error;
         }
     }
+
+    // Action Template Operations
+    async getActionTemplates(): Promise<any[]> {
+        const templates = await db.select().from(actionTemplates);
+        return templates;
+    }
+
+    async createActionTemplate(templateData: any): Promise<any> {
+        const [template] = await db.insert(actionTemplates)
+            .values(templateData)
+            .returning();
+        return template;
+    }
 }
 
 export const storage = new DatabaseStorage();
