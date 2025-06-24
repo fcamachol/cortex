@@ -245,7 +245,9 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
     if (!spaces) return [];
     // Find all spaces that have this space as their parent
     const allSpaces = Object.values(spaces).flat();
-    return allSpaces.filter(space => space.parentSpaceId === parentSpaceId);
+    const children = allSpaces.filter(space => space.parentSpaceId === parentSpaceId);
+    console.log(`Getting children for space ${parentSpaceId}:`, children.map(c => `${c.spaceName} (ID: ${c.spaceId})`));
+    return children;
   };
 
   const renderSpace = (space: Space, level: number = 0, index: number = 0) => {
