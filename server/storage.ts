@@ -2075,14 +2075,10 @@ class DatabaseStorage {
         const contacts = await db.select({
             contactId: crmCompanyMembers.contactId,
             role: crmCompanyMembers.role,
-            isActive: crmCompanyMembers.isActive,
             startDate: crmCompanyMembers.startDate,
             endDate: crmCompanyMembers.endDate,
             addedAt: crmCompanyMembers.addedAt,
             fullName: crmContacts.fullName,
-            primaryEmail: crmContacts.primaryEmail,
-            primaryPhone: crmContacts.primaryPhone,
-            jobTitle: crmContacts.jobTitle,
             relationship: crmContacts.relationship,
         }).from(crmCompanyMembers)
         .innerJoin(crmContacts, eq(crmCompanyMembers.contactId, crmContacts.contactId))
@@ -2126,24 +2122,34 @@ class DatabaseStorage {
                 eq(crmCompanies.spaceId, spaceId),
                 or(
                     ilike(crmCompanies.companyName, `%${searchTerm}%`),
-                    ilike(crmCompanies.industry, `%${searchTerm}%`),
                     ilike(crmCompanies.businessType, `%${searchTerm}%`)
                 )
             ))
             .orderBy(asc(crmCompanies.companyName));
     }
 
+    async addCompanyMember(memberData: any): Promise<any> {
+        const [member] = await db.insert(crmCompanyMembers)
+            .values(memberData)
+            .returning();
+        return member;
+    }
+
+    async removeCompanyMember(companyId: number, contactId: number): Promise<void> {
+        await db.delete(crmCompanyMembers)
+            .where(and(
+                eq(crmCompanyMembers.companyId, companyId),
+                eq(crmCompanyMembers.contactId, contactId)
+            ));
+    }
+
     async getContactsByCompany(companyId: number): Promise<any[]> {
         return await db.select({
             contactId: crmContacts.contactId,
             fullName: crmContacts.fullName,
-            jobTitle: crmContacts.jobTitle,
-            primaryEmail: crmContacts.primaryEmail,
-            primaryPhone: crmContacts.primaryPhone,
             relationship: crmContacts.relationship,
             role: crmCompanyMembers.role,
             startDate: crmCompanyMembers.startDate,
-            isActive: crmCompanyMembers.isActive,
         }).from(crmContacts)
         .innerJoin(crmCompanyMembers, eq(crmContacts.contactId, crmCompanyMembers.contactId))
         .where(eq(crmCompanyMembers.companyId, companyId))

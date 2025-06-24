@@ -198,28 +198,27 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Main Contact List */}
-        <div className="lg:col-span-3">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
+      <div className="space-y-6">
+        {/* Main Content Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid grid-cols-6 w-full max-w-2xl">
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="family">Family</TabsTrigger>
+            <TabsTrigger value="clients">Clients</TabsTrigger>
+            <TabsTrigger value="friends">Friends</TabsTrigger>
+            <TabsTrigger value="companies">Companies</TabsTrigger>
+            <TabsTrigger value="groups">Groups</TabsTrigger>
+          </TabsList>
+
+          {/* Contacts Tab Content */}
+          <TabsContent value="all" className="space-y-4">
+            <Card>
+              <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="w-5 h-5" />
-                  Contacts ({getFilteredContacts().length})
+                  All Contacts ({contactsList.length})
                 </CardTitle>
-              </div>
-              
-              {/* Filter Tabs */}
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList>
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="family">Family</TabsTrigger>
-                  <TabsTrigger value="clients">Clients</TabsTrigger>
-                  <TabsTrigger value="friends">Friends</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </CardHeader>
+              </CardHeader>
             
             <CardContent>
               {isLoading ? (
@@ -367,6 +366,19 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
           }}
         />
       )}
+
+      <CompanyForm
+        isOpen={isCompanyFormOpen}
+        onClose={() => setIsCompanyFormOpen(false)}
+        spaceId={userId}
+      />
+
+      <CompanyDetailView
+        company={selectedCompany}
+        isOpen={!!selectedCompany}
+        onClose={() => setSelectedCompany(null)}
+        spaceId={userId}
+      />
     </div>
   );
 }
