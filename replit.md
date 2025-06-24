@@ -127,6 +127,7 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 24, 2025: Restructured contact form to use collapsible section-based organization - Contact Info, Relationships & Groups, and Personal Details sections with sub-block capabilities, Notes as standalone blocks with dedicated Add Note button
 - June 24, 2025: Organized contact information blocks into three logical categories (Contact Info, Relationships & Groups, Personal Details) following consistent order across all contacts - improved Add Information Block menu with proper section groupings
 - June 24, 2025: Minimized white space in contact form by removing max-width container and using full width with px-6 padding - added header with person icon matching company form style exactly
 - June 24, 2025: Further reduced white space in contact form by increasing max width to max-w-5xl and reducing horizontal padding to px-4 for better space utilization

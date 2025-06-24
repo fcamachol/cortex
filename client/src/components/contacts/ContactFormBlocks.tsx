@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Phone, Mail, MapPin, Building2, Users, Link as LinkIcon, Calendar, Tag, MessageSquare, Plus, MoreHorizontal, X, User } from "lucide-react";
+import { Phone, Mail, MapPin, Building2, Users, Link as LinkIcon, Calendar, Tag, MessageSquare, Plus, MoreHorizontal, X, User, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -233,7 +233,32 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
           <ContactViewMode blocks={blocks} contactName={contactName} profession={profession} company={company} />
         ) : (
           <div className="space-y-4">
-            {blocks.map((block) => (
+            {/* Contact Info Section */}
+            <ContactInfoSection 
+              blocks={blocks.filter(b => ['phone', 'email', 'address'].includes(b.type))}
+              onUpdate={updateBlock}
+              onRemove={removeBlock}
+              onAddSubBlock={addBlock}
+            />
+
+            {/* Relationships & Groups Section */}
+            <RelationshipSection 
+              blocks={blocks.filter(b => ['company', 'group', 'link'].includes(b.type))}
+              onUpdate={updateBlock}
+              onRemove={removeBlock}
+              onAddSubBlock={addBlock}
+            />
+
+            {/* Personal Details Section */}
+            <PersonalDetailsSection 
+              blocks={blocks.filter(b => ['date', 'interest', 'alias'].includes(b.type))}
+              onUpdate={updateBlock}
+              onRemove={removeBlock}
+              onAddSubBlock={addBlock}
+            />
+
+            {/* Individual Note Blocks */}
+            {blocks.filter(b => b.type === 'note').map((block) => (
               <BlockComponent
                 key={block.id}
                 block={block}
@@ -242,80 +267,17 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
               />
             ))}
 
-            {/* Add Information Block Button */}
+            {/* Add Note Button */}
             <div className="flex justify-center py-2">
-              <Popover open={showBlockMenu} onOpenChange={setShowBlockMenu}>
-                <PopoverTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    className="border-dashed border-2 border-gray-300 py-4 px-8 bg-gray-50 hover:bg-gray-100 text-gray-600 font-medium rounded-lg"
-                    type="button"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Information Block
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80" align="center">
-                  <div className="space-y-3">
-                    <h4 className="font-medium text-sm">Add a block:</h4>
-                    
-                    {/* Contact Info Section */}
-                    <div>
-                      <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Contact Info</h5>
-                      {CONTACT_INFO_BLOCKS.map((blockType) => (
-                        <Button
-                          key={blockType.id}
-                          variant="ghost"
-                          className="w-full justify-start mb-1"
-                          onClick={() => addBlock(blockType.id)}
-                          type="button"
-                        >
-                          <blockType.icon className="h-4 w-4 mr-2" />
-                          {blockType.label}
-                        </Button>
-                      ))}
-                    </div>
-                    
-                    <div className="border-t border-gray-200"></div>
-                    
-                    {/* Relationships & Groups Section */}
-                    <div>
-                      <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Relationships & Groups</h5>
-                      {RELATIONSHIP_BLOCKS.map((blockType) => (
-                        <Button
-                          key={blockType.id}
-                          variant="ghost"
-                          className="w-full justify-start mb-1"
-                          onClick={() => addBlock(blockType.id)}
-                          type="button"
-                        >
-                          <blockType.icon className="h-4 w-4 mr-2" />
-                          {blockType.label}
-                        </Button>
-                      ))}
-                    </div>
-                    
-                    <div className="border-t border-gray-200"></div>
-                    
-                    {/* Personal Details Section */}
-                    <div>
-                      <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Personal Details</h5>
-                      {PERSONAL_DETAILS_BLOCKS.map((blockType) => (
-                        <Button
-                          key={blockType.id}
-                          variant="ghost"
-                          className="w-full justify-start mb-1"
-                          onClick={() => addBlock(blockType.id)}
-                          type="button"
-                        >
-                          <blockType.icon className="h-4 w-4 mr-2" />
-                          {blockType.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+              <Button 
+                variant="outline" 
+                className="border-dashed border-2 border-gray-300 py-3 px-6 bg-gray-50 hover:bg-gray-100 text-gray-600 font-medium rounded-lg"
+                type="button"
+                onClick={() => addBlock('note')}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Note
+              </Button>
             </div>
           </div>
         )}
@@ -400,6 +362,208 @@ function BlockComponent({ block, onUpdate, onRemove }: BlockComponentProps) {
         {/* Block Content */}
         <BlockContent block={block} onUpdate={onUpdate} />
       </div>
+    </div>
+  );
+}
+
+// Section Components for organized blocks
+function ContactInfoSection({ blocks, onUpdate, onRemove, onAddSubBlock }: {
+  blocks: Block[];
+  onUpdate: (blockId: string, field: string, value: any) => void;
+  onRemove: (blockId: string) => void;
+  onAddSubBlock: (type: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  return (
+    <div className="border border-gray-200 rounded-lg">
+      <div 
+        className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center gap-3">
+          <Phone className="h-5 w-5 text-gray-500" />
+          <h3 className="font-medium text-gray-900">Contact Info</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="text-xs"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56" align="end">
+              <div className="space-y-1">
+                {CONTACT_INFO_BLOCKS.map((blockType) => (
+                  <Button
+                    key={blockType.id}
+                    variant="ghost"
+                    className="w-full justify-start text-sm"
+                    onClick={() => onAddSubBlock(blockType.id)}
+                  >
+                    <blockType.icon className="h-4 w-4 mr-2" />
+                    {blockType.label}
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+          {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </div>
+      </div>
+      
+      {isOpen && blocks.length > 0 && (
+        <div className="border-t border-gray-200 p-4 space-y-3">
+          {blocks.map((block) => (
+            <BlockComponent
+              key={block.id}
+              block={block}
+              onUpdate={onUpdate}
+              onRemove={onRemove}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RelationshipSection({ blocks, onUpdate, onRemove, onAddSubBlock }: {
+  blocks: Block[];
+  onUpdate: (blockId: string, field: string, value: any) => void;
+  onRemove: (blockId: string) => void;
+  onAddSubBlock: (type: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  return (
+    <div className="border border-gray-200 rounded-lg">
+      <div 
+        className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center gap-3">
+          <Users className="h-5 w-5 text-gray-500" />
+          <h3 className="font-medium text-gray-900">Relationships & Groups</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="text-xs"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56" align="end">
+              <div className="space-y-1">
+                {RELATIONSHIP_BLOCKS.map((blockType) => (
+                  <Button
+                    key={blockType.id}
+                    variant="ghost"
+                    className="w-full justify-start text-sm"
+                    onClick={() => onAddSubBlock(blockType.id)}
+                  >
+                    <blockType.icon className="h-4 w-4 mr-2" />
+                    {blockType.label}
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+          {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </div>
+      </div>
+      
+      {isOpen && blocks.length > 0 && (
+        <div className="border-t border-gray-200 p-4 space-y-3">
+          {blocks.map((block) => (
+            <BlockComponent
+              key={block.id}
+              block={block}
+              onUpdate={onUpdate}
+              onRemove={onRemove}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PersonalDetailsSection({ blocks, onUpdate, onRemove, onAddSubBlock }: {
+  blocks: Block[];
+  onUpdate: (blockId: string, field: string, value: any) => void;
+  onRemove: (blockId: string) => void;
+  onAddSubBlock: (type: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  return (
+    <div className="border border-gray-200 rounded-lg">
+      <div 
+        className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center gap-3">
+          <Calendar className="h-5 w-5 text-gray-500" />
+          <h3 className="font-medium text-gray-900">Personal Details</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="text-xs"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56" align="end">
+              <div className="space-y-1">
+                {PERSONAL_DETAILS_BLOCKS.filter(b => b.id !== 'note').map((blockType) => (
+                  <Button
+                    key={blockType.id}
+                    variant="ghost"
+                    className="w-full justify-start text-sm"
+                    onClick={() => onAddSubBlock(blockType.id)}
+                  >
+                    <blockType.icon className="h-4 w-4 mr-2" />
+                    {blockType.label}
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+          {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </div>
+      </div>
+      
+      {isOpen && blocks.length > 0 && (
+        <div className="border-t border-gray-200 p-4 space-y-3">
+          {blocks.map((block) => (
+            <BlockComponent
+              key={block.id}
+              block={block}
+              onUpdate={onUpdate}
+              onRemove={onRemove}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
