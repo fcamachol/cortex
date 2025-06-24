@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { SpacesSidebar } from "@/components/sidebar/SpacesSidebar";
+import { Space } from "@shared/schema";
 
 interface SidebarProps {
   activeModule: string;

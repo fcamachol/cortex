@@ -312,7 +312,6 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                     }}
                     onClick={() => {
                       onSpaceSelect?.(space);
-                      setLocation(`/spaces?spaceId=${space.spaceId}`);
                     }}
                   >
               {/* Drag Handle */}
