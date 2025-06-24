@@ -28,21 +28,57 @@ function AuthenticatedRoutes() {
       <Route path="/tasks" component={TasksPage} />
       <Route path="/finance" component={FinancePage} />
       <Route path="/spaces" component={SpacesPage} />
-      <Route path="/spaces/:path*">
+      {/* Single level spaces */}
+      <Route path="/spaces/:spaceId">
         {(params) => {
-          const pathSegments = params.path ? params.path.split('/').filter(Boolean) : [];
-          if (pathSegments.length === 0) {
-            return <SpacesPage />;
-          }
-          
-          // Parse the path segments to get the target space and its parent
-          const spaceId = parseInt(pathSegments[pathSegments.length - 1]);
-          const parentSpaceId = pathSegments.length > 1 ? parseInt(pathSegments[pathSegments.length - 2]) : undefined;
-          
+          console.log('Single level route:', params);
+          return <SpacesPage selectedSpaceId={parseInt(params.spaceId)} />;
+        }}
+      </Route>
+      {/* Two level spaces */}
+      <Route path="/spaces/:parentId/:spaceId">
+        {(params) => {
+          console.log('Two level route:', params);
           return (
             <SpacesPage 
-              selectedSpaceId={spaceId}
-              parentSpaceId={parentSpaceId}
+              selectedSpaceId={parseInt(params.spaceId)}
+              parentSpaceId={parseInt(params.parentId)}
+            />
+          );
+        }}
+      </Route>
+      {/* Three level spaces */}
+      <Route path="/spaces/:grandParentId/:parentId/:spaceId">
+        {(params) => {
+          console.log('Three level route:', params);
+          return (
+            <SpacesPage 
+              selectedSpaceId={parseInt(params.spaceId)}
+              parentSpaceId={parseInt(params.parentId)}
+            />
+          );
+        }}
+      </Route>
+      {/* Four level spaces */}
+      <Route path="/spaces/:level1/:level2/:level3/:spaceId">
+        {(params) => {
+          console.log('Four level route:', params);
+          return (
+            <SpacesPage 
+              selectedSpaceId={parseInt(params.spaceId)}
+              parentSpaceId={parseInt(params.level3)}
+            />
+          );
+        }}
+      </Route>
+      {/* Five level spaces */}
+      <Route path="/spaces/:level1/:level2/:level3/:level4/:spaceId">
+        {(params) => {
+          console.log('Five level route:', params);
+          return (
+            <SpacesPage 
+              selectedSpaceId={parseInt(params.spaceId)}
+              parentSpaceId={parseInt(params.level4)}
             />
           );
         }}
