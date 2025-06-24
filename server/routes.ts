@@ -2793,6 +2793,74 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Space Items API endpoints - for projects, tasks, notes, documents, events, finance
+  app.post('/api/spaces/:spaceId/items', async (req: Request, res: Response) => {
+    try {
+      const { spaceId } = req.params;
+      const itemData = { ...req.body, spaceId: parseInt(spaceId) };
+      
+      const item = await storage.createSpaceItem(itemData);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error('Error creating space item:', error);
+      res.status(500).json({ error: 'Failed to create space item' });
+    }
+  });
+
+  app.get('/api/spaces/:spaceId/items', async (req: Request, res: Response) => {
+    try {
+      const { spaceId } = req.params;
+      const { itemType } = req.query;
+      
+      const items = await storage.getSpaceItems(parseInt(spaceId), itemType as string);
+      res.json(items);
+    } catch (error) {
+      console.error('Error fetching space items:', error);
+      res.status(500).json({ error: 'Failed to fetch space items' });
+    }
+  });
+
+  app.get('/api/spaces/:spaceId/hierarchy', async (req: Request, res: Response) => {
+    try {
+      const { spaceId } = req.params;
+      
+      const hierarchy = await storage.getSpaceHierarchy(parseInt(spaceId));
+      if (!hierarchy) {
+        return res.status(404).json({ error: 'Space not found' });
+      }
+      
+      res.json(hierarchy);
+    } catch (error) {
+      console.error('Error fetching space hierarchy:', error);
+      res.status(500).json({ error: 'Failed to fetch space hierarchy' });
+    }
+  });
+
+  app.patch('/api/spaces/items/:itemId', async (req: Request, res: Response) => {
+    try {
+      const { itemId } = req.params;
+      const updates = req.body;
+      
+      const updatedItem = await storage.updateSpaceItem(parseInt(itemId), updates);
+      res.json(updatedItem);
+    } catch (error) {
+      console.error('Error updating space item:', error);
+      res.status(500).json({ error: 'Failed to update space item' });
+    }
+  });
+
+  app.delete('/api/spaces/items/:itemId', async (req: Request, res: Response) => {
+    try {
+      const { itemId } = req.params;
+      
+      await storage.deleteSpaceItem(parseInt(itemId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting space item:', error);
+      res.status(500).json({ error: 'Failed to delete space item' });
+    }
+  });
+
   // Error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     console.error('Unhandled error:', err);

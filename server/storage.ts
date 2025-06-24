@@ -75,13 +75,16 @@ class DatabaseStorage {
         }
     }
 
-    // Enhanced Spaces Management (Notion/ClickUp style)
+    // Enhanced Spaces Management (Notion/ClickUp style) with unlimited hierarchy
     async getSpaces(userId: string): Promise<any[]> {
         try {
             const spaces = await db.select({
                 spaceId: appSpaces.spaceId,
                 spaceName: appSpaces.spaceName,
                 description: appSpaces.description,
+                category: appSpaces.category,
+                level: appSpaces.level,
+                path: appSpaces.path,
                 icon: appSpaces.icon,
                 color: appSpaces.color,
                 coverImage: appSpaces.coverImage,
@@ -101,14 +104,14 @@ class DatabaseStorage {
                 eq(appSpaces.creatorUserId, userId),
                 eq(appSpaces.isArchived, false)
             ))
-            .orderBy(appSpaces.displayOrder, appSpaces.createdAt);
+            .orderBy(appSpaces.level, appSpaces.displayOrder, appSpaces.createdAt);
 
-            // Build hierarchical structure
+            // Build hierarchical structure with unlimited nesting
             const spacesMap = new Map();
             const rootSpaces: any[] = [];
 
             spaces.forEach(space => {
-                spacesMap.set(space.spaceId, { ...space, childSpaces: [] });
+                spacesMap.set(space.spaceId, { ...space, childSpaces: [], items: [] });
             });
 
             spaces.forEach(space => {
@@ -122,7 +125,15 @@ class DatabaseStorage {
                 }
             });
 
-            return rootSpaces;
+            // Group by category
+            const categorizedSpaces = rootSpaces.reduce((acc, space) => {
+                const category = space.category || 'work';
+                if (!acc[category]) acc[category] = [];
+                acc[category].push(space);
+                return acc;
+            }, {});
+
+            return categorizedSpaces;
         } catch (error) {
             console.error('Error fetching spaces:', error);
             throw error;
