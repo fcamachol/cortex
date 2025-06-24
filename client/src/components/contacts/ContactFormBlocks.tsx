@@ -186,7 +186,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
                 placeholder="Dr. Ana Rodriguez"
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
-                className="text-lg font-medium border-none bg-transparent p-0 focus-visible:ring-0"
+                className="text-lg font-semibold border-none bg-transparent p-0 focus-visible:ring-0 text-gray-900 dark:text-gray-100"
                 required
               />
               <div className="flex items-center gap-2">
@@ -194,25 +194,25 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
                   placeholder="Cardiologist (Doctor)"
                   value={profession}
                   onChange={(e) => setProfession(e.target.value)}
-                  className="text-sm text-gray-600 border-none bg-transparent p-0 focus-visible:ring-0 flex-1"
+                  className="text-sm text-gray-500 dark:text-gray-400 border-none bg-transparent p-0 focus-visible:ring-0 flex-1"
                 />
                 <span className="text-sm text-gray-400">at</span>
                 <Input
                   placeholder="@Hospital Angeles"
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
-                  className="text-sm text-gray-600 border-none bg-transparent p-0 focus-visible:ring-0 flex-1"
+                  className="text-sm text-gray-500 dark:text-gray-400 border-none bg-transparent p-0 focus-visible:ring-0 flex-1"
                 />
               </div>
             </div>
-            <div className="flex items-center gap-2 text-gray-400">
-              <Button variant="ghost" size="sm" onClick={() => setIsPreviewMode(!isPreviewMode)} type="button">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setIsPreviewMode(!isPreviewMode)} type="button" className="text-gray-500 hover:text-gray-700">
                 [ {isPreviewMode ? 'Edit' : 'Preview'} ]
               </Button>
-              <Button variant="ghost" size="sm" type="button">
+              <Button variant="ghost" size="sm" type="button" className="text-gray-500 hover:text-gray-700">
                 [ Message ]
               </Button>
-              <Button variant="ghost" size="sm" type="button">
+              <Button variant="ghost" size="sm" type="button" className="text-gray-500 hover:text-gray-700">
                 [ ... ]
               </Button>
             </div>
@@ -241,11 +241,11 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
                 <PopoverTrigger asChild>
                   <Button 
                     variant="outline" 
-                    className="border-dashed border-2 py-8 px-12 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
+                    className="border-dashed border-2 border-gray-300 dark:border-gray-600 py-8 px-12 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 font-medium"
                     type="button"
                   >
                     <Plus className="h-5 w-5 mr-3" />
-                    <span className="font-medium">Add Information Block</span>
+                    Add Information Block
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-80" align="center">
@@ -333,13 +333,13 @@ function BlockComponent({ block, onUpdate, onRemove }: BlockComponentProps) {
   const Icon = blockType.icon;
 
   return (
-    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-white dark:bg-gray-900">
+    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-white dark:bg-gray-900">
       <div className="space-y-4">
         {/* Block Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Icon className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-            <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 uppercase tracking-wide">
+          <div className="flex items-center gap-3">
+            <Icon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            <span className="font-medium text-base text-gray-900 dark:text-gray-100 uppercase tracking-wide">
               {blockType.label}
             </span>
           </div>
@@ -347,7 +347,7 @@ function BlockComponent({ block, onUpdate, onRemove }: BlockComponentProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+              className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
               type="button"
             >
               <MoreHorizontal className="h-4 w-4" />
@@ -356,7 +356,7 @@ function BlockComponent({ block, onUpdate, onRemove }: BlockComponentProps) {
               variant="ghost"
               size="sm"
               onClick={() => onRemove(block.id)}
-              className="h-6 w-6 p-0 text-gray-400 hover:text-red-600"
+              className="h-8 w-8 p-0 text-gray-400 hover:text-red-600"
               type="button"
             >
               <X className="h-4 w-4" />
@@ -379,12 +379,12 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Label</label>
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Label</label>
               <Select
                 value={block.data.type}
                 onValueChange={(value) => onUpdate(block.id, 'type', value)}
               >
-                <SelectTrigger className="h-10">
+                <SelectTrigger className="h-11 border-gray-200 dark:border-gray-700">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -395,12 +395,12 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
               </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Phone Number</label>
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Phone Number</label>
               <Input
                 placeholder="+1-555-123-4567"
                 value={block.data.number}
                 onChange={(e) => onUpdate(block.id, 'number', e.target.value)}
-                className="h-10"
+                className="h-11 border-gray-200 dark:border-gray-700"
               />
             </div>
           </div>
@@ -411,7 +411,7 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
                 checked={block.data.hasWhatsApp}
                 onCheckedChange={(checked) => onUpdate(block.id, 'hasWhatsApp', checked)}
               />
-              <label htmlFor={`whatsapp-${block.id}`} className="text-sm text-gray-700 dark:text-gray-300">
+              <label htmlFor={`whatsapp-${block.id}`} className="text-sm text-gray-600 dark:text-gray-400">
                 This number has WhatsApp
               </label>
             </div>
@@ -421,7 +421,7 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
                 checked={block.data.isPrimary}
                 onCheckedChange={(checked) => onUpdate(block.id, 'isPrimary', checked)}
               />
-              <label htmlFor={`primary-${block.id}`} className="text-sm text-gray-700 dark:text-gray-300">
+              <label htmlFor={`primary-${block.id}`} className="text-sm text-gray-600 dark:text-gray-400">
                 Set as primary number for this contact
               </label>
             </div>
@@ -434,12 +434,12 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Label</label>
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Label</label>
               <Select
                 value={block.data.type}
                 onValueChange={(value) => onUpdate(block.id, 'type', value)}
               >
-                <SelectTrigger className="h-10">
+                <SelectTrigger className="h-11 border-gray-200 dark:border-gray-700">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -449,12 +449,12 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
               </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Email Address</label>
               <Input
                 placeholder="isabella@email.com"
                 value={block.data.address}
                 onChange={(e) => onUpdate(block.id, 'address', e.target.value)}
-                className="h-10"
+                className="h-11 border-gray-200 dark:border-gray-700"
               />
             </div>
           </div>
@@ -464,7 +464,7 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
               checked={block.data.isPrimary}
               onCheckedChange={(checked) => onUpdate(block.id, 'isPrimary', checked)}
             />
-            <label htmlFor={`primary-email-${block.id}`} className="text-sm text-gray-700 dark:text-gray-300">
+            <label htmlFor={`primary-email-${block.id}`} className="text-sm text-gray-600 dark:text-gray-400">
               Set as primary email for this contact
             </label>
           </div>
@@ -475,21 +475,21 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
       return (
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Company</label>
+            <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Company</label>
             <Input
               placeholder="CreativeCo"
               value={block.data.name}
               onChange={(e) => onUpdate(block.id, 'name', e.target.value)}
-              className="h-10"
+              className="h-11 border-gray-200 dark:border-gray-700"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Role</label>
+            <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Role</label>
             <Input
               placeholder="Lead Designer"
               value={block.data.role}
               onChange={(e) => onUpdate(block.id, 'role', e.target.value)}
-              className="h-10"
+              className="h-11 border-gray-200 dark:border-gray-700"
             />
           </div>
         </div>
@@ -499,21 +499,21 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
       return (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Note Title</label>
+            <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Note Title</label>
             <Input
               placeholder="Note title (e.g., Cuenta de banco)"
               value={block.data.title}
               onChange={(e) => onUpdate(block.id, 'title', e.target.value)}
-              className="h-10"
+              className="h-11 border-gray-200 dark:border-gray-700"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Content</label>
+            <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Content</label>
             <Textarea
               placeholder="Note content..."
               value={block.data.content}
               onChange={(e) => onUpdate(block.id, 'content', e.target.value)}
-              className="min-h-[80px]"
+              className="min-h-[80px] border-gray-200 dark:border-gray-700"
             />
           </div>
         </div>
