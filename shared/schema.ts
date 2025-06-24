@@ -1277,6 +1277,24 @@ export const crmContactRelationships = crmSchema.table("contact_relationships", 
   pk: primaryKey({ columns: [table.contactAId, table.contactBId] }),
 }));
 
+// CRM Projects - Project management table
+export const crmProjects = crmSchema.table("projects", {
+  projectId: serial("project_id").primaryKey(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  projectName: varchar("project_name", { length: 255 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 50 }).default("active"),
+  priority: varchar("priority", { length: 50 }).default("medium"),
+  startDate: timestamp("start_date", { withTimezone: true }),
+  dueDate: timestamp("due_date", { withTimezone: true }),
+  completedDate: timestamp("completed_date", { withTimezone: true }),
+  assignedToUserId: uuid("assigned_to_user_id"),
+  createdByUserId: uuid("created_by_user_id"),
+  spaceId: integer("space_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // CRM Tasks - Main task management table
 export const crmTasks = crmSchema.table("tasks", {
   taskId: serial("task_id").primaryKey(),
@@ -1287,7 +1305,7 @@ export const crmTasks = crmSchema.table("tasks", {
   dueDate: timestamp("due_date", { withTimezone: true }),
   priority: varchar("priority", { length: 50 }).default("medium"),
   taskType: varchar("task_type", { length: 50 }).default("task"),
-  projectId: integer("project_id"),
+  projectId: integer("project_id").references(() => crmProjects.projectId),
   parentTaskId: integer("parent_task_id"),
   triggeringMessageId: varchar("triggering_message_id", { length: 100 }),
   assignedToUserId: uuid("assigned_to_user_id"),
@@ -1441,11 +1459,32 @@ export const crmContactRelationshipsRelations = relations(crmContactRelationship
   }),
 }));
 
+// CRM Projects Relations
+export const crmProjectsRelations = relations(crmProjects, ({ one, many }) => ({
+  instance: one(whatsappInstances, {
+    fields: [crmProjects.instanceId],
+    references: [whatsappInstances.instanceId],
+  }),
+  space: one(appSpaces, {
+    fields: [crmProjects.spaceId],
+    references: [appSpaces.spaceId],
+  }),
+  tasks: many(crmTasks),
+}));
+
 // CRM Tasks Relations
 export const crmTasksRelations = relations(crmTasks, ({ one }) => ({
   instance: one(whatsappInstances, {
     fields: [crmTasks.instanceId],
     references: [whatsappInstances.instanceId],
+  }),
+  project: one(crmProjects, {
+    fields: [crmTasks.projectId],
+    references: [crmProjects.projectId],
+  }),
+  space: one(appSpaces, {
+    fields: [crmTasks.spaceId],
+    references: [appSpaces.spaceId],
   }),
   linkedPayable: one(financePayables, {
     fields: [crmTasks.linkedPayableId],
@@ -1507,6 +1546,12 @@ export const insertCrmContactRelationshipSchema = createInsertSchema(crmContactR
 });
 
 // Existing schemas
+export const insertCrmProjectSchema = createInsertSchema(crmProjects).omit({
+  projectId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertCrmTaskSchema = createInsertSchema(crmTasks).omit({
   taskId: true,
   createdAt: true,
@@ -1556,6 +1601,8 @@ export type CrmContactRelationship = typeof crmContactRelationships.$inferSelect
 export type InsertCrmContactRelationship = z.infer<typeof insertCrmContactRelationshipSchema>;
 
 // Existing Types
+export type CrmProject = typeof crmProjects.$inferSelect;
+export type InsertCrmProject = z.infer<typeof insertCrmProjectSchema>;
 export type CrmTask = typeof crmTasks.$inferSelect;
 export type InsertCrmTask = z.infer<typeof insertCrmTaskSchema>;
 export type CrmCompany = typeof crmCompanies.$inferSelect;

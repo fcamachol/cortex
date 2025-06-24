@@ -12,7 +12,7 @@ import {
     // Actions Schema
     actionRules,
     // CRM Schema - Comprehensive Contacts Module
-    crmTasks, crmCompanies, 
+    crmProjects, crmTasks, crmCompanies, 
     crmContacts, crmContactPhones, crmContactEmails, crmContactAddresses, 
     crmContactAliases, crmSpecialDates, crmInterests, crmContactInterests,
     crmCompanyMembers, crmContactGroups, crmContactGroupMembers, crmContactRelationships,
@@ -1192,6 +1192,49 @@ class DatabaseStorage {
     async deleteDraftById(messageId: string): Promise<void> {
         await db.delete(whatsappDrafts)
             .where(eq(whatsappDrafts.messageId, messageId));
+    }
+
+    // =========================================================================
+    // CRM PROJECT METHODS
+    // =========================================================================
+
+    async createProject(projectData: any): Promise<CrmProject> {
+        const [project] = await db.insert(crmProjects)
+            .values({
+                instanceId: projectData.instanceId || 'default-instance',
+                projectName: projectData.projectName || projectData.project_name,
+                description: projectData.description,
+                status: projectData.status || 'active',
+                priority: projectData.priority || 'medium',
+                startDate: projectData.startDate,
+                dueDate: projectData.dueDate,
+                assignedToUserId: projectData.assignedToUserId,
+                createdByUserId: projectData.createdByUserId,
+                spaceId: projectData.spaceId || projectData.space_id || null
+            })
+            .returning();
+        return project;
+    }
+
+    async getProjects(): Promise<any[]> {
+        return await db.select().from(crmProjects).orderBy(desc(crmProjects.createdAt));
+    }
+
+    async getProjectById(projectId: number): Promise<CrmProject | null> {
+        const [project] = await db.select().from(crmProjects).where(eq(crmProjects.projectId, projectId));
+        return project || null;
+    }
+
+    async updateProject(projectId: number, updates: any): Promise<CrmProject> {
+        const [project] = await db.update(crmProjects)
+            .set({ ...updates, updatedAt: new Date() })
+            .where(eq(crmProjects.projectId, projectId))
+            .returning();
+        return project;
+    }
+
+    async deleteProject(projectId: number): Promise<void> {
+        await db.delete(crmProjects).where(eq(crmProjects.projectId, projectId));
     }
 
     // =========================================================================

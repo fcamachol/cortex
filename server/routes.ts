@@ -767,19 +767,80 @@ export async function registerRoutes(app: Express): Promise<void> {
       
       // Transform field names from snake_case to camelCase for frontend compatibility
       const transformedProjects = projects.map(project => ({
-        projectId: project.project_id,
-        projectName: project.project_name,
+        projectId: project.projectId || project.project_id,
+        projectName: project.projectName || project.project_name,
         description: project.description,
         status: project.status,
-        createdAt: project.created_at,
-        updatedAt: project.updated_at,
-        spaceId: project.space_id
+        priority: project.priority,
+        startDate: project.startDate || project.start_date,
+        dueDate: project.dueDate || project.due_date,
+        completedDate: project.completedDate || project.completed_date,
+        assignedToUserId: project.assignedToUserId || project.assigned_to_user_id,
+        createdByUserId: project.createdByUserId || project.created_by_user_id,
+        createdAt: project.createdAt || project.created_at,
+        updatedAt: project.updatedAt || project.updated_at,
+        spaceId: project.spaceId || project.space_id
       }));
       
       res.json(transformedProjects);
     } catch (error) {
       console.error('Error fetching projects:', error);
       res.status(500).json({ error: 'Failed to fetch projects' });
+    }
+  });
+
+  app.post('/api/crm/projects', async (req: Request, res: Response) => {
+    try {
+      const projectData = req.body;
+      console.log('Creating project with data:', projectData);
+      
+      const project = await storage.createProject(projectData);
+      
+      // Transform response for frontend
+      const transformedProject = {
+        projectId: project.projectId,
+        projectName: project.projectName,
+        description: project.description,
+        status: project.status,
+        priority: project.priority,
+        startDate: project.startDate,
+        dueDate: project.dueDate,
+        assignedToUserId: project.assignedToUserId,
+        createdByUserId: project.createdByUserId,
+        spaceId: project.spaceId,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt
+      };
+      
+      res.json(transformedProject);
+    } catch (error) {
+      console.error('Error creating project:', error);
+      res.status(500).json({ error: 'Failed to create project' });
+    }
+  });
+
+  app.patch('/api/crm/projects/:projectId', async (req: Request, res: Response) => {
+    try {
+      const { projectId } = req.params;
+      const updates = req.body;
+      
+      const updatedProject = await storage.updateProject(parseInt(projectId), updates);
+      res.json(updatedProject);
+    } catch (error) {
+      console.error('Error updating project:', error);
+      res.status(500).json({ error: 'Failed to update project' });
+    }
+  });
+
+  app.delete('/api/crm/projects/:projectId', async (req: Request, res: Response) => {
+    try {
+      const { projectId } = req.params;
+      await storage.deleteProject(parseInt(projectId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      res.status(500).json({ error: 'Failed to delete project' });
+    }ects' });
     }
   });
 
