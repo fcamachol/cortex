@@ -1,86 +1,120 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 import { 
-  ArrowLeft, 
   Plus, 
   MoreHorizontal, 
-  CheckSquare, 
+  FolderOpen, 
   Briefcase, 
+  CheckSquare, 
   FileText, 
-  Calendar, 
-  DollarSign,
+  Calendar,
   Users,
   Settings,
-  Archive
-} from "lucide-react";
-import { Space, SpaceItem } from "@shared/schema";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+  Star,
+  Archive,
+  Filter,
+  Search,
+  Grid,
+  List,
+  Table,
+  Edit,
+  Trash2,
+  Share,
+  Copy,
+  EyeOff,
+  Folder,
+  File,
+  Clock,
+  AlertCircle,
+  CheckCircle2,
+  Circle
+} from 'lucide-react';
 
-interface SpaceDetailViewProps {
-  space: Space;
-  onBack: () => void;
+interface Space {
+  spaceId: number;
+  spaceName: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  category?: string;
+  parentSpaceId?: number;
+  childSpaces?: Space[];
+  isArchived: boolean;
+  isFavorite: boolean;
 }
 
-export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [showCreateItemDialog, setShowCreateItemDialog] = useState(false);
-  const [selectedItemType, setSelectedItemType] = useState<string>("");
+interface SpaceItem {
+  itemId: number;
+  spaceId: number;
+  itemType: string;
+  title: string;
+  description?: string;
+  metadata?: any;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
-  const handleCreateItem = (itemType: string) => {
-    setSelectedItemType(itemType);
-    setShowCreateItemDialog(true);
-  };
+interface SpaceDetailViewProps {
+  spaceId: number;
+}
+
+export function SpaceDetailView({ spaceId }: SpaceDetailViewProps) {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'table'>('grid');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch space details
+  const { data: space, isLoading: spaceLoading } = useQuery({
+    queryKey: ['/api/spaces', spaceId],
+    queryFn: async () => {
+      const response = await fetch(`/api/spaces/${spaceId}`);
+      if (!response.ok) throw new Error('Failed to fetch space');
+      return response.json();
+    }
+  });
 
   // Fetch space items
-  const { data: spaceItems = [], isLoading: itemsLoading } = useQuery({
-    queryKey: ['/api/space-items', space.spaceId],
+  const { data: spaceItems, isLoading: itemsLoading } = useQuery({
+    queryKey: ['/api/space-items', spaceId],
     queryFn: async () => {
-      const response = await fetch(`/api/space-items?spaceId=${space.spaceId}`);
-      if (!response.ok) return [];
-      const data = await response.json();
-      return Array.isArray(data) ? data : [];
+      const response = await fetch(`/api/space-items?spaceId=${spaceId}`);
+      if (!response.ok) throw new Error('Failed to fetch space items');
+      return response.json();
     }
   });
 
-  // Fetch child spaces
-  const { data: childSpaces = [] } = useQuery({
-    queryKey: ['/api/spaces', 'children', space.spaceId],
-    queryFn: async () => {
-      const response = await fetch(`/api/spaces?parentId=${space.spaceId}`);
-      if (!response.ok) return [];
-      const data = await response.json();
-      return Array.isArray(data) ? data : [];
+  // Update space mutation
+  const updateSpaceMutation = useMutation({
+    mutationFn: async (data: { title?: string; description?: string }) => {
+      return await apiRequest(`/api/spaces/${spaceId}`, 'PATCH', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId] });
+      toast({ title: "Space updated successfully" });
+      setEditingTitle(false);
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error updating space", 
+        description: error.message,
+        variant: "destructive" 
+      });
     }
   });
-
-  const getSpaceItemIcon = (itemType: string) => {
-    switch (itemType) {
-      case 'task': return CheckSquare;
-      case 'project': return Briefcase;
-      case 'note': return FileText;
-      case 'document': return FileText;
-      case 'event': return Calendar;
-      case 'finance': return DollarSign;
-      default: return FileText;
-    }
-  };
-
-  const getItemsByType = (type: string) => {
-    return spaceItems.filter((item: SpaceItem) => item.itemType === type);
-  };
-
-  const itemTypes = [
-    { type: 'project', label: 'Projects', icon: Briefcase },
-    { type: 'task', label: 'Tasks', icon: CheckSquare },
-    { type: 'file', label: 'Files', icon: FileText },
-    { type: 'document', label: 'Documents', icon: FileText },
-    { type: 'note', label: 'Notes', icon: FileText },
-    { type: 'event', label: 'Events', icon: Calendar }
-  ];
 
   return (
     <div className="h-full flex flex-col">

@@ -14,6 +14,7 @@ import { SpaceForm } from './SpaceForm';
 import { SpaceTemplateModal } from './SpaceTemplateModal';
 import { SpaceDetailsModal } from './SpaceDetailsModal';
 import { CreateSpaceDialog } from './CreateSpaceDialog';
+import { SpaceDetailView } from './SpaceDetailView';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -49,7 +50,11 @@ interface SpaceTemplate {
   usageCount: number;
 }
 
-export function SpacesPage() {
+interface SpacesPageProps {
+  selectedSpaceId?: number;
+}
+
+export function SpacesPage({ selectedSpaceId }: SpacesPageProps) {
   const [view, setView] = useState<'grid' | 'list' | 'hierarchy'>('grid');
   const [filter, setFilter] = useState<'all' | 'favorites' | 'personal' | 'team' | 'archived'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -296,6 +301,11 @@ export function SpacesPage() {
       </div>
     ));
   };
+
+  // If selectedSpaceId is provided, show SpaceDetailView
+  if (selectedSpaceId) {
+    return <SpaceDetailView spaceId={selectedSpaceId} />;
+  }
 
   if (spacesLoading) {
     return (
