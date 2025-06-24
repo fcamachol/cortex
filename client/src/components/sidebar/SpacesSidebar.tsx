@@ -298,7 +298,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                 isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''
               } ${snapshot.isDragging ? 'shadow-lg bg-white dark:bg-gray-800 border border-blue-300' : ''}`}
               style={{ 
-                paddingLeft: `${6 + level * 8}px`
+                paddingLeft: `${4 + level * 6}px`
               }}
               onClick={() => {
                 onSpaceSelect?.(space);
@@ -666,7 +666,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                 <div key={category} className="space-y-1">
                   {/* Category Header */}
                   <div 
-                    className="flex items-center justify-between px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer group transition-colors"
+                    className="flex items-center justify-between px-1 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer group transition-colors"
                     onClick={() => toggleCategory(category)}
                   >
                     <div className="flex items-center gap-2">
@@ -712,8 +712,8 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                         <div
                           ref={provided.innerRef}
                           {...provided.droppableProps}
-                          className={`space-y-1 ml-4 ${
-                            snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2' : ''
+                          className={`space-y-1 ml-2 ${
+                            snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/20 rounded-lg p-1' : ''
                           }`}
                         >
                           {categorySpaces.map((space, index) => renderSpace(space, 0, index))}
