@@ -241,6 +241,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
               onUpdate={updateBlock}
               onRemove={removeBlock}
               onAddSubBlock={addBlock}
+              ownerUserId={ownerUserId}
             />
 
             {/* Relationships & Groups Section */}
@@ -258,6 +259,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
               onUpdate={updateBlock}
               onRemove={removeBlock}
               onAddSubBlock={addBlock}
+              ownerUserId={ownerUserId}
             />
 
             {/* Individual Note Blocks */}
@@ -267,6 +269,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
                 block={block}
                 onUpdate={updateBlock}
                 onRemove={removeBlock}
+                ownerUserId={ownerUserId}
               />
             ))}
 
@@ -371,11 +374,12 @@ function BlockComponent({ block, onUpdate, onRemove, ownerUserId }: BlockCompone
 }
 
 // Section Components for organized blocks
-function ContactInfoSection({ blocks, onUpdate, onRemove, onAddSubBlock }: {
+function ContactInfoSection({ blocks, onUpdate, onRemove, onAddSubBlock, ownerUserId }: {
   blocks: Block[];
   onUpdate: (blockId: string, field: string, value: any) => void;
   onRemove: (blockId: string) => void;
   onAddSubBlock: (type: string) => void;
+  ownerUserId: string;
 }) {
   const [isOpen, setIsOpen] = useState(true);
 
@@ -506,11 +510,12 @@ function RelationshipSection({ blocks, onUpdate, onRemove, onAddSubBlock, ownerU
   );
 }
 
-function PersonalDetailsSection({ blocks, onUpdate, onRemove, onAddSubBlock }: {
+function PersonalDetailsSection({ blocks, onUpdate, onRemove, onAddSubBlock, ownerUserId }: {
   blocks: Block[];
   onUpdate: (blockId: string, field: string, value: any) => void;
   onRemove: (blockId: string) => void;
   onAddSubBlock: (type: string) => void;
+  ownerUserId: string;
 }) {
   const [isOpen, setIsOpen] = useState(true);
 
