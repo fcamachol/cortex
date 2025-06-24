@@ -88,7 +88,6 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                 ownerUserId={userId} 
                 spaceId={selectedSpace?.id}
                 onSuccess={() => setIsAddContactOpen(false)}
-                mode="quick"
               />
             </DialogContent>
           </Dialog>

@@ -1,139 +1,102 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { ChevronDown, ChevronRight, Plus, Building2, User, Phone, Mail, Briefcase, Heart, FileText } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, User, Briefcase, Heart } from "lucide-react";
 
-// Phase 1: Quick capture schema - Only name is required per user spec
-const quickContactSchema = z.object({
+// Enhanced Contact Schema with all possible fields
+const contactFormSchema = z.object({
+  // Core information (always visible)
   fullName: z.string().min(1, "Full name is required"),
   primaryPhone: z.string().optional(),
-  primaryEmail: z.string().optional(),
+  primaryEmail: z.string().email().optional().or(z.literal("")),
   relationship: z.string().optional(),
-});
-
-// Phase 2: Detailed contact schema
-const detailedContactSchema = z.object({
-  fullName: z.string().min(1, "Full name is required"),
-  relationship: z.string().optional(),
-  profilePictureUrl: z.string().url().optional().or(z.literal("")),
   
-  // Professional context
+  // Professional context (collapsible)
   profession: z.string().optional(),
   specialty: z.string().optional(),
   company: z.string().optional(),
   roleAtCompany: z.string().optional(),
   
-  // Personal context
+  // Personal context (collapsible)  
   aliases: z.string().optional(),
   interests: z.string().optional(),
+  profilePictureUrl: z.string().url().optional().or(z.literal("")),
   
+  // Notes (collapsible)
   notes: z.string().optional(),
 });
 
-type QuickContactFormData = z.infer<typeof quickContactSchema>;
-type DetailedContactFormData = z.infer<typeof detailedContactSchema>;
+type ContactFormData = z.infer<typeof contactFormSchema>;
 
 interface ContactFormProps {
   onSuccess?: () => void;
-  onSaveAndViewDetails?: (contactId: number) => void;
   ownerUserId: string;
   spaceId?: number;
-  mode?: 'quick' | 'detailed';
 }
 
-export function ContactForm({ onSuccess, onSaveAndViewDetails, ownerUserId, spaceId, mode = 'quick' }: ContactFormProps) {
+export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [currentPhase, setCurrentPhase] = useState<'quick' | 'detailed'>(mode);
-  const [savedContactData, setSavedContactData] = useState<any>(null);
   
-  // Collapsible sections state
-  const [sectionsOpen, setSectionsOpen] = useState({
-    professional: false,
-    contact: false,
-    personal: false,
-    notes: false,
-  });
+  // State for collapsible sections
+  const [isProfessionalOpen, setIsProfessionalOpen] = useState(false);
+  const [isPersonalOpen, setIsPersonalOpen] = useState(false);
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
 
-  const quickForm = useForm<QuickContactFormData>({
-    resolver: zodResolver(quickContactSchema),
+  const form = useForm<ContactFormData>({
+    resolver: zodResolver(contactFormSchema),
     defaultValues: {
       fullName: "",
       primaryPhone: "",
       primaryEmail: "",
       relationship: "Client",
-    },
-  });
-
-  const detailedForm = useForm<DetailedContactFormData>({
-    resolver: zodResolver(detailedContactSchema),
-    defaultValues: {
-      fullName: "",
-      relationship: "Client",
-      profilePictureUrl: "",
       profession: "",
       specialty: "",
       company: "",
       roleAtCompany: "",
       aliases: "",
       interests: "",
+      profilePictureUrl: "",
       notes: "",
     },
   });
 
   const createContactMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const contactData = {
-        ...data,
+    mutationFn: async (contactData: ContactFormData) => {
+      // Clean the data - remove empty strings and format notes
+      const cleanData = {
+        ...contactData,
         ownerUserId,
         spaceId,
+        notes: [
+          contactData.primaryPhone ? `Primary phone: ${contactData.primaryPhone}` : null,
+          contactData.primaryEmail ? `Primary email: ${contactData.primaryEmail}` : null,
+          contactData.notes || null
+        ].filter(Boolean).join('\n') || undefined,
       };
-      return await apiRequest('POST', '/api/crm/contacts', contactData);
+      
+      const response = await apiRequest('POST', '/api/crm/contacts', cleanData);
+      return response;
     },
-    onSuccess: (response) => {
-      setSavedContactData(response);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
+      form.reset();
       toast({
         title: "Success",
         description: "Contact created successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
-      
-      if (currentPhase === 'quick') {
-        quickForm.reset();
-      } else {
-        detailedForm.reset();
-      }
-      
-      if (currentPhase === 'detailed' || !response.contactId) {
-        onSuccess?.();
+      if (onSuccess) {
+        onSuccess();
       }
     },
     onError: (error: any) => {
@@ -145,177 +108,22 @@ export function ContactForm({ onSuccess, onSaveAndViewDetails, ownerUserId, spac
     },
   });
 
-  const onQuickSubmit = (data: QuickContactFormData) => {
-    const contactData = {
-      fullName: data.fullName,
-      relationship: data.relationship,
-      notes: [
-        data.primaryPhone ? `Primary phone: ${data.primaryPhone}` : null,
-        data.primaryEmail ? `Primary email: ${data.primaryEmail}` : null
-      ].filter(Boolean).join('\n') || undefined,
-    };
-    createContactMutation.mutate(contactData);
-  };
-
-  const onSaveAndAddDetails = (data: QuickContactFormData) => {
-    const contactData = {
-      fullName: data.fullName,
-      relationship: data.relationship,
-      notes: [
-        data.primaryPhone ? `Primary phone: ${data.primaryPhone}` : null,
-        data.primaryEmail ? `Primary email: ${data.primaryEmail}` : null
-      ].filter(Boolean).join('\n') || undefined,
-    };
-    
-    // Create contact and then trigger the details view
-    const response = apiRequest('POST', '/api/crm/contacts', {
-      ...contactData,
-      ownerUserId,
-      spaceId,
-    }).then((newContact: any) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
-      if (onSaveAndViewDetails && newContact.contactId) {
-        onSaveAndViewDetails(newContact.contactId);
-      }
-      if (onSuccess) {
-        onSuccess();
-      }
-    });
-  };
-
-  const onDetailedSubmit = (data: DetailedContactFormData) => {
+  const onSubmit = (data: ContactFormData) => {
     createContactMutation.mutate(data);
   };
 
-  const toggleSection = (section: keyof typeof sectionsOpen) => {
-    setSectionsOpen(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
-
-  if (currentPhase === 'quick') {
-    return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <h2 className="text-lg font-semibold">Add New Contact</h2>
-          <p className="text-sm text-muted-foreground">Only a name is required to create a contact profile</p>
-        </div>
-
-        <Form {...quickForm}>
-          <form onSubmit={quickForm.handleSubmit(onQuickSubmit)} className="space-y-4">
-            <FormField
-              control={quickForm.control}
-              name="fullName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name*</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter full name..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={quickForm.control}
-                name="primaryPhone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Primary Phone (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="+52 123 456 7890" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={quickForm.control}
-                name="primaryEmail"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Primary Email (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="contact@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={quickForm.control}
-              name="relationship"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Relationship</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select relationship" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Client">Client</SelectItem>
-                      <SelectItem value="Family">Family</SelectItem>
-                      <SelectItem value="Friend">Friend</SelectItem>
-                      <SelectItem value="Vendor">Vendor</SelectItem>
-                      <SelectItem value="Colleague">Colleague</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex gap-3 pt-4">
-              <Button 
-                type="submit" 
-                variant="outline"
-                className="flex-1"
-                disabled={createContactMutation.isPending}
-              >
-                {createContactMutation.isPending ? "Saving..." : "Save & Close"}
-              </Button>
-              <Button 
-                type="button"
-                onClick={quickForm.handleSubmit(onSaveAndAddDetails)}
-                className="flex-1"
-                disabled={createContactMutation.isPending}
-              >
-                Save & Add Details ▸
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </div>
-    );
-  }
-
-  // Detailed Phase
   return (
-    <div className="space-y-6 max-h-[80vh] overflow-y-auto">
-      <div className="text-center">
-        <h2 className="text-lg font-semibold">Editing Contact: {detailedForm.watch('fullName') || 'New Contact'}</h2>
-      </div>
-
-      <Form {...detailedForm}>
-        <form onSubmit={detailedForm.handleSubmit(onDetailedSubmit)} className="space-y-6">
-          
-          {/* Basic Information */}
+    <div className="space-y-6">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {/* Core Information - Always Visible */}
           <div className="space-y-4">
             <FormField
-              control={detailedForm.control}
+              control={form.control}
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name</FormLabel>
+                  <FormLabel>Full Name *</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter full name" {...field} />
                   </FormControl>
@@ -324,8 +132,40 @@ export function ContactForm({ onSuccess, onSaveAndViewDetails, ownerUserId, spac
               )}
             />
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="primaryPhone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Primary Phone</FormLabel>
+                    <FormControl>
+                      <Input placeholder="+1 (555) 123-4567" {...field} />
+                    </FormControl>
+                    <FormDescription>Optional</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="primaryEmail"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Primary Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="contact@example.com" {...field} />
+                    </FormControl>
+                    <FormDescription>Optional</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
-              control={detailedForm.control}
+              control={form.control}
               name="relationship"
               render={({ field }) => (
                 <FormItem>
@@ -340,8 +180,9 @@ export function ContactForm({ onSuccess, onSaveAndViewDetails, ownerUserId, spac
                       <SelectItem value="Client">Client</SelectItem>
                       <SelectItem value="Family">Family</SelectItem>
                       <SelectItem value="Friend">Friend</SelectItem>
-                      <SelectItem value="Vendor">Vendor</SelectItem>
                       <SelectItem value="Colleague">Colleague</SelectItem>
+                      <SelectItem value="Business Partner">Business Partner</SelectItem>
+                      <SelectItem value="Vendor">Vendor</SelectItem>
                       <SelectItem value="Other">Other</SelectItem>
                     </SelectContent>
                   </Select>
@@ -349,90 +190,86 @@ export function ContactForm({ onSuccess, onSaveAndViewDetails, ownerUserId, spac
                 </FormItem>
               )}
             />
-
-            <FormField
-              control={detailedForm.control}
-              name="profilePictureUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Profile Picture URL</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://example.com/image.jpg" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          
-          {/* Add Additional Information Header */}
-          <div className="text-center py-4 border-t">
-            <h3 className="text-lg font-semibold mb-2">Add Additional Information</h3>
-            <p className="text-sm text-muted-foreground">
-              Expand any section below to add more details to this contact profile
-            </p>
           </div>
 
-          {/* Professional Context */}
-          <Collapsible open={sectionsOpen.professional} onOpenChange={() => toggleSection('professional')}>
+          {/* Professional Information - Collapsible */}
+          <Collapsible open={isProfessionalOpen} onOpenChange={setIsProfessionalOpen}>
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-4 h-auto border rounded-lg hover:bg-accent">
-                <div className="flex items-center gap-2">
-                  <Briefcase className="w-4 h-4" />
-                  <span className="font-medium">Professional Context</span>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start p-0 h-auto font-normal text-left"
+                type="button"
+              >
+                <div className="flex items-center gap-2 py-3 px-1">
+                  {isProfessionalOpen ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                  <Briefcase className="h-4 w-4" />
+                  <span className="font-medium">Professional Information</span>
+                  {!isProfessionalOpen && (
+                    <Plus className="h-4 w-4 ml-auto text-blue-600" />
+                  )}
                 </div>
-                <ChevronDown className="w-4 h-4" />
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="px-4 pb-4 space-y-4 border-l-2 border-primary/20 ml-4">
-              <div className="grid grid-cols-2 gap-4">
+            <CollapsibleContent className="space-y-4 pl-6 pt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
-                  control={detailedForm.control}
+                  control={form.control}
                   name="profession"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Profession</FormLabel>
                       <FormControl>
-                        <Input placeholder="Doctor" {...field} />
+                        <Input placeholder="e.g., Software Engineer" {...field} />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
+
                 <FormField
-                  control={detailedForm.control}
+                  control={form.control}
                   name="specialty"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Specialty / Title</FormLabel>
+                      <FormLabel>Specialty</FormLabel>
                       <FormControl>
-                        <Input placeholder="Cardiologist" {...field} />
+                        <Input placeholder="e.g., React Development" {...field} />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
-                  control={detailedForm.control}
+                  control={form.control}
                   name="company"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Company</FormLabel>
                       <FormControl>
-                        <Input placeholder="🏢 Hospital..." {...field} />
+                        <Input placeholder="Company name" {...field} />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
+
                 <FormField
-                  control={detailedForm.control}
+                  control={form.control}
                   name="roleAtCompany"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Role at Company</FormLabel>
                       <FormControl>
-                        <Input placeholder="Head of Cardio..." {...field} />
+                        <Input placeholder="e.g., Senior Developer" {...field} />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -440,138 +277,132 @@ export function ContactForm({ onSuccess, onSaveAndViewDetails, ownerUserId, spac
             </CollapsibleContent>
           </Collapsible>
 
-          {/* Contact Details */}
-          <Collapsible open={sectionsOpen.contact} onOpenChange={() => toggleSection('contact')}>
+          {/* Personal Information - Collapsible */}
+          <Collapsible open={isPersonalOpen} onOpenChange={setIsPersonalOpen}>
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-4 h-auto border rounded-lg hover:bg-accent">
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  <span className="font-medium">Contact Details</span>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start p-0 h-auto font-normal text-left"
+                type="button"
+              >
+                <div className="flex items-center gap-2 py-3 px-1">
+                  {isPersonalOpen ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                  <Heart className="h-4 w-4" />
+                  <span className="font-medium">Personal Information</span>
+                  {!isPersonalOpen && (
+                    <Plus className="h-4 w-4 ml-auto text-blue-600" />
+                  )}
                 </div>
-                <ChevronDown className="w-4 h-4" />
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="px-4 pb-4 space-y-4 border-l-2 border-primary/20 ml-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Phone Numbers</Label>
-                  <Button type="button" variant="outline" size="sm">
-                    <Plus className="h-4 w-4 mr-1" /> Add Phone
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 p-2 border rounded">
-                    <Phone className="h-4 w-4" />
-                    <span className="text-sm">Mobile: +52... ✓ Has WhatsApp (Primary)</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Emails</Label>
-                  <Button type="button" variant="outline" size="sm">
-                    <Plus className="h-4 w-4 mr-1" /> Add Email
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 p-2 border rounded">
-                    <Mail className="h-4 w-4" />
-                    <span className="text-sm">Work: contact@email.com (Primary)</span>
-                  </div>
-                </div>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-
-          {/* Personal Context */}
-          <Collapsible open={sectionsOpen.personal} onOpenChange={() => toggleSection('personal')}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-4 h-auto border rounded-lg hover:bg-accent">
-                <div className="flex items-center gap-2">
-                  <Heart className="w-4 h-4" />
-                  <span className="font-medium">Personal Context</span>
-                </div>
-                <ChevronDown className="w-4 h-4" />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="px-4 pb-4 space-y-4 border-l-2 border-primary/20 ml-4">
+            <CollapsibleContent className="space-y-4 pl-6 pt-2">
               <FormField
-                control={detailedForm.control}
+                control={form.control}
                 name="aliases"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Aliases / Nicknames</FormLabel>
                     <FormControl>
-                      <Input placeholder="Add a nickname..." {...field} />
+                      <Input placeholder="e.g., Johnny, JD" {...field} />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
+
               <FormField
-                control={detailedForm.control}
+                control={form.control}
                 name="interests"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Interests</FormLabel>
                     <FormControl>
-                      <Input placeholder="Add an interest..." {...field} />
+                      <Textarea placeholder="e.g., Photography, Travel, Cooking" {...field} />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Special Dates</Label>
-                  <Button type="button" variant="outline" size="sm">
-                    <Plus className="h-4 w-4 mr-1" /> Add Date
-                  </Button>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Birthday: August 15, 1980
-                </div>
-              </div>
+
+              <FormField
+                control={form.control}
+                name="profilePictureUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Profile Picture URL</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://example.com/photo.jpg" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CollapsibleContent>
           </Collapsible>
 
-          {/* Context Notes */}
-          <Collapsible open={sectionsOpen.notes} onOpenChange={() => toggleSection('notes')}>
+          {/* Notes - Collapsible */}
+          <Collapsible open={isNotesOpen} onOpenChange={setIsNotesOpen}>
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-4 h-auto border rounded-lg hover:bg-accent">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  <span className="font-medium">Context Notes</span>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start p-0 h-auto font-normal text-left"
+                type="button"
+              >
+                <div className="flex items-center gap-2 py-3 px-1">
+                  {isNotesOpen ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                  <User className="h-4 w-4" />
+                  <span className="font-medium">Additional Notes</span>
+                  {!isNotesOpen && (
+                    <Plus className="h-4 w-4 ml-auto text-blue-600" />
+                  )}
                 </div>
-                <ChevronDown className="w-4 h-4" />
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="px-4 pb-4 border-l-2 border-primary/20 ml-4">
+            <CollapsibleContent className="space-y-4 pl-6 pt-2">
               <FormField
-                control={detailedForm.control}
+                control={form.control}
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
+                    <FormLabel>Notes</FormLabel>
                     <FormControl>
                       <Textarea 
-                        placeholder="Type any other notes here..."
-                        className="resize-none"
-                        rows={4}
-                        {...field}
+                        placeholder="Additional notes about this contact..."
+                        className="min-h-[100px]"
+                        {...field} 
                       />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
             </CollapsibleContent>
           </Collapsible>
 
-          <div className="pt-4">
+          {/* Add More Information Sections */}
+          <div className="border-t pt-4">
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Plus className="h-4 w-4" />
+              <span>Click the sections above to add more information</span>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <div className="flex gap-3 pt-4">
             <Button 
-              type="submit" 
+              type="submit"
               className="w-full"
               disabled={createContactMutation.isPending}
             >
-              {createContactMutation.isPending ? "Saving..." : "Save & Close"}
+              {createContactMutation.isPending ? "Creating Contact..." : "Create Contact"}
             </Button>
           </div>
         </form>
