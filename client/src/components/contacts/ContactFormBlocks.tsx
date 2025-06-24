@@ -877,6 +877,9 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
         </div>
       );
 
+    case 'link':
+      return <LinkBlock block={block} onUpdate={onUpdate} ownerUserId={ownerUserId || ''} />;
+
     default:
       return (
         <div className="text-sm text-gray-500 py-4 text-center">
