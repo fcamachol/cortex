@@ -127,6 +127,7 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 24, 2025: Updated contact form to use fill box style for name input matching company form design - eliminated header section, avatar and actions now only appear in preview mode after form completion
 - June 24, 2025: Optimized contact form layout to use available space efficiently - increased container width from max-w-2xl to max-w-4xl for better space utilization while maintaining professional appearance
 - June 24, 2025: Converted header action buttons to proper outlined buttons with larger text and consistent styling matching platform's UX/UI patterns - removed bracketed text format for professional button appearance
 - June 24, 2025: Updated contact form header to match platform's exact design - larger avatar with proper styling, improved typography hierarchy, and consistent spacing matching the user's screenshots

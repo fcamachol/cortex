@@ -175,60 +175,40 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
   return (
     <div className="space-y-4 max-w-4xl mx-auto p-6">
       <form onSubmit={onSubmit} className="space-y-4">
-        {/* Header with avatar and contact info */}
+        {/* Contact Name - Fill Box Style */}
         <div className="space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="w-12 h-12 bg-pink-100 dark:bg-pink-900 rounded-full flex items-center justify-center text-pink-600 dark:text-pink-400 text-xs font-medium">
-              (AVATAR)
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Contact Name <span className="text-red-500">*</span>
+            </label>
+            <Input
+              placeholder="Enter contact name"
+              value={contactName}
+              onChange={(e) => setContactName(e.target.value)}
+              className="h-12 border-2 border-gray-900 rounded-lg px-4 text-base font-medium focus:border-gray-900 focus:ring-0"
+              required
+            />
+          </div>
+
+          {/* Optional fields for profession and company */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">Profession</label>
+              <Input
+                placeholder="e.g., Cardiologist"
+                value={profession}
+                onChange={(e) => setProfession(e.target.value)}
+                className="h-10 border border-gray-300 rounded-lg px-3 focus:border-gray-500 focus:ring-0"
+              />
             </div>
-            <div className="flex-1 space-y-1">
-              <div className="flex items-center justify-between">
-                <Input
-                  placeholder="Dr. Ana Rodriguez"
-                  value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
-                  className="text-lg font-semibold border-none bg-transparent p-0 focus-visible:ring-0 text-gray-900 dark:text-gray-100 placeholder-gray-400"
-                  required
-                />
-                <div className="flex items-center gap-2 ml-3">
-                  <Button 
-                    onClick={() => setIsPreviewMode(!isPreviewMode)} 
-                    type="button" 
-                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 text-sm font-medium rounded-lg"
-                  >
-                    + {isPreviewMode ? 'Edit' : 'Preview'}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    type="button" 
-                    className="text-gray-600 border-gray-300 hover:bg-gray-50 px-3 py-1.5 text-sm font-medium rounded-lg"
-                  >
-                    Message
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    type="button" 
-                    className="text-gray-600 border-gray-300 hover:bg-gray-50 px-2 py-1.5 text-sm font-medium rounded-lg"
-                  >
-                    ⋯
-                  </Button>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
-                <Input
-                  placeholder="Cardiologist (Doctor)"
-                  value={profession}
-                  onChange={(e) => setProfession(e.target.value)}
-                  className="text-sm border-none bg-transparent p-0 focus-visible:ring-0 flex-1 placeholder-gray-400 text-gray-500"
-                />
-                <span className="text-sm text-gray-500">at</span>
-                <Input
-                  placeholder="@Hospital Angeles"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  className="text-sm border-none bg-transparent p-0 focus-visible:ring-0 flex-1 placeholder-gray-400 text-gray-500"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">Company</label>
+              <Input
+                placeholder="e.g., Hospital Angeles"
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                className="h-10 border border-gray-300 rounded-lg px-3 focus:border-gray-500 focus:ring-0"
+              />
             </div>
           </div>
         </div>
@@ -314,16 +294,16 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
           </div>
         )}
 
-        {/* Submit Button - Only show in edit mode */}
-        {!isPreviewMode && (
-          <div className="flex justify-end gap-3 pt-4 mt-6 border-t border-gray-200">
-            <Button 
-              type="button"
-              variant="outline"
-              className="px-4 py-2 text-sm font-medium rounded-lg"
-            >
-              Cancel
-            </Button>
+        {/* Submit Buttons */}
+        <div className="flex justify-end gap-3 pt-4 mt-6 border-t border-gray-200">
+          <Button 
+            type="button"
+            variant="outline"
+            className="px-4 py-2 text-sm font-medium rounded-lg"
+          >
+            Cancel
+          </Button>
+          {!isPreviewMode ? (
             <Button 
               type="submit"
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm font-medium rounded-lg"
@@ -331,8 +311,16 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
             >
               {createContactMutation.isPending ? "Creating Contact..." : "Create Contact"}
             </Button>
-          </div>
-        )}
+          ) : (
+            <Button 
+              type="submit"
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm font-medium rounded-lg"
+              disabled={createContactMutation.isPending}
+            >
+              {createContactMutation.isPending ? "Creating Contact..." : "Create Contact"}
+            </Button>
+          )}
+        </div>
       </form>
     </div>
   );
