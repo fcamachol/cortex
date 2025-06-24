@@ -73,7 +73,25 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <ContactForm userId={userId} />
+          <Dialog open={isAddContactOpen} onOpenChange={setIsAddContactOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Contact
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add New Contact</DialogTitle>
+              </DialogHeader>
+              <ContactForm 
+                ownerUserId={userId} 
+                spaceId={selectedSpace?.id}
+                onSuccess={() => setIsAddContactOpen(false)}
+                mode="quick"
+              />
+            </DialogContent>
+          </Dialog>
           <CompanyForm />
         </div>
       </div>

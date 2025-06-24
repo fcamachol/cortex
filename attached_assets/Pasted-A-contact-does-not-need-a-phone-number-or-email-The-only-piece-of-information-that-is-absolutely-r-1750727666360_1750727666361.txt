@@ -1,0 +1,37 @@
+A contact does not need a phone number or email.
+
+The only piece of information that is absolutely required to create a contact is a Name.
+
+The Core Concept: A Profile for Anyone (or Anything)
+Our system treats a "Contact" as a profile for any person you want to track, manage, or interact with inside the app. Whether they have a phone or not is optional information. This is essential for creating profiles for children, historical figures, or anyone you simply don't have contact info for.
+
+This is possible because we designed the system with separate, linked tables: one for the core Contact profile and others for Contact_Phones, Contact_Emails, etc. If a contact has no phone number, we simply don't create an entry for them in the phone number table.
+
+How to Create a Contact for a Child
+Here is the step-by-step process, which is even simpler than creating a regular contact.
+
+Method 1: The Web App
+Click the [+ Add Contact] button.
+The "Quick Capture" form appears.
+Fill in only what you have:
+Full Name: Leo
+Relationship: Son or Godson or Family
+You can either click [Save & Close] now, or click [Save & Add Details] to add more information.
+In the detailed view, you can leave the Phone, Email, and Address sections completely blank.
+You can still add other crucial information, like:
+Special Dates: Add Leo's birthday for automated reminders.
+Relationships: Link his profile to his parents' contact profiles (e.g., Abraham and Pau).
+Interests: Add his hobbies.
+Method 2: WhatsApp
+The process is just as simple. You provide only the information you want to save.
+
+Command: /add contact @Leo relationship:Godson
+System Action: The app creates a contact profile for "Leo" with the relationship "Godson." It will not ask you for a phone number or email.
+The Result: A Fully Functional Profile
+Even without contact information, you now have a complete profile for "Leo" inside your system. You can still:
+
+Link him to events: Create "Leo's Birthday Party" and add him as the guest of honor.
+Assign tasks (as a stakeholder): Create a task like "Buy birthday present for @Leo".
+Track finances: Log an expense for "School uniform" and link it to Leo's profile to track spending for him.
+Map his relationships: Link him to his parents, siblings, and yourself in the "Relationships" section.
+This flexibility ensures you can build a complete and accurate map of your personal and professional network, regardless of how much contact information you have for each person.
