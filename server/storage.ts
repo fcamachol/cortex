@@ -1,5 +1,5 @@
 import { db } from "./db"; // Your Drizzle ORM instance
-import { sql, eq, desc, and, or, ilike } from "drizzle-orm";
+import { sql, eq, desc, asc, and, or, ilike } from "drizzle-orm";
 import {
     // App Schema
     appUsers, appWorkspaces, appSpaces, appWorkspaceMembers,
@@ -2055,6 +2055,99 @@ class DatabaseStorage {
             sql`${crmSpecialDates.eventDate} BETWEEN ${today} AND ${futureDate}`
         ))
         .orderBy(asc(crmSpecialDates.eventDate));
+    }
+
+    // Company Management Methods
+    async getAllCompanies(spaceId: number): Promise<any[]> {
+        return await db.select().from(crmCompanies)
+            .where(eq(crmCompanies.spaceId, spaceId))
+            .orderBy(asc(crmCompanies.companyName));
+    }
+
+    async getCompanyWithDetails(companyId: number): Promise<any> {
+        const [company] = await db.select().from(crmCompanies)
+            .where(eq(crmCompanies.companyId, companyId))
+            .limit(1);
+
+        if (!company) return null;
+
+        // Get company contacts/employees
+        const contacts = await db.select({
+            contactId: crmCompanyMembers.contactId,
+            role: crmCompanyMembers.role,
+            isActive: crmCompanyMembers.isActive,
+            startDate: crmCompanyMembers.startDate,
+            endDate: crmCompanyMembers.endDate,
+            addedAt: crmCompanyMembers.addedAt,
+            fullName: crmContacts.fullName,
+            primaryEmail: crmContacts.primaryEmail,
+            primaryPhone: crmContacts.primaryPhone,
+            jobTitle: crmContacts.jobTitle,
+            relationship: crmContacts.relationship,
+        }).from(crmCompanyMembers)
+        .innerJoin(crmContacts, eq(crmCompanyMembers.contactId, crmContacts.contactId))
+        .where(eq(crmCompanyMembers.companyId, companyId))
+        .orderBy(asc(crmContacts.fullName));
+
+        return {
+            ...company,
+            contacts
+        };
+    }
+
+    async createCompany(companyData: any): Promise<any> {
+        const [company] = await db.insert(crmCompanies)
+            .values(companyData)
+            .returning();
+        return company;
+    }
+
+    async updateCompany(companyId: number, updates: any): Promise<any> {
+        const [company] = await db.update(crmCompanies)
+            .set({ ...updates, updatedAt: new Date() })
+            .where(eq(crmCompanies.companyId, companyId))
+            .returning();
+        return company;
+    }
+
+    async deleteCompany(companyId: number): Promise<void> {
+        // First remove all company members
+        await db.delete(crmCompanyMembers)
+            .where(eq(crmCompanyMembers.companyId, companyId));
+        
+        // Then delete the company
+        await db.delete(crmCompanies)
+            .where(eq(crmCompanies.companyId, companyId));
+    }
+
+    async searchCompanies(spaceId: number, searchTerm: string): Promise<any[]> {
+        return await db.select().from(crmCompanies)
+            .where(and(
+                eq(crmCompanies.spaceId, spaceId),
+                or(
+                    ilike(crmCompanies.companyName, `%${searchTerm}%`),
+                    ilike(crmCompanies.industry, `%${searchTerm}%`),
+                    ilike(crmCompanies.businessType, `%${searchTerm}%`)
+                )
+            ))
+            .orderBy(asc(crmCompanies.companyName));
+    }
+
+    async getContactsByCompany(companyId: number): Promise<any[]> {
+        return await db.select({
+            contactId: crmContacts.contactId,
+            fullName: crmContacts.fullName,
+            jobTitle: crmContacts.jobTitle,
+            primaryEmail: crmContacts.primaryEmail,
+            primaryPhone: crmContacts.primaryPhone,
+            relationship: crmContacts.relationship,
+            role: crmCompanyMembers.role,
+            startDate: crmCompanyMembers.startDate,
+            isActive: crmCompanyMembers.isActive,
+        }).from(crmContacts)
+        .innerJoin(crmCompanyMembers, eq(crmContacts.contactId, crmCompanyMembers.contactId))
+        .where(eq(crmCompanyMembers.companyId, companyId))
+        .orderBy(asc(crmContacts.fullName));
     }
 }
 

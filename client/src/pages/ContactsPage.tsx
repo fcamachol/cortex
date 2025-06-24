@@ -13,6 +13,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import ContactForm from "@/components/contacts/ContactForm";
 import ContactDetailView from "@/components/contacts/ContactDetailView";
 import ContactGroupsManager from "@/components/contacts/ContactGroupsManager";
+import CompanyForm from "@/components/contacts/CompanyForm";
+import CompanyDetailView from "@/components/contacts/CompanyDetailView";
 import { apiRequest } from "@/lib/queryClient";
 import type { CrmContact, ContactWithRelations } from "@shared/schema";
 
@@ -24,6 +26,8 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedContact, setSelectedContact] = useState<ContactWithRelations | null>(null);
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
+  const [isCompanyFormOpen, setIsCompanyFormOpen] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("all");
   
   const queryClient = useQueryClient();
@@ -37,6 +41,16 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
 
   // Ensure contacts is always an array
   const contactsList = Array.isArray(contacts) ? contacts : [];
+
+  // Fetch companies
+  const { data: companies = [], isLoading: companiesLoading } = useQuery({
+    queryKey: ['/api/crm/companies', userId],
+    queryFn: () => apiRequest('GET', `/api/crm/companies?spaceId=${userId}`),
+    staleTime: 30000,
+  });
+
+  // Ensure companies is always an array
+  const companiesList = Array.isArray(companies) ? companies : [];
 
   // Fetch upcoming special dates
   const { data: upcomingDates = [] } = useQuery({
@@ -68,6 +82,24 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
       setIsContactFormOpen(false);
     },
   });
+
+  // Company mutations
+  const createCompanyMutation = useMutation({
+    mutationFn: (companyData: any) => apiRequest('POST', '/api/crm/companies', companyData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/companies', userId] });
+      setIsCompanyFormOpen(false);
+    },
+  });
+
+  const handleCompanyClick = async (company: any) => {
+    try {
+      const fullCompany = await apiRequest('GET', `/api/crm/companies/${company.companyId}`);
+      setSelectedCompany(fullCompany);
+    } catch (error) {
+      console.error('Error fetching company details:', error);
+    }
+  };
 
   // Filter contacts based on active tab
   const getFilteredContacts = () => {
@@ -147,6 +179,11 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
               />
             </DialogContent>
           </Dialog>
+          
+          <Button variant="outline" onClick={() => setIsCompanyFormOpen(true)}>
+            <Building2 className="w-4 h-4 mr-2" />
+            Add Company
+          </Button>
         </div>
       </div>
 

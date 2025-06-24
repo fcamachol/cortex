@@ -2489,6 +2489,107 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Company Management Routes
+  app.get('/api/crm/companies', async (req: Request, res: Response) => {
+    try {
+      const spaceId = parseInt(req.query.spaceId as string);
+      if (!spaceId) {
+        return res.status(400).json({ error: 'Space ID is required' });
+      }
+
+      const searchTerm = req.query.search as string;
+      const companies = searchTerm 
+        ? await storage.searchCompanies(spaceId, searchTerm)
+        : await storage.getAllCompanies(spaceId);
+      
+      res.json(companies);
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+      res.status(500).json({ error: 'Failed to fetch companies' });
+    }
+  });
+
+  app.get('/api/crm/companies/:companyId', async (req: Request, res: Response) => {
+    try {
+      const companyId = parseInt(req.params.companyId);
+      const company = await storage.getCompanyWithDetails(companyId);
+      
+      if (!company) {
+        return res.status(404).json({ error: 'Company not found' });
+      }
+      
+      res.json(company);
+    } catch (error) {
+      console.error('Error fetching company:', error);
+      res.status(500).json({ error: 'Failed to fetch company' });
+    }
+  });
+
+  app.post('/api/crm/companies', async (req: Request, res: Response) => {
+    try {
+      const company = await storage.createCompany(req.body);
+      res.status(201).json(company);
+    } catch (error) {
+      console.error('Error creating company:', error);
+      res.status(500).json({ error: 'Failed to create company' });
+    }
+  });
+
+  app.put('/api/crm/companies/:companyId', async (req: Request, res: Response) => {
+    try {
+      const companyId = parseInt(req.params.companyId);
+      const company = await storage.updateCompany(companyId, req.body);
+      res.json(company);
+    } catch (error) {
+      console.error('Error updating company:', error);
+      res.status(500).json({ error: 'Failed to update company' });
+    }
+  });
+
+  app.delete('/api/crm/companies/:companyId', async (req: Request, res: Response) => {
+    try {
+      const companyId = parseInt(req.params.companyId);
+      await storage.deleteCompany(companyId);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting company:', error);
+      res.status(500).json({ error: 'Failed to delete company' });
+    }
+  });
+
+  app.get('/api/crm/company-contacts/:companyId', async (req: Request, res: Response) => {
+    try {
+      const companyId = parseInt(req.params.companyId);
+      const contacts = await storage.getContactsByCompany(companyId);
+      res.json(contacts);
+    } catch (error) {
+      console.error('Error fetching company contacts:', error);
+      res.status(500).json({ error: 'Failed to fetch company contacts' });
+    }
+  });
+
+  app.post('/api/crm/company-members', async (req: Request, res: Response) => {
+    try {
+      const member = await storage.addCompanyMember(req.body);
+      res.status(201).json(member);
+    } catch (error) {
+      console.error('Error adding company member:', error);
+      res.status(500).json({ error: 'Failed to add company member' });
+    }
+  });
+
+  app.delete('/api/crm/company-members/:companyId/:contactId', async (req: Request, res: Response) => {
+    try {
+      const companyId = parseInt(req.params.companyId);
+      const contactId = parseInt(req.params.contactId);
+      await storage.removeCompanyMember(companyId, contactId);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error removing company member:', error);
+      res.status(500).json({ error: 'Failed to remove company member' });
+    }
+  });
+
   // =============================================================================
   // CREDIT CARD MANAGEMENT ENDPOINTS
   // =============================================================================

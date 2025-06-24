@@ -1,0 +1,358 @@
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Edit, X, Phone, Mail, MapPin, Building2, Globe, Users, Plus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import CompanyForm from "./CompanyForm";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+interface CompanyDetailViewProps {
+  company: any;
+  isOpen: boolean;
+  onClose: () => void;
+  spaceId: string;
+}
+
+export default function CompanyDetailView({ company, isOpen, onClose, spaceId }: CompanyDetailViewProps) {
+  const [isEditFormOpen, setIsEditFormOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch company employees/contacts
+  const { data: companyContacts = [] } = useQuery({
+    queryKey: ["/api/crm/company-contacts", company?.companyId],
+    enabled: !!company?.companyId,
+  });
+
+  const deleteCompanyMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("DELETE", `/api/crm/companies/${company.companyId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/crm/companies"] });
+      toast({
+        title: "Company Deleted",
+        description: `${company.companyName} has been deleted successfully.`,
+      });
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete company",
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (!company) return null;
+
+  const handleDelete = () => {
+    if (window.confirm(`Are you sure you want to delete ${company.companyName}?`)) {
+      deleteCompanyMutation.mutate();
+    }
+  };
+
+  return (
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-3">
+                <Avatar className="w-12 h-12">
+                  <AvatarFallback className="bg-blue-100 text-blue-600">
+                    <Building2 className="w-6 h-6" />
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h2 className="text-xl font-semibold">{company.companyName}</h2>
+                  {company.industry && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{company.industry}</p>
+                  )}
+                </div>
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditFormOpen(true)}
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+                <Button variant="outline" size="sm" onClick={onClose}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <ScrollArea className="flex-1 px-1">
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="contacts">
+                  Contacts ({companyContacts.length})
+                </TabsTrigger>
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="settings">Settings</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-4">
+                {/* Basic Info */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Company Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {company.description && (
+                      <div>
+                        <h4 className="font-medium mb-2">Description</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {company.description}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {company.businessType && (
+                        <div>
+                          <h4 className="font-medium mb-1">Business Type</h4>
+                          <Badge variant="secondary">{company.businessType}</Badge>
+                        </div>
+                      )}
+
+                      {company.taxId && (
+                        <div>
+                          <h4 className="font-medium mb-1">Tax ID</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {company.taxId}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {company.website && (
+                      <div>
+                        <h4 className="font-medium mb-1">Website</h4>
+                        <a
+                          href={company.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm"
+                        >
+                          <Globe className="w-4 h-4" />
+                          {company.website}
+                        </a>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Contact Information */}
+                {(company.phoneNumbers?.length > 0 || company.emails?.length > 0) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Contact Information</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {company.phoneNumbers?.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-2 flex items-center gap-2">
+                            <Phone className="w-4 h-4" />
+                            Phone Numbers
+                          </h4>
+                          <div className="space-y-1">
+                            {company.phoneNumbers.map((phone: any, index: number) => (
+                              <div key={index} className="flex items-center justify-between text-sm">
+                                <span>{phone.phoneNumber}</span>
+                                {phone.label && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {phone.label}
+                                  </Badge>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {company.emails?.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-2 flex items-center gap-2">
+                            <Mail className="w-4 h-4" />
+                            Email Addresses
+                          </h4>
+                          <div className="space-y-1">
+                            {company.emails.map((email: any, index: number) => (
+                              <div key={index} className="flex items-center justify-between text-sm">
+                                <a
+                                  href={`mailto:${email.emailAddress}`}
+                                  className="text-blue-600 hover:text-blue-800"
+                                >
+                                  {email.emailAddress}
+                                </a>
+                                {email.label && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {email.label}
+                                  </Badge>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Addresses */}
+                {company.addresses?.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        Addresses
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {company.addresses.map((address: any, index: number) => (
+                          <div key={index} className="border rounded-lg p-3">
+                            {address.label && (
+                              <Badge variant="outline" className="mb-2 text-xs">
+                                {address.label}
+                              </Badge>
+                            )}
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                              {address.street && <div>{address.street}</div>}
+                              <div>
+                                {[address.city, address.state, address.postalCode]
+                                  .filter(Boolean)
+                                  .join(", ")}
+                              </div>
+                              {address.country && <div>{address.country}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="contacts" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Company Contacts</CardTitle>
+                        <CardDescription>
+                          People associated with {company.companyName}
+                        </CardDescription>
+                      </div>
+                      <Button size="sm">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Contact
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {companyContacts.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No contacts associated with this company yet.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {companyContacts.map((contact: any) => (
+                          <div key={contact.contactId} className="flex items-center gap-3 p-3 border rounded-lg">
+                            <Avatar>
+                              <AvatarFallback>
+                                {contact.fullName?.charAt(0) || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                              <h4 className="font-medium">{contact.fullName}</h4>
+                              {contact.jobTitle && (
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  {contact.jobTitle}
+                                </p>
+                              )}
+                            </div>
+                            {contact.relationship && (
+                              <Badge variant="outline">{contact.relationship}</Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="details" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Additional Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium">Created:</span>
+                        <span className="ml-2 text-gray-600 dark:text-gray-400">
+                          {new Date(company.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium">Last Updated:</span>
+                        <span className="ml-2 text-gray-600 dark:text-gray-400">
+                          {new Date(company.updatedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="settings" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-red-600">Danger Zone</CardTitle>
+                    <CardDescription>
+                      These actions cannot be undone. Please be certain.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      variant="destructive"
+                      onClick={handleDelete}
+                      disabled={deleteCompanyMutation.isPending}
+                    >
+                      {deleteCompanyMutation.isPending ? "Deleting..." : "Delete Company"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <CompanyForm
+        isOpen={isEditFormOpen}
+        onClose={() => setIsEditFormOpen(false)}
+        company={company}
+        spaceId={spaceId}
+      />
+    </>
+  );
+}
