@@ -102,6 +102,8 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
   const [searchTerm, setSearchTerm] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editedSpace, setEditedSpace] = useState<Partial<Space>>({});
+  const [showCreateItemDialog, setShowCreateItemDialog] = useState(false);
+  const [createItemType, setCreateItemType] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -543,7 +545,10 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                         <List className="h-4 w-4" />
                       </Button>
                     </div>
-                    <Button>
+                    <Button onClick={() => {
+                      setCreateItemType(key === 'files' ? 'file' : key.slice(0, -1));
+                      setShowCreateItemDialog(true);
+                    }}>
                       <Plus className="h-4 w-4 mr-2" />
                       Add {label.slice(0, -1)}
                     </Button>
@@ -582,7 +587,10 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                     <div className="text-center py-12">
                       <FolderOpen className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                       <p className="text-gray-500">No subspaces found</p>
-                      <Button className="mt-4">
+                      <Button className="mt-4" onClick={() => {
+                        setCreateItemType('subspace');
+                        setShowCreateItemDialog(true);
+                      }}>
                         <Plus className="h-4 w-4 mr-2" />
                         Create Subspace
                       </Button>
@@ -596,6 +604,18 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
           ))}
         </div>
       </Tabs>
+
+      {/* Create Item Dialog */}
+      <CreateItemDialog
+        open={showCreateItemDialog}
+        onOpenChange={setShowCreateItemDialog}
+        spaceId={spaceId}
+        itemType={createItemType}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'items'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/spaces'] });
+        }}
+      />
     </div>
   );
 }
