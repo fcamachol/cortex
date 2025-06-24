@@ -63,12 +63,13 @@ type DetailedContactFormData = z.infer<typeof detailedContactSchema>;
 
 interface ContactFormProps {
   onSuccess?: () => void;
+  onSaveAndViewDetails?: (contactId: number) => void;
   ownerUserId: string;
   spaceId?: number;
   mode?: 'quick' | 'detailed';
 }
 
-export function ContactForm({ onSuccess, ownerUserId, spaceId, mode = 'quick' }: ContactFormProps) {
+export function ContactForm({ onSuccess, onSaveAndViewDetails, ownerUserId, spaceId, mode = 'quick' }: ContactFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [currentPhase, setCurrentPhase] = useState<'quick' | 'detailed'>(mode);
@@ -86,7 +87,8 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId, mode = 'quick' }:
     resolver: zodResolver(quickContactSchema),
     defaultValues: {
       fullName: "",
-      primaryContact: "",
+      primaryPhone: "",
+      primaryEmail: "",
       relationship: "Client",
     },
   });
@@ -165,20 +167,20 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId, mode = 'quick' }:
       ].filter(Boolean).join('\n') || undefined,
     };
     
-    createContactMutation.mutate(contactData);
-    
-    // After successful creation, switch to detailed view
-    setTimeout(() => {
-      if (savedContactData) {
-        setCurrentPhase('detailed');
-        detailedForm.setValue('fullName', data.fullName);
-        detailedForm.setValue('relationship', data.relationship || 'Client');
-        detailedForm.setValue('notes', [
-          data.primaryPhone ? `Primary phone: ${data.primaryPhone}` : null,
-          data.primaryEmail ? `Primary email: ${data.primaryEmail}` : null
-        ].filter(Boolean).join('\n') || '');
+    // Create contact and then trigger the details view
+    const response = apiRequest('POST', '/api/crm/contacts', {
+      ...contactData,
+      ownerUserId,
+      spaceId,
+    }).then((newContact: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
+      if (onSaveAndViewDetails && newContact.contactId) {
+        onSaveAndViewDetails(newContact.contactId);
       }
-    }, 1000);
+      if (onSuccess) {
+        onSuccess();
+      }
+    });
   };
 
   const onDetailedSubmit = (data: DetailedContactFormData) => {
