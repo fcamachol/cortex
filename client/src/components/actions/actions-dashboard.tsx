@@ -247,15 +247,15 @@ export function ActionsDashboard() {
                     <div className="flex gap-2 mt-3">
                       <Badge 
                         variant="secondary" 
-                        className={`text-white ${getTriggerBadgeColor(rule.triggerType)}`}
+                        className={`text-white ${getTriggerBadgeColor(rule.triggerType || 'unknown')}`}
                       >
-                        {formatTriggerType(rule.triggerType)}
+                        {formatTriggerType(rule.triggerType || 'unknown')}
                       </Badge>
                       <Badge 
                         variant="secondary"
-                        className={`text-white ${getActionBadgeColor(rule.actionType)}`}
+                        className={`text-white ${getActionBadgeColor(rule.actionType || 'unknown')}`}
                       >
-                        {formatActionType(rule.actionType)}
+                        {formatActionType(rule.actionType || 'unknown')}
                       </Badge>
                     </div>
                   </CardHeader>

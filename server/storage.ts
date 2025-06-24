@@ -2485,16 +2485,16 @@ class DatabaseStorage {
         try {
             const result = await db.execute(sql`
                 SELECT 
-                    template_id,
-                    template_name,
-                    action_type,
-                    trigger_type,
-                    default_config,
-                    is_public,
+                    template_id as "templateId",
+                    template_name as "templateName",
+                    action_type as "actionType",
+                    trigger_type as "triggerType",
+                    default_config as "defaultConfig",
+                    is_public as "isPublic",
                     category,
                     description,
-                    created_at,
-                    updated_at
+                    created_at as "createdAt",
+                    updated_at as "updatedAt"
                 FROM actions.action_templates
                 WHERE is_public = true OR is_public IS NULL
                 ORDER BY template_name ASC
@@ -2538,14 +2538,17 @@ class DatabaseStorage {
         try {
             const result = await db.execute(sql`
                 SELECT 
-                    rule_id,
-                    rule_name,
-                    trigger_type,
-                    trigger_conditions,
-                    action_type,
-                    action_config,
-                    is_active,
-                    created_at
+                    rule_id as "ruleId",
+                    rule_name as "ruleName",
+                    description,
+                    trigger_type as "triggerType",
+                    trigger_conditions as "triggerConditions",
+                    action_type as "actionType",
+                    action_config as "actionConfig",
+                    is_active as "isActive",
+                    total_executions as "totalExecutions",
+                    last_executed_at as "lastExecutedAt",
+                    created_at as "createdAt"
                 FROM actions.action_rules
                 WHERE is_active = true
                 ORDER BY rule_name ASC
