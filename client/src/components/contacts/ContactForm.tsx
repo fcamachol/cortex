@@ -240,7 +240,7 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
   return (
     <div className="space-y-6">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-1">
           {/* Core Information - Always Visible */}
           <div className="space-y-4">
             <FormField
