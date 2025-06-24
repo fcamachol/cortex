@@ -49,7 +49,6 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
   const [selectedItemType, setSelectedItemType] = useState<string>('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
 
   // Fetch spaces data
   const { data: spaces, isLoading } = useQuery({
@@ -619,7 +618,11 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                       variant="ghost"
                       size="sm"
                       className="h-6 text-xs hover:bg-gray-100 dark:hover:bg-gray-800"
-                      onClick={() => setLocation(`/spaces/${space.spaceId}?new=true`)}
+                      onClick={() => {
+                        setSelectedSpaceId(space.spaceId);
+                        setSelectedItemType('task');
+                        setShowCreateItemDialog(true);
+                      }}
                     >
                       <Plus className="h-3 w-3 mr-1" />
                       Add item
