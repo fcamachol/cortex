@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { Plus, Search, Filter, Star, Archive, Grid3X3, List, MoreHorizontal, Users, Settings, Folder, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -184,7 +185,7 @@ export function SpacesPage({ selectedSpaceId, parentSpaceId }: SpacesPageProps) 
     <Card 
       key={space.spaceId} 
       className="group cursor-pointer hover:shadow-md transition-all duration-200 relative overflow-hidden"
-      onClick={() => setSelectedSpace(space)}
+      onClick={() => navigate(`/spaces/${space.spaceId}`)}
     >
       {space.coverImage && (
         <div className="h-24 bg-gradient-to-r from-blue-500 to-purple-600 relative">
@@ -278,11 +279,14 @@ export function SpacesPage({ selectedSpaceId, parentSpaceId }: SpacesPageProps) 
     
     return rootSpaces.map(space => (
       <div key={space.spaceId} className={`${level > 0 ? 'ml-6' : ''}`}>
-        <div className="flex items-center space-x-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg cursor-pointer">
+        <div className="flex items-center space-x-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg cursor-pointer" onClick={() => navigate(`/spaces/${space.spaceId}`)}>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => toggleSpaceExpansion(space.spaceId)}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleSpaceExpansion(space.spaceId);
+            }}
             className="p-0 h-6 w-6"
           >
             {space.childSpaces?.length ? (
@@ -421,7 +425,7 @@ export function SpacesPage({ selectedSpaceId, parentSpaceId }: SpacesPageProps) 
       {view === 'list' && (
         <div className="space-y-2">
           {filteredSpaces.map(space => (
-            <Card key={space.spaceId} className="p-4 hover:shadow-sm transition-shadow cursor-pointer">
+            <Card key={space.spaceId} className="p-4 hover:shadow-sm transition-shadow cursor-pointer" onClick={() => navigate(`/spaces/${space.spaceId}`)}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div 
