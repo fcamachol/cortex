@@ -127,6 +127,7 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 24, 2025: Updated address display to match unified design pattern with label-based format like phones and emails - shows custom name or type with primary designation and condensed address format
 - June 24, 2025: Enhanced Contact Information section to support multiple phones, emails, and addresses with dynamic add/remove functionality - users can now add unlimited contact methods with type classification and primary designation
 - June 24, 2025: Redesigned contact form with collapsible sections approach - moved phone/email to collapsible "Contact Information" section, added expandable Professional, Personal, and Notes sections with plus sign indicators for intuitive form expansion
 - June 24, 2025: Updated contact form to use independent primary phone and primary email fields that are both optional, replacing combined primary contact field per user specification  

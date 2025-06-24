@@ -56,6 +56,14 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
   const [isSpecialDatesOpen, setIsSpecialDatesOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   
+  // State for form dialogs
+  const [showPhoneForm, setShowPhoneForm] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [editingPhoneId, setEditingPhoneId] = useState<string | null>(null);
+  const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  
   // State for managing notes
   const [notes, setNotes] = useState<Array<{ id: string; title: string; content: string; createdAt?: string }>>([]);
   
@@ -512,41 +520,23 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
                     {addresses.map((address) => (
                       <div key={address.id} className="space-y-1 py-1 group">
                         <div className="flex items-center gap-2 text-sm">
-                          <Select
-                            value={address.type}
-                            onValueChange={(value) => updateAddress(address.id, "type", value)}
+                          <span className="text-xs">🏠</span>
+                          <span className="font-medium min-w-16 text-xs">
+                            {address.name || address.type}{address.isPrimary ? ' (Primary)' : ''}:
+                          </span>
+                          <span className="flex-1 text-xs">
+                            {address.street}{address.city ? `, ${address.city}` : ''}{address.state ? `, ${address.state}` : ''}{address.zipCode ? `, ${address.zipCode}` : ''}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingAddressId(address.id);
+                              setShowAddressForm(true);
+                            }}
+                            className="text-xs text-muted-foreground hover:text-foreground"
                           >
-                            <SelectTrigger className="w-16 h-6 border-none bg-transparent text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Home">🏠 Home</SelectItem>
-                              <SelectItem value="Work">🏢 Work</SelectItem>
-                              <SelectItem value="Other">📍 Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          
-                          {/* Show name input if type is selected */}
-                          {address.type && (
-                            <>
-                              <span className="text-xs">...</span>
-                              <Input
-                                placeholder="Name for this address"
-                                value={address.name || ""}
-                                onChange={(e) => updateAddress(address.id, "name", e.target.value)}
-                                className="w-32 h-6 border-none bg-transparent p-0 text-xs focus-visible:ring-0 focus-visible:ring-offset-0"
-                              />
-                            </>
-                          )}
-                          
-                          <span className="text-xs">:</span>
-                          <Input
-                            placeholder="Street address"
-                            value={address.street}
-                            onChange={(e) => updateAddress(address.id, "street", e.target.value)}
-                            className="flex-1 h-6 border-none bg-transparent p-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
-                          />
-                          {address.isPrimary && <span className="text-xs text-blue-600">(Primary)</span>}
+                            [...]
+                          </button>
                           <button
                             type="button"
                             onClick={() => removeAddress(address.id)}
@@ -554,26 +544,6 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
                           >
                             <X className="h-3 w-3" />
                           </button>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 pl-6">
-                          <Input
-                            placeholder="City"
-                            value={address.city}
-                            onChange={(e) => updateAddress(address.id, "city", e.target.value)}
-                            className="h-6 border-none bg-transparent p-0 text-xs focus-visible:ring-0 focus-visible:ring-offset-0"
-                          />
-                          <Input
-                            placeholder="State"
-                            value={address.state}
-                            onChange={(e) => updateAddress(address.id, "state", e.target.value)}
-                            className="h-6 border-none bg-transparent p-0 text-xs focus-visible:ring-0 focus-visible:ring-offset-0"
-                          />
-                          <Input
-                            placeholder="ZIP"
-                            value={address.zipCode}
-                            onChange={(e) => updateAddress(address.id, "zipCode", e.target.value)}
-                            className="h-6 border-none bg-transparent p-0 text-xs focus-visible:ring-0 focus-visible:ring-offset-0"
-                          />
                         </div>
                       </div>
                     ))}
@@ -962,6 +932,126 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
           </div>
         </form>
       </Form>
+
+      {/* Address Form Dialog */}
+      <Dialog open={showAddressForm} onOpenChange={setShowAddressForm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Address</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {editingAddressId && (() => {
+              const address = addresses.find(a => a.id === editingAddressId);
+              if (!address) return null;
+              
+              return (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Label</label>
+                    <Select
+                      value={address.type}
+                      onValueChange={(value) => updateAddress(address.id, "type", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Home">Home</SelectItem>
+                        <SelectItem value="Work">Work</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {address.type && (
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Name (optional)</label>
+                      <Input
+                        placeholder="Custom name for this address"
+                        value={address.name || ""}
+                        onChange={(e) => updateAddress(address.id, "name", e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Street Address</label>
+                    <Input
+                      placeholder="123 Main St"
+                      value={address.street}
+                      onChange={(e) => updateAddress(address.id, "street", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">City</label>
+                      <Input
+                        placeholder="City"
+                        value={address.city}
+                        onChange={(e) => updateAddress(address.id, "city", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">State</label>
+                      <Input
+                        placeholder="State"
+                        value={address.state}
+                        onChange={(e) => updateAddress(address.id, "state", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Postal Code</label>
+                      <Input
+                        placeholder="ZIP"
+                        value={address.zipCode}
+                        onChange={(e) => updateAddress(address.id, "zipCode", e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Country</label>
+                    <Input
+                      placeholder="Country"
+                      value={address.country}
+                      onChange={(e) => updateAddress(address.id, "country", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`address-primary-${address.id}`}
+                      checked={address.isPrimary}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setAddresses(addresses.map(a => ({
+                            ...a,
+                            isPrimary: a.id === address.id
+                          })));
+                        }
+                      }}
+                    />
+                    <label htmlFor={`address-primary-${address.id}`} className="text-sm">
+                      Set as primary address for this contact
+                    </label>
+                  </div>
+
+                  <Button
+                    onClick={() => {
+                      setShowAddressForm(false);
+                      setEditingAddressId(null);
+                    }}
+                    className="w-full"
+                  >
+                    Save Address
+                  </Button>
+                </>
+              );
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
