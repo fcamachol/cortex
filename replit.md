@@ -127,6 +127,7 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 24, 2025: Enhanced drag and drop logic to support full folder-like behavior - spaces can now be dropped onto other spaces as containers, maintaining proper hierarchical relationships with visual feedback during drag operations
 - June 24, 2025: Created ultra-compact hierarchical spaces design - removed visual bracket lines, reduced tab spacing from 12px to 6px per level, eliminated unnecessary borders and margins for cleaner nested subspace appearance
 - June 24, 2025: Removed redundant category labels from spaces sidebar - cleaned up interface by removing "(work)" and other category badges from individual space items, keeping only the main category headers for better visual hierarchy
 - June 24, 2025: Implemented category inheritance system where subspaces automatically inherit parent space categories - ensures consistent categorization throughout unlimited nesting levels like Test Space > Personal > Health & Fitness all sharing "personal" category

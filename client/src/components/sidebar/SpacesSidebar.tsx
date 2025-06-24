@@ -164,6 +164,9 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
     
     if (destination.droppableId.startsWith('space-children-')) {
       newParentId = parseInt(destination.droppableId.replace('space-children-', ''));
+    } else if (destination.droppableId.startsWith('space-')) {
+      // Dropping onto a space makes it a child of that space
+      newParentId = parseInt(destination.droppableId.replace('space-', ''));
     } else if (destination.droppableId.startsWith('category-')) {
       // Dropping into category means making it a root space
       newParentId = undefined;
@@ -293,18 +296,28 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
             {...provided.draggableProps}
             className="space-y-0.5"
           >
-            <div 
-              className={`group flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors ${
-                isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''
-              } ${snapshot.isDragging ? 'shadow-lg bg-white dark:bg-gray-800 border border-blue-300' : ''}`}
-              style={{ 
-                paddingLeft: `${4 + level * 6}px`
-              }}
-              onClick={() => {
-                onSpaceSelect?.(space);
-                setLocation(`/spaces?spaceId=${space.spaceId}`);
-              }}
-            >
+            {/* Make each space a drop target for folder-like behavior */}
+            <Droppable droppableId={`space-${space.spaceId}`} type="SPACE">
+              {(dropProvided, dropSnapshot) => (
+                <div
+                  ref={dropProvided.innerRef}
+                  {...dropProvided.droppableProps}
+                  className={`${
+                    dropSnapshot.isDraggingOver ? 'bg-blue-100 dark:bg-blue-900/30 rounded-lg' : ''
+                  }`}
+                >
+                  <div 
+                    className={`group flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors ${
+                      isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''
+                    } ${snapshot.isDragging ? 'shadow-lg bg-white dark:bg-gray-800 border border-blue-300' : ''}`}
+                    style={{ 
+                      paddingLeft: `${4 + level * 6}px`
+                    }}
+                    onClick={() => {
+                      onSpaceSelect?.(space);
+                      setLocation(`/spaces?spaceId=${space.spaceId}`);
+                    }}
+                  >
               {/* Drag Handle */}
               <div 
                 {...provided.dragHandleProps}
@@ -394,7 +407,11 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-            </div>
+                  </div>
+                  {dropProvided.placeholder}
+                </div>
+              )}
+            </Droppable>
 
             {/* Space Items Preview */}
             {isExpanded && hasItems && (
