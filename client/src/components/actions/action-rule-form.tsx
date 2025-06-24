@@ -550,13 +550,25 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="create_task">Create Task</SelectItem>
+                            <SelectItem value="create_project">Create Project</SelectItem>
+                            <SelectItem value="create_note">Create Note</SelectItem>
+                            <SelectItem value="store_file">Store File</SelectItem>
+                            <SelectItem value="create_document">Create Document</SelectItem>
+                            <SelectItem value="create_space">Create Space</SelectItem>
                             <SelectItem value="create_calendar_event">Create Calendar Event</SelectItem>
+                            <SelectItem value="schedule_meeting">Schedule Meeting</SelectItem>
                             <SelectItem value="send_message">Send Message</SelectItem>
                             <SelectItem value="add_label">Add Label</SelectItem>
                             <SelectItem value="update_contact">Update Contact</SelectItem>
+                            <SelectItem value="update_project_status">Update Project Status</SelectItem>
+                            <SelectItem value="update_task_priority">Update Task Priority</SelectItem>
+                            <SelectItem value="create_checklist">Create Checklist</SelectItem>
+                            <SelectItem value="assign_to_space">Assign to Space</SelectItem>
+                            <SelectItem value="create_financial_record">Create Financial Record</SelectItem>
+                            <SelectItem value="create_invoice">Create Invoice</SelectItem>
                             <SelectItem value="move_to_folder">Move to Folder</SelectItem>
                             <SelectItem value="send_notification">Send Notification</SelectItem>
-                            <SelectItem value="webhook">Webhook</SelectItem>
+                            <SelectItem value="webhook">Call Webhook</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

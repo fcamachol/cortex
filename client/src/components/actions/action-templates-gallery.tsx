@@ -56,8 +56,10 @@ export function ActionTemplatesGallery() {
 
   const filteredTemplates = templates.filter((template: ActionTemplate) => {
     const matchesCategory = selectedCategory === "all" || template.category === selectedCategory;
-    const matchesSearch = template.templateName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         template.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const templateName = template.templateName || '';
+    const description = template.description || '';
+    const matchesSearch = templateName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
