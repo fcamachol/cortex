@@ -127,6 +127,7 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 24, 2025: Enhanced mobile chat interface to match WhatsApp-style design from web app - implemented proper avatars, timestamps, message previews with "You:" prefix for sent messages, smart relative time display, and authentic conversation data display
 - June 24, 2025: Fixed mobile app scrolling issue by removing overflow:hidden from body and adding proper overflow-y:auto with touch scrolling support for iOS devices
 - June 24, 2025: Fixed contact editing bug - now opens proper edit mode instead of create new contact modal, uses ContactDetailView with ContactFormBlocks in edit mode
 - June 24, 2025: Implemented collapsible sidebar with icon-only mode - added toggle button in header, smooth transition animations, collapsed state with tooltips, and proper badge indicators for icon mode to improve space utilization
