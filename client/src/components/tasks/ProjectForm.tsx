@@ -27,6 +27,8 @@ interface ProjectFormProps {
   onSubmit: (data: Partial<Project>) => void;
   onClose: () => void;
   isLoading?: boolean;
+  isOpen?: boolean;
+  spaceId?: number;
 }
 
 const projectFormSchema = z.object({
@@ -39,7 +41,7 @@ const projectFormSchema = z.object({
 
 type ProjectFormData = z.infer<typeof projectFormSchema>;
 
-export function ProjectForm({ project, onSubmit, onClose, isLoading, isOpen = true }: ProjectFormProps & { isOpen?: boolean }) {
+export function ProjectForm({ project, onSubmit, onClose, isLoading, isOpen = true, spaceId }: ProjectFormProps) {
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectFormSchema),
     defaultValues: {
@@ -56,6 +58,7 @@ export function ProjectForm({ project, onSubmit, onClose, isLoading, isOpen = tr
       ...data,
       start_date: data.start_date?.toISOString(),
       end_date: data.end_date?.toISOString(),
+      space_id: spaceId || null,
     };
     onSubmit(formattedData);
   };

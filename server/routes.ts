@@ -873,8 +873,6 @@ export async function registerRoutes(app: Express): Promise<void> {
       console.error('Error creating task:', error);
       res.status(500).json({ error: 'Failed to create task' });
     }
-  });ects' });
-    }
   });
 
   app.get('/api/crm/checklist-items', async (req: Request, res: Response) => {

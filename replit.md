@@ -127,6 +127,7 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 24, 2025: Successfully implemented comprehensive CRM projects table with space assignment functionality - added crmProjects table to schema with full CRUD operations, storage methods, API endpoints, and space assignment for both projects and tasks, enabling proper hierarchical organization within spaces
 - June 24, 2025: Updated space navigation - space cards in all views (grid, list, hierarchy) now navigate directly to space detail view instead of opening modals, providing seamless hierarchical navigation experience
 - June 24, 2025: Cleaned up sidebar interface - removed "Expand All" and "Collapse All" buttons for cleaner navigation experience
 - June 24, 2025: Updated sidebar navigation - changed "Teamspaces" to "Spaces" with clickable header that navigates to all spaces view, maintained + button functionality for creating new spaces

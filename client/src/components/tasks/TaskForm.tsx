@@ -50,10 +50,12 @@ interface ChecklistItem {
 
 interface TaskFormProps {
   task?: Task | null;
-  projects: Project[];
+  projects?: Project[];
   onSubmit: (data: Partial<Task>) => void;
   onClose: () => void;
   isLoading?: boolean;
+  isOpen?: boolean;
+  spaceId?: number;
 }
 
 const taskFormSchema = z.object({
@@ -69,7 +71,7 @@ const taskFormSchema = z.object({
 
 type TaskFormData = z.infer<typeof taskFormSchema>;
 
-export function TaskForm({ task, projects, onSubmit, onClose, isLoading }: TaskFormProps) {
+export function TaskForm({ task, projects = [], onSubmit, onClose, isLoading, isOpen = true, spaceId }: TaskFormProps) {
   const [checklistItems, setChecklistItems] = useState<string[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState('');
 
