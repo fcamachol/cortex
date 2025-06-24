@@ -326,22 +326,12 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                     }}
                     onClick={() => {
                       onSpaceSelect?.(space);
-                      // Build hierarchical path based on parent relationships
-                      const buildSpacePath = (currentSpace: Space): string => {
-                        if (!currentSpace.parentSpaceId) {
-                          return `/spaces/${currentSpace.spaceId}`;
-                        }
-                        // Find parent space to build full path
-                        const findParentPath = (spaceId: number, allSpaces: Space[]): string => {
-                          const parentSpace = allSpaces.find(s => s.spaceId === spaceId);
-                          if (!parentSpace || !parentSpace.parentSpaceId) {
-                            return `/spaces/${spaceId}`;
-                          }
-                          return findParentPath(parentSpace.parentSpaceId, allSpaces) + `/${spaceId}`;
-                        };
-                        return findParentPath(currentSpace.parentSpaceId, hierarchicalSpaces) + `/${currentSpace.spaceId}`;
-                      };
-                      setLocation(buildSpacePath(space));
+                      // Simple routing: if space has parent, use /spaces/parentId/spaceId, otherwise /spaces/spaceId
+                      if (space.parentSpaceId) {
+                        setLocation(`/spaces/${space.parentSpaceId}/${space.spaceId}`);
+                      } else {
+                        setLocation(`/spaces/${space.spaceId}`);
+                      }
                     }}
                   >
               {/* Drag Handle */}
