@@ -493,9 +493,11 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                     }`}
                     style={{ marginLeft: `${16 + level * 8}px` }}
                   >
-                    {space.childSpaces!.map((childSpace, childIndex) => 
-                      renderSpace(childSpace, level + 1, childIndex)
-                    )}
+                    {children.map((childSpace, childIndex) => (
+                      <div key={childSpace.spaceId}>
+                        {renderSpace(childSpace, level + 1, childIndex)}
+                      </div>
+                    ))}
                     {provided.placeholder}
                   </div>
                 )}
