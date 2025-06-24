@@ -10,7 +10,7 @@ import {
     // Legacy Schema
     tasks, contacts,
     // Actions Schema
-    actionRules,
+    actionRules, actionTemplates,
     // CRM Schema - Comprehensive Contacts Module
     crmProjects, crmTasks, crmCompanies, 
     crmContacts, crmContactPhones, crmContactEmails, crmContactAddresses, 
@@ -1265,6 +1265,28 @@ class DatabaseStorage {
                 projectId: taskData.projectId || null,
                 parentTaskId: taskData.parentTaskId || null
             })
+            .returning();
+        return task;
+    }
+
+    // GTD-specific methods
+    async getTasksByTriggeringMessage(messageId: string, instanceId: string): Promise<any[]> {
+        const tasks = await db.select()
+            .from(crmTasks)
+            .where(and(
+                eq(crmTasks.triggeringMessageId, messageId),
+                eq(crmTasks.instanceId, instanceId)
+            ));
+        return tasks;
+    }
+
+    async updateTask(taskId: number, updates: any): Promise<any> {
+        const [task] = await db.update(crmTasks)
+            .set({
+                ...updates,
+                updatedAt: new Date()
+            })
+            .where(eq(crmTasks.taskId, taskId))
             .returning();
         return task;
     }
