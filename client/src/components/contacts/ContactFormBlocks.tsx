@@ -46,15 +46,23 @@ interface ContactFormBlocksProps {
   onSuccess?: () => void;
   ownerUserId: string;
   spaceId?: number;
+  isEditMode?: boolean;
+  contactId?: number;
+  initialData?: {
+    fullName?: string;
+    relationship?: string;
+    profilePictureUrl?: string;
+    notes?: string;
+  };
 }
 
-export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFormBlocksProps) {
+export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode = false, contactId, initialData }: ContactFormBlocksProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
   // Core contact fields
-  const [contactName, setContactName] = useState('');
-  const [relationship, setRelationship] = useState('Client');
+  const [contactName, setContactName] = useState(initialData?.fullName || '');
+  const [relationship, setRelationship] = useState(initialData?.relationship || 'Client');
   const [profession, setProfession] = useState('');
   const [company, setCompany] = useState('');
   
@@ -91,11 +99,16 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
         primaryEmail,
         profession: profession || companyBlocks[0]?.data.role || '',
         company: company || companyBlocks[0]?.data.name || '',
-        notes: noteBlocks.map(b => b.data.content).join('\n') || '',
+        notes: noteBlocks.map(b => b.data.content).join('\n') || initialData?.notes || '',
       };
 
-      const response = await apiRequest('POST', '/api/crm/contacts', completeContactData);
-      return response;
+      if (isEditMode && contactId) {
+        const response = await apiRequest('PUT', `/api/crm/contacts/${contactId}`, completeContactData);
+        return response;
+      } else {
+        const response = await apiRequest('POST', '/api/crm/contacts', completeContactData);
+        return response;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
