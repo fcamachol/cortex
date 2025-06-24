@@ -211,9 +211,9 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId, mode = 'quick' }:
               name="primaryContact"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Primary Contact Info*</FormLabel>
+                  <FormLabel>Primary Contact Info (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter phone or email..." {...field} />
+                    <Input placeholder="Phone or email (optional)" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -508,11 +508,16 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId, mode = 'quick' }:
 
           {/* Context Notes */}
           <Collapsible open={sectionsOpen.notes} onOpenChange={() => toggleSection('notes')}>
-            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
-              {sectionsOpen.notes ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              <span className="font-medium">▼ Context Notes</span>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between p-4 h-auto border rounded-lg hover:bg-accent">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  <span className="font-medium">Context Notes</span>
+                </div>
+                <ChevronDown className="w-4 h-4" />
+              </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="pt-4 border-l-2 border-muted pl-4 ml-2">
+            <CollapsibleContent className="px-4 pb-4 border-l-2 border-primary/20 ml-4">
               <FormField
                 control={detailedForm.control}
                 name="notes"
