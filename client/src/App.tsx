@@ -31,6 +31,9 @@ function AuthenticatedRoutes() {
       <Route path="/spaces/:spaceId">
         {(params) => <SpacesPage selectedSpaceId={parseInt(params.spaceId)} />}
       </Route>
+      <Route path="/spaces/:spaceId/:subspaceId">
+        {(params) => <SpacesPage selectedSpaceId={parseInt(params.subspaceId)} parentSpaceId={parseInt(params.spaceId)} />}
+      </Route>
       <Route path="/contacts" component={() => <ContactsPage userId="7804247f-3ae8-4eb2-8c6d-2c44f967ad42" />} />
       <Route path="/groups" component={() => <GroupManagement spaceId="7804247f-3ae8-4eb2-8c6d-2c44f967ad42" />} />
       <Route path="/monitor" component={() => <RealtimeMonitor spaceId="7804247f-3ae8-4eb2-8c6d-2c44f967ad42" />} />

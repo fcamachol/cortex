@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { useLocation } from 'wouter';
 import { 
   Plus, 
   MoreHorizontal, 
@@ -65,9 +66,10 @@ interface SpaceItem {
 
 interface SpaceDetailViewProps {
   spaceId: number;
+  parentSpaceId?: number;
 }
 
-export function SpaceDetailView({ spaceId }: SpaceDetailViewProps) {
+export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps) {
   const [activeTab, setActiveTab] = useState('overview');
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'table'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
@@ -76,6 +78,7 @@ export function SpaceDetailView({ spaceId }: SpaceDetailViewProps) {
   const [newDescription, setNewDescription] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [location, setLocation] = useLocation();
 
   // Fetch space details
   const { data: space, isLoading: spaceLoading } = useQuery({

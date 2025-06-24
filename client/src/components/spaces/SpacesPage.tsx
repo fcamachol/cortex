@@ -52,9 +52,10 @@ interface SpaceTemplate {
 
 interface SpacesPageProps {
   selectedSpaceId?: number;
+  parentSpaceId?: number;
 }
 
-export function SpacesPage({ selectedSpaceId }: SpacesPageProps) {
+export function SpacesPage({ selectedSpaceId, parentSpaceId }: SpacesPageProps) {
   const [view, setView] = useState<'grid' | 'list' | 'hierarchy'>('grid');
   const [filter, setFilter] = useState<'all' | 'favorites' | 'personal' | 'team' | 'archived'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -304,7 +305,7 @@ export function SpacesPage({ selectedSpaceId }: SpacesPageProps) {
 
   // If selectedSpaceId is provided, show SpaceDetailView
   if (selectedSpaceId) {
-    return <SpaceDetailView spaceId={selectedSpaceId} />;
+    return <SpaceDetailView spaceId={selectedSpaceId} parentSpaceId={parentSpaceId} />;
   }
 
   if (spacesLoading) {
