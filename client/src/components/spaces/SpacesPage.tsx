@@ -76,6 +76,7 @@ export function SpacesPage({ selectedSpaceId, parentSpaceId }: SpacesPageProps) 
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [location, setLocation] = useLocation();
 
   // Fetch spaces
   const { data: spaces, isLoading: spacesLoading } = useQuery({
@@ -185,7 +186,7 @@ export function SpacesPage({ selectedSpaceId, parentSpaceId }: SpacesPageProps) 
     <Card 
       key={space.spaceId} 
       className="group cursor-pointer hover:shadow-md transition-all duration-200 relative overflow-hidden"
-      onClick={() => navigate(`/spaces/${space.spaceId}`)}
+      onClick={() => setLocation(`/spaces/${space.spaceId}`)}
     >
       {space.coverImage && (
         <div className="h-24 bg-gradient-to-r from-blue-500 to-purple-600 relative">
@@ -279,7 +280,7 @@ export function SpacesPage({ selectedSpaceId, parentSpaceId }: SpacesPageProps) 
     
     return rootSpaces.map(space => (
       <div key={space.spaceId} className={`${level > 0 ? 'ml-6' : ''}`}>
-        <div className="flex items-center space-x-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg cursor-pointer" onClick={() => navigate(`/spaces/${space.spaceId}`)}>
+        <div className="flex items-center space-x-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg cursor-pointer" onClick={() => setLocation(`/spaces/${space.spaceId}`)}>
           <Button
             variant="ghost"
             size="sm"
@@ -425,7 +426,7 @@ export function SpacesPage({ selectedSpaceId, parentSpaceId }: SpacesPageProps) 
       {view === 'list' && (
         <div className="space-y-2">
           {filteredSpaces.map(space => (
-            <Card key={space.spaceId} className="p-4 hover:shadow-sm transition-shadow cursor-pointer" onClick={() => navigate(`/spaces/${space.spaceId}`)}>
+            <Card key={space.spaceId} className="p-4 hover:shadow-sm transition-shadow cursor-pointer" onClick={() => setLocation(`/spaces/${space.spaceId}`)}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div 
