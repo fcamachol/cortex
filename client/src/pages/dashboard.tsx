@@ -89,6 +89,8 @@ export default function Dashboard() {
         return <ActionsDashboard />;
       case "integrations":
         return <IntegrationModule />;
+      case "spaces":
+        return <SpacesPage />;
       case "database":
         return <SimpleDBViewer />;
       default:
