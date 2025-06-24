@@ -119,13 +119,18 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
     
     // Extract parent ID from destination droppableId
     let newParentId: number | undefined;
-    if (destination.droppableId !== 'root-spaces') {
+    
+    if (destination.droppableId.startsWith('space-children-')) {
       newParentId = parseInt(destination.droppableId.replace('space-children-', ''));
+    } else if (destination.droppableId.startsWith('category-')) {
+      // Dropping into category means making it a root space
+      newParentId = undefined;
     }
 
     // Don't allow dropping a space into itself or its children
     const spacesArray = Array.isArray(spaces) ? spaces : Object.values(spaces || {}).flat();
     const draggedSpace = spacesArray.find((s: Space) => s.spaceId === spaceId);
+    
     if (draggedSpace && newParentId) {
       const isDescendant = (parentId: number, checkId: number): boolean => {
         const children = spacesArray.filter((s: Space) => s.parentSpaceId === parentId);
@@ -144,6 +149,12 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
       }
     }
 
+    // Check if the move actually changes anything
+    if (draggedSpace?.parentSpaceId === newParentId) {
+      return; // No change needed
+    }
+
+    console.log('Moving space:', spaceId, 'to parent:', newParentId);
     updateSpaceMutation.mutate({ spaceId, newParentId });
   };
 
@@ -308,30 +319,28 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
               </Droppable>
             )}
 
-            {/* Show empty drop zone when expanded but no children */}
-            {isExpanded && !hasChildren && (
-              <Droppable droppableId={`space-children-${space.spaceId}`} type="SPACE">
-                {(provided, snapshot) => (
-                  <div
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    className={`min-h-[20px] ${
-                      snapshot.isDraggingOver 
-                        ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-dashed border-blue-300 rounded-md p-2' 
-                        : 'border-2 border-dashed border-transparent'
-                    }`}
-                    style={{ marginLeft: `${24 + level * 16}px` }}
-                  >
-                    {snapshot.isDraggingOver && (
-                      <div className="text-xs text-blue-600 dark:text-blue-400 text-center">
-                        Drop here to create subspace
-                      </div>
-                    )}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            )}
+            {/* Always show drop zone for spaces (whether they have children or not) */}
+            <Droppable droppableId={`space-children-${space.spaceId}`} type="SPACE">
+              {(provided, snapshot) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className={`min-h-[8px] ${
+                    snapshot.isDraggingOver 
+                      ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-dashed border-blue-300 rounded-md p-1 my-1' 
+                      : ''
+                  }`}
+                  style={{ marginLeft: `${24 + level * 12}px` }}
+                >
+                  {snapshot.isDraggingOver && (
+                    <div className="text-xs text-blue-600 dark:text-blue-400 text-center py-1">
+                      Drop here to make subspace
+                    </div>
+                  )}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
           </div>
         )}
       </Draggable>
@@ -382,31 +391,31 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
           </div>
 
           {/* Spaces List */}
-          <Droppable droppableId="root-spaces" type="SPACE">
-            {(provided, snapshot) => (
-              <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className={`space-y-3 ${
-                  snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2' : ''
-                }`}
-              >
-                {Object.entries(categorizedSpaces).map(([category, categorySpaces]) => (
-                  <div key={category} className="space-y-1">
-                    {category !== 'uncategorized' && (
-                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide px-2">
-                        {category}
-                      </div>
-                    )}
-                    <div className="space-y-1">
-                      {categorySpaces.map((space, index) => renderSpace(space, 0, index))}
-                    </div>
+          <div className="space-y-3">
+            {Object.entries(categorizedSpaces).map(([category, categorySpaces]) => (
+              <div key={category} className="space-y-1">
+                {category !== 'uncategorized' && (
+                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide px-2">
+                    {category}
                   </div>
-                ))}
-                {provided.placeholder}
+                )}
+                <Droppable droppableId={`category-${category}`} type="SPACE">
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={`space-y-1 ${
+                        snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2' : ''
+                      }`}
+                    >
+                      {categorySpaces.map((space, index) => renderSpace(space, 0, index))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
               </div>
-            )}
-          </Droppable>
+            ))}
+          </div>
 
           {/* Empty State */}
           {hierarchicalSpaces.length === 0 && (
