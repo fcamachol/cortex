@@ -24,7 +24,6 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [, setLocation] = useLocation();
   
   // Use authenticated user data with fallback for demo
   const currentUser = {
@@ -130,7 +129,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
             <SpacesSidebar 
               onSpaceSelect={(space) => {
                 // Navigate to spaces page with selected space
-                setLocation(`/spaces?spaceId=${space.spaceId}`);
+                window.location.href = `/spaces?spaceId=${space.spaceId}`;
               }}
             />
           </div>
