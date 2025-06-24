@@ -70,8 +70,10 @@ export function SpaceDetailView({ space, onBack, onCreateItem }: SpaceDetailView
   const itemTypes = [
     { type: 'project', label: 'Projects', icon: Briefcase },
     { type: 'task', label: 'Tasks', icon: CheckSquare },
+    { type: 'file', label: 'Files', icon: FileText },
+    { type: 'document', label: 'Documents', icon: FileText },
     { type: 'note', label: 'Notes', icon: FileText },
-    { type: 'document', label: 'Documents', icon: FileText }
+    { type: 'event', label: 'Events', icon: Calendar }
   ];
 
   return (
@@ -133,7 +135,7 @@ export function SpaceDetailView({ space, onBack, onCreateItem }: SpaceDetailView
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="subspaces">Subspaces ({childSpaces.length})</TabsTrigger>
             <TabsTrigger value="projects">Projects ({getItemsByType('project').length})</TabsTrigger>
-            <TabsTrigger value="content">Content ({getItemsByType('task').length + getItemsByType('note').length + getItemsByType('document').length})</TabsTrigger>
+            <TabsTrigger value="content">Content ({getItemsByType('task').length + getItemsByType('file').length + getItemsByType('document').length + getItemsByType('note').length + getItemsByType('event').length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-6 space-y-6">
@@ -278,6 +280,88 @@ export function SpaceDetailView({ space, onBack, onCreateItem }: SpaceDetailView
                 </Card>
               )}
 
+              {/* Files Section */}
+              {getItemsByType('file').length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        Files ({getItemsByType('file').length})
+                      </CardTitle>
+                      <Button size="sm" onClick={() => onCreateItem?.('file')}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add File
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {getItemsByType('file').map((file: SpaceItem) => (
+                        <div 
+                          key={file.itemId} 
+                          className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <FileText className="h-4 w-4 text-gray-600" />
+                            <div>
+                              <div className="font-medium">{file.title}</div>
+                              {file.description && (
+                                <div className="text-sm text-gray-600">{file.description}</div>
+                              )}
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Documents Section */}
+              {getItemsByType('document').length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        Documents ({getItemsByType('document').length})
+                      </CardTitle>
+                      <Button size="sm" onClick={() => onCreateItem?.('document')}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Document
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {getItemsByType('document').map((document: SpaceItem) => (
+                        <div 
+                          key={document.itemId} 
+                          className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <FileText className="h-4 w-4 text-gray-600" />
+                            <div>
+                              <div className="font-medium">{document.title}</div>
+                              {document.description && (
+                                <div className="text-sm text-gray-600">{document.description}</div>
+                              )}
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Notes Section */}
               {getItemsByType('note').length > 0 && (
                 <Card>
@@ -362,16 +446,22 @@ export function SpaceDetailView({ space, onBack, onCreateItem }: SpaceDetailView
 
               {/* Empty state for content tab */}
               {getItemsByType('task').length === 0 && 
+               getItemsByType('file').length === 0 && 
+               getItemsByType('document').length === 0 && 
                getItemsByType('note').length === 0 && 
-               getItemsByType('document').length === 0 && (
+               getItemsByType('event').length === 0 && (
                 <div className="text-center py-12 text-gray-500">
                   <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <h3 className="text-lg font-medium mb-2">No content yet</h3>
-                  <p className="text-sm mb-4">Add tasks, notes, or documents to this space</p>
-                  <div className="flex justify-center gap-2">
+                  <p className="text-sm mb-4">Add tasks, files, documents, notes, or events to this space</p>
+                  <div className="flex justify-center gap-2 flex-wrap">
                     <Button onClick={() => onCreateItem?.('task')}>
                       <CheckSquare className="h-4 w-4 mr-2" />
                       Add Task
+                    </Button>
+                    <Button variant="outline" onClick={() => onCreateItem?.('file')}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Add File
                     </Button>
                     <Button variant="outline" onClick={() => onCreateItem?.('note')}>
                       <FileText className="h-4 w-4 mr-2" />

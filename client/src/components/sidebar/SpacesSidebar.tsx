@@ -104,6 +104,15 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
     setShowCreateDialog(true);
   };
 
+  const handleCreateItem = (spaceId: number, itemType: string) => {
+    console.log('Creating item:', itemType, 'in space:', spaceId);
+    // TODO: Implement item creation logic
+    toast({
+      title: "Creating " + itemType,
+      description: `Creating new ${itemType} in space ${spaceId}`,
+    });
+  };
+
   // Expose expand function globally for CreateSpaceDialog
   React.useEffect(() => {
     window.expandSpace = (spaceId: number) => {
@@ -366,17 +375,48 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
 
               {/* Actions */}
               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-5 w-5 p-0"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCreateSubspace(space.spaceId);
-                  }}
-                >
-                  <Plus className="h-2.5 w-2.5" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 w-5 p-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Plus className="h-2.5 w-2.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleCreateSubspace(space.spaceId)}>
+                      <Folder className="h-4 w-4 mr-2" />
+                      Subspace
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleCreateItem(space.spaceId, 'project')}>
+                      <Briefcase className="h-4 w-4 mr-2" />
+                      Project
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleCreateItem(space.spaceId, 'task')}>
+                      <CheckSquare className="h-4 w-4 mr-2" />
+                      Task
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleCreateItem(space.spaceId, 'file')}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      File
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleCreateItem(space.spaceId, 'document')}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Document
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleCreateItem(space.spaceId, 'note')}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Note
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleCreateItem(space.spaceId, 'event')}>
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Event
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -391,13 +431,15 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => handleCreateSubspace(space.spaceId)}>
-                      <Plus className="h-4 w-4 mr-2" />
+                      <Folder className="h-4 w-4 mr-2" />
                       Add Subspace
                     </DropdownMenuItem>
                     <DropdownMenuItem>
+                      <FileText className="h-4 w-4 mr-2" />
                       Edit Space
                     </DropdownMenuItem>
                     <DropdownMenuItem className="text-red-600">
+                      <Folder className="h-4 w-4 mr-2" />
                       Archive Space
                     </DropdownMenuItem>
                   </DropdownMenuContent>
