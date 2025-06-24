@@ -2321,6 +2321,137 @@ class DatabaseStorage {
         
         return contact;
     }
+
+    // Space Items Management - projects, tasks, notes, documents, events, finance
+    async createSpaceItem(itemData: any): Promise<any> {
+        try {
+            const { appSpaceItems } = await import("@shared/schema");
+            
+            const [newItem] = await db.insert(appSpaceItems).values({
+                spaceId: itemData.spaceId,
+                itemType: itemData.itemType,
+                parentItemId: itemData.parentItemId,
+                title: itemData.title,
+                description: itemData.description,
+                content: itemData.content || {},
+                status: itemData.status || 'active',
+                priority: itemData.priority || 'medium',
+                dueDate: itemData.dueDate,
+                assignedTo: itemData.assignedTo,
+                tags: itemData.tags || [],
+                metadata: itemData.metadata || {},
+                displayOrder: itemData.displayOrder || 0
+            }).returning();
+
+            return newItem;
+        } catch (error) {
+            console.error('Error creating space item:', error);
+            throw error;
+        }
+    }
+
+    async getSpaceItems(spaceId: number, itemType?: string): Promise<any[]> {
+        try {
+            const { appSpaceItems } = await import("@shared/schema");
+            
+            let query = db.select().from(appSpaceItems).where(eq(appSpaceItems.spaceId, spaceId));
+            
+            if (itemType) {
+                query = db.select().from(appSpaceItems).where(and(
+                    eq(appSpaceItems.spaceId, spaceId), 
+                    eq(appSpaceItems.itemType, itemType)
+                ));
+            }
+
+            const items = await query.orderBy(appSpaceItems.displayOrder, appSpaceItems.createdAt);
+
+            // Build hierarchical structure for tasks/subtasks
+            const itemsMap = new Map();
+            const rootItems: any[] = [];
+
+            items.forEach(item => {
+                itemsMap.set(item.itemId, { ...item, childItems: [] });
+            });
+
+            items.forEach(item => {
+                if (item.parentItemId) {
+                    const parent = itemsMap.get(item.parentItemId);
+                    if (parent) {
+                        parent.childItems.push(itemsMap.get(item.itemId));
+                    }
+                } else {
+                    rootItems.push(itemsMap.get(item.itemId));
+                }
+            });
+
+            return rootItems;
+        } catch (error) {
+            console.error('Error fetching space items:', error);
+            throw error;
+        }
+    }
+
+    async updateSpaceItem(itemId: number, updates: any): Promise<any> {
+        try {
+            const { appSpaceItems } = await import("@shared/schema");
+            
+            const [updatedItem] = await db.update(appSpaceItems)
+                .set({ ...updates, updatedAt: new Date() })
+                .where(eq(appSpaceItems.itemId, itemId))
+                .returning();
+
+            return updatedItem;
+        } catch (error) {
+            console.error('Error updating space item:', error);
+            throw error;
+        }
+    }
+
+    async deleteSpaceItem(itemId: number): Promise<void> {
+        try {
+            const { appSpaceItems } = await import("@shared/schema");
+            await db.delete(appSpaceItems).where(eq(appSpaceItems.itemId, itemId));
+        } catch (error) {
+            console.error('Error deleting space item:', error);
+            throw error;
+        }
+    }
+
+    async getSpaceHierarchy(spaceId: number): Promise<any> {
+        try {
+            // Get space details
+            const [space] = await db.select().from(appSpaces).where(eq(appSpaces.spaceId, spaceId));
+            
+            if (!space) return null;
+
+            // Get all items for this space
+            const projects = await this.getSpaceItems(spaceId, 'project');
+            const tasks = await this.getSpaceItems(spaceId, 'task');
+            const notes = await this.getSpaceItems(spaceId, 'note');
+            const documents = await this.getSpaceItems(spaceId, 'document');
+            const events = await this.getSpaceItems(spaceId, 'event');
+            const finance = await this.getSpaceItems(spaceId, 'finance');
+
+            // Get subspaces
+            const subspaces = await db.select().from(appSpaces)
+                .where(eq(appSpaces.parentSpaceId, spaceId))
+                .orderBy(appSpaces.displayOrder);
+
+            return {
+                ...space,
+                projects,
+                tasks,
+                notes,
+                documents,
+                events,
+                finance,
+                subspaces
+            };
+        } catch (error) {
+            console.error('Error fetching space hierarchy:', error);
+            throw error;
+        }
+    }
 }
 
 export const storage = new DatabaseStorage();
