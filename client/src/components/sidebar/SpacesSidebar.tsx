@@ -275,8 +275,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
               </Button>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
       {/* Create Space Dialog */}
       <CreateSpaceDialog
