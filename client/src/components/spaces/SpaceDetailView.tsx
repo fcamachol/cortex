@@ -621,13 +621,32 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
           isOpen={showProjectForm}
           onClose={() => setShowProjectForm(false)}
           onSubmit={(projectData) => {
-            // Handle project creation
-            toast({
-              title: "Project Created",
-              description: "Your project has been created successfully.",
+            // Handle project creation with space assignment
+            const projectWithSpace = {
+              ...projectData,
+              space_id: spaceId,
+              space_name: space?.spaceName
+            };
+            
+            // Make API call to create project
+            apiRequest(`/api/crm/projects`, {
+              method: 'POST',
+              body: JSON.stringify(projectWithSpace)
+            }).then(() => {
+              toast({
+                title: "Project Created",
+                description: `Project created and assigned to "${space?.spaceName}" space.`,
+              });
+              setShowProjectForm(false);
+              queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'items'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/crm/projects'] });
+            }).catch((error) => {
+              toast({
+                title: "Error",
+                description: "Failed to create project. Please try again.",
+                variant: "destructive"
+              });
             });
-            setShowProjectForm(false);
-            queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'items'] });
           }}
         />
       )}
@@ -638,13 +657,32 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
           isOpen={showTaskForm}
           onClose={() => setShowTaskForm(false)}
           onSubmit={(taskData) => {
-            // Handle task creation
-            toast({
-              title: "Task Created", 
-              description: "Your task has been created successfully.",
+            // Handle task creation with space assignment
+            const taskWithSpace = {
+              ...taskData,
+              space_id: spaceId,
+              space_name: space?.spaceName
+            };
+            
+            // Make API call to create task
+            apiRequest(`/api/crm/tasks`, {
+              method: 'POST',
+              body: JSON.stringify(taskWithSpace)
+            }).then(() => {
+              toast({
+                title: "Task Created", 
+                description: `Task created and assigned to "${space?.spaceName}" space.`,
+              });
+              setShowTaskForm(false);
+              queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'items'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
+            }).catch((error) => {
+              toast({
+                title: "Error",
+                description: "Failed to create task. Please try again.",
+                variant: "destructive"
+              });
             });
-            setShowTaskForm(false);
-            queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'items'] });
           }}
         />
       )}
