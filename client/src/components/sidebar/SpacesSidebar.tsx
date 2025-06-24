@@ -334,6 +334,80 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
               </Droppable>
             )}
 
+            {/* Space Items Preview */}
+            {isExpanded && hasItems && (
+              <div 
+                className="ml-6 space-y-1"
+                style={{ marginLeft: `${32 + level * 12}px` }}
+              >
+                {items.slice(0, 5).map((item: SpaceItem) => {
+                  const IconComponent = getSpaceItemIcon(item.itemType);
+                  return (
+                    <div
+                      key={item.itemId}
+                      className="flex items-center gap-2 px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer transition-colors"
+                      onClick={() => {
+                        // Navigate to specific item view
+                        setLocation(`/spaces/${space.spaceId}?item=${item.itemId}`);
+                      }}
+                    >
+                      <IconComponent className="h-3 w-3 opacity-60" />
+                      <span className="truncate">{item.title}</span>
+                      {item.itemType === 'task' && item.metadata?.status && (
+                        <Badge variant="outline" className="text-xs h-4 px-1">
+                          {item.metadata.status}
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
+                
+                {items.length > 5 && (
+                  <div className="px-2 py-1 text-xs text-gray-400">
+                    +{items.length - 5} more items
+                  </div>
+                )}
+                
+                {/* Quick Add Item */}
+                <div className="px-2 py-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-full justify-start text-xs text-gray-500 hover:text-gray-700"
+                    onClick={() => {
+                      // Navigate to space with new item dialog
+                      setLocation(`/spaces/${space.spaceId}?new=true`);
+                    }}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add item
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Show workspace/content summary when expanded but no items */}
+            {isExpanded && !hasItems && !hasChildren && (
+              <div 
+                className="ml-6 px-2 py-2 text-xs text-gray-400"
+                style={{ marginLeft: `${32 + level * 12}px` }}
+              >
+                <div className="text-center">
+                  <Folder className="h-4 w-4 mx-auto mb-1 opacity-40" />
+                  <div>Empty space</div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 mt-1 text-xs"
+                    onClick={() => setLocation(`/spaces/${space.spaceId}?new=true`)}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add content
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Always show drop zone for spaces (whether they have children or not) */}
             <Droppable droppableId={`space-children-${space.spaceId}`} type="SPACE">
               {(provided, snapshot) => (
