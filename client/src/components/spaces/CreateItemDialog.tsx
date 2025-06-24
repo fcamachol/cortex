@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -107,16 +107,16 @@ export function CreateItemDialog({ isOpen, onClose, spaceId, itemType }: CreateI
   const Icon = getItemIcon(itemType);
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    <Sheet open={isOpen} onOpenChange={handleClose}>
+      <SheetContent side="right" className="w-[400px] sm:w-[540px]">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
             <Icon className="h-5 w-5" />
             Create {getItemTypeLabel(itemType)}
-          </DialogTitle>
-        </DialogHeader>
+          </SheetTitle>
+        </SheetHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6 mt-6">
           <div className="space-y-2">
             <Label htmlFor="title">
               {itemType === 'subspace' ? 'Space Name' : 'Title'}
@@ -137,11 +137,42 @@ export function CreateItemDialog({ isOpen, onClose, spaceId, itemType }: CreateI
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={`Describe this ${itemType}...`}
-              rows={3}
+              rows={4}
             />
           </div>
           
-          <div className="flex justify-end gap-2">
+          {/* Additional fields based on item type */}
+          {itemType === 'task' && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Priority</Label>
+                <select className="w-full p-2 border rounded-md">
+                  <option value="low">Low</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Due Date</Label>
+                <Input type="date" />
+              </div>
+            </div>
+          )}
+          
+          {itemType === 'event' && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Start Date</Label>
+                <Input type="datetime-local" />
+              </div>
+              <div className="space-y-2">
+                <Label>End Date</Label>
+                <Input type="datetime-local" />
+              </div>
+            </div>
+          )}
+          
+          <div className="flex justify-end gap-2 pt-4">
             <Button
               type="button"
               variant="outline"
@@ -157,7 +188,7 @@ export function CreateItemDialog({ isOpen, onClose, spaceId, itemType }: CreateI
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
