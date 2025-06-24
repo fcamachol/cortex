@@ -96,10 +96,16 @@ export function ActionsDashboard() {
   };
 
   const formatTriggerType = (type: string) => {
+    if (!type || typeof type !== 'string') {
+      return 'Unknown';
+    }
     return type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   const formatActionType = (type: string) => {
+    if (!type || typeof type !== 'string') {
+      return 'Unknown';
+    }
     return type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
