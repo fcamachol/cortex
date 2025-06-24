@@ -263,7 +263,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
     const items = getSpaceItems(space.spaceId);
     const hasItems = items.length > 0;
     
-    console.log(`Space "${space.spaceName}" (ID: ${space.spaceId}):`, {
+    console.log(`${'  '.repeat(level)}Space "${space.spaceName}" (ID: ${space.spaceId}, Level: ${level}):`, {
       hasItems,
       hasChildren,
       itemsCount: items?.length || 0,
@@ -393,7 +393,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
             {isExpanded && hasItems && (
               <div 
                 className="space-y-0.5 mt-1"
-                style={{ marginLeft: `${16 + level * 16}px` }}
+                style={{ marginLeft: `${24 + level * 16}px` }}
               >
                 {/* Individual Items as separate rows */}
                 {items.slice(0, 5).map((item: SpaceItem) => {
@@ -462,7 +462,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
             {isExpanded && !hasItems && !hasChildren && (
               <div 
                 className="mt-1"
-                style={{ marginLeft: `${16 + level * 16}px` }}
+                style={{ marginLeft: `${24 + level * 16}px` }}
               >
                 <div className="px-2 py-2 text-xs text-gray-400">
                   <div className="text-center">
@@ -481,17 +481,17 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
               </div>
             )}
 
-            {/* Render Children with Drop Zone */}
+            {/* Render Children with Drop Zone - Recursive Multi-level Nesting */}
             {isExpanded && hasChildren && (
               <Droppable droppableId={`space-children-${space.spaceId}`} type="SPACE">
                 {(provided, snapshot) => (
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className={`space-y-1 ${
+                    className={`space-y-1 mt-1 ${
                       snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/20 rounded-md p-1' : ''
                     }`}
-                    style={{ marginLeft: `${16 + level * 8}px` }}
+                    style={{ marginLeft: `${12 + level * 16}px` }}
                   >
                     {children.map((childSpace, childIndex) => (
                       <div key={childSpace.spaceId}>
