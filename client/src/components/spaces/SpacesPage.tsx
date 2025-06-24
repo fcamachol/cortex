@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { SpaceForm } from './SpaceForm';
 import { SpaceTemplateModal } from './SpaceTemplateModal';
 import { SpaceDetailsModal } from './SpaceDetailsModal';
+import { CreateSpaceDialog } from './CreateSpaceDialog';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -54,6 +55,7 @@ export function SpacesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSpaceForm, setShowSpaceForm] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
   const [editingSpace, setEditingSpace] = useState<Space | null>(null);
   const [expandedSpaces, setExpandedSpaces] = useState<Set<number>>(new Set());
