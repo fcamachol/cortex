@@ -131,7 +131,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
             <SpacesSidebar 
               onSpaceSelect={(space) => {
                 // Navigate to spaces page with selected space
-                window.location.href = `/spaces?spaceId=${space.spaceId}`;
+                window.location.href = `/spaces/${space.spaceId}`;
               }}
             />
           </div>

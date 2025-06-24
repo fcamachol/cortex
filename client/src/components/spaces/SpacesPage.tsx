@@ -56,6 +56,13 @@ interface SpacesPageProps {
 }
 
 export function SpacesPage({ selectedSpaceId, parentSpaceId }: SpacesPageProps) {
+  console.log('SpacesPage rendered with:', { selectedSpaceId, parentSpaceId });
+  
+  // If a specific space is selected, show the detail view
+  if (selectedSpaceId) {
+    return <SpaceDetailView spaceId={selectedSpaceId} parentSpaceId={parentSpaceId} />;
+  }
+
   const [view, setView] = useState<'grid' | 'list' | 'hierarchy'>('grid');
   const [filter, setFilter] = useState<'all' | 'favorites' | 'personal' | 'team' | 'archived'>('all');
   const [searchQuery, setSearchQuery] = useState('');
