@@ -121,6 +121,76 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
     createContactMutation.mutate(data);
   };
 
+  // Functions for managing phones
+  const addPhone = () => {
+    const newPhone = {
+      id: Date.now().toString(),
+      number: "",
+      type: "Mobile",
+      isPrimary: phones.length === 0,
+    };
+    setPhones([...phones, newPhone]);
+    setIsContactInfoOpen(true);
+  };
+
+  const updatePhone = (id: string, field: string, value: string | boolean) => {
+    setPhones(phones.map(phone => 
+      phone.id === id ? { ...phone, [field]: value } : phone
+    ));
+  };
+
+  const removePhone = (id: string) => {
+    setPhones(phones.filter(phone => phone.id !== id));
+  };
+
+  // Functions for managing emails
+  const addEmail = () => {
+    const newEmail = {
+      id: Date.now().toString(),
+      address: "",
+      type: "Personal",
+      isPrimary: emails.length === 0,
+    };
+    setEmails([...emails, newEmail]);
+    setIsContactInfoOpen(true);
+  };
+
+  const updateEmail = (id: string, field: string, value: string | boolean) => {
+    setEmails(emails.map(email => 
+      email.id === id ? { ...email, [field]: value } : email
+    ));
+  };
+
+  const removeEmail = (id: string) => {
+    setEmails(emails.filter(email => email.id !== id));
+  };
+
+  // Functions for managing addresses
+  const addAddress = () => {
+    const newAddress = {
+      id: Date.now().toString(),
+      street: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "",
+      type: "Home",
+      isPrimary: addresses.length === 0,
+    };
+    setAddresses([...addresses, newAddress]);
+    setIsContactInfoOpen(true);
+  };
+
+  const updateAddress = (id: string, field: string, value: string | boolean) => {
+    setAddresses(addresses.map(address => 
+      address.id === id ? { ...address, [field]: value } : address
+    ));
+  };
+
+  const removeAddress = (id: string) => {
+    setAddresses(addresses.filter(address => address.id !== id));
+  };
+
   return (
     <div className="space-y-6">
       <Form {...form}>
