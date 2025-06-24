@@ -103,14 +103,23 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
     enabled: !!spaceId,
   });
 
-  console.log('SpaceDetailView - spaceId:', spaceId, 'allSpaces:', allSpaces);
+  // Flatten all spaces including nested children
+  const flattenSpaces = (spaces: Space[]): Space[] => {
+    const result: Space[] = [];
+    for (const space of spaces) {
+      result.push(space);
+      if (space.childSpaces && space.childSpaces.length > 0) {
+        result.push(...flattenSpaces(space.childSpaces));
+      }
+    }
+    return result;
+  };
 
-  // Find the specific space from all spaces
+  // Find the specific space from all spaces (including nested)
   const spacesArray = Array.isArray(allSpaces) ? allSpaces : 
     allSpaces ? Object.values(allSpaces).flat() : [];
-  const space = spacesArray.find((s: Space) => s.spaceId === spaceId);
-
-  console.log('Found space:', space);
+  const allFlatSpaces = flattenSpaces(spacesArray);
+  const space = allFlatSpaces.find((s: Space) => s.spaceId === spaceId);
 
   if (spacesLoading) {
     return <div className="flex-1 flex items-center justify-center">Loading space...</div>;
@@ -135,8 +144,8 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
   const allSpacesArray = Array.isArray(allSpaces) ? allSpaces : (allSpaces ? Object.values(allSpaces).flat() : []);
   const spaceItemsArray = Array.isArray(spaceItems) ? spaceItems : [];
   
-  // Use childSpaces from the space object if available, otherwise filter allSpaces
-  const subspaces = space.childSpaces || allSpacesArray.filter((s: Space) => s.parentSpaceId === spaceId);
+  // Use childSpaces from the space object if available, otherwise filter all flat spaces
+  const subspaces = space.childSpaces || allFlatSpaces.filter((s: Space) => s.parentSpaceId === spaceId);
   const projects = spaceItemsArray.filter((item: SpaceItem) => item.itemType === 'project');
   const tasks = spaceItemsArray.filter((item: SpaceItem) => item.itemType === 'task');
   const files = spaceItemsArray.filter((item: SpaceItem) => item.itemType === 'file');
@@ -144,11 +153,10 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
   const notes = spaceItemsArray.filter((item: SpaceItem) => item.itemType === 'note');
   const events = spaceItemsArray.filter((item: SpaceItem) => item.itemType === 'event');
   
-  console.log('Subspaces for space', spaceId, ':', subspaces);
-  console.log('Projects:', projects.length, 'Tasks:', tasks.length, 'Files:', files.length);
+
 
   // Find parent space
-  const parentSpace = parentSpaceId ? allSpacesArray.find((s: Space) => s.spaceId === parentSpaceId) : null;
+  const parentSpace = parentSpaceId ? allFlatSpaces.find((s: Space) => s.spaceId === parentSpaceId) : null;
 
   // Get status icon for tasks
   const getStatusIcon = (status: string) => {
@@ -434,7 +442,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                     {subspaces.map((childSpace: Space) => (
                       <Card key={childSpace.spaceId} className="hover:shadow-md transition-shadow cursor-pointer"
                             onClick={() => {
-                              const currentPath = buildSpacePath(space.spaceId, allSpacesArray);
+                              const currentPath = buildSpacePath(space.spaceId, allFlatSpaces);
                               navigate(`/spaces/${currentPath}/${childSpace.spaceId}`);
                             }}>
                         <CardContent className="p-4">
@@ -518,7 +526,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                       {subspaces.map((subspace: Space) => (
                         <Card key={subspace.spaceId} className="hover:shadow-md transition-shadow cursor-pointer"
                               onClick={() => {
-                                const currentPath = buildSpacePath(space.spaceId, allSpacesArray);
+                                const currentPath = buildSpacePath(space.spaceId, allFlatSpaces);
                                 navigate(`/spaces/${currentPath}/${subspace.spaceId}`);
                               }}>
                           <CardContent className="p-4">
