@@ -9,6 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import type { CrmContact } from "@shared/schema";
+import { ContactForm } from "@/components/contacts/ContactForm";
+import { CompanyForm } from "@/components/contacts/CompanyForm";
 
 interface ContactsPageProps {
   userId: string;
@@ -68,14 +70,8 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button onClick={() => console.log('Add contact')}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Contact
-          </Button>
-          <Button variant="outline" onClick={() => console.log('Add company')}>
-            <Building2 className="w-4 h-4 mr-2" />
-            Add Company
-          </Button>
+          <ContactForm userId={userId} />
+          <CompanyForm />
         </div>
       </div>
 
@@ -286,10 +282,7 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
                         Manage your business relationships and company contacts
                       </CardDescription>
                     </div>
-                    <Button onClick={() => console.log('Add company')}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Company
-                    </Button>
+                    <CompanyForm />
                   </div>
                 </CardHeader>
                 <CardContent>

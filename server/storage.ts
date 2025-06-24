@@ -1726,10 +1726,17 @@ class DatabaseStorage {
     }
 
     async createCrmContact(contactData: any): Promise<any> {
-        const [contact] = await db.insert(crmContacts)
-            .values(contactData)
-            .returning();
-        return contact;
+        try {
+            // Remove contactId if present to let the database auto-generate it
+            const { contactId, ...insertData } = contactData;
+            const [contact] = await db.insert(crmContacts)
+                .values(insertData)
+                .returning();
+            return contact;
+        } catch (error) {
+            console.error('Error creating CRM contact:', error);
+            throw error;
+        }
     }
 
     async updateCrmContact(contactId: number, updates: any): Promise<any> {
