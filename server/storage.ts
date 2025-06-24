@@ -2591,6 +2591,46 @@ class DatabaseStorage {
             throw error;
         }
     }
+
+    async updateActionRule(ruleId: string, ruleData: any): Promise<any> {
+        try {
+            console.log('Storage updateActionRule - ruleId:', ruleId);
+            console.log('Storage updateActionRule - ruleData:', ruleData);
+            
+            const result = await db.execute(sql`
+                UPDATE actions.action_rules 
+                SET 
+                    rule_name = ${ruleData.ruleName || ruleData.rule_name},
+                    description = ${ruleData.description || null},
+                    trigger_type = ${ruleData.triggerType || ruleData.trigger_type},
+                    trigger_conditions = ${JSON.stringify(ruleData.triggerConditions || ruleData.trigger_conditions || {})},
+                    action_type = ${ruleData.actionType || ruleData.action_type},
+                    action_config = ${JSON.stringify(ruleData.actionConfig || ruleData.action_config || {})},
+                    is_active = ${ruleData.isActive !== undefined ? ruleData.isActive : (ruleData.is_active !== undefined ? ruleData.is_active : true)},
+                    updated_at = NOW()
+                WHERE rule_id = ${ruleId}
+                RETURNING 
+                    rule_id as "ruleId",
+                    rule_name as "ruleName",
+                    description,
+                    trigger_type as "triggerType",
+                    trigger_conditions as "triggerConditions",
+                    action_type as "actionType",
+                    action_config as "actionConfig",
+                    is_active as "isActive",
+                    total_executions as "totalExecutions",
+                    last_executed_at as "lastExecutedAt",
+                    created_at as "createdAt",
+                    updated_at as "updatedAt"
+            `);
+            
+            console.log('Storage updateActionRule - result:', result.rows[0]);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error updating action rule:', error);
+            throw error;
+        }
+    }
 }
 
 export const storage = new DatabaseStorage();

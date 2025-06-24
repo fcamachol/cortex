@@ -1152,6 +1152,21 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.put('/api/actions/rules/:ruleId', async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const { ruleId } = req.params;
+      console.log('PUT /api/actions/rules/:ruleId - ruleId:', ruleId);
+      console.log('PUT /api/actions/rules/:ruleId - body:', req.body);
+      const updatedRule = await storage.updateActionRule(ruleId, req.body);
+      console.log('PUT /api/actions/rules/:ruleId - result:', updatedRule);
+      res.json(updatedRule);
+    } catch (error) {
+      console.error('Error updating action rule:', error);
+      res.status(500).json({ error: 'Failed to update action rule' });
+    }
+  });
+
   app.patch('/api/actions/rules/:ruleId/toggle', async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
@@ -1160,7 +1175,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       if (!rule) {
         return res.status(404).json({ error: 'Rule not found' });
       }
-      const updatedRule = await storage.updateActionRule(userId, ruleId, { 
+      const updatedRule = await storage.updateActionRule(ruleId, { 
         isActive: !rule.isActive 
       });
       res.json(updatedRule);
