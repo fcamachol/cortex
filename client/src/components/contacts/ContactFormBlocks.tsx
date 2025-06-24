@@ -78,8 +78,8 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
         ...contactData,
         primaryPhone,
         primaryEmail,
-        profession: companyBlocks[0]?.data.role || '',
-        company: companyBlocks[0]?.data.name || '',
+        profession: profession || companyBlocks[0]?.data.role || '',
+        company: company || companyBlocks[0]?.data.name || '',
         notes: noteBlocks.map(b => b.data.content).join('\n') || '',
       };
 
@@ -90,6 +90,8 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
       queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
       setContactName('');
       setRelationship('Client');
+      setProfession('');
+      setCompany('');
       setBlocks([]);
       toast({
         title: "Success",
@@ -170,6 +172,153 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
     createContactMutation.mutate();
   };
 
+  return (
+    <div className="space-y-6 max-w-4xl mx-auto p-6">
+      <form onSubmit={onSubmit} className="space-y-6">
+        {/* Header with avatar placeholder and name */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-400">
+              (AVATAR)
+            </div>
+            <div className="flex-1 space-y-1">
+              <Input
+                placeholder="Dr. Ana Rodriguez"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                className="text-lg font-medium border-none bg-transparent p-0 focus-visible:ring-0"
+                required
+              />
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Cardiologist (Doctor)"
+                  value={profession}
+                  onChange={(e) => setProfession(e.target.value)}
+                  className="text-sm text-gray-600 border-none bg-transparent p-0 focus-visible:ring-0 flex-1"
+                />
+                <span className="text-sm text-gray-400">at</span>
+                <Input
+                  placeholder="@Hospital Angeles"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  className="text-sm text-gray-600 border-none bg-transparent p-0 focus-visible:ring-0 flex-1"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-gray-400">
+              <Button variant="ghost" size="sm" onClick={() => setIsPreviewMode(!isPreviewMode)} type="button">
+                [ {isPreviewMode ? 'Edit' : 'Preview'} ]
+              </Button>
+              <Button variant="ghost" size="sm" type="button">
+                [ Message ]
+              </Button>
+              <Button variant="ghost" size="sm" type="button">
+                [ ... ]
+              </Button>
+            </div>
+          </div>
+          
+          <div className="border-t border-dashed border-gray-300 dark:border-gray-600"></div>
+        </div>
+
+        {/* Dynamic Blocks - Edit Mode vs View Mode */}
+        {isPreviewMode ? (
+          <ContactViewMode blocks={blocks} contactName={contactName} profession={profession} company={company} />
+        ) : (
+          <div className="space-y-4">
+            {blocks.map((block) => (
+              <BlockComponent
+                key={block.id}
+                block={block}
+                onUpdate={updateBlock}
+                onRemove={removeBlock}
+              />
+            ))}
+
+            {/* Add Information Block Button */}
+            <div className="flex justify-center">
+              <Popover open={showBlockMenu} onOpenChange={setShowBlockMenu}>
+                <PopoverTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    className="border-dashed border-2 py-6 px-8"
+                    type="button"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Information Block
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80" align="center">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">Add a block:</h4>
+                    <div className="border-t border-dashed my-2"></div>
+                    
+                    {BLOCK_TYPES.slice(0, 3).map((blockType) => (
+                      <Button
+                        key={blockType.id}
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={() => addBlock(blockType.id)}
+                        type="button"
+                      >
+                        <blockType.icon className="h-4 w-4 mr-2" />
+                        {blockType.label}
+                      </Button>
+                    ))}
+                    
+                    <div className="border-t border-dashed my-2"></div>
+                    
+                    {BLOCK_TYPES.slice(3, 6).map((blockType) => (
+                      <Button
+                        key={blockType.id}
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={() => addBlock(blockType.id)}
+                        type="button"
+                      >
+                        <blockType.icon className="h-4 w-4 mr-2" />
+                        {blockType.label}
+                      </Button>
+                    ))}
+                    
+                    <div className="border-t border-dashed my-2"></div>
+                    
+                    {BLOCK_TYPES.slice(6).map((blockType) => (
+                      <Button
+                        key={blockType.id}
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={() => addBlock(blockType.id)}
+                        type="button"
+                      >
+                        <blockType.icon className="h-4 w-4 mr-2" />
+                        {blockType.label}
+                      </Button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        )}
+
+        {/* Submit Button - Only show in edit mode */}
+        {!isPreviewMode && (
+          <div className="flex justify-center pt-6">
+            <Button 
+              type="submit"
+              className="w-full max-w-md"
+              disabled={createContactMutation.isPending}
+            >
+              {createContactMutation.isPending ? "Creating Contact..." : "Create Contact"}
+            </Button>
+          </div>
+        )}
+      </form>
+    </div>
+  );
+}
+
 // Individual Block Component
 interface BlockComponentProps {
   block: Block;
@@ -197,6 +346,7 @@ function BlockComponent({ block, onUpdate, onRemove }: BlockComponentProps) {
               variant="ghost"
               size="sm"
               className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+              type="button"
             >
               <MoreHorizontal className="h-3 w-3" />
             </Button>
@@ -205,6 +355,7 @@ function BlockComponent({ block, onUpdate, onRemove }: BlockComponentProps) {
               size="sm"
               onClick={() => onRemove(block.id)}
               className="h-6 w-6 p-0 text-gray-400 hover:text-red-600"
+              type="button"
             >
               <X className="h-3 w-3" />
             </Button>
@@ -385,6 +536,7 @@ function ContactViewMode({ blocks, contactName, profession, company }: ContactVi
   const groupBlocks = blocks.filter(b => b.type === 'group');
   const dateBlocks = blocks.filter(b => b.type === 'date');
   const interestBlocks = blocks.filter(b => b.type === 'interest');
+  const noteBlocks = blocks.filter(b => b.type === 'note');
 
   return (
     <div className="space-y-6">
@@ -410,7 +562,6 @@ function ContactViewMode({ blocks, contactName, profession, company }: ContactVi
                         W
                       </span>
                     )}
-                    {block.data.hasWhatsApp && <span className="text-xs text-gray-500">(WhatsApp icon)</span>}
                   </div>
                 ))}
               </div>
@@ -507,6 +658,41 @@ function ContactViewMode({ blocks, contactName, profession, company }: ContactVi
                 </div>
               </div>
             )}
+          </div>
+        </Card>
+      )}
+
+      {/* Notes Section - Based on user's screenshot */}
+      {noteBlocks.length > 0 && (
+        <Card className="border-2 border-dashed border-gray-300 dark:border-gray-600 p-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-sm text-gray-600 dark:text-gray-400">NOTES</h3>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" className="text-xs">
+                  [+ New Note]
+                </Button>
+                <Button variant="ghost" size="sm" className="text-xs">
+                  [ Search all notes... ]
+                </Button>
+                <span className="text-xs text-gray-500">🔍</span>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              {/* Dynamic Notes from blocks */}
+              {noteBlocks.map((noteBlock) => (
+                <Card key={noteBlock.id} className="border border-dashed border-gray-300 p-3">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">{noteBlock.data.title || 'Untitled Note'}</h4>
+                    <p className="text-sm text-gray-600">{noteBlock.data.content || 'No content'}</p>
+                    <div className="flex items-center justify-end text-xs text-gray-500">
+                      <span>Modified: Just now</span>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
           </div>
         </Card>
       )}

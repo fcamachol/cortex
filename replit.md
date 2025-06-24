@@ -127,6 +127,7 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 24, 2025: Implemented view mode display with grouped blocks showing contact information in bordered sections (Contact Info, Relationships & Groups, Personal Details) - added notes section matching user's screenshot design with proper card layout and metadata display
 - June 24, 2025: Completely redesigned contact form to use Notion-style block system - replaced collapsible sections with dynamic information blocks that can be added through a central "Add Information Block" menu with phone, email, address, company, and note blocks
 - June 24, 2025: Updated address display to match unified design pattern with label-based format like phones and emails - shows custom name or type with primary designation and condensed address format
 - June 24, 2025: Enhanced Contact Information section to support multiple phones, emails, and addresses with dynamic add/remove functionality - users can now add unlimited contact methods with type classification and primary designation
