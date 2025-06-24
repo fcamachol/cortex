@@ -1,0 +1,113 @@
+Of course. Here is a detailed description of how the contact creation form and the contact detail view should look and function, based on all the features we have designed.
+
+This serves as a visual and functional guide for your UX/UI team.
+
+1. The "Add New Contact" Form (The Modal)
+This form should appear as a clean, focused modal window that overlays the current screen when the user clicks [+ Add Contact]. The design prioritizes quick entry first, with the option to add more detail immediately after.
+
+Phase 1: Quick Capture (The Minimum Information)
+To reduce friction, the first thing the user sees is a very simple form to capture the most essential details instantly.
+
+Wireframe Description:
+
+-------------------------------------------------
+|  Add New Contact                          X   |
+-------------------------------------------------
+|                                               |
+|  Full Name* |
+|  [ Enter full name...                      ]  |
+|                                               |
+|  Primary Contact Info* |
+|  [ Enter phone or email...                 ]  |
+|                                               |
+|  Relationship                                 |
+|  [ Client                           ▼ ]       |
+|  (e.g., Client, Family, Friend, Vendor)       |
+|                                               |
+|  -------------------------------------------  |
+|  |       [ Save & Close ]      | [ Save & Add Details ▸] |
+|  -------------------------------------------  |
+-------------------------------------------------
+Interaction: The user can fill in these three fields and click [Save & Close] to be done in seconds. If they want to create a full profile, they click [Save & Add Details ▸], which saves the contact and transitions them to the detailed view within the same modal.
+Phase 2: Detailed Profile (The Full Form)
+This view is organized into collapsible sections or tabs to keep it from being overwhelming.
+
+Wireframe Description (Continued from Phase 1):
+
+-------------------------------------------------
+|  Editing Contact: [Contact Name]          X   |
+-------------------------------------------------
+|                                               |
+|  ▼ Professional Context                       |
+|    ----------------------------------------   |
+|    | Profession      | Specialty / Title  |   |
+|    | [ Doctor        ] | [ Cardiologist     ] |   |
+|    | Company         | Role at Company    |   |
+|    | [ 🏢 Hospital...▼] | [ Head of Cardio.. ] |   |
+|                                               |
+|  ▼ Contact Details                            |
+|    ----------------------------------------   |
+|    | Phone Numbers              [+ Add Phone] |
+|    |  Mobile: +52... [✓] Has WhatsApp (Primary) |
+|    |                                          |
+|    | Emails                     [+ Add Email] |
+|    |  Work: contact@email.com        (Primary) |
+|                                               |
+|  ▼ Personal Context                           |
+|    ----------------------------------------   |
+|    | Aliases / Nicknames                      |
+|    | [ Add a nickname...                    ] |
+|    |                                          |
+|    | Interests                                |
+|    | [ Add an interest...                   ] |
+|    |                                          |
+|    | Special Dates                [+ Add Date] |
+|    |  Birthday: August 15, 1980               |
+|                                               |
+|  ▼ Context Notes                              |
+|    ----------------------------------------   |
+|    | [ Type any other notes here...         ] |
+|                                               |
+|                       [ Save & Close ]          |
+-------------------------------------------------
+2. The Contact Detail View (The "Modal" or Side Pane)
+When a user clicks on a contact anywhere in the app, this view should appear. On desktop, it's best as a side pane that slides in from the right, allowing the user to see the contact's details without losing the context of what they were doing before. On mobile, it would be a full screen.
+
+This view is a dashboard, not a form. It's designed for consumption of information.
+
+Wireframe Description:
+
+-------------------------------------------------------------
+|  [ ◀ Back ]                                 [ Edit ] [ ... ] |
+|                                                             |
+|  (AVATAR)  John Smith                                       |
+|            Lead Designer at @CreativeCo                     |
+|_____________________________________________________________|
+|                                                             |
+|  [ ABOUT ]  [ ACTIVITY ]  [ TASKS ]  [ FINANCE ]  [ NOTES ]  |
+|=============================================================|
+|                                                             |
+|  ▼ Contact Info                                             |
+|     📞 Mobile (Primary): +1-555-123-4567 🇼                  |
+|     🏢 Work: +1-555-987-6543                                 |
+|     ✉️  Work (Primary): john.smith@creativeco.com           |
+|                                                             |
+|  ▼ Relationships                                            |
+|     Spouse: [Jane Smith]                                    |
+|     Member of: [Project Alpha Team]                         |
+|                                                             |
+|  ▼ Personal Details                                         |
+|     Aliases: [Johnny]                                       |
+|     Birthday: March 22 (in 2 months) -> [Create Task]       |
+|     Interests: [Photography] [Classic Cars]                 |
+|                                                             |
+|  ▼ Context Notes                                            |
+|     Met at the 2024 Design Conference. Prefers initial      |
+|     contact via email.                                      |
+|                                                             |
+-------------------------------------------------------------
+Header: Shows the most critical at-a-glance info and primary actions.
+Tabbed Interface: This is the key to organizing the vast amount of related information. The default view is [ ABOUT ], showing the core profile.
+The Activity Tab: The other tabs ([ACTIVITY], [TASKS], etc.) switch the main content area to a chronological feed of those specific items, pulling data from all other modules in the application.
+Actionable Data: Notice how the birthday is not just text; it's an actionable item. The system knows the date is approaching and offers a button to create a reminder task directly.
+This UI design provides a fast and simple creation process while enabling a deeply rich and interconnected viewing experience, fulfilling the promise of a true 360-degree contact profile.
