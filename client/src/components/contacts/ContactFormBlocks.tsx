@@ -190,31 +190,43 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
                   className="text-xl font-semibold border-none bg-transparent p-0 focus-visible:ring-0 text-gray-900 dark:text-gray-100 placeholder-gray-400"
                   required
                 />
-                <div className="flex items-center gap-3 ml-4">
-                  <Button variant="ghost" size="sm" onClick={() => setIsPreviewMode(!isPreviewMode)} type="button" className="text-gray-400 hover:text-gray-600 text-sm">
-                    [ {isPreviewMode ? 'Edit' : 'Preview'} ]
+                <div className="flex items-center gap-2 ml-4">
+                  <Button 
+                    onClick={() => setIsPreviewMode(!isPreviewMode)} 
+                    type="button" 
+                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 text-sm font-medium rounded-md"
+                  >
+                    {isPreviewMode ? 'Edit' : 'Preview'}
                   </Button>
-                  <Button variant="ghost" size="sm" type="button" className="text-gray-400 hover:text-gray-600 text-sm">
-                    [ Message ]
+                  <Button 
+                    variant="outline" 
+                    type="button" 
+                    className="text-gray-700 border-gray-300 hover:bg-gray-50 px-4 py-2 text-sm font-medium rounded-md"
+                  >
+                    Message
                   </Button>
-                  <Button variant="ghost" size="sm" type="button" className="text-gray-400 hover:text-gray-600 text-sm">
-                    [ ... ]
+                  <Button 
+                    variant="outline" 
+                    type="button" 
+                    className="text-gray-700 border-gray-300 hover:bg-gray-50 px-3 py-2 text-sm font-medium rounded-md"
+                  >
+                    ⋯
                   </Button>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-base">
                 <Input
                   placeholder="Cardiologist (Doctor)"
                   value={profession}
                   onChange={(e) => setProfession(e.target.value)}
-                  className="text-base border-none bg-transparent p-0 focus-visible:ring-0 flex-1 placeholder-gray-400"
+                  className="text-base border-none bg-transparent p-0 focus-visible:ring-0 flex-1 placeholder-gray-400 text-gray-500"
                 />
-                <span className="text-base">at</span>
+                <span className="text-base text-gray-500">at</span>
                 <Input
                   placeholder="@Hospital Angeles"
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
-                  className="text-base border-none bg-transparent p-0 focus-visible:ring-0 flex-1 placeholder-gray-400"
+                  className="text-base border-none bg-transparent p-0 focus-visible:ring-0 flex-1 placeholder-gray-400 text-gray-500"
                 />
               </div>
             </div>
@@ -307,7 +319,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
           <div className="flex justify-center pt-6">
             <Button 
               type="submit"
-              className="w-full max-w-md"
+              className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 text-base font-medium rounded-md"
               disabled={createContactMutation.isPending}
             >
               {createContactMutation.isPending ? "Creating Contact..." : "Create Contact"}
