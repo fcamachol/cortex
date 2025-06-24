@@ -20,16 +20,19 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
 
   const { data: contactsList = [], isLoading: contactsLoading } = useQuery({
     queryKey: ['/api/crm/contacts', userId],
+    queryFn: () => fetch(`/api/crm/contacts?ownerUserId=${userId}`).then(res => res.json()),
     enabled: !!userId,
   });
 
   const { data: companiesList = [], isLoading: companiesLoading } = useQuery({
     queryKey: ['/api/crm/companies', userId],
+    queryFn: () => fetch(`/api/crm/companies?spaceId=1`).then(res => res.json()),
     enabled: !!userId,
   });
 
   const { data: upcomingDates = [] } = useQuery({
     queryKey: ['/api/crm/contacts/upcoming-dates', userId],
+    queryFn: () => fetch(`/api/crm/contacts/upcoming-dates?ownerUserId=${userId}`).then(res => res.json()),
     enabled: !!userId,
   });
 
@@ -94,12 +97,13 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
         {/* Main Content Area */}
         <div className="lg:col-span-3">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="contacts">All Contacts</TabsTrigger>
               <TabsTrigger value="family">Family</TabsTrigger>
               <TabsTrigger value="clients">Clients</TabsTrigger>
               <TabsTrigger value="friends">Friends</TabsTrigger>
               <TabsTrigger value="companies">Companies</TabsTrigger>
+              <TabsTrigger value="groups">Groups</TabsTrigger>
             </TabsList>
 
             {/* All Contacts Tab */}
@@ -326,6 +330,40 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
                       ))}
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Groups Tab */}
+            <TabsContent value="groups" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="w-5 h-5" />
+                        Contact Groups
+                      </CardTitle>
+                      <CardDescription>
+                        Organize your contacts into custom groups for better management
+                      </CardDescription>
+                    </div>
+                    <Button onClick={() => console.log('Create group')}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Group
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8 text-gray-500">
+                    <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg font-medium mb-2">Contact Groups</p>
+                    <p className="text-sm mb-4">Create custom groups to organize your contacts efficiently</p>
+                    <Button onClick={() => console.log('Create first group')} variant="outline">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Your First Group
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
