@@ -119,13 +119,14 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
 
   // Categorize items
   const allSpacesArray = Array.isArray(allSpaces) ? allSpaces : (allSpaces ? Object.values(allSpaces).flat() : []);
+  const spaceItemsArray = Array.isArray(spaceItems) ? spaceItems : [];
   const subspaces = allSpacesArray.filter((s: Space) => s.parentSpaceId === spaceId);
-  const projects = spaceItems.filter((item: SpaceItem) => item.itemType === 'project');
-  const tasks = spaceItems.filter((item: SpaceItem) => item.itemType === 'task');
-  const files = spaceItems.filter((item: SpaceItem) => item.itemType === 'file');
-  const documents = spaceItems.filter((item: SpaceItem) => item.itemType === 'document');
-  const notes = spaceItems.filter((item: SpaceItem) => item.itemType === 'note');
-  const events = spaceItems.filter((item: SpaceItem) => item.itemType === 'event');
+  const projects = spaceItemsArray.filter((item: SpaceItem) => item.itemType === 'project');
+  const tasks = spaceItemsArray.filter((item: SpaceItem) => item.itemType === 'task');
+  const files = spaceItemsArray.filter((item: SpaceItem) => item.itemType === 'file');
+  const documents = spaceItemsArray.filter((item: SpaceItem) => item.itemType === 'document');
+  const notes = spaceItemsArray.filter((item: SpaceItem) => item.itemType === 'note');
+  const events = spaceItemsArray.filter((item: SpaceItem) => item.itemType === 'event');
 
   // Find parent space
   const parentSpace = parentSpaceId ? allSpacesArray.find((s: Space) => s.spaceId === parentSpaceId) : null;
