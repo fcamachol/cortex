@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, Plus, MoreHorizontal, FolderOpen, Folder, GripVertical, CheckSquare, FileText, Calendar, DollarSign, Briefcase, Users, Target } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, MoreHorizontal, FolderOpen, Folder, GripVertical, CheckSquare, FileText, Calendar, DollarSign, Briefcase, Users, Target, Edit2, Link, Palette, Settings, Star, EyeOff, Copy, Archive, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { CreateSpaceDialog } from '@/components/spaces/CreateSpaceDialog';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
