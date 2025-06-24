@@ -98,7 +98,6 @@ function buildBreadcrumbPath(spaceId: number, allSpaces: Space[]): Space[] {
 }
 
 export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps) {
-  const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState('overview');
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'table'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
@@ -318,7 +317,10 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
             return (
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
                 <button
-                  onClick={() => navigate('/spaces')}
+                  onClick={() => {
+                    // Navigate back to all spaces view
+                    window.dispatchEvent(new CustomEvent('spaceSelected', { detail: { spaceId: null } }));
+                  }}
                   className="hover:text-gray-900 dark:hover:text-gray-100"
                 >
                   All
@@ -333,8 +335,8 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                     ) : (
                       <button
                         onClick={() => {
-                          const pathSegments = breadcrumbPath.slice(0, index + 1).map(s => s.spaceId);
-                          navigate(`/spaces/${pathSegments.join('/')}`);
+                          // Navigate to parent space using event system
+                          window.dispatchEvent(new CustomEvent('spaceSelected', { detail: breadcrumbSpace }));
                         }}
                         className="hover:text-gray-900 dark:hover:text-gray-100"
                       >
@@ -477,8 +479,8 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                     {subspaces.map((childSpace: Space) => (
                       <Card key={childSpace.spaceId} className="hover:shadow-md transition-shadow cursor-pointer"
                             onClick={() => {
-                              const currentPath = buildSpacePath(space.spaceId, allFlatSpaces);
-                              navigate(`/spaces/${currentPath}/${childSpace.spaceId}`);
+                              // Navigate to subspace using event system
+                              window.dispatchEvent(new CustomEvent('spaceSelected', { detail: childSpace }));
                             }}>
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between">

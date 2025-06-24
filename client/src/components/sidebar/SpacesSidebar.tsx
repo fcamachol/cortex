@@ -711,7 +711,11 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                     variant="ghost"
                     size="sm"
                     className="h-6 mt-1 text-xs"
-                    onClick={() => setLocation(`/spaces/${space.spaceId}?new=true`)}
+                    onClick={() => {
+                      setSelectedSpaceId(space.spaceId);
+                      setSelectedItemType('task');
+                      setShowCreateItemDialog(true);
+                    }}
                   >
                     <Plus className="h-3 w-3 mr-1" />
                     Add content
@@ -759,7 +763,10 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
           <div className="flex items-center justify-between">
             <h3 
               className="text-base font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer"
-              onClick={() => setLocation('/spaces')}
+              onClick={() => {
+                // Navigate to all spaces view
+                window.dispatchEvent(new CustomEvent('spaceSelected', { detail: { spaceId: null } }));
+              }}
             >
               Spaces
             </h3>
