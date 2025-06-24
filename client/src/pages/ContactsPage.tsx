@@ -290,7 +290,7 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Total Contacts</span>
-                <span className="font-semibold">{contacts.length}</span>
+                <span className="font-semibold">{contactsList.length}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Family</span>
