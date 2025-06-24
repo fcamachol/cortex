@@ -47,12 +47,6 @@ export function ActionsDashboard() {
     queryKey: ['/api/actions/stats'],
   });
 
-  // Fetch GTD templates
-  const { data: gtdTemplates = [] } = useQuery({
-    queryKey: ['/api/actions/gtd-templates'],
-    staleTime: 10 * 60 * 1000,
-  });
-
   const toggleRuleMutation = useMutation({
     mutationFn: (ruleId: string) => apiRequest(`/api/actions/rules/${ruleId}/toggle`, {
       method: 'PATCH',
@@ -185,165 +179,12 @@ export function ActionsDashboard() {
         </div>
       )}
 
-      <Tabs defaultValue="gtd-templates" className="space-y-4">
+      <Tabs defaultValue="rules" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="gtd-templates">GTD Templates</TabsTrigger>
-          <TabsTrigger value="rules">Custom Rules</TabsTrigger>
+          <TabsTrigger value="rules">My Rules</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="executions">Execution Log</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="gtd-templates" className="space-y-6">
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium">GTD Enhanced Emoji System</h3>
-                <p className="text-sm text-muted-foreground">
-                  Active automation rules using Getting Things Done methodology
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Badge variant="secondary">{rules.filter(r => r.gtdTemplate).length} active rules</Badge>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    fetch('/api/actions/init-gtd-rules', { method: 'POST' })
-                      .then(() => {
-                        queryClient.invalidateQueries({ queryKey: ['/api/actions/rules'] });
-                        toast({
-                          title: "GTD Rules Created",
-                          description: "All GTD emoji rules are now active and can be modified",
-                        });
-                      });
-                  }}
-                >
-                  Reset GTD Rules
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {rules.filter((rule: any) => rule.gtdTemplate).map((rule: any) => (
-                <Card key={rule.ruleId} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                          <span className="text-xl">{rule.triggerConditions.emoji}</span>
-                        </div>
-                        <div>
-                          <CardTitle className="text-base">{rule.ruleName}</CardTitle>
-                          <Badge variant="outline" className="text-xs mt-1">
-                            {rule.actionType.replace('create_', '')}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setEditingRule(rule);
-                            setShowForm(true);
-                          }}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Switch
-                          checked={rule.isActive}
-                          onCheckedChange={() => toggleRuleMutation.mutate(rule.ruleId)}
-                        />
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm mt-2">
-                      {rule.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Category:</span>
-                        <Badge variant="secondary" size="sm">
-                          {rule.category?.replace('gtd-', '') || 'custom'}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Priority:</span>
-                        <Badge variant="outline" size="sm">
-                          {rule.actionConfig.priority || 'medium'}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Status:</span>
-                        <Badge variant="outline" size="sm" className={rule.isActive ? "text-green-600 border-green-300" : "text-gray-500 border-gray-300"}>
-                          {rule.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </div>
-                      {rule.actionConfig.tags && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {rule.actionConfig.tags.slice(0, 3).map((tag: string) => (
-                            <Badge key={tag} variant="secondary" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {rules.filter((rule: any) => rule.gtdTemplate).length === 0 && (
-              <Card>
-                <CardContent className="flex items-center justify-center py-8">
-                  <div className="text-center space-y-2">
-                    <Zap className="w-8 h-8 mx-auto text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      No GTD rules found. Click "Reset GTD Rules" to create all emoji automation rules.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* How to Use GTD */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="w-5 h-5" />
-                  How to Use GTD System
-                </CardTitle>
-                <CardDescription>
-                  Transform any WhatsApp message into organized tasks with simple emoji reactions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <h4 className="font-semibold">1. Find a Message</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Navigate to any WhatsApp conversation and find a message you want to convert
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="font-semibold">2. React with Emoji</h4>
-                    <p className="text-sm text-muted-foreground">
-                      React to the message with the appropriate GTD emoji (✅ for tasks, 🎯 for projects, etc.)
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="font-semibold">3. Auto-Creation</h4>
-                    <p className="text-sm text-muted-foreground">
-                      The system automatically creates the appropriate item with full context and details
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
 
         <TabsContent value="rules" className="space-y-4 h-full overflow-auto">
           {rulesLoading ? (

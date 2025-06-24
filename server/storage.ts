@@ -10,7 +10,7 @@ import {
     // Legacy Schema
     tasks, contacts,
     // Actions Schema
-    actionRules, actionTemplates,
+    actionRules,
     // CRM Schema - Comprehensive Contacts Module
     crmProjects, crmTasks, crmCompanies, 
     crmContacts, crmContactPhones, crmContactEmails, crmContactAddresses, 
@@ -1269,28 +1269,6 @@ class DatabaseStorage {
         return task;
     }
 
-    // GTD-specific methods
-    async getTasksByTriggeringMessage(messageId: string, instanceId: string): Promise<any[]> {
-        const tasks = await db.select()
-            .from(crmTasks)
-            .where(and(
-                eq(crmTasks.triggeringMessageId, messageId),
-                eq(crmTasks.instanceId, instanceId)
-            ));
-        return tasks;
-    }
-
-    async updateTask(taskId: number, updates: any): Promise<any> {
-        const [task] = await db.update(crmTasks)
-            .set({
-                ...updates,
-                updatedAt: new Date()
-            })
-            .where(eq(crmTasks.taskId, taskId))
-            .returning();
-        return task;
-    }
-
     async getTasks(instanceId?: string): Promise<any[]> {
         let query = db.select().from(crmTasks).orderBy(desc(crmTasks.createdAt));
         
@@ -2500,56 +2478,6 @@ class DatabaseStorage {
             console.error('Error fetching space hierarchy:', error);
             throw error;
         }
-    }
-
-    // Action Template Operations
-    async getActionTemplates(): Promise<any[]> {
-        const templates = await db.select().from(actionTemplates);
-        return templates;
-    }
-
-    async createActionTemplate(templateData: any): Promise<any> {
-        const [template] = await db.insert(actionTemplates)
-            .values(templateData)
-            .returning();
-        return template;
-    }
-
-    // Action Rules Operations
-    async getActionRules(): Promise<any[]> {
-        const rules = await db.select().from(actionRules);
-        return rules;
-    }
-
-    async createActionRule(ruleData: any): Promise<any> {
-        const [rule] = await db.insert(actionRules)
-            .values({
-                ruleName: ruleData.ruleName,
-                description: ruleData.description,
-                triggerType: ruleData.triggerType,
-                triggerConditions: ruleData.triggerConditions,
-                actionType: ruleData.actionType,
-                actionConfig: ruleData.actionConfig,
-                isActive: ruleData.isActive !== false,
-                instanceFilters: ruleData.instanceFilters || null,
-                gtdTemplate: ruleData.gtdTemplate || false,
-                category: ruleData.category || null
-            })
-            .returning();
-        return rule;
-    }
-
-    async updateActionRule(ruleId: string, updates: any): Promise<any> {
-        const [rule] = await db.update(actionRules)
-            .set(updates)
-            .where(eq(actionRules.ruleId, ruleId))
-            .returning();
-        return rule;
-    }
-
-    async deleteActionRule(ruleId: string): Promise<void> {
-        await db.delete(actionRules)
-            .where(eq(actionRules.ruleId, ruleId));
     }
 }
 

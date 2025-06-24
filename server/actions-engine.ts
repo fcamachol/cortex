@@ -7,13 +7,11 @@ import {
   actionRules,
   actionExecutions,
   tasks,
-  crmTasks,
   type ActionRule,
   type InsertActionExecution
 } from '../shared/schema';
 import * as chrono from 'chrono-node';
 import { calendarService } from './calendar-service';
-import { GTD_TEMPLATES, GTD_ACTION_PROCESSOR } from './gtd-templates';
 
 export interface TriggerContext {
   messageId: string;
@@ -44,12 +42,6 @@ export class ActionsEngine {
     
     switch (actionType) {
       case 'create_task':
-        return await ActionsEngine.createTask(config, context);
-      case 'create_project':
-      case 'create_note':
-      case 'create_file':
-      case 'create_waiting_for':
-      case 'create_someday_maybe':
         return await ActionsEngine.createTask(config, context);
       case 'create_calendar_event':
         return await ActionsEngine.createCalendarEvent(config, context);
