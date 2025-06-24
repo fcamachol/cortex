@@ -1,0 +1,95 @@
+Project Nexus: The Complete Contacts & CRM Module
+Document Purpose: To serve as the single source of truth for the design and implementation of the application's contact management and relationship intelligence system.
+
+Part 1: Vision & Core Philosophy
+The Contacts Module is the central nervous system of Project Nexus. It transcends a simple address book to become a powerful, personal CRM that understands the user's network.
+
+Guiding Principles:
+
+The 360-Degree Profile: The ultimate goal is to allow a user to open any contact's page and see every interaction—past, present, and future—associated with them. This includes tasks, events, financial transactions, notes, and documents.
+Network Intelligence: The system must understand and map the complex web of relationships that exist between people, companies, and custom groups.
+Deep Personalization: The application must learn and adapt to the user's personal context, recognizing their vocabulary (nicknames), remembering important life events (birthdays, anniversaries), and tracking personal interests.
+Seamless Integration: The module is not a standalone feature. Its data must be accessible and usable from every other part of the application, especially the conversational WhatsApp interface.
+Part 2: The User Experience (UX/UI) Blueprint
+This section outlines the visual and interactive design for the UX/UI team.
+
+A. Information Architecture
+The Contacts module is a global, top-level feature. Its entities are not confined to a single Space.
+
+/app/contacts: The main directory for all individual contacts.
+/app/contact/{id}: The detailed 360-degree profile view for a single person.
+/app/companies: The main directory for all organizations.
+/app/company/{id}: The detailed profile view for a single company.
+/app/groups: The main directory for all user-defined contact groups.
+/app/group/{id}: The detailed management page for a single group.
+B. Screen & Component Design
+1. The Main Directory Views (Contacts, Companies, Groups)
+Layout: A clean, modern layout with a powerful search and filtering bar at the top.
+Search: A single search input that intelligently searches across names, aliases/nicknames, and company names.
+Filtering: Prominent buttons or dropdowns to filter the list (e.g., by Relationship type like "Family" or "Client," or by Company).
+View Toggle: Buttons to switch between a dense List View (for efficiency) and a more visual Grid View (with avatars/logos).
+Primary Action: A clearly visible [+ Add] button to create a new contact, company, or group.
+2. The Contact Detail Page (The 360-Degree Profile)
+This is the most critical screen. It should be designed as a clean, scannable dashboard.
+
+Header Section:
+Large, prominent avatar/profile picture.
+Full Name in a large, bold font.
+Primary Role & Company directly below (e.g., "Contador at Magabar"). The company name is a link to its own detail page.
+Core Details Section: A well-organized block showing:
+Phone Numbers: A list, each with a Label (Work, Mobile), a small WhatsApp icon if applicable, and a (primary) tag.
+Emails & Addresses: Similar lists with labels and primary tags.
+Personal Context Section:
+Aliases/Nicknames: Displayed as stylish, removable pills/tags (e.g., [pingis]).
+Special Dates: A list of important dates (e.g., "Birthday: August 15"). The system uses these to generate automated reminder tasks.
+Interests: A collection of tag-like pills for hobbies and preferences.
+Relationships Section: This section visually maps the contact's network.
+Works at: Displays a link to the company profile.
+Member of Groups: Lists all groups the contact belongs to (e.g., "Book Club," "Sunday Soccer Team").
+Related Contacts: The "family tree" view, showing direct interpersonal links (e.g., "Spouse: [Pau]", "Children: [Leo], [Mia]"). Each name is a link to that contact's profile.
+Activity Tabs: A powerful set of tabs that pulls in data from across the entire application.
+Tasks: A real-time list of all tasks where this contact is the Stakeholder or the Assignee.
+Events: A chronological list of all calendar events they are a participant in.
+Finance: A complete history of all Transactions, Bills, and Loans linked to them.
+Notes & Docs: A feed of all notes and documents where they are mentioned or attached.
+3. The Company & Group Detail Pages
+These are simpler dashboard pages focused on listing members.
+
+Header: Displays the company logo or group icon and its name.
+Primary View: A clean list of all associated Contacts. For companies, each contact's Role (e.g., "Contador") is displayed next to their name.
+Part 3: The Data Architecture Blueprint
+This section provides the complete and final database schema for the module. It is the definitive guide for the database expert and backend engineers.
+
+Contacts (The Parent Entity)
+
+contact_id (PK), owner_user_id, full_name, relationship ('Family', 'Client', etc.).
+Contact_Phones
+
+phone_id (PK), contact_id (FK), phone_number, label, is_whatsapp_linked (Boolean), is_primary (Boolean).
+Contact_Emails
+
+email_id (PK), contact_id (FK), email_address, label, is_primary (Boolean).
+Contact_Addresses
+
+address_id (PK), contact_id (FK), label, street, city, etc., is_primary (Boolean).
+Contact_Aliases (For Nicknames)
+
+alias_id (PK), contact_id (FK), alias (String).
+Special_Dates
+
+special_date_id (PK), contact_id (FK), event_name, event_date, reminder_days_before (Integer).
+Interests & Contact_Interests (Many-to-Many)
+
+Interests: interest_id (PK), name.
+Contact_Interests: contact_id (FK), interest_id (FK).
+Companies & Company_Members (Many-to-Many)
+
+Companies: company_id (PK), company_name, website.
+Company_Members: contact_id (FK), company_id (FK), role (String).
+Contact_Groups & Contact_Group_Members (Many-to-Many)
+
+Contact_Groups: group_id (PK), group_name, group_description.
+Contact_Group_Members: group_id (FK), contact_id (FK), role_in_group (String).
+Contact_Relationships (Interpersonal Links)
+
+contact_a_id (FK), contact_b_id (FK), relationship_a_to_b (String), relationship_b_to_a (String).

@@ -1071,11 +1071,108 @@ export const crmCompanies = crmSchema.table("companies", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-// CRM Contact Groups - Custom collections of contacts for flexible organization
+// =========================================================================
+// COMPREHENSIVE CONTACTS & CRM MODULE - The 360-Degree Network Intelligence System
+// =========================================================================
+
+// Core Contacts - The parent entity for all personal contacts
+export const crmContacts = crmSchema.table("contacts", {
+  contactId: serial("contact_id").primaryKey(),
+  ownerUserId: uuid("owner_user_id").notNull().references(() => appUsers.userId, { onDelete: "cascade" }),
+  fullName: varchar("full_name", { length: 255 }).notNull(),
+  relationship: varchar("relationship", { length: 100 }), // 'Family', 'Client', 'Friend', etc.
+  profilePictureUrl: varchar("profile_picture_url", { length: 500 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Contact Phone Numbers - Multiple phone numbers per contact
+export const crmContactPhones = crmSchema.table("contact_phones", {
+  phoneId: serial("phone_id").primaryKey(),
+  contactId: integer("contact_id").notNull().references(() => crmContacts.contactId, { onDelete: "cascade" }),
+  phoneNumber: varchar("phone_number", { length: 50 }).notNull(),
+  label: varchar("label", { length: 50 }), // 'Work', 'Mobile', 'Home', etc.
+  isWhatsappLinked: boolean("is_whatsapp_linked").default(false).notNull(),
+  isPrimary: boolean("is_primary").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Contact Email Addresses - Multiple emails per contact
+export const crmContactEmails = crmSchema.table("contact_emails", {
+  emailId: serial("email_id").primaryKey(),
+  contactId: integer("contact_id").notNull().references(() => crmContacts.contactId, { onDelete: "cascade" }),
+  emailAddress: varchar("email_address", { length: 255 }).notNull(),
+  label: varchar("label", { length: 50 }), // 'Work', 'Personal', etc.
+  isPrimary: boolean("is_primary").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Contact Addresses - Multiple addresses per contact
+export const crmContactAddresses = crmSchema.table("contact_addresses", {
+  addressId: serial("address_id").primaryKey(),
+  contactId: integer("contact_id").notNull().references(() => crmContacts.contactId, { onDelete: "cascade" }),
+  label: varchar("label", { length: 50 }), // 'Home', 'Work', 'Billing', etc.
+  street: varchar("street", { length: 255 }),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 100 }),
+  postalCode: varchar("postal_code", { length: 20 }),
+  country: varchar("country", { length: 100 }),
+  isPrimary: boolean("is_primary").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Contact Aliases/Nicknames - Multiple nicknames per contact
+export const crmContactAliases = crmSchema.table("contact_aliases", {
+  aliasId: serial("alias_id").primaryKey(),
+  contactId: integer("contact_id").notNull().references(() => crmContacts.contactId, { onDelete: "cascade" }),
+  alias: varchar("alias", { length: 100 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Special Dates - Important dates for contacts (birthdays, anniversaries, etc.)
+export const crmSpecialDates = crmSchema.table("special_dates", {
+  specialDateId: serial("special_date_id").primaryKey(),
+  contactId: integer("contact_id").notNull().references(() => crmContacts.contactId, { onDelete: "cascade" }),
+  eventName: varchar("event_name", { length: 100 }).notNull(), // 'Birthday', 'Anniversary', etc.
+  eventDate: timestamp("event_date", { withTimezone: true }).notNull(),
+  reminderDaysBefore: integer("reminder_days_before").default(7).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Interests - Master list of interests/hobbies
+export const crmInterests = crmSchema.table("interests", {
+  interestId: serial("interest_id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Contact Interests - Many-to-many relationship between contacts and interests
+export const crmContactInterests = crmSchema.table("contact_interests", {
+  contactId: integer("contact_id").notNull().references(() => crmContacts.contactId, { onDelete: "cascade" }),
+  interestId: integer("interest_id").notNull().references(() => crmInterests.interestId, { onDelete: "cascade" }),
+  addedAt: timestamp("added_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.contactId, table.interestId] }),
+}));
+
+// Company Members - Many-to-many relationship between contacts and companies
+export const crmCompanyMembers = crmSchema.table("company_members", {
+  contactId: integer("contact_id").notNull().references(() => crmContacts.contactId, { onDelete: "cascade" }),
+  companyId: integer("company_id").notNull().references(() => crmCompanies.companyId, { onDelete: "cascade" }),
+  role: varchar("role", { length: 150 }), // 'CEO', 'Contador', 'Manager', etc.
+  startDate: timestamp("start_date", { withTimezone: true }),
+  endDate: timestamp("end_date", { withTimezone: true }),
+  isCurrent: boolean("is_current").default(true).notNull(),
+  addedAt: timestamp("added_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.contactId, table.companyId] }),
+}));
+
+// Contact Groups - Custom collections of contacts for flexible organization
 export const crmContactGroups = crmSchema.table("contact_groups", {
   groupId: uuid("group_id").primaryKey().defaultRandom(),
-  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
-  ownerId: uuid("owner_id").notNull().references(() => appUsers.userId, { onDelete: "cascade" }),
+  ownerUserId: uuid("owner_user_id").notNull().references(() => appUsers.userId, { onDelete: "cascade" }),
   groupName: varchar("group_name", { length: 255 }).notNull(),
   groupDescription: text("group_description"),
   groupIcon: varchar("group_icon", { length: 255 }), // Emoji or icon identifier
@@ -1084,15 +1181,26 @@ export const crmContactGroups = crmSchema.table("contact_groups", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-// CRM Contact Group Members - Junction table linking contacts to groups
+// Contact Group Members - Junction table linking contacts to groups
 export const crmContactGroupMembers = crmSchema.table("contact_group_members", {
   groupId: uuid("group_id").notNull().references(() => crmContactGroups.groupId, { onDelete: "cascade" }),
-  contactId: integer("contact_id").notNull(), // References legacy contacts table
+  contactId: integer("contact_id").notNull().references(() => crmContacts.contactId, { onDelete: "cascade" }),
   roleInGroup: varchar("role_in_group", { length: 255 }), // Optional role within the group
   addedAt: timestamp("added_at", { withTimezone: true }).defaultNow().notNull(),
   addedBy: uuid("added_by").notNull().references(() => appUsers.userId), // User who added this member
 }, (table) => ({
   pk: primaryKey({ columns: [table.groupId, table.contactId] }),
+}));
+
+// Contact Relationships - Interpersonal links between contacts
+export const crmContactRelationships = crmSchema.table("contact_relationships", {
+  contactAId: integer("contact_a_id").notNull().references(() => crmContacts.contactId, { onDelete: "cascade" }),
+  contactBId: integer("contact_b_id").notNull().references(() => crmContacts.contactId, { onDelete: "cascade" }),
+  relationshipAToB: varchar("relationship_a_to_b", { length: 100 }), // 'Spouse', 'Parent', 'Child', etc.
+  relationshipBToA: varchar("relationship_b_to_a", { length: 100 }), // Reverse relationship
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.contactAId, table.contactBId] }),
 }));
 
 // CRM Tasks - Main task management table
@@ -1120,6 +1228,145 @@ export const crmTasks = crmSchema.table("tasks", {
   spaceId: integer("space_id"),
 });
 
+// =========================================================================
+// CRM RELATIONS - Comprehensive relationship definitions
+// =========================================================================
+
+// Core Contact Relations
+export const crmContactsRelations = relations(crmContacts, ({ one, many }) => ({
+  owner: one(appUsers, {
+    fields: [crmContacts.ownerUserId],
+    references: [appUsers.userId],
+  }),
+  phones: many(crmContactPhones),
+  emails: many(crmContactEmails),
+  addresses: many(crmContactAddresses),
+  aliases: many(crmContactAliases),
+  specialDates: many(crmSpecialDates),
+  interests: many(crmContactInterests),
+  companyMemberships: many(crmCompanyMembers),
+  groupMemberships: many(crmContactGroupMembers),
+  relationshipsAsA: many(crmContactRelationships, { relationName: "contactA" }),
+  relationshipsAsB: many(crmContactRelationships, { relationName: "contactB" }),
+}));
+
+// Contact Phone Relations
+export const crmContactPhonesRelations = relations(crmContactPhones, ({ one }) => ({
+  contact: one(crmContacts, {
+    fields: [crmContactPhones.contactId],
+    references: [crmContacts.contactId],
+  }),
+}));
+
+// Contact Email Relations
+export const crmContactEmailsRelations = relations(crmContactEmails, ({ one }) => ({
+  contact: one(crmContacts, {
+    fields: [crmContactEmails.contactId],
+    references: [crmContacts.contactId],
+  }),
+}));
+
+// Contact Address Relations
+export const crmContactAddressesRelations = relations(crmContactAddresses, ({ one }) => ({
+  contact: one(crmContacts, {
+    fields: [crmContactAddresses.contactId],
+    references: [crmContacts.contactId],
+  }),
+}));
+
+// Contact Alias Relations
+export const crmContactAliasesRelations = relations(crmContactAliases, ({ one }) => ({
+  contact: one(crmContacts, {
+    fields: [crmContactAliases.contactId],
+    references: [crmContacts.contactId],
+  }),
+}));
+
+// Special Dates Relations
+export const crmSpecialDatesRelations = relations(crmSpecialDates, ({ one }) => ({
+  contact: one(crmContacts, {
+    fields: [crmSpecialDates.contactId],
+    references: [crmContacts.contactId],
+  }),
+}));
+
+// Interest Relations
+export const crmInterestsRelations = relations(crmInterests, ({ many }) => ({
+  contactInterests: many(crmContactInterests),
+}));
+
+// Contact Interest Relations
+export const crmContactInterestsRelations = relations(crmContactInterests, ({ one }) => ({
+  contact: one(crmContacts, {
+    fields: [crmContactInterests.contactId],
+    references: [crmContacts.contactId],
+  }),
+  interest: one(crmInterests, {
+    fields: [crmContactInterests.interestId],
+    references: [crmInterests.interestId],
+  }),
+}));
+
+// Company Member Relations
+export const crmCompanyMembersRelations = relations(crmCompanyMembers, ({ one }) => ({
+  contact: one(crmContacts, {
+    fields: [crmCompanyMembers.contactId],
+    references: [crmContacts.contactId],
+  }),
+  company: one(crmCompanies, {
+    fields: [crmCompanyMembers.companyId],
+    references: [crmCompanies.companyId],
+  }),
+}));
+
+// Updated Company Relations
+export const crmCompaniesRelations = relations(crmCompanies, ({ one, many }) => ({
+  space: one(appSpaces, {
+    fields: [crmCompanies.spaceId],
+    references: [appSpaces.spaceId],
+  }),
+  members: many(crmCompanyMembers),
+}));
+
+// Contact Group Relations
+export const crmContactGroupsRelations = relations(crmContactGroups, ({ one, many }) => ({
+  owner: one(appUsers, {
+    fields: [crmContactGroups.ownerUserId],
+    references: [appUsers.userId],
+  }),
+  members: many(crmContactGroupMembers),
+}));
+
+// Contact Group Member Relations
+export const crmContactGroupMembersRelations = relations(crmContactGroupMembers, ({ one }) => ({
+  group: one(crmContactGroups, {
+    fields: [crmContactGroupMembers.groupId],
+    references: [crmContactGroups.groupId],
+  }),
+  contact: one(crmContacts, {
+    fields: [crmContactGroupMembers.contactId],
+    references: [crmContacts.contactId],
+  }),
+  addedByUser: one(appUsers, {
+    fields: [crmContactGroupMembers.addedBy],
+    references: [appUsers.userId],
+  }),
+}));
+
+// Contact Relationship Relations
+export const crmContactRelationshipsRelations = relations(crmContactRelationships, ({ one }) => ({
+  contactA: one(crmContacts, {
+    fields: [crmContactRelationships.contactAId],
+    references: [crmContacts.contactId],
+    relationName: "contactA",
+  }),
+  contactB: one(crmContacts, {
+    fields: [crmContactRelationships.contactBId],
+    references: [crmContacts.contactId],
+    relationName: "contactB",
+  }),
+}));
+
 // CRM Tasks Relations
 export const crmTasksRelations = relations(crmTasks, ({ one }) => ({
   instance: one(whatsappInstances, {
@@ -1132,7 +1379,60 @@ export const crmTasksRelations = relations(crmTasks, ({ one }) => ({
   }),
 }));
 
-// CRM Insert Schemas
+// =========================================================================
+// CRM INSERT SCHEMAS & TYPES - Complete type safety for all entities
+// =========================================================================
+
+// Core Contact Schemas
+export const insertCrmContactSchema = createInsertSchema(crmContacts).omit({
+  contactId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrmContactPhoneSchema = createInsertSchema(crmContactPhones).omit({
+  phoneId: true,
+  createdAt: true,
+});
+
+export const insertCrmContactEmailSchema = createInsertSchema(crmContactEmails).omit({
+  emailId: true,
+  createdAt: true,
+});
+
+export const insertCrmContactAddressSchema = createInsertSchema(crmContactAddresses).omit({
+  addressId: true,
+  createdAt: true,
+});
+
+export const insertCrmContactAliasSchema = createInsertSchema(crmContactAliases).omit({
+  aliasId: true,
+  createdAt: true,
+});
+
+export const insertCrmSpecialDateSchema = createInsertSchema(crmSpecialDates).omit({
+  specialDateId: true,
+  createdAt: true,
+});
+
+export const insertCrmInterestSchema = createInsertSchema(crmInterests).omit({
+  interestId: true,
+  createdAt: true,
+});
+
+export const insertCrmContactInterestSchema = createInsertSchema(crmContactInterests).omit({
+  addedAt: true,
+});
+
+export const insertCrmCompanyMemberSchema = createInsertSchema(crmCompanyMembers).omit({
+  addedAt: true,
+});
+
+export const insertCrmContactRelationshipSchema = createInsertSchema(crmContactRelationships).omit({
+  createdAt: true,
+});
+
+// Existing schemas
 export const insertCrmTaskSchema = createInsertSchema(crmTasks).omit({
   taskId: true,
   createdAt: true,
@@ -1155,7 +1455,33 @@ export const insertCrmContactGroupMemberSchema = createInsertSchema(crmContactGr
   addedAt: true,
 });
 
-// CRM Types
+// =========================================================================
+// COMPREHENSIVE CRM TYPES - Complete TypeScript definitions
+// =========================================================================
+
+// Core Contact Types
+export type CrmContact = typeof crmContacts.$inferSelect;
+export type InsertCrmContact = z.infer<typeof insertCrmContactSchema>;
+export type CrmContactPhone = typeof crmContactPhones.$inferSelect;
+export type InsertCrmContactPhone = z.infer<typeof insertCrmContactPhoneSchema>;
+export type CrmContactEmail = typeof crmContactEmails.$inferSelect;
+export type InsertCrmContactEmail = z.infer<typeof insertCrmContactEmailSchema>;
+export type CrmContactAddress = typeof crmContactAddresses.$inferSelect;
+export type InsertCrmContactAddress = z.infer<typeof insertCrmContactAddressSchema>;
+export type CrmContactAlias = typeof crmContactAliases.$inferSelect;
+export type InsertCrmContactAlias = z.infer<typeof insertCrmContactAliasSchema>;
+export type CrmSpecialDate = typeof crmSpecialDates.$inferSelect;
+export type InsertCrmSpecialDate = z.infer<typeof insertCrmSpecialDateSchema>;
+export type CrmInterest = typeof crmInterests.$inferSelect;
+export type InsertCrmInterest = z.infer<typeof insertCrmInterestSchema>;
+export type CrmContactInterest = typeof crmContactInterests.$inferSelect;
+export type InsertCrmContactInterest = z.infer<typeof insertCrmContactInterestSchema>;
+export type CrmCompanyMember = typeof crmCompanyMembers.$inferSelect;
+export type InsertCrmCompanyMember = z.infer<typeof insertCrmCompanyMemberSchema>;
+export type CrmContactRelationship = typeof crmContactRelationships.$inferSelect;
+export type InsertCrmContactRelationship = z.infer<typeof insertCrmContactRelationshipSchema>;
+
+// Existing Types
 export type CrmTask = typeof crmTasks.$inferSelect;
 export type InsertCrmTask = z.infer<typeof insertCrmTaskSchema>;
 export type CrmCompany = typeof crmCompanies.$inferSelect;
@@ -1164,6 +1490,22 @@ export type CrmContactGroup = typeof crmContactGroups.$inferSelect;
 export type InsertCrmContactGroup = z.infer<typeof insertCrmContactGroupSchema>;
 export type CrmContactGroupMember = typeof crmContactGroupMembers.$inferSelect;
 export type InsertCrmContactGroupMember = z.infer<typeof insertCrmContactGroupMemberSchema>;
+
+// =========================================================================
+// COMPREHENSIVE CONTACT WITH RELATIONS TYPE - For 360-degree view
+// =========================================================================
+export type ContactWithRelations = CrmContact & {
+  phones: CrmContactPhone[];
+  emails: CrmContactEmail[];
+  addresses: CrmContactAddress[];
+  aliases: CrmContactAlias[];
+  specialDates: CrmSpecialDate[];
+  interests: (CrmContactInterest & { interest: CrmInterest })[];
+  companyMemberships: (CrmCompanyMember & { company: CrmCompany })[];
+  groupMemberships: (CrmContactGroupMember & { group: CrmContactGroup })[];
+  relationshipsAsA: (CrmContactRelationship & { contactB: CrmContact })[];
+  relationshipsAsB: (CrmContactRelationship & { contactA: CrmContact })[];
+};
 
 // =============================================================================
 // CALENDAR SCHEMA - External Calendar Integration
