@@ -352,7 +352,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
               </div>
 
               {/* Space Name */}
-              <span className="flex-1 text-sm font-medium truncate">
+              <span className="flex-1 text-base font-medium truncate">
                 {space.spaceName}
               </span>
 
