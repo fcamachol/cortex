@@ -285,32 +285,34 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
             />
           </div>
 
-          {/* Contact Information - Collapsible */}
+          {/* Contact Information - Minimalistic Notion-style */}
           <Collapsible open={isContactInfoOpen} onOpenChange={setIsContactInfoOpen}>
             <CollapsibleTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start p-0 h-auto font-normal text-left"
-                type="button"
-              >
-                <div className="flex items-center gap-2 py-2 px-1">
-                  {isContactInfoOpen ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                  <Phone className="h-4 w-4" />
-                  <span className="font-medium">Contact Information</span>
-                  {(phones.length > 0 || emails.length > 0 || addresses.length > 0) && (
-                    <span className="text-xs text-muted-foreground">
-                      ({phones.length + emails.length + addresses.length})
-                    </span>
-                  )}
-                  {!isContactInfoOpen && (
-                    <Plus className="h-4 w-4 ml-auto text-blue-600" />
-                  )}
-                </div>
-              </Button>
+              <div className="flex items-center gap-2 py-1 text-sm text-muted-foreground cursor-pointer hover:text-foreground">
+                {isContactInfoOpen ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronRight className="h-3 w-3" />
+                )}
+                <span>Contact Information</span>
+                {!isContactInfoOpen && (phones.length > 0 || emails.length > 0 || addresses.length > 0) && (
+                  <div className="flex items-center gap-1 ml-2">
+                    {phones.length > 0 && <span className="text-xs">📞</span>}
+                    {emails.length > 0 && <span className="text-xs">✉️</span>}
+                    {addresses.length > 0 && <span className="text-xs">🏠</span>}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    addPhone();
+                  }}
+                  className="ml-auto text-xs text-muted-foreground hover:text-foreground"
+                >
+                  [+ Add Phone]
+                </button>
+              </div>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-6 pl-6 pt-2">
               {/* Phones */}
