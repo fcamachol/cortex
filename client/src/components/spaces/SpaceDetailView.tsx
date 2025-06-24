@@ -23,11 +23,17 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 interface SpaceDetailViewProps {
   space: Space;
   onBack: () => void;
-  onCreateItem?: (itemType: string) => void;
 }
 
-export function SpaceDetailView({ space, onBack, onCreateItem }: SpaceDetailViewProps) {
+export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   const [activeTab, setActiveTab] = useState("overview");
+  const [showCreateItemDialog, setShowCreateItemDialog] = useState(false);
+  const [selectedItemType, setSelectedItemType] = useState<string>("");
+
+  const handleCreateItem = (itemType: string) => {
+    setSelectedItemType(itemType);
+    setShowCreateItemDialog(true);
+  };
 
   // Fetch space items
   const { data: spaceItems = [], isLoading: itemsLoading } = useQuery({
@@ -194,7 +200,7 @@ export function SpaceDetailView({ space, onBack, onCreateItem }: SpaceDetailView
           <TabsContent value="projects" className="mt-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold">Projects</h3>
-              <Button onClick={() => onCreateItem?.('project')}>
+              <Button onClick={() => handleCreateItem('project')}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Project
               </Button>
@@ -205,7 +211,7 @@ export function SpaceDetailView({ space, onBack, onCreateItem }: SpaceDetailView
                 <Briefcase className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <h3 className="text-lg font-medium mb-2">No projects yet</h3>
                 <p className="text-sm mb-4">Create your first project to organize your work</p>
-                <Button onClick={() => onCreateItem?.('project')}>
+                <Button onClick={() => handleCreateItem('project')}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create First Project
                 </Button>
@@ -248,7 +254,7 @@ export function SpaceDetailView({ space, onBack, onCreateItem }: SpaceDetailView
                         <CheckSquare className="h-5 w-5" />
                         Tasks ({getItemsByType('task').length})
                       </CardTitle>
-                      <Button size="sm" onClick={() => onCreateItem?.('task')}>
+                      <Button size="sm" onClick={() => handleCreateItem('task')}>
                         <Plus className="h-4 w-4 mr-2" />
                         Add Task
                       </Button>
@@ -289,7 +295,7 @@ export function SpaceDetailView({ space, onBack, onCreateItem }: SpaceDetailView
                         <FileText className="h-5 w-5" />
                         Files ({getItemsByType('file').length})
                       </CardTitle>
-                      <Button size="sm" onClick={() => onCreateItem?.('file')}>
+                      <Button size="sm" onClick={() => handleCreateItem('file')}>
                         <Plus className="h-4 w-4 mr-2" />
                         Add File
                       </Button>
@@ -371,7 +377,7 @@ export function SpaceDetailView({ space, onBack, onCreateItem }: SpaceDetailView
                         <FileText className="h-5 w-5" />
                         Notes ({getItemsByType('note').length})
                       </CardTitle>
-                      <Button size="sm" onClick={() => onCreateItem?.('note')}>
+                      <Button size="sm" onClick={() => handleCreateItem('note')}>
                         <Plus className="h-4 w-4 mr-2" />
                         Add Note
                       </Button>
@@ -455,15 +461,15 @@ export function SpaceDetailView({ space, onBack, onCreateItem }: SpaceDetailView
                   <h3 className="text-lg font-medium mb-2">No content yet</h3>
                   <p className="text-sm mb-4">Add tasks, files, documents, notes, or events to this space</p>
                   <div className="flex justify-center gap-2 flex-wrap">
-                    <Button onClick={() => onCreateItem?.('task')}>
+                    <Button onClick={() => handleCreateItem('task')}>
                       <CheckSquare className="h-4 w-4 mr-2" />
                       Add Task
                     </Button>
-                    <Button variant="outline" onClick={() => onCreateItem?.('file')}>
+                    <Button variant="outline" onClick={() => handleCreateItem('file')}>
                       <FileText className="h-4 w-4 mr-2" />
                       Add File
                     </Button>
-                    <Button variant="outline" onClick={() => onCreateItem?.('note')}>
+                    <Button variant="outline" onClick={() => handleCreateItem('note')}>
                       <FileText className="h-4 w-4 mr-2" />
                       Add Note
                     </Button>
@@ -527,6 +533,13 @@ export function SpaceDetailView({ space, onBack, onCreateItem }: SpaceDetailView
           </TabsContent>
         </Tabs>
       </div>
+      
+      <CreateItemDialog
+        isOpen={showCreateItemDialog}
+        onClose={() => setShowCreateItemDialog(false)}
+        spaceId={space.spaceId}
+        itemType={selectedItemType}
+      />
     </div>
   );
 }

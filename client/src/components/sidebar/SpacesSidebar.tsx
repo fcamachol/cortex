@@ -105,12 +105,13 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
   };
 
   const handleCreateItem = (spaceId: number, itemType: string) => {
-    console.log('Creating item:', itemType, 'in space:', spaceId);
-    // TODO: Implement item creation logic
-    toast({
-      title: "Creating " + itemType,
-      description: `Creating new ${itemType} in space ${spaceId}`,
-    });
+    if (itemType === 'subspace') {
+      handleCreateSubspace(spaceId);
+    } else {
+      setSelectedSpaceId(spaceId);
+      setSelectedItemType(itemType);
+      setShowCreateItemDialog(true);
+    }
   };
 
   // Expose expand function globally for CreateSpaceDialog
@@ -387,7 +388,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleCreateSubspace(space.spaceId)}>
+                    <DropdownMenuItem onClick={() => handleCreateItem(space.spaceId, 'subspace')}>
                       <Folder className="h-4 w-4 mr-2" />
                       Subspace
                     </DropdownMenuItem>
