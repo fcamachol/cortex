@@ -317,7 +317,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                   onClick={() => navigate('/spaces')}
                   className="hover:text-gray-900 dark:hover:text-gray-100"
                 >
-                  All Spaces
+                  All
                 </button>
                 {breadcrumbPath.slice(0, -1).map((breadcrumbSpace, index) => (
                   <div key={breadcrumbSpace.spaceId} className="flex items-center gap-2">

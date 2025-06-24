@@ -31,14 +31,12 @@ function AuthenticatedRoutes() {
       {/* Single level spaces */}
       <Route path="/spaces/:spaceId">
         {(params) => {
-          console.log('Single level route:', params);
           return <SpacesPage selectedSpaceId={parseInt(params.spaceId)} />;
         }}
       </Route>
       {/* Two level spaces */}
       <Route path="/spaces/:parentId/:spaceId">
         {(params) => {
-          console.log('Two level route:', params);
           return (
             <SpacesPage 
               selectedSpaceId={parseInt(params.spaceId)}
@@ -50,7 +48,6 @@ function AuthenticatedRoutes() {
       {/* Three level spaces */}
       <Route path="/spaces/:grandParentId/:parentId/:spaceId">
         {(params) => {
-          console.log('Three level route:', params);
           return (
             <SpacesPage 
               selectedSpaceId={parseInt(params.spaceId)}
@@ -62,7 +59,6 @@ function AuthenticatedRoutes() {
       {/* Four level spaces */}
       <Route path="/spaces/:level1/:level2/:level3/:spaceId">
         {(params) => {
-          console.log('Four level route:', params);
           return (
             <SpacesPage 
               selectedSpaceId={parseInt(params.spaceId)}
@@ -74,7 +70,6 @@ function AuthenticatedRoutes() {
       {/* Five level spaces */}
       <Route path="/spaces/:level1/:level2/:level3/:level4/:spaceId">
         {(params) => {
-          console.log('Five level route:', params);
           return (
             <SpacesPage 
               selectedSpaceId={parseInt(params.spaceId)}
