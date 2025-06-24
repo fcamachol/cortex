@@ -2305,6 +2305,190 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // =========================================================================
+  // COMPREHENSIVE CONTACTS & CRM API ROUTES - 360-Degree Network Intelligence
+  // =========================================================================
+
+  // Core Contact Routes
+  app.get('/api/crm/contacts', async (req: Request, res: Response) => {
+    try {
+      const { ownerUserId } = req.query;
+      if (!ownerUserId) {
+        return res.status(400).json({ error: 'ownerUserId is required' });
+      }
+      const contacts = await storage.getCrmContacts(ownerUserId as string);
+      res.json(contacts);
+    } catch (error) {
+      console.error('Error fetching CRM contacts:', error);
+      res.status(500).json({ error: 'Failed to fetch CRM contacts' });
+    }
+  });
+
+  app.get('/api/crm/contacts/:contactId/details', async (req: Request, res: Response) => {
+    try {
+      const { contactId } = req.params;
+      const contact = await storage.getCrmContactWithFullDetails(parseInt(contactId));
+      if (!contact) {
+        return res.status(404).json({ error: 'Contact not found' });
+      }
+      res.json(contact);
+    } catch (error) {
+      console.error('Error fetching contact details:', error);
+      res.status(500).json({ error: 'Failed to fetch contact details' });
+    }
+  });
+
+  app.post('/api/crm/contacts', async (req: Request, res: Response) => {
+    try {
+      const contact = await storage.createCrmContact(req.body);
+      res.json(contact);
+    } catch (error) {
+      console.error('Error creating CRM contact:', error);
+      res.status(500).json({ error: 'Failed to create CRM contact' });
+    }
+  });
+
+  app.put('/api/crm/contacts/:contactId', async (req: Request, res: Response) => {
+    try {
+      const { contactId } = req.params;
+      const contact = await storage.updateCrmContact(parseInt(contactId), req.body);
+      res.json(contact);
+    } catch (error) {
+      console.error('Error updating CRM contact:', error);
+      res.status(500).json({ error: 'Failed to update CRM contact' });
+    }
+  });
+
+  app.delete('/api/crm/contacts/:contactId', async (req: Request, res: Response) => {
+    try {
+      const { contactId } = req.params;
+      await storage.deleteCrmContact(parseInt(contactId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting CRM contact:', error);
+      res.status(500).json({ error: 'Failed to delete CRM contact' });
+    }
+  });
+
+  // Contact Phone Routes
+  app.get('/api/crm/contacts/:contactId/phones', async (req: Request, res: Response) => {
+    try {
+      const { contactId } = req.params;
+      const phones = await storage.getContactPhones(parseInt(contactId));
+      res.json(phones);
+    } catch (error) {
+      console.error('Error fetching contact phones:', error);
+      res.status(500).json({ error: 'Failed to fetch contact phones' });
+    }
+  });
+
+  app.post('/api/crm/contacts/:contactId/phones', async (req: Request, res: Response) => {
+    try {
+      const { contactId } = req.params;
+      const phone = await storage.addContactPhone({ ...req.body, contactId: parseInt(contactId) });
+      res.json(phone);
+    } catch (error) {
+      console.error('Error adding contact phone:', error);
+      res.status(500).json({ error: 'Failed to add contact phone' });
+    }
+  });
+
+  app.put('/api/crm/contacts/phones/:phoneId', async (req: Request, res: Response) => {
+    try {
+      const { phoneId } = req.params;
+      const phone = await storage.updateContactPhone(parseInt(phoneId), req.body);
+      res.json(phone);
+    } catch (error) {
+      console.error('Error updating contact phone:', error);
+      res.status(500).json({ error: 'Failed to update contact phone' });
+    }
+  });
+
+  app.delete('/api/crm/contacts/phones/:phoneId', async (req: Request, res: Response) => {
+    try {
+      const { phoneId } = req.params;
+      await storage.deleteContactPhone(parseInt(phoneId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting contact phone:', error);
+      res.status(500).json({ error: 'Failed to delete contact phone' });
+    }
+  });
+
+  // Contact Email Routes  
+  app.post('/api/crm/contacts/:contactId/emails', async (req: Request, res: Response) => {
+    try {
+      const { contactId } = req.params;
+      const email = await storage.addContactEmail({ ...req.body, contactId: parseInt(contactId) });
+      res.json(email);
+    } catch (error) {
+      console.error('Error adding contact email:', error);
+      res.status(500).json({ error: 'Failed to add contact email' });
+    }
+  });
+
+  // Contact Address Routes
+  app.post('/api/crm/contacts/:contactId/addresses', async (req: Request, res: Response) => {
+    try {
+      const { contactId } = req.params;
+      const address = await storage.addContactAddress({ ...req.body, contactId: parseInt(contactId) });
+      res.json(address);
+    } catch (error) {
+      console.error('Error adding contact address:', error);
+      res.status(500).json({ error: 'Failed to add contact address' });
+    }
+  });
+
+  // Interest Routes
+  app.get('/api/crm/interests', async (req: Request, res: Response) => {
+    try {
+      const interests = await storage.getAllInterests();
+      res.json(interests);
+    } catch (error) {
+      console.error('Error fetching interests:', error);
+      res.status(500).json({ error: 'Failed to fetch interests' });
+    }
+  });
+
+  app.post('/api/crm/interests', async (req: Request, res: Response) => {
+    try {
+      const interest = await storage.createInterest(req.body);
+      res.json(interest);
+    } catch (error) {
+      console.error('Error creating interest:', error);
+      res.status(500).json({ error: 'Failed to create interest' });
+    }
+  });
+
+  // Intelligence & Search Routes
+  app.get('/api/crm/contacts/search', async (req: Request, res: Response) => {
+    try {
+      const { ownerUserId, q } = req.query;
+      if (!ownerUserId || !q) {
+        return res.status(400).json({ error: 'ownerUserId and q parameters are required' });
+      }
+      const contacts = await storage.searchCrmContacts(ownerUserId as string, q as string);
+      res.json(contacts);
+    } catch (error) {
+      console.error('Error searching CRM contacts:', error);
+      res.status(500).json({ error: 'Failed to search CRM contacts' });
+    }
+  });
+
+  app.get('/api/crm/contacts/upcoming-dates', async (req: Request, res: Response) => {
+    try {
+      const { ownerUserId, days = '30' } = req.query;
+      if (!ownerUserId) {
+        return res.status(400).json({ error: 'ownerUserId is required' });
+      }
+      const upcomingDates = await storage.getUpcomingSpecialDates(ownerUserId as string, parseInt(days as string));
+      res.json(upcomingDates);
+    } catch (error) {
+      console.error('Error fetching upcoming special dates:', error);
+      res.status(500).json({ error: 'Failed to fetch upcoming special dates' });
+    }
+  });
+
   // =============================================================================
   // CREDIT CARD MANAGEMENT ENDPOINTS
   // =============================================================================

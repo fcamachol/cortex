@@ -11,8 +11,11 @@ import {
     tasks, contacts,
     // Actions Schema
     actionRules,
-    // CRM Schema
-    crmTasks, crmCompanies, crmContactGroups, crmContactGroupMembers,
+    // CRM Schema - Comprehensive Contacts Module
+    crmTasks, crmCompanies, 
+    crmContacts, crmContactPhones, crmContactEmails, crmContactAddresses, 
+    crmContactAliases, crmSpecialDates, crmInterests, crmContactInterests,
+    crmCompanyMembers, crmContactGroups, crmContactGroupMembers, crmContactRelationships,
     // Finance Schema
     financeAccounts, financeTransactions, financePayables, financeCategories,
     financeRecurringBills, financeLoans, financeLoanPayments, financePayablePayments,
@@ -1670,6 +1673,388 @@ class DatabaseStorage {
             eq(crmContactGroupMembers.contactId, contactId),
             eq(crmContactGroups.isActive, true)
         ));
+    }
+
+    // =========================================================================
+    // COMPREHENSIVE CONTACTS MODULE - 360-Degree CRM Storage Methods
+    // =========================================================================
+
+    // Core Contact Operations
+    async getCrmContacts(ownerUserId: string): Promise<any[]> {
+        return await db.select().from(crmContacts)
+            .where(eq(crmContacts.ownerUserId, ownerUserId))
+            .orderBy(desc(crmContacts.createdAt));
+    }
+
+    async getCrmContactById(contactId: number): Promise<any | null> {
+        const [contact] = await db.select().from(crmContacts)
+            .where(eq(crmContacts.contactId, contactId))
+            .limit(1);
+        return contact || null;
+    }
+
+    async getCrmContactWithFullDetails(contactId: number): Promise<any | null> {
+        // Get the main contact
+        const contact = await this.getCrmContactById(contactId);
+        if (!contact) return null;
+
+        // Get all related data in parallel
+        const [phones, emails, addresses, aliases, specialDates, interests, companies, groups, relationships] = await Promise.all([
+            this.getContactPhones(contactId),
+            this.getContactEmails(contactId),
+            this.getContactAddresses(contactId),
+            this.getContactAliases(contactId),
+            this.getContactSpecialDates(contactId),
+            this.getContactInterests(contactId),
+            this.getContactCompanies(contactId),
+            this.getContactGroups(contactId),
+            this.getContactRelationships(contactId)
+        ]);
+
+        return {
+            ...contact,
+            phones,
+            emails,
+            addresses,
+            aliases,
+            specialDates,
+            interests,
+            companies,
+            groups,
+            relationships
+        };
+    }
+
+    async createCrmContact(contactData: any): Promise<any> {
+        const [contact] = await db.insert(crmContacts)
+            .values(contactData)
+            .returning();
+        return contact;
+    }
+
+    async updateCrmContact(contactId: number, updates: any): Promise<any> {
+        const [contact] = await db.update(crmContacts)
+            .set({ ...updates, updatedAt: new Date() })
+            .where(eq(crmContacts.contactId, contactId))
+            .returning();
+        return contact;
+    }
+
+    async deleteCrmContact(contactId: number): Promise<void> {
+        await db.delete(crmContacts)
+            .where(eq(crmContacts.contactId, contactId));
+    }
+
+    // Contact Phone Methods
+    async getContactPhones(contactId: number): Promise<any[]> {
+        return await db.select().from(crmContactPhones)
+            .where(eq(crmContactPhones.contactId, contactId))
+            .orderBy(desc(crmContactPhones.isPrimary), desc(crmContactPhones.createdAt));
+    }
+
+    async addContactPhone(phoneData: any): Promise<any> {
+        // If this is set as primary, unset other primary phones for this contact
+        if (phoneData.isPrimary) {
+            await db.update(crmContactPhones)
+                .set({ isPrimary: false })
+                .where(eq(crmContactPhones.contactId, phoneData.contactId));
+        }
+
+        const [phone] = await db.insert(crmContactPhones)
+            .values(phoneData)
+            .returning();
+        return phone;
+    }
+
+    async updateContactPhone(phoneId: number, updates: any): Promise<any> {
+        const [phone] = await db.update(crmContactPhones)
+            .set(updates)
+            .where(eq(crmContactPhones.phoneId, phoneId))
+            .returning();
+        return phone;
+    }
+
+    async deleteContactPhone(phoneId: number): Promise<void> {
+        await db.delete(crmContactPhones)
+            .where(eq(crmContactPhones.phoneId, phoneId));
+    }
+
+    // Contact Email Methods
+    async getContactEmails(contactId: number): Promise<any[]> {
+        return await db.select().from(crmContactEmails)
+            .where(eq(crmContactEmails.contactId, contactId))
+            .orderBy(desc(crmContactEmails.isPrimary), desc(crmContactEmails.createdAt));
+    }
+
+    async addContactEmail(emailData: any): Promise<any> {
+        // If this is set as primary, unset other primary emails for this contact
+        if (emailData.isPrimary) {
+            await db.update(crmContactEmails)
+                .set({ isPrimary: false })
+                .where(eq(crmContactEmails.contactId, emailData.contactId));
+        }
+
+        const [email] = await db.insert(crmContactEmails)
+            .values(emailData)
+            .returning();
+        return email;
+    }
+
+    async updateContactEmail(emailId: number, updates: any): Promise<any> {
+        const [email] = await db.update(crmContactEmails)
+            .set(updates)
+            .where(eq(crmContactEmails.emailId, emailId))
+            .returning();
+        return email;
+    }
+
+    async deleteContactEmail(emailId: number): Promise<void> {
+        await db.delete(crmContactEmails)
+            .where(eq(crmContactEmails.emailId, emailId));
+    }
+
+    // Contact Address Methods
+    async getContactAddresses(contactId: number): Promise<any[]> {
+        return await db.select().from(crmContactAddresses)
+            .where(eq(crmContactAddresses.contactId, contactId))
+            .orderBy(desc(crmContactAddresses.isPrimary), desc(crmContactAddresses.createdAt));
+    }
+
+    async addContactAddress(addressData: any): Promise<any> {
+        // If this is set as primary, unset other primary addresses for this contact
+        if (addressData.isPrimary) {
+            await db.update(crmContactAddresses)
+                .set({ isPrimary: false })
+                .where(eq(crmContactAddresses.contactId, addressData.contactId));
+        }
+
+        const [address] = await db.insert(crmContactAddresses)
+            .values(addressData)
+            .returning();
+        return address;
+    }
+
+    async updateContactAddress(addressId: number, updates: any): Promise<any> {
+        const [address] = await db.update(crmContactAddresses)
+            .set(updates)
+            .where(eq(crmContactAddresses.addressId, addressId))
+            .returning();
+        return address;
+    }
+
+    async deleteContactAddress(addressId: number): Promise<void> {
+        await db.delete(crmContactAddresses)
+            .where(eq(crmContactAddresses.addressId, addressId));
+    }
+
+    // Contact Alias Methods
+    async getContactAliases(contactId: number): Promise<any[]> {
+        return await db.select().from(crmContactAliases)
+            .where(eq(crmContactAliases.contactId, contactId))
+            .orderBy(desc(crmContactAliases.createdAt));
+    }
+
+    async addContactAlias(aliasData: any): Promise<any> {
+        const [alias] = await db.insert(crmContactAliases)
+            .values(aliasData)
+            .returning();
+        return alias;
+    }
+
+    async deleteContactAlias(aliasId: number): Promise<void> {
+        await db.delete(crmContactAliases)
+            .where(eq(crmContactAliases.aliasId, aliasId));
+    }
+
+    // Special Dates Methods
+    async getContactSpecialDates(contactId: number): Promise<any[]> {
+        return await db.select().from(crmSpecialDates)
+            .where(eq(crmSpecialDates.contactId, contactId))
+            .orderBy(asc(crmSpecialDates.eventDate));
+    }
+
+    async addContactSpecialDate(dateData: any): Promise<any> {
+        const [specialDate] = await db.insert(crmSpecialDates)
+            .values(dateData)
+            .returning();
+        return specialDate;
+    }
+
+    async updateContactSpecialDate(specialDateId: number, updates: any): Promise<any> {
+        const [specialDate] = await db.update(crmSpecialDates)
+            .set(updates)
+            .where(eq(crmSpecialDates.specialDateId, specialDateId))
+            .returning();
+        return specialDate;
+    }
+
+    async deleteContactSpecialDate(specialDateId: number): Promise<void> {
+        await db.delete(crmSpecialDates)
+            .where(eq(crmSpecialDates.specialDateId, specialDateId));
+    }
+
+    // Interest Methods
+    async getAllInterests(): Promise<any[]> {
+        return await db.select().from(crmInterests)
+            .orderBy(asc(crmInterests.name));
+    }
+
+    async createInterest(interestData: any): Promise<any> {
+        const [interest] = await db.insert(crmInterests)
+            .values(interestData)
+            .returning();
+        return interest;
+    }
+
+    async getContactInterests(contactId: number): Promise<any[]> {
+        return await db.select({
+            interestId: crmInterests.interestId,
+            name: crmInterests.name,
+            addedAt: crmContactInterests.addedAt,
+        }).from(crmContactInterests)
+        .innerJoin(crmInterests, eq(crmContactInterests.interestId, crmInterests.interestId))
+        .where(eq(crmContactInterests.contactId, contactId))
+        .orderBy(asc(crmInterests.name));
+    }
+
+    async addContactInterest(contactId: number, interestId: number): Promise<any> {
+        const [contactInterest] = await db.insert(crmContactInterests)
+            .values({ contactId, interestId })
+            .returning();
+        return contactInterest;
+    }
+
+    async removeContactInterest(contactId: number, interestId: number): Promise<void> {
+        await db.delete(crmContactInterests)
+            .where(and(
+                eq(crmContactInterests.contactId, contactId),
+                eq(crmContactInterests.interestId, interestId)
+            ));
+    }
+
+    // Company Membership Methods
+    async getContactCompanies(contactId: number): Promise<any[]> {
+        return await db.select({
+            companyId: crmCompanies.companyId,
+            companyName: crmCompanies.companyName,
+            role: crmCompanyMembers.role,
+            startDate: crmCompanyMembers.startDate,
+            endDate: crmCompanyMembers.endDate,
+            isCurrent: crmCompanyMembers.isCurrent,
+            addedAt: crmCompanyMembers.addedAt,
+        }).from(crmCompanyMembers)
+        .innerJoin(crmCompanies, eq(crmCompanyMembers.companyId, crmCompanies.companyId))
+        .where(eq(crmCompanyMembers.contactId, contactId))
+        .orderBy(desc(crmCompanyMembers.isCurrent), desc(crmCompanyMembers.addedAt));
+    }
+
+    async addContactToCompany(membershipData: any): Promise<any> {
+        const [membership] = await db.insert(crmCompanyMembers)
+            .values(membershipData)
+            .returning();
+        return membership;
+    }
+
+    async updateContactCompanyMembership(contactId: number, companyId: number, updates: any): Promise<any> {
+        const [membership] = await db.update(crmCompanyMembers)
+            .set(updates)
+            .where(and(
+                eq(crmCompanyMembers.contactId, contactId),
+                eq(crmCompanyMembers.companyId, companyId)
+            ))
+            .returning();
+        return membership;
+    }
+
+    async removeContactFromCompany(contactId: number, companyId: number): Promise<void> {
+        await db.delete(crmCompanyMembers)
+            .where(and(
+                eq(crmCompanyMembers.contactId, contactId),
+                eq(crmCompanyMembers.companyId, companyId)
+            ));
+    }
+
+    // Contact Relationship Methods
+    async getContactRelationships(contactId: number): Promise<any[]> {
+        return await db.select({
+            relationshipId: crmContactRelationships.contactAId, // Using as ID
+            relatedContactId: crmContactRelationships.contactBId,
+            relatedContactName: crmContacts.fullName,
+            relationshipType: crmContactRelationships.relationshipAToB,
+            createdAt: crmContactRelationships.createdAt,
+        }).from(crmContactRelationships)
+        .innerJoin(crmContacts, eq(crmContactRelationships.contactBId, crmContacts.contactId))
+        .where(eq(crmContactRelationships.contactAId, contactId))
+        .union(
+            db.select({
+                relationshipId: crmContactRelationships.contactBId, // Using as ID
+                relatedContactId: crmContactRelationships.contactAId,
+                relatedContactName: crmContacts.fullName,
+                relationshipType: crmContactRelationships.relationshipBToA,
+                createdAt: crmContactRelationships.createdAt,
+            }).from(crmContactRelationships)
+            .innerJoin(crmContacts, eq(crmContactRelationships.contactAId, crmContacts.contactId))
+            .where(eq(crmContactRelationships.contactBId, contactId))
+        );
+    }
+
+    async createContactRelationship(relationshipData: any): Promise<any> {
+        const [relationship] = await db.insert(crmContactRelationships)
+            .values(relationshipData)
+            .returning();
+        return relationship;
+    }
+
+    async deleteContactRelationship(contactAId: number, contactBId: number): Promise<void> {
+        await db.delete(crmContactRelationships)
+            .where(and(
+                eq(crmContactRelationships.contactAId, contactAId),
+                eq(crmContactRelationships.contactBId, contactBId)
+            ));
+    }
+
+    // Search and Intelligence Methods
+    async searchCrmContacts(ownerUserId: string, searchTerm: string): Promise<any[]> {
+        const searchPattern = `%${searchTerm}%`;
+        
+        return await db.select().from(crmContacts)
+            .where(and(
+                eq(crmContacts.ownerUserId, ownerUserId),
+                or(
+                    sql`${crmContacts.fullName} ILIKE ${searchPattern}`,
+                    sql`EXISTS (SELECT 1 FROM ${crmContactAliases} WHERE ${crmContactAliases.contactId} = ${crmContacts.contactId} AND ${crmContactAliases.alias} ILIKE ${searchPattern})`
+                )
+            ))
+            .orderBy(desc(crmContacts.createdAt));
+    }
+
+    async getContactsByRelationship(ownerUserId: string, relationship: string): Promise<any[]> {
+        return await db.select().from(crmContacts)
+            .where(and(
+                eq(crmContacts.ownerUserId, ownerUserId),
+                eq(crmContacts.relationship, relationship)
+            ))
+            .orderBy(asc(crmContacts.fullName));
+    }
+
+    async getUpcomingSpecialDates(ownerUserId: string, daysAhead: number = 30): Promise<any[]> {
+        const today = new Date();
+        const futureDate = new Date();
+        futureDate.setDate(today.getDate() + daysAhead);
+
+        return await db.select({
+            contactId: crmContacts.contactId,
+            contactName: crmContacts.fullName,
+            eventName: crmSpecialDates.eventName,
+            eventDate: crmSpecialDates.eventDate,
+            reminderDaysBefore: crmSpecialDates.reminderDaysBefore,
+        }).from(crmSpecialDates)
+        .innerJoin(crmContacts, eq(crmSpecialDates.contactId, crmContacts.contactId))
+        .where(and(
+            eq(crmContacts.ownerUserId, ownerUserId),
+            sql`${crmSpecialDates.eventDate} BETWEEN ${today} AND ${futureDate}`
+        ))
+        .orderBy(asc(crmSpecialDates.eventDate));
     }
 }
 
