@@ -668,10 +668,10 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.get('/api/spaces/:userId', async (req: Request, res: Response) => {
+  app.get('/api/spaces', async (req: Request, res: Response) => {
     try {
-      const { userId } = req.params;
-      const spaces = await storage.getSpacesForUser(userId);
+      const userId = req.query.userId as string || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const spaces = await storage.getSpaces(userId);
       res.json(spaces);
     } catch (error) {
       console.error('Error fetching spaces:', error);
@@ -681,27 +681,23 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post('/api/spaces', async (req: Request, res: Response) => {
     try {
-      const { name, description } = req.body;
+      const spaceData = req.body;
       
-      if (!name) {
+      // Accept both spaceName and name for flexibility
+      const spaceName = spaceData.spaceName || spaceData.name;
+      if (!spaceName) {
         return res.status(400).json({ error: 'Space name is required' });
       }
 
-      // For now, use a default user ID - in a real app this would come from authentication
-      const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
+      // Normalize the data
+      spaceData.spaceName = spaceName;
       
-      const spaceData = {
-        spaceName: name,
-        description: description || null,
-        creatorUserId: userId,
-        workspaceId: null, // For now, spaces can exist without workspaces
-        icon: null,
-        color: null,
-        displayOrder: 0
-      };
+      // In a real app, get userId from authentication
+      spaceData.creatorUserId = spaceData.creatorUserId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      spaceData.workspaceId = spaceData.workspaceId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
 
       const space = await storage.createSpace(spaceData);
-      res.json(space);
+      res.status(201).json(space);
     } catch (error) {
       console.error('Error creating space:', error);
       res.status(500).json({ error: 'Failed to create space' });
