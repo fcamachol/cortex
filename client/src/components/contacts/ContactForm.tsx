@@ -34,7 +34,8 @@ import { ChevronDown, ChevronRight, Plus, Building2, User, Phone, Mail, Briefcas
 // Phase 1: Quick capture schema - Only name is required per user spec
 const quickContactSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
-  primaryContact: z.string().optional(),
+  primaryPhone: z.string().optional(),
+  primaryEmail: z.string().optional(),
   relationship: z.string().optional(),
 });
 
@@ -146,7 +147,10 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId, mode = 'quick' }:
     const contactData = {
       fullName: data.fullName,
       relationship: data.relationship,
-      notes: data.primaryContact ? `Primary contact: ${data.primaryContact}` : undefined,
+      notes: [
+        data.primaryPhone ? `Primary phone: ${data.primaryPhone}` : null,
+        data.primaryEmail ? `Primary email: ${data.primaryEmail}` : null
+      ].filter(Boolean).join('\n') || undefined,
     };
     createContactMutation.mutate(contactData);
   };
@@ -155,7 +159,10 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId, mode = 'quick' }:
     const contactData = {
       fullName: data.fullName,
       relationship: data.relationship,
-      notes: data.primaryContact ? `Primary contact: ${data.primaryContact}` : undefined,
+      notes: [
+        data.primaryPhone ? `Primary phone: ${data.primaryPhone}` : null,
+        data.primaryEmail ? `Primary email: ${data.primaryEmail}` : null
+      ].filter(Boolean).join('\n') || undefined,
     };
     
     createContactMutation.mutate(contactData);
@@ -166,7 +173,10 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId, mode = 'quick' }:
         setCurrentPhase('detailed');
         detailedForm.setValue('fullName', data.fullName);
         detailedForm.setValue('relationship', data.relationship || 'Client');
-        detailedForm.setValue('notes', data.primaryContact ? `Primary contact: ${data.primaryContact}` : '');
+        detailedForm.setValue('notes', [
+          data.primaryPhone ? `Primary phone: ${data.primaryPhone}` : null,
+          data.primaryEmail ? `Primary email: ${data.primaryEmail}` : null
+        ].filter(Boolean).join('\n') || '');
       }
     }, 1000);
   };
@@ -206,19 +216,35 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId, mode = 'quick' }:
               )}
             />
 
-            <FormField
-              control={quickForm.control}
-              name="primaryContact"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Primary Contact Info (Optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Phone or email (optional)" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={quickForm.control}
+                name="primaryPhone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Primary Phone (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="+52 123 456 7890" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={quickForm.control}
+                name="primaryEmail"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Primary Email (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="contact@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={quickForm.control}

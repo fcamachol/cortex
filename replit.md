@@ -127,6 +127,7 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 24, 2025: Updated contact form to use independent primary phone and primary email fields that are both optional, replacing combined primary contact field per user specification  
 - June 24, 2025: Successfully implemented comprehensive 360-degree CRM contacts module with network intelligence capabilities - transformed from basic contact groups to full-featured CRM with 11 specialized tables supporting phones, emails, addresses, aliases, special dates, interests, company memberships, relationships, and intelligent search functionality
 - June 24, 2025: Created complete contacts interface with ContactsPage, ContactForm, ContactDetailView, and ContactGroupsManager components - providing intuitive contact creation, editing, and organization with tabbed interface and comprehensive data capture
 - June 24, 2025: Added comprehensive CRM storage methods and API routes supporting all contact operations including full contact details retrieval, search functionality, upcoming special dates intelligence, and relationship management
@@ -183,3 +184,4 @@ The system implements a sophisticated media processing pipeline:
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Contact form requirements: Contact methods should be independent - primary phone and primary email fields that are both optional, separate from the main contact info.
