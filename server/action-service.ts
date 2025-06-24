@@ -105,9 +105,14 @@ export const ActionService = {
     },
 
     async executeAction(actionType: string, config: any, triggerContext: any): Promise<void> {
+        console.log(`🎯 Executing action: ${actionType}`);
+        
         switch (actionType) {
             case 'create_task':
                 await this.createTaskAction(config, triggerContext);
+                break;
+            case 'create_note':
+                await this.createNoteAction(config, triggerContext);
                 break;
             case 'create_calendar_event':
                 await this.createCalendarEventAction(config, triggerContext);
@@ -120,6 +125,39 @@ export const ActionService = {
                 break;
             default:
                 console.log(`⚠️ Unknown action type: ${actionType}`);
+        }
+    },
+
+    async createNoteAction(config: any, triggerContext: any): Promise<void> {
+        console.log('📝 Creating note from action trigger');
+        
+        // Process template variables in config
+        const processedConfig = this.processTemplateVariables(config, triggerContext);
+        
+        // Create note with processed data
+        const noteData = {
+            title: processedConfig.title || `Note from ${triggerContext.triggerType}`,
+            content: processedConfig.content || 'Automatically created note',
+            spaceId: processedConfig.spaceId || 1,
+            userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42',
+            instanceId: triggerContext.instanceId,
+            triggeringMessageId: triggerContext.context.messageId,
+            relatedChatJid: triggerContext.context.chatId
+        };
+        
+        console.log('📝 Note data prepared:', noteData);
+        
+        // Save note to database
+        try {
+            const createdNote = await storage.createNote(noteData);
+            console.log(`✅ Note created: ${noteData.title}`);
+            
+            // Notify clients of new note via SSE if available
+            if (typeof SseManager !== 'undefined' && SseManager.notifyClientsOfNewNote) {
+                SseManager.notifyClientsOfNewNote(createdNote);
+            }
+        } catch (error) {
+            console.error('❌ Error creating note:', error);
         }
     },
 
