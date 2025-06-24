@@ -986,8 +986,11 @@ export const actionTriggerTypeEnum = actionsSchema.enum("trigger_type", [
 ]);
 
 export const actionTypeEnum = actionsSchema.enum("action_type", [
-  "create_task", "create_calendar_event", "send_message", "add_label", 
-  "update_contact", "move_to_folder", "send_notification", "webhook"
+  "create_task", "create_project", "create_note", "store_file", "create_document",
+  "create_calendar_event", "send_message", "add_label", 
+  "update_contact", "move_to_folder", "send_notification", "webhook",
+  "create_space", "update_project_status", "create_checklist", "assign_to_space",
+  "create_financial_record", "schedule_meeting", "create_invoice", "update_task_priority"
 ]);
 
 export const actionStatusEnum = actionsSchema.enum("action_status", [

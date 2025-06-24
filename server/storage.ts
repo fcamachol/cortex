@@ -2479,6 +2479,115 @@ class DatabaseStorage {
             throw error;
         }
     }
+
+    // Action management methods
+    async getActionTemplates(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT 
+                    template_id,
+                    template_name,
+                    action_type,
+                    trigger_type,
+                    default_config,
+                    is_public,
+                    category,
+                    description,
+                    created_at,
+                    updated_at
+                FROM actions.action_templates
+                WHERE is_public = true OR is_public IS NULL
+                ORDER BY template_name ASC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching action templates:', error);
+            return [];
+        }
+    }
+
+    async createActionTemplate(templateData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO actions.action_templates (
+                    template_name,
+                    action_type,
+                    trigger_type,
+                    default_config,
+                    category,
+                    description,
+                    is_public
+                ) VALUES (
+                    ${templateData.template_name},
+                    ${templateData.action_type},
+                    ${templateData.trigger_type},
+                    ${JSON.stringify(templateData.default_config)},
+                    ${templateData.category || 'automation'},
+                    ${templateData.description || ''},
+                    ${templateData.is_public || false}
+                ) RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating action template:', error);
+            throw error;
+        }
+    }
+
+    async getActionRules(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT 
+                    rule_id,
+                    rule_name,
+                    trigger_type,
+                    trigger_conditions,
+                    action_type,
+                    action_config,
+                    is_active,
+                    created_at
+                FROM actions.action_rules
+                WHERE is_active = true
+                ORDER BY rule_name ASC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching action rules:', error);
+            return [];
+        }
+    }
+
+    async createActionRule(ruleData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO actions.action_rules (
+                    rule_name,
+                    trigger_type,
+                    trigger_conditions,
+                    action_type,
+                    action_config,
+                    is_active,
+                    user_id,
+                    workspace_id,
+                    space_id
+                ) VALUES (
+                    ${ruleData.rule_name},
+                    ${ruleData.trigger_type},
+                    ${JSON.stringify(ruleData.trigger_conditions)},
+                    ${ruleData.action_type},
+                    ${JSON.stringify(ruleData.action_config)},
+                    ${ruleData.is_active || true},
+                    ${ruleData.user_id || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'},
+                    ${ruleData.workspace_id || null},
+                    ${ruleData.space_id || null}
+                ) RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating action rule:', error);
+            throw error;
+        }
+    }
 }
 
 export const storage = new DatabaseStorage();

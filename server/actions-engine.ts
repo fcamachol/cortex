@@ -43,6 +43,16 @@ export class ActionsEngine {
     switch (actionType) {
       case 'create_task':
         return await ActionsEngine.createTask(config, context);
+      case 'create_project':
+        return await ActionsEngine.createProject(config, context);
+      case 'create_note':
+        return await ActionsEngine.createNote(config, context);
+      case 'store_file':
+        return await ActionsEngine.storeFile(config, context);
+      case 'create_document':
+        return await ActionsEngine.createDocument(config, context);
+      case 'create_space':
+        return await ActionsEngine.createSpace(config, context);
       case 'create_calendar_event':
         return await ActionsEngine.createCalendarEvent(config, context);
       case 'send_message':
