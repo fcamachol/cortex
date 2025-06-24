@@ -71,7 +71,7 @@ interface SpaceDetailViewProps {
   parentSpaceId?: number;
 }
 
-// Helper function to build space path
+// Helper function to build space path recursively
 function buildSpacePath(spaceId: number, allSpaces: Space[]): string {
   const space = allSpaces.find(s => s.spaceId === spaceId);
   if (!space || !space.parentSpaceId) {
@@ -80,6 +80,19 @@ function buildSpacePath(spaceId: number, allSpaces: Space[]): string {
   
   const parentPath = buildSpacePath(space.parentSpaceId, allSpaces);
   return `${parentPath}/${spaceId}`;
+}
+
+// Helper function to build breadcrumb trail
+function buildBreadcrumbPath(spaceId: number, allSpaces: Space[]): Space[] {
+  const space = allSpaces.find(s => s.spaceId === spaceId);
+  if (!space) return [];
+  
+  if (!space.parentSpaceId) {
+    return [space];
+  }
+  
+  const parentPath = buildBreadcrumbPath(space.parentSpaceId, allSpaces);
+  return [...parentPath, space];
 }
 
 export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps) {
@@ -293,26 +306,38 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
       {/* Header */}
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-10">
         <div className="p-6">
-          {/* Breadcrumb */}
-          {parentSpace && (
-            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
-              <button
-                onClick={() => navigate('/spaces')}
-                className="hover:text-gray-900 dark:hover:text-gray-100"
-              >
-                All Spaces
-              </button>
-              <ChevronRight className="h-4 w-4" />
-              <button
-                onClick={() => navigate(`/spaces/${parentSpaceId}`)}
-                className="hover:text-gray-900 dark:hover:text-gray-100"
-              >
-                {parentSpace.spaceName || 'Unnamed Parent'}
-              </button>
-              <ChevronRight className="h-4 w-4" />
-              <span className="text-gray-900 dark:text-gray-100">{space.spaceName || 'Unnamed Space'}</span>
-            </div>
-          )}
+          {/* Breadcrumb - Dynamic for any depth */}
+          {(() => {
+            const breadcrumbPath = buildBreadcrumbPath(spaceId, allFlatSpaces);
+            if (breadcrumbPath.length <= 1) return null;
+            
+            return (
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
+                <button
+                  onClick={() => navigate('/spaces')}
+                  className="hover:text-gray-900 dark:hover:text-gray-100"
+                >
+                  All Spaces
+                </button>
+                {breadcrumbPath.slice(0, -1).map((breadcrumbSpace, index) => (
+                  <div key={breadcrumbSpace.spaceId} className="flex items-center gap-2">
+                    <ChevronRight className="h-4 w-4" />
+                    <button
+                      onClick={() => {
+                        const pathSegments = breadcrumbPath.slice(0, index + 1).map(s => s.spaceId);
+                        navigate(`/spaces/${pathSegments.join('/')}`);
+                      }}
+                      className="hover:text-gray-900 dark:hover:text-gray-100"
+                    >
+                      {breadcrumbSpace.spaceName}
+                    </button>
+                  </div>
+                ))}
+                <ChevronRight className="h-4 w-4" />
+                <span className="text-gray-900 dark:text-gray-100">{space.spaceName}</span>
+              </div>
+            );
+          })()}
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">

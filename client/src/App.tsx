@@ -28,11 +28,24 @@ function AuthenticatedRoutes() {
       <Route path="/tasks" component={TasksPage} />
       <Route path="/finance" component={FinancePage} />
       <Route path="/spaces" component={SpacesPage} />
-      <Route path="/spaces/:spaceId">
-        {(params) => <SpacesPage selectedSpaceId={parseInt(params.spaceId)} />}
-      </Route>
-      <Route path="/spaces/:spaceId/:subspaceId">
-        {(params) => <SpacesPage selectedSpaceId={parseInt(params.subspaceId)} parentSpaceId={parseInt(params.spaceId)} />}
+      <Route path="/spaces/:path*">
+        {(params) => {
+          const pathSegments = params.path ? params.path.split('/').filter(Boolean) : [];
+          if (pathSegments.length === 0) {
+            return <SpacesPage />;
+          }
+          
+          // Parse the path segments to get the target space and its parent
+          const spaceId = parseInt(pathSegments[pathSegments.length - 1]);
+          const parentSpaceId = pathSegments.length > 1 ? parseInt(pathSegments[pathSegments.length - 2]) : undefined;
+          
+          return (
+            <SpacesPage 
+              selectedSpaceId={spaceId}
+              parentSpaceId={parentSpaceId}
+            />
+          );
+        }}
       </Route>
       <Route path="/contacts" component={() => <ContactsPage userId="7804247f-3ae8-4eb2-8c6d-2c44f967ad42" />} />
       <Route path="/groups" component={() => <GroupManagement spaceId="7804247f-3ae8-4eb2-8c6d-2c44f967ad42" />} />
