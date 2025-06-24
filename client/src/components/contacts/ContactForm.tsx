@@ -56,7 +56,7 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   
   // State for managing notes
-  const [notes, setNotes] = useState<Array<{ id: string; content: string; createdAt?: string }>>([]);
+  const [notes, setNotes] = useState<Array<{ id: string; title: string; content: string; createdAt?: string }>>([]);
   
   // State for managing contact information
   const [phones, setPhones] = useState<Array<{ id: string; number: string; type: string; isPrimary?: boolean }>>([]);
