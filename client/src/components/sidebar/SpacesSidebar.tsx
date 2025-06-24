@@ -760,8 +760,11 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
         <div className="space-y-3 relative overflow-visible">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-medium text-gray-600 dark:text-gray-400">
-              Teamspaces
+            <h3 
+              className="text-base font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer"
+              onClick={() => setLocation('/spaces')}
+            >
+              Spaces
             </h3>
             <Button
               variant="ghost"
