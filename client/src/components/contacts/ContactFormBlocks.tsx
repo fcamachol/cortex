@@ -434,6 +434,7 @@ function ContactInfoSection({ blocks, onUpdate, onRemove, onAddSubBlock, ownerUs
               block={block}
               onUpdate={onUpdate}
               onRemove={onRemove}
+              ownerUserId={ownerUserId}
             />
           ))}
         </div>
