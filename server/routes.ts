@@ -682,10 +682,12 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post('/api/spaces', async (req: Request, res: Response) => {
     try {
       const spaceData = req.body;
+      console.log('Received space data:', spaceData);
       
       // Accept both spaceName and name for flexibility
       const spaceName = spaceData.spaceName || spaceData.name;
       if (!spaceName) {
+        console.log('Missing space name in request:', spaceData);
         return res.status(400).json({ error: 'Space name is required' });
       }
 
@@ -696,6 +698,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       spaceData.creatorUserId = spaceData.creatorUserId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
       spaceData.workspaceId = spaceData.workspaceId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
 
+      console.log('Creating space with data:', spaceData);
       const space = await storage.createSpace(spaceData);
       res.status(201).json(space);
     } catch (error) {
