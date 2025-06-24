@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cortex CRM Mobile - QR Code</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #075E54, #25D366);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            max-width: 400px;
+            margin: 20px;
+        }
+        
+        .logo {
+            background: #075E54;
+            color: white;
+            width: 80px;
+            height: 80px;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0 auto 20px;
+        }
+        
+        h1 {
+            color: #075E54;
+            margin: 0 0 10px;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+        
+        .web-link {
+            background: #e8f5e8;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        
+        .web-link h3 {
+            color: #075E54;
+            margin: 0 0 10px;
+            font-size: 18px;
+        }
+        
+        .link {
+            color: #25D366;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            display: inline-block;
+            padding: 12px 24px;
+            background: white;
+            border-radius: 8px;
+            margin-top: 10px;
+            transition: all 0.2s;
+        }
+        
+        .link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+        }
+        
+        .features {
+            text-align: left;
+            margin-top: 30px;
+        }
+        
+        .feature {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .feature::before {
+            content: "✓";
+            background: #25D366;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        
+        .note {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .note-text {
+            color: #1976d2;
+            font-size: 13px;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">C</div>
+        <h1>Cortex CRM</h1>
+        <p class="subtitle">Mobile Experience</p>
+        
+        <div class="web-link">
+            <h3>Access Mobile App</h3>
+            <p style="margin: 0; color: #666; font-size: 14px; margin-bottom: 10px;">
+                Experience the WhatsApp-style mobile interface:
+            </p>
+            <a href="/mobile.html" class="link">Open Mobile App</a>
+        </div>
+        
+        <div class="features">
+            <div class="feature">WhatsApp-style conversations with real data</div>
+            <div class="feature">Task management with priority badges</div>
+            <div class="feature">Contact search and management</div>
+            <div class="feature">Finance overview with transactions</div>
+            <div class="feature">Touch-optimized navigation</div>
+            <div class="feature">Real-time data from your CRM</div>
+        </div>
+        
+        <div class="note">
+            <p class="note-text">
+                <strong>Mobile Optimized:</strong> The interface adapts perfectly to any screen size and works like a native mobile app in your browser.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
