@@ -37,7 +37,39 @@ interface ContactDetailViewProps {
 
 export default function ContactDetailView({ contact, interests, onClose, onUpdate }: ContactDetailViewProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isAddingRelationship, setIsAddingRelationship] = useState(false);
+  const [editingRelationshipId, setEditingRelationshipId] = useState<number | null>(null);
   const queryClient = useQueryClient();
+
+  // Fetch all contacts for relationship selection
+  const { data: allContacts = [] } = useQuery({
+    queryKey: ['/api/crm/contacts', contact.ownerUserId],
+    queryFn: () => apiRequest('GET', `/api/crm/contacts?ownerUserId=${contact.ownerUserId}`),
+    staleTime: 30000,
+  });
+
+  // Ensure allContacts is always an array
+  const contactsList = Array.isArray(allContacts) ? allContacts : [];
+
+  // Fetch contact relationships
+  const { data: relationships = [] } = useQuery({
+    queryKey: ['/api/crm/contact-relationships', contact.contactId],
+    queryFn: () => apiRequest('GET', `/api/crm/contact-relationships?contactAId=${contact.contactId}`),
+    staleTime: 30000,
+  });
+
+  // Ensure relationships is always an array
+  const relationshipsList = Array.isArray(relationships) ? relationships : [];
+
+  // Relationship form
+  const relationshipForm = useForm<RelationshipFormData>({
+    resolver: zodResolver(relationshipFormSchema),
+    defaultValues: {
+      contactBId: 0,
+      relationshipAToB: "",
+      relationshipBToA: "",
+    },
+  });
 
   // Update contact mutation
   const updateContactMutation = useMutation({
@@ -56,6 +88,69 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
       onClose();
     },
   });
+
+  // Create relationship mutation
+  const createRelationshipMutation = useMutation({
+    mutationFn: (data: RelationshipFormData) => apiRequest('POST', '/api/crm/contact-relationships', {
+      ...data,
+      contactAId: contact.contactId,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/contact-relationships', contact.contactId] });
+      relationshipForm.reset();
+      setIsAddingRelationship(false);
+    },
+  });
+
+  // Update relationship mutation
+  const updateRelationshipMutation = useMutation({
+    mutationFn: ({ relationshipId, data }: { relationshipId: number; data: RelationshipFormData }) => 
+      apiRequest('PUT', `/api/crm/contact-relationships/${relationshipId}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/contact-relationships', contact.contactId] });
+      relationshipForm.reset();
+      setEditingRelationshipId(null);
+    },
+  });
+
+  // Delete relationship mutation
+  const deleteRelationshipMutation = useMutation({
+    mutationFn: (relationshipId: number) => 
+      apiRequest('DELETE', `/api/crm/contact-relationships/${relationshipId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/contact-relationships', contact.contactId] });
+    },
+  });
+
+  // Relationship form handlers
+  const handleCreateRelationship = (data: RelationshipFormData) => {
+    createRelationshipMutation.mutate(data);
+  };
+
+  const handleUpdateRelationship = (data: RelationshipFormData) => {
+    if (editingRelationshipId) {
+      updateRelationshipMutation.mutate({ relationshipId: editingRelationshipId, data });
+    }
+  };
+
+  const handleEditRelationship = (relationship: any) => {
+    setEditingRelationshipId(relationship.relationshipId);
+    relationshipForm.reset({
+      contactBId: relationship.contactBId,
+      relationshipAToB: relationship.relationshipAToB || "",
+      relationshipBToA: relationship.relationshipBToA || "",
+    });
+  };
+
+  const handleDeleteRelationship = (relationshipId: number) => {
+    deleteRelationshipMutation.mutate(relationshipId);
+  };
+
+  const handleCancelRelationshipEdit = () => {
+    setEditingRelationshipId(null);
+    setIsAddingRelationship(false);
+    relationshipForm.reset();
+  };
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);

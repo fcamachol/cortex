@@ -71,22 +71,22 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
 
   // Filter contacts based on active tab
   const getFilteredContacts = () => {
-    const contactsList = searchTerm.length >= 2 ? searchResults : contacts;
+    const dataToFilter = searchTerm.length >= 2 ? searchResults : contactsList;
     
     // Ensure we have an array
-    if (!Array.isArray(contactsList)) {
+    if (!Array.isArray(dataToFilter)) {
       return [];
     }
     
     switch (activeTab) {
       case "family":
-        return contactsList.filter((c: CrmContact) => c.relationship === "Family");
+        return dataToFilter.filter((c: CrmContact) => c.relationship === "Family");
       case "clients":
-        return contactsList.filter((c: CrmContact) => c.relationship === "Client");
+        return dataToFilter.filter((c: CrmContact) => c.relationship === "Client");
       case "friends":
-        return contactsList.filter((c: CrmContact) => c.relationship === "Friend");
+        return dataToFilter.filter((c: CrmContact) => c.relationship === "Friend");
       default:
-        return contactsList;
+        return dataToFilter;
     }
   };
 
@@ -295,19 +295,19 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Family</span>
                 <span className="font-semibold">
-                  {contacts.filter((c: CrmContact) => c.relationship === "Family").length}
+                  {contactsList.filter((c: CrmContact) => c.relationship === "Family").length}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Clients</span>
                 <span className="font-semibold">
-                  {contacts.filter((c: CrmContact) => c.relationship === "Client").length}
+                  {contactsList.filter((c: CrmContact) => c.relationship === "Client").length}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Friends</span>
                 <span className="font-semibold">
-                  {contacts.filter((c: CrmContact) => c.relationship === "Friend").length}
+                  {contactsList.filter((c: CrmContact) => c.relationship === "Friend").length}
                 </span>
               </div>
             </CardContent>
