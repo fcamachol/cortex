@@ -314,369 +314,395 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
                 </button>
               </div>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-6 pl-6 pt-2">
-              {/* Phones */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Phone Numbers</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={addPhone}
-                    type="button"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add Phone
-                  </Button>
-                </div>
-                {phones.map((phone, index) => (
-                  <div key={phone.id} className="border rounded-lg p-3 bg-muted/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-muted-foreground">Phone {index + 1}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removePhone(phone.id)}
-                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                        type="button"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                      <Input
-                        placeholder="+1 (555) 123-4567"
-                        value={phone.number}
-                        onChange={(e) => updatePhone(phone.id, 'number', e.target.value)}
-                      />
-                      <Select
-                        value={phone.type}
-                        onValueChange={(value) => updatePhone(phone.id, 'type', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Mobile">Mobile</SelectItem>
-                          <SelectItem value="Home">Home</SelectItem>
-                          <SelectItem value="Work">Work</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id={`phone-primary-${phone.id}`}
-                          checked={phone.isPrimary || false}
-                          onChange={(e) => updatePhone(phone.id, 'isPrimary', e.target.checked)}
-                          className="rounded"
-                        />
-                        <label htmlFor={`phone-primary-${phone.id}`} className="text-xs">Primary</label>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <CollapsibleContent className="pl-4 pt-1">
+              <div className="border-l border-dashed border-muted-foreground/20 pl-4 space-y-2">
+                {/* Primary Contact Fields */}
+                <div className="grid gap-3 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="primaryPhone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-muted-foreground">Primary Phone</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="+1 (555) 123-4567" 
+                            {...field} 
+                            className="h-7 text-sm border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              {/* Emails */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Email Addresses</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={addEmail}
-                    type="button"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add Email
-                  </Button>
+                  <FormField
+                    control={form.control}
+                    name="primaryEmail"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-muted-foreground">Primary Email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="email@example.com" 
+                            {...field} 
+                            className="h-7 text-sm border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                {emails.map((email, index) => (
-                  <div key={email.id} className="border rounded-lg p-3 bg-muted/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-muted-foreground">Email {index + 1}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeEmail(email.id)}
-                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                        type="button"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                      <Input
-                        placeholder="email@example.com"
-                        value={email.address}
-                        onChange={(e) => updateEmail(email.id, 'address', e.target.value)}
-                      />
-                      <Select
-                        value={email.type}
-                        onValueChange={(value) => updateEmail(email.id, 'type', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Personal">Personal</SelectItem>
-                          <SelectItem value="Work">Work</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id={`email-primary-${email.id}`}
-                          checked={email.isPrimary || false}
-                          onChange={(e) => updateEmail(email.id, 'isPrimary', e.target.checked)}
-                          className="rounded"
-                        />
-                        <label htmlFor={`email-primary-${email.id}`} className="text-xs">Primary</label>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
 
-              {/* Addresses */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Addresses</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={addAddress}
-                    type="button"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add Address
-                  </Button>
-                </div>
-                {addresses.map((address, index) => (
-                  <div key={address.id} className="border rounded-lg p-3 bg-muted/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-muted-foreground">Address {index + 1}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeAddress(address.id)}
-                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                        type="button"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      <Input
-                        placeholder="Street Address"
-                        value={address.street}
-                        onChange={(e) => updateAddress(address.id, 'street', e.target.value)}
-                      />
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        <Input
-                          placeholder="City"
-                          value={address.city}
-                          onChange={(e) => updateAddress(address.id, 'city', e.target.value)}
-                        />
-                        <Input
-                          placeholder="State"
-                          value={address.state}
-                          onChange={(e) => updateAddress(address.id, 'state', e.target.value)}
-                        />
-                        <Input
-                          placeholder="ZIP"
-                          value={address.zipCode}
-                          onChange={(e) => updateAddress(address.id, 'zipCode', e.target.value)}
-                        />
-                        <Input
-                          placeholder="Country"
-                          value={address.country}
-                          onChange={(e) => updateAddress(address.id, 'country', e.target.value)}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
+                {/* Phone Numbers */}
+                {phones.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted-foreground font-medium">📞 Phone Numbers</div>
+                    {phones.map((phone) => (
+                      <div key={phone.id} className="flex items-center gap-2 py-1 text-sm group">
                         <Select
-                          value={address.type}
-                          onValueChange={(value) => updateAddress(address.id, 'type', value)}
+                          value={phone.type}
+                          onValueChange={(value) => updatePhone(phone.id, "type", value)}
                         >
-                          <SelectTrigger className="w-32">
+                          <SelectTrigger className="w-20 h-6 border-none bg-transparent text-xs">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Home">Home</SelectItem>
-                            <SelectItem value="Work">Work</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
+                            <SelectItem value="Mobile">📱 Mobile</SelectItem>
+                            <SelectItem value="Work">🏢 Work</SelectItem>
+                            <SelectItem value="Home">🏠 Home</SelectItem>
+                            <SelectItem value="Other">📞 Other</SelectItem>
                           </SelectContent>
                         </Select>
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            id={`address-primary-${address.id}`}
-                            checked={address.isPrimary || false}
-                            onChange={(e) => updateAddress(address.id, 'isPrimary', e.target.checked)}
-                            className="rounded"
+                        <span className="text-xs">:</span>
+                        <Input
+                          placeholder="+1 (555) 123-4567"
+                          value={phone.number}
+                          onChange={(e) => updatePhone(phone.id, "number", e.target.value)}
+                          className="flex-1 h-6 border-none bg-transparent p-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
+                        />
+                        {phone.isPrimary && <span className="text-xs text-blue-600">(Primary)</span>}
+                        <button
+                          type="button"
+                          onClick={() => removePhone(phone.id)}
+                          className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Email Addresses */}
+                {emails.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted-foreground font-medium">✉️ Email Addresses</div>
+                    {emails.map((email) => (
+                      <div key={email.id} className="flex items-center gap-2 py-1 text-sm group">
+                        <Select
+                          value={email.type}
+                          onValueChange={(value) => updateEmail(email.id, "type", value)}
+                        >
+                          <SelectTrigger className="w-20 h-6 border-none bg-transparent text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Personal">👤 Personal</SelectItem>
+                            <SelectItem value="Work">🏢 Work</SelectItem>
+                            <SelectItem value="Other">✉️ Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <span className="text-xs">:</span>
+                        <Input
+                          placeholder="email@example.com"
+                          value={email.address}
+                          onChange={(e) => updateEmail(email.id, "address", e.target.value)}
+                          className="flex-1 h-6 border-none bg-transparent p-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
+                        />
+                        {email.isPrimary && <span className="text-xs text-blue-600">(Primary)</span>}
+                        <button
+                          type="button"
+                          onClick={() => removeEmail(email.id)}
+                          className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Addresses */}
+                {addresses.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted-foreground font-medium">🏠 Addresses</div>
+                    {addresses.map((address) => (
+                      <div key={address.id} className="space-y-1 py-1 group">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Select
+                            value={address.type}
+                            onValueChange={(value) => updateAddress(address.id, "type", value)}
+                          >
+                            <SelectTrigger className="w-16 h-6 border-none bg-transparent text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Home">🏠 Home</SelectItem>
+                              <SelectItem value="Work">🏢 Work</SelectItem>
+                              <SelectItem value="Other">📍 Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <span className="text-xs">:</span>
+                          <Input
+                            placeholder="Street address"
+                            value={address.street}
+                            onChange={(e) => updateAddress(address.id, "street", e.target.value)}
+                            className="flex-1 h-6 border-none bg-transparent p-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
                           />
-                          <label htmlFor={`address-primary-${address.id}`} className="text-xs">Primary</label>
+                          {address.isPrimary && <span className="text-xs text-blue-600">(Primary)</span>}
+                          <button
+                            type="button"
+                            onClick={() => removeAddress(address.id)}
+                            className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 pl-6">
+                          <Input
+                            placeholder="City"
+                            value={address.city}
+                            onChange={(e) => updateAddress(address.id, "city", e.target.value)}
+                            className="h-6 border-none bg-transparent p-0 text-xs focus-visible:ring-0 focus-visible:ring-offset-0"
+                          />
+                          <Input
+                            placeholder="State"
+                            value={address.state}
+                            onChange={(e) => updateAddress(address.id, "state", e.target.value)}
+                            className="h-6 border-none bg-transparent p-0 text-xs focus-visible:ring-0 focus-visible:ring-offset-0"
+                          />
+                          <Input
+                            placeholder="ZIP"
+                            value={address.zipCode}
+                            onChange={(e) => updateAddress(address.id, "zipCode", e.target.value)}
+                            className="h-6 border-none bg-transparent p-0 text-xs focus-visible:ring-0 focus-visible:ring-offset-0"
+                          />
                         </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={addPhone}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    [+ Add Phone]
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addEmail}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    [+ Add Email]
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addAddress}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    [+ Add Address]
+                  </button>
+                </div>
               </div>
             </CollapsibleContent>
           </Collapsible>
 
-          {/* Professional Information - Collapsible */}
+          {/* Professional Information - Minimalistic Notion-style */}
           <Collapsible open={isProfessionalOpen} onOpenChange={setIsProfessionalOpen}>
             <CollapsibleTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start p-0 h-auto font-normal text-left"
-                type="button"
-              >
-                <div className="flex items-center gap-2 py-2 px-1">
-                  {isProfessionalOpen ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                  <Briefcase className="h-4 w-4" />
-                  <span className="font-medium">Professional Information</span>
-                  {!isProfessionalOpen && (
-                    <Plus className="h-4 w-4 ml-auto text-blue-600" />
-                  )}
-                </div>
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-4 pl-6 pt-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="profession"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Profession</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., Software Engineer" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="specialty"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Specialty</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., React Development" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div className="flex items-center gap-2 py-1 text-sm text-muted-foreground cursor-pointer hover:text-foreground">
+                {isProfessionalOpen ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronRight className="h-3 w-3" />
+                )}
+                <span>Professional</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsProfessionalOpen(true);
+                  }}
+                  className="ml-auto text-xs text-muted-foreground hover:text-foreground"
+                >
+                  [+ Add]
+                </button>
               </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pl-4 pt-1">
+              <div className="border-l border-dashed border-muted-foreground/20 pl-4 space-y-2">
+                <div className="grid gap-2 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="profession"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-muted-foreground">Profession</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="e.g., Software Engineer" 
+                            {...field} 
+                            className="h-7 text-sm border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="company"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Company</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Company name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="specialty"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-muted-foreground">Specialty</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="e.g., Frontend Development" 
+                            {...field} 
+                            className="h-7 text-sm border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="roleAtCompany"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Role at Company</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., Senior Developer" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="company"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-muted-foreground">Company</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Company name" 
+                            {...field} 
+                            className="h-7 text-sm border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="roleAtCompany"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-muted-foreground">Role at Company</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Job title" 
+                            {...field} 
+                            className="h-7 text-sm border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
             </CollapsibleContent>
           </Collapsible>
 
-          {/* Personal Information - Collapsible */}
+          {/* Personal Information - Minimalistic Notion-style */}
           <Collapsible open={isPersonalOpen} onOpenChange={setIsPersonalOpen}>
             <CollapsibleTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start p-0 h-auto font-normal text-left"
-                type="button"
-              >
-                <div className="flex items-center gap-2 py-2 px-1">
-                  {isPersonalOpen ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                  <Heart className="h-4 w-4" />
-                  <span className="font-medium">Personal Information</span>
-                  {!isPersonalOpen && (
-                    <Plus className="h-4 w-4 ml-auto text-blue-600" />
-                  )}
-                </div>
-              </Button>
+              <div className="flex items-center gap-2 py-1 text-sm text-muted-foreground cursor-pointer hover:text-foreground">
+                {isPersonalOpen ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronRight className="h-3 w-3" />
+                )}
+                <span>Personal</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsPersonalOpen(true);
+                  }}
+                  className="ml-auto text-xs text-muted-foreground hover:text-foreground"
+                >
+                  [+ Add]
+                </button>
+              </div>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-4 pl-6 pt-2">
-              <FormField
-                control={form.control}
-                name="aliases"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Aliases / Nicknames</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Johnny, JD" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <CollapsibleContent className="pl-4 pt-1">
+              <div className="border-l border-dashed border-muted-foreground/20 pl-4 space-y-2">
+                <div className="grid gap-2 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="aliases"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-muted-foreground">Aliases/Nicknames</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="e.g., Mike, Mickey" 
+                            {...field} 
+                            className="h-7 text-sm border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="interests"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Interests</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="e.g., Photography, Travel, Cooking" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="interests"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-muted-foreground">Interests/Hobbies</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="e.g., Photography, Travel" 
+                            {...field} 
+                            className="h-7 text-sm border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="profilePictureUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Profile Picture URL</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://example.com/photo.jpg" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="profilePictureUrl"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel className="text-xs text-muted-foreground">Profile Picture URL</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="https://example.com/photo.jpg" 
+                            {...field} 
+                            className="h-7 text-sm border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
             </CollapsibleContent>
           </Collapsible>
 
