@@ -241,6 +241,13 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
     return items;
   };
 
+  const getChildSpaces = (parentSpaceId: number): Space[] => {
+    if (!spaces) return [];
+    // Find all spaces that have this space as their parent
+    const allSpaces = Object.values(spaces).flat();
+    return allSpaces.filter(space => space.parentSpaceId === parentSpaceId);
+  };
+
   const renderSpace = (space: Space, level: number = 0, index: number = 0) => {
     const children = getChildSpaces(space.spaceId);
     const hasChildren = children && children.length > 0;
