@@ -48,9 +48,9 @@ export function ContactModal({ contact, isOpen, onClose, onEdit }: ContactModalP
                 </DialogTitle>
                 <div className="flex items-center gap-2 mt-1">
                   {contact.relationship && (
-                    <Badge variant="secondary" className="text-xs">
+                    <span className="text-sm text-gray-600">
                       {contact.relationship}
-                    </Badge>
+                    </span>
                   )}
                 </div>
               </div>
