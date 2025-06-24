@@ -11,7 +11,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, ChevronDown, ChevronRight, User, Briefcase, Heart } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, User, Briefcase, Heart, Phone, Mail } from "lucide-react";
 
 // Enhanced Contact Schema with all possible fields
 const contactFormSchema = z.object({
@@ -49,6 +49,7 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
   const queryClient = useQueryClient();
   
   // State for collapsible sections
+  const [isContactInfoOpen, setIsContactInfoOpen] = useState(false);
   const [isProfessionalOpen, setIsProfessionalOpen] = useState(false);
   const [isPersonalOpen, setIsPersonalOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
@@ -132,38 +133,6 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
               )}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="primaryPhone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Primary Phone</FormLabel>
-                    <FormControl>
-                      <Input placeholder="+1 (555) 123-4567" {...field} />
-                    </FormControl>
-                    <FormDescription>Optional</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="primaryEmail"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Primary Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="contact@example.com" {...field} />
-                    </FormControl>
-                    <FormDescription>Optional</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
             <FormField
               control={form.control}
               name="relationship"
@@ -191,6 +160,63 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
               )}
             />
           </div>
+
+          {/* Contact Information - Collapsible */}
+          <Collapsible open={isContactInfoOpen} onOpenChange={setIsContactInfoOpen}>
+            <CollapsibleTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start p-0 h-auto font-normal text-left"
+                type="button"
+              >
+                <div className="flex items-center gap-2 py-3 px-1">
+                  {isContactInfoOpen ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                  <Phone className="h-4 w-4" />
+                  <span className="font-medium">Contact Information</span>
+                  {!isContactInfoOpen && (
+                    <Plus className="h-4 w-4 ml-auto text-blue-600" />
+                  )}
+                </div>
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-4 pl-6 pt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="primaryPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Primary Phone</FormLabel>
+                      <FormControl>
+                        <Input placeholder="+1 (555) 123-4567" {...field} />
+                      </FormControl>
+                      <FormDescription>Optional</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="primaryEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Primary Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="contact@example.com" {...field} />
+                      </FormControl>
+                      <FormDescription>Optional</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           {/* Professional Information - Collapsible */}
           <Collapsible open={isProfessionalOpen} onOpenChange={setIsProfessionalOpen}>
