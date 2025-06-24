@@ -29,12 +29,12 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { ChevronDown, ChevronRight, Plus, Building2, User, Phone, Mail } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Building2, User, Phone, Mail, Briefcase, Heart, FileText } from "lucide-react";
 
-// Phase 1: Quick capture schema
+// Phase 1: Quick capture schema - Only name is required per user spec
 const quickContactSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
-  primaryContact: z.string().min(1, "Phone or email is required"),
+  primaryContact: z.string().optional(),
   relationship: z.string().optional(),
 });
 
@@ -146,7 +146,7 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId, mode = 'quick' }:
     const contactData = {
       fullName: data.fullName,
       relationship: data.relationship,
-      notes: `Primary contact: ${data.primaryContact}`,
+      notes: data.primaryContact ? `Primary contact: ${data.primaryContact}` : undefined,
     };
     createContactMutation.mutate(contactData);
   };
@@ -155,7 +155,7 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId, mode = 'quick' }:
     const contactData = {
       fullName: data.fullName,
       relationship: data.relationship,
-      notes: `Primary contact: ${data.primaryContact}`,
+      notes: data.primaryContact ? `Primary contact: ${data.primaryContact}` : undefined,
     };
     
     createContactMutation.mutate(contactData);
@@ -166,7 +166,7 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId, mode = 'quick' }:
         setCurrentPhase('detailed');
         detailedForm.setValue('fullName', data.fullName);
         detailedForm.setValue('relationship', data.relationship || 'Client');
-        detailedForm.setValue('notes', `Primary contact: ${data.primaryContact}`);
+        detailedForm.setValue('notes', data.primaryContact ? `Primary contact: ${data.primaryContact}` : '');
       }
     }, 1000);
   };
@@ -187,7 +187,7 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId, mode = 'quick' }:
       <div className="space-y-6">
         <div className="text-center">
           <h2 className="text-lg font-semibold">Add New Contact</h2>
-          <p className="text-sm text-muted-foreground">Start with the basics</p>
+          <p className="text-sm text-muted-foreground">Only a name is required to create a contact profile</p>
         </div>
 
         <Form {...quickForm}>
@@ -337,13 +337,26 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId, mode = 'quick' }:
             />
           </div>
           
+          {/* Add Additional Information Header */}
+          <div className="text-center py-4 border-t">
+            <h3 className="text-lg font-semibold mb-2">Add Additional Information</h3>
+            <p className="text-sm text-muted-foreground">
+              Expand any section below to add more details to this contact profile
+            </p>
+          </div>
+
           {/* Professional Context */}
           <Collapsible open={sectionsOpen.professional} onOpenChange={() => toggleSection('professional')}>
-            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
-              {sectionsOpen.professional ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              <span className="font-medium">▼ Professional Context</span>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between p-4 h-auto border rounded-lg hover:bg-accent">
+                <div className="flex items-center gap-2">
+                  <Briefcase className="w-4 h-4" />
+                  <span className="font-medium">Professional Context</span>
+                </div>
+                <ChevronDown className="w-4 h-4" />
+              </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-4 pt-4 border-l-2 border-muted pl-4 ml-2">
+            <CollapsibleContent className="px-4 pb-4 space-y-4 border-l-2 border-primary/20 ml-4">
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={detailedForm.control}
@@ -401,11 +414,16 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId, mode = 'quick' }:
 
           {/* Contact Details */}
           <Collapsible open={sectionsOpen.contact} onOpenChange={() => toggleSection('contact')}>
-            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
-              {sectionsOpen.contact ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              <span className="font-medium">▼ Contact Details</span>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between p-4 h-auto border rounded-lg hover:bg-accent">
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4" />
+                  <span className="font-medium">Contact Details</span>
+                </div>
+                <ChevronDown className="w-4 h-4" />
+              </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-4 pt-4 border-l-2 border-muted pl-4 ml-2">
+            <CollapsibleContent className="px-4 pb-4 space-y-4 border-l-2 border-primary/20 ml-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label>Phone Numbers</Label>
@@ -440,11 +458,16 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId, mode = 'quick' }:
 
           {/* Personal Context */}
           <Collapsible open={sectionsOpen.personal} onOpenChange={() => toggleSection('personal')}>
-            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
-              {sectionsOpen.personal ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              <span className="font-medium">▼ Personal Context</span>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between p-4 h-auto border rounded-lg hover:bg-accent">
+                <div className="flex items-center gap-2">
+                  <Heart className="w-4 h-4" />
+                  <span className="font-medium">Personal Context</span>
+                </div>
+                <ChevronDown className="w-4 h-4" />
+              </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-4 pt-4 border-l-2 border-muted pl-4 ml-2">
+            <CollapsibleContent className="px-4 pb-4 space-y-4 border-l-2 border-primary/20 ml-4">
               <FormField
                 control={detailedForm.control}
                 name="aliases"
