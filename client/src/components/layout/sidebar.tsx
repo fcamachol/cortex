@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, CheckSquare, Users, Calendar, Plug, Settings, User, Activity, Zap, LogOut, Plus, Hash, Database, DollarSign } from "lucide-react";
+import { MessageCircle, CheckSquare, Users, Calendar, Plug, Settings, User, Activity, Zap, LogOut, Plus, Hash, Database, DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatPhoneNumber } from "@/lib/phoneUtils";
@@ -24,6 +24,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateSpaceOpen, setIsCreateSpaceOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [spaceForm, setSpaceForm] = useState({
     name: '',
     description: '',
@@ -126,38 +127,55 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
   ];
 
   return (
-    <div className="w-80 whatsapp-sidebar flex flex-col">
+    <div className={`${isCollapsed ? 'w-16' : 'w-80'} whatsapp-sidebar flex flex-col transition-all duration-300 ease-in-out`}>
       {/* Header */}
-      <div className="p-4 bg-green-600 text-white">
-        <div className="flex items-center space-x-3">
+      <div className="p-4 bg-green-600 text-white relative">
+        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
           <Avatar className="w-10 h-10">
             <AvatarImage src={currentUser.avatar || undefined} />
             <AvatarFallback className="bg-white text-green-600">
               <User className="w-5 h-5" />
             </AvatarFallback>
           </Avatar>
-          <div>
-            <h2 className="font-semibold text-sm">{currentUser.name}</h2>
-            <p className="text-xs opacity-90">Personal CRM</p>
-          </div>
+          {!isCollapsed && (
+            <div>
+              <h2 className="font-semibold text-sm">{currentUser.name}</h2>
+              <p className="text-xs opacity-90">Personal CRM</p>
+            </div>
+          )}
         </div>
+        
+        {/* Toggle Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute top-2 right-2 h-6 w-6 p-0 text-white hover:bg-white/20"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" />
+          )}
+        </Button>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto custom-scrollbar">
         {/* Spaces - moved to top */}
-        <div className="p-3 border-b border-gray-200 dark:border-gray-800">
-          <div className="p-3">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Spaces
-              </h3>
-              <Dialog open={isCreateSpaceOpen} onOpenChange={setIsCreateSpaceOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </DialogTrigger>
+        {!isCollapsed && (
+          <div className="p-3 border-b border-gray-200 dark:border-gray-800">
+            <div className="p-3">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Spaces
+                </h3>
+                <Dialog open={isCreateSpaceOpen} onOpenChange={setIsCreateSpaceOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Create New Space</DialogTitle>
@@ -238,7 +256,21 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
               )}
             </div>
           </div>
-        </div>
+        )}
+        
+        {/* Collapsed Spaces Indicator */}
+        {isCollapsed && (
+          <div className="p-2 border-b border-gray-200 dark:border-gray-800">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full h-10 p-0 justify-center"
+              title="Spaces"
+            >
+              <Hash className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
 
         {/* Main Navigation */}
         <div className="p-2">
@@ -251,20 +283,28 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
                 <Button
                   key={item.id}
                   variant="ghost"
-                  className={`w-full justify-start ${isActive ? 'nav-item active' : 'nav-item'}`}
+                  className={`w-full ${isCollapsed ? 'justify-center px-0' : 'justify-start'} ${isActive ? 'nav-item active' : 'nav-item'}`}
                   onClick={() => onSetActiveModule(item.id)}
+                  title={isCollapsed ? item.label : undefined}
                 >
-                  <Icon className="mr-3 h-4 w-4" />
-                  {item.label}
-                  {item.badge && (
-                    <Badge 
-                      className={`ml-auto text-white text-xs px-2 py-0.5 ${item.badgeColor}`}
-                    >
-                      {item.badge}
-                    </Badge>
+                  <Icon className={`h-4 w-4 ${isCollapsed ? '' : 'mr-3'}`} />
+                  {!isCollapsed && (
+                    <>
+                      {item.label}
+                      {item.badge && (
+                        <Badge 
+                          className={`ml-auto text-white text-xs px-2 py-0.5 ${item.badgeColor}`}
+                        >
+                          {item.badge}
+                        </Badge>
+                      )}
+                      {item.id === "integrations" && (
+                        <div className="ml-auto w-2 h-2 bg-green-500 rounded-full"></div>
+                      )}
+                    </>
                   )}
-                  {item.id === "integrations" && (
-                    <div className="ml-auto w-2 h-2 bg-green-500 rounded-full"></div>
+                  {isCollapsed && item.badge && (
+                    <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></div>
                   )}
                 </Button>
               );
@@ -275,56 +315,90 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
 
       {/* Footer */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-xs text-gray-600 dark:text-gray-400">Connected</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <Link href="/tasks">
-              <Button variant="ghost" size="sm" title="Task Management">
+        {!isCollapsed && (
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-xs text-gray-600 dark:text-gray-400">Connected</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <Link href="/tasks">
+                  <Button variant="ghost" size="sm" title="Task Management">
+                    <CheckSquare className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/debug">
+                  <Button variant="ghost" size="sm" title="WebSocket Debug Monitor">
+                    <Activity className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Button variant="ghost" size="sm">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
+            {/* User Section */}
+            <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-800">
+              <div className="flex items-center space-x-3 min-w-0 flex-1">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={currentUser.avatar || undefined} />
+                  <AvatarFallback>
+                    {currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    {currentUser.name}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {currentUser.email}
+                  </p>
+                </div>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={logout}
+                title="Sign out"
+                className="ml-2 text-gray-500 hover:text-red-600"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </>
+        )}
+        
+        {/* Collapsed Footer */}
+        {isCollapsed && (
+          <div className="flex flex-col items-center space-y-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full" title="Connected"></div>
+            <div className="flex flex-col items-center space-y-1">
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Task Management">
                 <CheckSquare className="h-4 w-4" />
               </Button>
-            </Link>
-            <Link href="/debug">
-              <Button variant="ghost" size="sm" title="WebSocket Debug Monitor">
-                <Activity className="h-4 w-4" />
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Settings">
+                <Settings className="h-4 w-4" />
               </Button>
-            </Link>
-            <Button variant="ghost" size="sm">
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        
-        {/* User Section */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-800">
-          <div className="flex items-center space-x-3 min-w-0 flex-1">
-            <Avatar className="h-8 w-8">
+            </div>
+            <Avatar className="h-8 w-8" title={currentUser.name}>
               <AvatarImage src={currentUser.avatar || undefined} />
               <AvatarFallback>
                 {currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                {currentUser.name}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {currentUser.email}
-              </p>
-            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={logout}
+              title="Sign out"
+              className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={logout}
-            title="Sign out"
-            className="ml-2 text-gray-500 hover:text-red-600"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
-        </div>
+        )}
       </div>
     </div>
   );
