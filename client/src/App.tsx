@@ -28,71 +28,7 @@ function AuthenticatedRoutes() {
       <Route path="/actions" component={ActionsPage} />
       <Route path="/tasks" component={TasksPage} />
       <Route path="/finance" component={FinancePage} />
-      <Route path="/spaces">
-        {() => (
-          <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-            <Sidebar activeModule="spaces" onSetActiveModule={() => {}} />
-            <SpacesPage />
-          </div>
-        )}
-      </Route>
-      {/* Single level spaces */}
-      <Route path="/spaces/:spaceId">
-        {(params) => (
-          <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-            <Sidebar activeModule="spaces" onSetActiveModule={() => {}} />
-            <SpacesPage selectedSpaceId={parseInt(params.spaceId)} />
-          </div>
-        )}
-      </Route>
-      {/* Two level spaces */}
-      <Route path="/spaces/:parentId/:spaceId">
-        {(params) => (
-          <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-            <Sidebar activeModule="spaces" onSetActiveModule={() => {}} />
-            <SpacesPage 
-              selectedSpaceId={parseInt(params.spaceId)}
-              parentSpaceId={parseInt(params.parentId)}
-            />
-          </div>
-        )}
-      </Route>
-      {/* Three level spaces */}
-      <Route path="/spaces/:grandParentId/:parentId/:spaceId">
-        {(params) => (
-          <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-            <Sidebar activeModule="spaces" onSetActiveModule={() => {}} />
-            <SpacesPage 
-              selectedSpaceId={parseInt(params.spaceId)}
-              parentSpaceId={parseInt(params.parentId)}
-            />
-          </div>
-        )}
-      </Route>
-      {/* Four level spaces */}
-      <Route path="/spaces/:level1/:level2/:level3/:spaceId">
-        {(params) => (
-          <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-            <Sidebar activeModule="spaces" onSetActiveModule={() => {}} />
-            <SpacesPage 
-              selectedSpaceId={parseInt(params.spaceId)}
-              parentSpaceId={parseInt(params.level3)}
-            />
-          </div>
-        )}
-      </Route>
-      {/* Five level spaces */}
-      <Route path="/spaces/:level1/:level2/:level3/:level4/:spaceId">
-        {(params) => (
-          <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-            <Sidebar activeModule="spaces" onSetActiveModule={() => {}} />
-            <SpacesPage 
-              selectedSpaceId={parseInt(params.spaceId)}
-              parentSpaceId={parseInt(params.level4)}
-            />
-          </div>
-        )}
-      </Route>
+
       <Route path="/contacts" component={() => <ContactsPage userId="7804247f-3ae8-4eb2-8c6d-2c44f967ad42" />} />
       <Route path="/groups" component={() => <GroupManagement spaceId="7804247f-3ae8-4eb2-8c6d-2c44f967ad42" />} />
       <Route path="/monitor" component={() => <RealtimeMonitor spaceId="7804247f-3ae8-4eb2-8c6d-2c44f967ad42" />} />

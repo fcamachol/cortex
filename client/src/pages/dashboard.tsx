@@ -9,6 +9,7 @@ import CalendarModule from "@/components/calendar/calendar-module";
 import IntegrationModule from "@/components/integrations/integration-module";
 import { ActionsDashboard } from "@/components/actions/actions-dashboard";
 import SimpleDBViewer from "@/pages/SimpleDBViewer";
+import { SpacesPage } from "@/components/spaces/SpacesPage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export default function Dashboard() {

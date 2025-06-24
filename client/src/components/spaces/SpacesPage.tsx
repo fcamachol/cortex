@@ -329,8 +329,7 @@ export function SpacesPage({ selectedSpaceId, parentSpaceId }: SpacesPageProps) 
   }
 
   return (
-    <div className="flex-1 overflow-auto">
-      <div className="container mx-auto p-6 max-w-7xl">
+    <div className="flex-1 bg-white dark:bg-gray-900 p-6 overflow-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
