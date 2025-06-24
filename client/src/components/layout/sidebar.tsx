@@ -23,12 +23,8 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isCreateSpaceOpen, setIsCreateSpaceOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [spaceForm, setSpaceForm] = useState({
-    name: '',
-    description: '',
-  });
+  const [, setLocation] = useLocation();
   
   // Use authenticated user data with fallback for demo
   const currentUser = {
@@ -38,39 +34,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
     avatar: null
   };
 
-  // Fetch user's spaces
-  const { data: spaces = [] } = useQuery<any[]>({
-    queryKey: [`/api/spaces/${currentUser.id}`],
-  });
 
-  const handleCreateSpace = (e: React.FormEvent) => {
-    e.preventDefault();
-    createSpaceMutation.mutate(spaceForm);
-  };
-
-  // Create space mutation
-  const createSpaceMutation = useMutation({
-    mutationFn: async (spaceData: { name: string; description?: string }) => {
-      const response = await apiRequest('POST', '/api/spaces', spaceData);
-      return await response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/spaces/${currentUser.id}`] });
-      setIsCreateSpaceOpen(false);
-      setSpaceForm({ name: '', description: '' });
-      toast({
-        title: "Space created",
-        description: "Your new space has been created successfully.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create space",
-        variant: "destructive",
-      });
-    },
-  });
 
   const navigationItems = [
     {
@@ -160,97 +124,15 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto custom-scrollbar">
-        {/* Spaces - Full View */}
+        {/* Integrated Spaces Sidebar - Full View */}
         {!isCollapsed && (
           <div className="p-3 border-b border-gray-200 dark:border-gray-800">
-            <div className="p-3">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Spaces
-                </h3>
-                <Dialog open={isCreateSpaceOpen} onOpenChange={setIsCreateSpaceOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Create New Space</DialogTitle>
-                      <DialogDescription>
-                        Create a new workspace to organize your projects and tasks.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleCreateSpace} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="space-name">Space Name</Label>
-                        <Input
-                          id="space-name"
-                          placeholder="e.g., Personal Projects"
-                          value={spaceForm.name}
-                          onChange={(e) => setSpaceForm(prev => ({ ...prev, name: e.target.value }))}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="space-description">Description (Optional)</Label>
-                        <Textarea
-                          id="space-description"
-                          placeholder="Describe what this space is for..."
-                          value={spaceForm.description}
-                          onChange={(e) => setSpaceForm(prev => ({ ...prev, description: e.target.value }))}
-                          rows={3}
-                        />
-                      </div>
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setIsCreateSpaceOpen(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          type="submit"
-                          disabled={createSpaceMutation.isPending || !spaceForm.name.trim()}
-                        >
-                          {createSpaceMutation.isPending ? 'Creating...' : 'Create Space'}
-                        </Button>
-                      </div>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </div>
-              <div className="space-y-2">
-                {spaces.length === 0 ? (
-                  <div className="flex items-center px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <Hash className="w-3 h-3 text-blue-500 mr-3" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                        No spaces yet
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Create your first space
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  spaces.map((space: any) => (
-                    <div key={space.spaceId} className="flex items-center px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 cursor-pointer transition-colors">
-                      <Hash className="w-3 h-3 text-blue-500 mr-3" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                          {space.name}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {space.description || 'No description'}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+            <SpacesSidebar 
+              onSpaceSelect={(space) => {
+                // Navigate to spaces page with selected space
+                setLocation(`/spaces?spaceId=${space.spaceId}`);
+              }}
+            />
           </div>
         )}
         

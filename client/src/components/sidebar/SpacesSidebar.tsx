@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CreateSpaceDialog } from '@/components/spaces/CreateSpaceDialog';
 import { useToast } from '@/hooks/use-toast';
+import { useLocation } from 'wouter';
 
 interface Space {
   spaceId: number;
@@ -32,6 +33,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
   const [parentSpaceId, setParentSpaceId] = useState<number | undefined>();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   // Fetch spaces data
   const { data: spaces, isLoading } = useQuery({
@@ -101,7 +103,10 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
             isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''
           }`}
           style={{ paddingLeft: `${8 + level * 16}px` }}
-          onClick={() => onSpaceSelect?.(space)}
+          onClick={() => {
+            onSpaceSelect?.(space);
+            setLocation(`/spaces?spaceId=${space.spaceId}`);
+          }}
         >
           {/* Expand/Collapse Button */}
           <Button
@@ -219,8 +224,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
 
   return (
     <>
-      <Card className="w-64 h-fit">
-        <CardContent className="p-4 space-y-3">
+      <div className="space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">
