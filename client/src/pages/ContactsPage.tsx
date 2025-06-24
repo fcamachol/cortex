@@ -13,8 +13,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import ContactForm from "@/components/contacts/ContactForm";
 import ContactDetailView from "@/components/contacts/ContactDetailView";
 import ContactGroupsManager from "@/components/contacts/ContactGroupsManager";
-import CompanyForm from "@/components/contacts/CompanyForm";
-import CompanyDetailView from "@/components/contacts/CompanyDetailView";
+// Import placeholder for missing components - will be created later
+// import ContactForm from "@/components/contacts/ContactForm";
+// import ContactDetailView from "@/components/contacts/ContactDetailView"; 
+// import ContactGroupsManager from "@/components/contacts/ContactGroupsManager";
+// import CompanyForm from "@/components/contacts/CompanyForm";
+// import CompanyDetailView from "@/components/contacts/CompanyDetailView";
 import { apiRequest } from "@/lib/queryClient";
 import type { CrmContact, ContactWithRelations } from "@shared/schema";
 
@@ -455,38 +459,17 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ContactGroupsManager userId={userId} />
+                <div className="text-center py-8 text-gray-500">
+                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Contact Groups feature coming soon</p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
 
-      {/* Contact Detail Modal */}
-      {selectedContact && (
-        <ContactDetailView
-          contact={selectedContact}
-          interests={interests}
-          onClose={() => setSelectedContact(null)}
-          onUpdate={() => {
-            queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts', userId] });
-            setSelectedContact(null);
-          }}
-        />
-      )}
-
-      <CompanyForm
-        isOpen={isCompanyFormOpen}
-        onClose={() => setIsCompanyFormOpen(false)}
-        spaceId={userId}
-      />
-
-      <CompanyDetailView
-        company={selectedCompany}
-        isOpen={!!selectedCompany}
-        onClose={() => setSelectedCompany(null)}
-        spaceId={userId}
-      />
+      {/* TODO: Add modals when components are created */}
     </div>
   );
 }
