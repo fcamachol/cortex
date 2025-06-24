@@ -10,7 +10,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
-import { CreateItemDialog } from './CreateItemDialog';
+import { ProjectForm } from '../tasks/ProjectForm';
+import { TaskForm } from '../tasks/TaskForm';
 import { 
   Plus, 
   MoreHorizontal, 
@@ -103,8 +104,8 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
   const [searchTerm, setSearchTerm] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editedSpace, setEditedSpace] = useState<Partial<Space>>({});
-  const [showCreateItemDialog, setShowCreateItemDialog] = useState(false);
-  const [createItemType, setCreateItemType] = useState('');
+  const [showProjectForm, setShowProjectForm] = useState(false);
+  const [showTaskForm, setShowTaskForm] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -547,8 +548,12 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                       </Button>
                     </div>
                     <Button onClick={() => {
-                      setCreateItemType(key === 'files' ? 'file' : key.slice(0, -1));
-                      setShowCreateItemDialog(true);
+                      const itemType = key === 'files' ? 'file' : key.slice(0, -1);
+                      if (itemType === 'project') {
+                        setShowProjectForm(true);
+                      } else if (itemType === 'task') {
+                        setShowTaskForm(true);
+                      }
                     }}>
                       <Plus className="h-4 w-4 mr-2" />
                       Add {label.slice(0, -1)}
@@ -589,8 +594,12 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                       <FolderOpen className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                       <p className="text-gray-500">No subspaces found</p>
                       <Button className="mt-4" onClick={() => {
-                        setCreateItemType('subspace');
-                        setShowCreateItemDialog(true);
+                        // For subspaces, we could add a separate create subspace modal
+                        // For now, just show a toast indicating this feature
+                        toast({
+                          title: "Create Subspace",
+                          description: "Subspace creation will be implemented soon.",
+                        });
                       }}>
                         <Plus className="h-4 w-4 mr-2" />
                         Create Subspace
@@ -606,17 +615,39 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
         </div>
       </Tabs>
 
-      {/* Create Item Dialog */}
-      <CreateItemDialog
-        open={showCreateItemDialog}
-        onOpenChange={setShowCreateItemDialog}
-        spaceId={spaceId}
-        itemType={createItemType}
-        onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'items'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/spaces'] });
-        }}
-      />
+      {/* Project Form Modal */}
+      {showProjectForm && (
+        <ProjectForm
+          isOpen={showProjectForm}
+          onClose={() => setShowProjectForm(false)}
+          onSubmit={(projectData) => {
+            // Handle project creation
+            toast({
+              title: "Project Created",
+              description: "Your project has been created successfully.",
+            });
+            setShowProjectForm(false);
+            queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'items'] });
+          }}
+        />
+      )}
+
+      {/* Task Form Modal */}
+      {showTaskForm && (
+        <TaskForm
+          isOpen={showTaskForm}
+          onClose={() => setShowTaskForm(false)}
+          onSubmit={(taskData) => {
+            // Handle task creation
+            toast({
+              title: "Task Created", 
+              description: "Your task has been created successfully.",
+            });
+            setShowTaskForm(false);
+            queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'items'] });
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -39,7 +39,7 @@ const projectFormSchema = z.object({
 
 type ProjectFormData = z.infer<typeof projectFormSchema>;
 
-export function ProjectForm({ project, onSubmit, onClose, isLoading, isOpen = true }: ProjectFormProps) {
+export function ProjectForm({ project, onSubmit, onClose, isLoading, isOpen = true }: ProjectFormProps & { isOpen?: boolean }) {
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectFormSchema),
     defaultValues: {
