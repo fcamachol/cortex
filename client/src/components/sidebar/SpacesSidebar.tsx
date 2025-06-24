@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, Plus, MoreHorizontal, FolderOpen, Folder, GripVertical } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, MoreHorizontal, FolderOpen, Folder, GripVertical, CheckSquare, FileText, Calendar, DollarSign, Briefcase, Users, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +22,15 @@ interface Space {
   childSpaces?: Space[];
   isArchived: boolean;
   isFavorite: boolean;
+}
+
+interface SpaceItem {
+  itemId: number;
+  spaceId: number;
+  itemType: string;
+  title: string;
+  description?: string;
+  metadata?: any;
 }
 
 interface SpacesSidebarProps {
@@ -48,6 +57,17 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
       // If it's an object with categories, flatten to array
       return Object.values(data).flat();
     }
+  });
+
+  // Fetch space items for each space
+  const { data: spaceItems } = useQuery({
+    queryKey: ['/api/space-items'],
+    queryFn: async () => {
+      const response = await fetch('/api/space-items');
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    },
+    enabled: !!spaces && spaces.length > 0
   });
 
   const toggleExpanded = (spaceId: number) => {
@@ -197,10 +217,29 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
     return rootSpaces;
   };
 
+  const getSpaceItemIcon = (itemType: string) => {
+    switch (itemType) {
+      case 'task': return CheckSquare;
+      case 'project': return Briefcase;
+      case 'note': return FileText;
+      case 'document': return FileText;
+      case 'event': return Calendar;
+      case 'finance': return DollarSign;
+      default: return FileText;
+    }
+  };
+
+  const getSpaceItems = (spaceId: number) => {
+    if (!spaceItems) return [];
+    return spaceItems.filter((item: SpaceItem) => item.spaceId === spaceId);
+  };
+
   const renderSpace = (space: Space, level: number = 0, index: number = 0) => {
     const hasChildren = space.childSpaces && space.childSpaces.length > 0;
     const isExpanded = expandedSpaces.has(space.spaceId);
     const isSelected = selectedSpaceId === space.spaceId;
+    const items = getSpaceItems(space.spaceId);
+    const hasItems = items.length > 0;
 
     return (
       <Draggable key={space.spaceId} draggableId={`space-${space.spaceId}`} index={index}>
@@ -240,12 +279,12 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                 className="h-4 w-4 p-0 opacity-60 hover:opacity-100"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (hasChildren) {
+                  if (hasChildren || hasItems) {
                     toggleExpanded(space.spaceId);
                   }
                 }}
               >
-                {hasChildren ? (
+                {(hasChildren || hasItems) ? (
                   isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />
                 ) : (
                   <div className="w-3 h-3" />
@@ -264,6 +303,13 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
               <span className="flex-1 text-sm font-medium truncate">
                 {space.spaceName}
               </span>
+
+              {/* Item Count Badge */}
+              {hasItems && (
+                <Badge variant="outline" className="text-xs h-4 px-1 opacity-60">
+                  {items.length}
+                </Badge>
+              )}
 
               {/* Category Badge */}
               {space.category && level === 0 && (
@@ -312,6 +358,77 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                 </DropdownMenu>
               </div>
             </div>
+
+            {/* Space Items Preview */}
+            {isExpanded && hasItems && (
+              <div 
+                className="ml-6 space-y-1"
+                style={{ marginLeft: `${32 + level * 12}px` }}
+              >
+                {items.slice(0, 5).map((item: SpaceItem) => {
+                  const IconComponent = getSpaceItemIcon(item.itemType);
+                  return (
+                    <div
+                      key={item.itemId}
+                      className="flex items-center gap-2 px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer transition-colors"
+                      onClick={() => {
+                        setLocation(`/spaces/${space.spaceId}?item=${item.itemId}`);
+                      }}
+                    >
+                      <IconComponent className="h-3 w-3 opacity-60" />
+                      <span className="truncate">{item.title}</span>
+                      {item.itemType === 'task' && item.metadata?.status && (
+                        <Badge variant="outline" className="text-xs h-4 px-1">
+                          {item.metadata.status}
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
+                
+                {items.length > 5 && (
+                  <div className="px-2 py-1 text-xs text-gray-400">
+                    +{items.length - 5} more items
+                  </div>
+                )}
+                
+                <div className="px-2 py-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-full justify-start text-xs text-gray-500 hover:text-gray-700"
+                    onClick={() => {
+                      setLocation(`/spaces/${space.spaceId}?new=true`);
+                    }}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add item
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Show empty state when expanded but no items */}
+            {isExpanded && !hasItems && !hasChildren && (
+              <div 
+                className="ml-6 px-2 py-2 text-xs text-gray-400"
+                style={{ marginLeft: `${32 + level * 12}px` }}
+              >
+                <div className="text-center">
+                  <Folder className="h-4 w-4 mx-auto mb-1 opacity-40" />
+                  <div>Empty space</div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 mt-1 text-xs"
+                    onClick={() => setLocation(`/spaces/${space.spaceId}?new=true`)}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add content
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Render Children with Drop Zone */}
             {isExpanded && hasChildren && (
