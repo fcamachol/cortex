@@ -2168,13 +2168,13 @@ class DatabaseStorage {
         // Normalize the phone number for comparison
         const normalizedPhone = phoneNumber.replace(/[^\d+]/g, '');
         
-        // Search in WhatsApp contacts table
+        // Search in WhatsApp contacts table (use the whatsapp schema contacts table)
         const [contact] = await db.select()
-            .from(contacts)
+            .from(whatsappContacts)
             .where(
                 or(
-                    eq(contacts.jid, `${normalizedPhone}@s.whatsapp.net`),
-                    like(contacts.jid, `${normalizedPhone}%`)
+                    eq(whatsappContacts.jid, `${normalizedPhone}@s.whatsapp.net`),
+                    ilike(whatsappContacts.jid, `${normalizedPhone}%`)
                 )
             )
             .limit(1);

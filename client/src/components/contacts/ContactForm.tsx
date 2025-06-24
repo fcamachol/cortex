@@ -62,7 +62,7 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
   // State for managing contact information
   const [phones, setPhones] = useState<Array<{ id: string; number: string; type: string; isPrimary?: boolean; hasWhatsApp?: boolean; isValidatingWhatsApp?: boolean }>>([]);
   const [emails, setEmails] = useState<Array<{ id: string; address: string; type: string; isPrimary?: boolean }>>([]);
-  const [addresses, setAddresses] = useState<Array<{ id: string; street: string; city: string; state: string; zipCode: string; country: string; type: string; isPrimary?: boolean }>>([]);
+  const [addresses, setAddresses] = useState<Array<{ id: string; name?: string; street: string; city: string; state: string; zipCode: string; country: string; type: string; isPrimary?: boolean }>>([]);
   const [specialDates, setSpecialDates] = useState<Array<{ id: string; title: string; date: string; type: string }>>([]);
 
   const form = useForm<ContactFormData>({
@@ -140,9 +140,8 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
       const normalizedNumber = phoneNumber.replace(/[^\d+]/g, '');
       
       // Call WhatsApp validation endpoint
-      const response = await apiRequest('/api/whatsapp/validate-number', {
-        method: 'POST',
-        body: JSON.stringify({ phoneNumber: normalizedNumber })
+      const response = await apiRequest('POST', '/api/whatsapp/validate-number', {
+        phoneNumber: normalizedNumber
       });
 
       const hasWhatsApp = response?.hasWhatsApp || false;
@@ -225,6 +224,7 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
   const addAddress = () => {
     const newAddress = {
       id: Date.now().toString(),
+      name: "",
       street: "",
       city: "",
       state: "",
@@ -525,6 +525,20 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
                               <SelectItem value="Other">📍 Other</SelectItem>
                             </SelectContent>
                           </Select>
+                          
+                          {/* Show name input if type is selected */}
+                          {address.type && (
+                            <>
+                              <span className="text-xs">...</span>
+                              <Input
+                                placeholder="Name for this address"
+                                value={address.name || ""}
+                                onChange={(e) => updateAddress(address.id, "name", e.target.value)}
+                                className="w-32 h-6 border-none bg-transparent p-0 text-xs focus-visible:ring-0 focus-visible:ring-offset-0"
+                              />
+                            </>
+                          )}
+                          
                           <span className="text-xs">:</span>
                           <Input
                             placeholder="Street address"
