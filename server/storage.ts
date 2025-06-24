@@ -2692,6 +2692,38 @@ class DatabaseStorage {
             throw error;
         }
     }
+
+    async createNote(noteData: any): Promise<any> {
+        try {
+            const spaceItem = {
+                spaceId: noteData.spaceId || 1,
+                itemType: 'note' as const,
+                title: noteData.title,
+                content: noteData.content,
+                status: 'active',
+                priority: 'medium',
+                createdBy: noteData.userId,
+                assignedTo: noteData.userId,
+                metadata: {
+                    instanceId: noteData.instanceId,
+                    triggeringMessageId: noteData.triggeringMessageId,
+                    relatedChatJid: noteData.relatedChatJid,
+                    autoCreated: true
+                }
+            };
+
+            const [createdItem] = await db
+                .insert(spaceItems)
+                .values(spaceItem)
+                .returning();
+
+            console.log('Note created successfully:', createdItem.title);
+            return createdItem;
+        } catch (error) {
+            console.error('Error creating note:', error);
+            throw error;
+        }
+    }
 }
 
 export const storage = new DatabaseStorage();
