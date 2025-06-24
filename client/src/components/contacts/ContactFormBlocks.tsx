@@ -44,10 +44,13 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
   // Core contact fields
   const [contactName, setContactName] = useState('');
   const [relationship, setRelationship] = useState('Client');
+  const [profession, setProfession] = useState('');
+  const [company, setCompany] = useState('');
   
   // Dynamic blocks system
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [showBlockMenu, setShowBlockMenu] = useState(false);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   const createContactMutation = useMutation({
     mutationFn: async () => {
@@ -166,116 +169,6 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
     }
     createContactMutation.mutate();
   };
-
-  return (
-    <div className="space-y-6 max-w-4xl mx-auto p-6">
-      <form onSubmit={onSubmit} className="space-y-6">
-        {/* Header with avatar placeholder and name */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-400">
-              (AVATAR)
-            </div>
-            <Input
-              placeholder="Contact Name"
-              value={contactName}
-              onChange={(e) => setContactName(e.target.value)}
-              className="text-lg font-medium border-none bg-transparent p-0 focus-visible:ring-0"
-              required
-            />
-          </div>
-          
-          <div className="border-t border-dashed border-gray-300 dark:border-gray-600"></div>
-        </div>
-
-        {/* Dynamic Blocks */}
-        <div className="space-y-4">
-          {blocks.map((block) => (
-            <BlockComponent
-              key={block.id}
-              block={block}
-              onUpdate={updateBlock}
-              onRemove={removeBlock}
-            />
-          ))}
-
-          {/* Add Information Block Button */}
-          <div className="flex justify-center">
-            <Popover open={showBlockMenu} onOpenChange={setShowBlockMenu}>
-              <PopoverTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  className="border-dashed border-2 py-6 px-8"
-                  type="button"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Information Block
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80" align="center">
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Add a block:</h4>
-                  <div className="border-t border-dashed my-2"></div>
-                  
-                  {BLOCK_TYPES.slice(0, 3).map((blockType) => (
-                    <Button
-                      key={blockType.id}
-                      variant="ghost"
-                      className="w-full justify-start"
-                      onClick={() => addBlock(blockType.id)}
-                    >
-                      <blockType.icon className="h-4 w-4 mr-2" />
-                      {blockType.label}
-                    </Button>
-                  ))}
-                  
-                  <div className="border-t border-dashed my-2"></div>
-                  
-                  {BLOCK_TYPES.slice(3, 6).map((blockType) => (
-                    <Button
-                      key={blockType.id}
-                      variant="ghost"
-                      className="w-full justify-start"
-                      onClick={() => addBlock(blockType.id)}
-                    >
-                      <blockType.icon className="h-4 w-4 mr-2" />
-                      {blockType.label}
-                    </Button>
-                  ))}
-                  
-                  <div className="border-t border-dashed my-2"></div>
-                  
-                  {BLOCK_TYPES.slice(6).map((blockType) => (
-                    <Button
-                      key={blockType.id}
-                      variant="ghost"
-                      className="w-full justify-start"
-                      onClick={() => addBlock(blockType.id)}
-                    >
-                      <blockType.icon className="h-4 w-4 mr-2" />
-                      {blockType.label}
-                    </Button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-
-        {/* Submit Button */}
-        <div className="flex justify-center pt-6">
-          <Button 
-            type="submit"
-            className="w-full max-w-md"
-            disabled={createContactMutation.isPending}
-          >
-            {createContactMutation.isPending ? "Creating Contact..." : "Create Contact"}
-          </Button>
-        </div>
-      </form>
-    </div>
-  );
-}
 
 // Individual Block Component
 interface BlockComponentProps {
@@ -474,4 +367,149 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
         </div>
       );
   }
+}
+
+// Contact View Mode Component
+interface ContactViewModeProps {
+  blocks: Block[];
+  contactName: string;
+  profession: string;
+  company: string;
+}
+
+function ContactViewMode({ blocks, contactName, profession, company }: ContactViewModeProps) {
+  const phoneBlocks = blocks.filter(b => b.type === 'phone');
+  const emailBlocks = blocks.filter(b => b.type === 'email');
+  const companyBlocks = blocks.filter(b => b.type === 'company');
+  const relationshipBlocks = blocks.filter(b => b.type === 'link');
+  const groupBlocks = blocks.filter(b => b.type === 'group');
+  const dateBlocks = blocks.filter(b => b.type === 'date');
+  const interestBlocks = blocks.filter(b => b.type === 'interest');
+
+  return (
+    <div className="space-y-6">
+      {/* Contact Info Block */}
+      {(phoneBlocks.length > 0 || emailBlocks.length > 0) && (
+        <Card className="border-2 border-dashed border-gray-300 dark:border-gray-600 p-4">
+          <div className="space-y-3">
+            <h3 className="font-medium text-sm text-gray-600 dark:text-gray-400">CONTACT INFO</h3>
+            
+            {/* Phone Numbers */}
+            {phoneBlocks.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium">Phone Numbers</span>
+                </div>
+                {phoneBlocks.map((block) => (
+                  <div key={block.id} className="ml-6 flex items-center gap-2">
+                    <span className="text-sm">{block.data.type}{block.data.isPrimary ? ' (Primary)' : ''}:</span>
+                    <span className="text-sm font-mono">{block.data.number}</span>
+                    {block.data.hasWhatsApp && (
+                      <span className="inline-flex items-center justify-center w-4 h-4 bg-green-100 text-green-600 rounded text-xs font-medium">
+                        W
+                      </span>
+                    )}
+                    {block.data.hasWhatsApp && <span className="text-xs text-gray-500">(WhatsApp icon)</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Emails */}
+            {emailBlocks.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium">Emails</span>
+                </div>
+                {emailBlocks.map((block) => (
+                  <div key={block.id} className="ml-6 flex items-center gap-2">
+                    <span className="text-sm">{block.data.type}:</span>
+                    <span className="text-sm">{block.data.address}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* Relationships & Groups Block */}
+      {(relationshipBlocks.length > 0 || groupBlocks.length > 0) && (
+        <Card className="border-2 border-dashed border-gray-300 dark:border-gray-600 p-4">
+          <div className="space-y-3">
+            <h3 className="font-medium text-sm text-gray-600 dark:text-gray-400">RELATIONSHIPS & GROUPS</h3>
+            
+            {/* Related Contacts */}
+            {relationshipBlocks.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <LinkIcon className="h-4 w-4 text-yellow-500" />
+                  <span className="text-sm font-medium">Related Contacts</span>
+                </div>
+                {relationshipBlocks.map((block) => (
+                  <div key={block.id} className="ml-6">
+                    <span className="text-sm">Spouse: [Dr. David Chen] (Link to his contact profile)</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Member Of */}
+            {groupBlocks.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-blue-500" />
+                  <span className="text-sm font-medium">Member Of</span>
+                </div>
+                {groupBlocks.map((block) => (
+                  <div key={block.id} className="ml-6">
+                    <span className="text-sm">[My Medical Team] (Link to the group page)</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* Personal Details Block */}
+      {(dateBlocks.length > 0 || interestBlocks.length > 0) && (
+        <Card className="border-2 border-dashed border-gray-300 dark:border-gray-600 p-4">
+          <div className="space-y-3">
+            <h3 className="font-medium text-sm text-gray-600 dark:text-gray-400">PERSONAL DETAILS</h3>
+            
+            {/* Special Dates */}
+            {dateBlocks.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-purple-500" />
+                  <span className="text-sm font-medium">Special Dates</span>
+                </div>
+                {dateBlocks.map((block) => (
+                  <div key={block.id} className="ml-6">
+                    <span className="text-sm">Birthday: November 12 (Reminder: 7 days prior)</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Interests */}
+            {interestBlocks.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-orange-500" />
+                  <span className="text-sm font-medium">Interests</span>
+                </div>
+                <div className="ml-6">
+                  <span className="text-sm">[Medical Research] [Classical Music] [Marathon Running]</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
 }
