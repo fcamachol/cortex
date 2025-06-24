@@ -76,21 +76,21 @@ export function ContactModal({ contact, isOpen, onClose, onEdit }: ContactModalP
           {/* Contact Info Section */}
           <Collapsible open={contactInfoOpen} onOpenChange={setContactInfoOpen}>
             <CollapsibleTrigger asChild>
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <div className="bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
                 <div className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-3">
                     <Phone className="h-5 w-5 text-gray-500" />
-                    <h3 className="font-medium text-sm text-gray-600 dark:text-gray-400 uppercase tracking-wide">CONTACT INFO</h3>
+                    <h3 className="font-medium text-gray-900">CONTACT INFO</h3>
                   </div>
-                  {contactInfoOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {contactInfoOpen ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
                 </div>
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 border-t-0 rounded-b-lg p-4">
+              <div className="bg-white border border-gray-200 border-t-0 rounded-b-lg p-4">
                 <div className="space-y-4">
                   {contact.notes && (
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="text-sm text-gray-600">
                       {contact.notes}
                     </div>
                   )}
