@@ -240,17 +240,17 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
   return (
     <div className="space-y-6">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-1">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-0">
           {/* Core Information - Always Visible */}
-          <div className="space-y-4">
+          <div className="space-y-3 pb-2">
             <FormField
               control={form.control}
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name *</FormLabel>
+                  <FormLabel className="text-sm font-medium">Full Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter full name" {...field} />
+                    <Input placeholder="Enter full name" {...field} className="h-8" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -262,10 +262,10 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
               name="relationship"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Relationship</FormLabel>
+                  <FormLabel className="text-sm font-medium">Relationship</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select relationship type" />
                       </SelectTrigger>
                     </FormControl>
@@ -678,86 +678,84 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
             </CollapsibleContent>
           </Collapsible>
 
-          {/* Special Dates - Collapsible */}
+          {/* Special Dates - Minimalistic Notion-style */}
           <Collapsible open={isSpecialDatesOpen} onOpenChange={setIsSpecialDatesOpen}>
             <CollapsibleTrigger asChild>
               <Button 
                 variant="ghost" 
-                className="w-full justify-start p-0 h-auto font-normal text-left"
+                className="w-full justify-start p-0 h-auto font-normal text-left hover:bg-transparent"
                 type="button"
               >
-                <div className="flex items-center gap-2 py-2 px-1">
+                <div className="flex items-center gap-2 py-1 text-sm text-muted-foreground">
                   {isSpecialDatesOpen ? (
-                    <ChevronDown className="h-4 w-4" />
+                    <ChevronDown className="h-3 w-3" />
                   ) : (
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-3 w-3" />
                   )}
-                  <Calendar className="h-4 w-4" />
-                  <span className="font-medium">Special Dates</span>
-                  {specialDates.length > 0 && (
-                    <span className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
-                      {specialDates.length}
-                    </span>
+                  <span>Special Dates</span>
+                  {!isSpecialDatesOpen && specialDates.length > 0 && (
+                    <div className="flex items-center gap-1 ml-2">
+                      {specialDates.slice(0, 2).map((date) => (
+                        <span key={date.id} className="text-xs">
+                          {date.type === 'birthday' ? '🎂' : date.type === 'anniversary' ? '❤️' : '📅'}
+                        </span>
+                      ))}
+                      {specialDates.length > 2 && <span className="text-xs">+{specialDates.length - 2}</span>}
+                    </div>
                   )}
-                  {!isSpecialDatesOpen && (
-                    <Plus className="h-4 w-4 ml-auto text-blue-600" />
-                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addSpecialDate();
+                    }}
+                    className="ml-auto h-5 w-12 p-0 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    [+ Add Date]
+                  </Button>
                 </div>
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3 pl-6 pt-2">
-              {specialDates.map((specialDate) => (
-                <Card key={specialDate.id} className="p-3">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Select
-                        value={specialDate.type}
-                        onValueChange={(value) => updateSpecialDate(specialDate.id, "type", value)}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="birthday">🎂 Birthday</SelectItem>
-                          <SelectItem value="anniversary">❤️ Anniversary</SelectItem>
-                          <SelectItem value="other">📅 Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        placeholder="Title (optional)"
-                        value={specialDate.title}
-                        onChange={(e) => updateSpecialDate(specialDate.id, "title", e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeSpecialDate(specialDate.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+            <CollapsibleContent className="pl-4 pt-1">
+              <div className="border-l border-dashed border-muted-foreground/20 pl-4 space-y-1">
+                {specialDates.map((specialDate) => (
+                  <div key={specialDate.id} className="flex items-center gap-2 py-1 text-sm group">
+                    <span className="text-base">
+                      {specialDate.type === 'birthday' ? '🎂' : specialDate.type === 'anniversary' ? '❤️' : '📅'}
+                    </span>
+                    <span className="font-medium min-w-20">
+                      {specialDate.type === 'birthday' ? 'Birthday:' : 
+                       specialDate.type === 'anniversary' ? 'Anniversary:' : 
+                       (specialDate.title || 'Date:')}
+                    </span>
                     <Input
                       type="date"
                       value={specialDate.date}
                       onChange={(e) => updateSpecialDate(specialDate.id, "date", e.target.value)}
-                      className="w-full"
+                      className="h-6 border-none bg-transparent p-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 w-32"
                     />
+                    {specialDate.type === 'other' && (
+                      <Input
+                        placeholder="Title"
+                        value={specialDate.title}
+                        onChange={(e) => updateSpecialDate(specialDate.id, "title", e.target.value)}
+                        className="h-6 border-none bg-transparent p-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 flex-1"
+                      />
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeSpecialDate(specialDate.id)}
+                      className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
                   </div>
-                </Card>
-              ))}
-              
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addSpecialDate}
-                className="w-full"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Date
-              </Button>
+                ))}
+              </div>
             </CollapsibleContent>
           </Collapsible>
 

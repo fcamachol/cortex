@@ -1,0 +1,68 @@
+All three sections will follow the same pattern on the Contact Detail Page:
+
+A clear, collapsible Header with a [+ Add] button.
+A List of all the entries the user has saved.
+Each entry in the list will display the Label, the Value, and any special indicators.
+An [Edit] or [...] menu on each entry to make changes.
+1. The Phone Number Selector & Display
+Location: Inside the "About" tab on the Contact Detail Page.
+Display View:
+
+▼ Phone Numbers                           [+ Add Phone]
+  ----------------------------------------------------
+  📞 Mobile (Primary):   +52 442 123 4567     🇼    [...]
+  🏢 Work:              +52 442 987 6543           [...]
+Label: The user-defined label (Mobile, Work) is shown in a bold or distinct style.
+Primary Tag: The primary number is clearly marked.
+WhatsApp Icon (🇼): A small icon instantly shows which numbers are linked to WhatsApp.
+The "Add/Edit Phone" Form (as a modal or inline form):
+
+  Add Phone Number
+  ---------------------------------
+  Label
+  [ Mobile                ▼ ]
+
+  Phone Number
+  [ +52 442 123 4567      ]
+
+  [✓] This number has WhatsApp
+  [✓] Set as primary number for this contact
+
+         [ Save Phone ]
+2. The Email Selector & Display
+Location: Inside the "About" tab on the Contact Detail Page.
+Display View:
+
+▼ Emails                                    [+ Add Email]
+  ----------------------------------------------------
+  ✉️ Personal (Primary):   isabella@email.com       [...]
+  🏢 Work:                 i.perez@magabar.com      [...]
+Clarity: The interface is clean and immediately understandable, following the exact same pattern as phone numbers.
+The "Add/Edit Email" Form:
+
+  Add Email Address
+  ---------------------------------
+  Label
+  [ Personal              ▼ ]
+
+  Email Address
+  [ isabella@email.com    ]
+
+  [✓] Set as primary email for this contact
+
+         [ Save Email ]
+3. The Address Selector & Display
+Location: Inside the "About" tab on the Contact Detail Page.
+Display View:
+
+▼ Addresses                                 [+ Add Address]
+  ----------------------------------------------------
+  🏠 Home (Primary):     123 Maple St, Santiago de [...]
+                         Querétaro, Qro., 76000
+  
+  🏢 Office:             Av. 5 de Febrero 1234,    [...]
+                         Parque Industrial, Qro.
+The "Add/Edit Address" Form:
+This form will be more complex, with fields for Street, City, State, Postal Code, Country, as well as the Label and Set as Primary checkbox.
+
+This consistent, labeled-list approach makes the rich data on each contact profile extremely easy to read, manage, and understand at a glance.
