@@ -28,6 +28,7 @@ type CreateSpaceData = z.infer<typeof createSpaceSchema>;
 interface CreateSpaceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  parentSpaceId?: number;
 }
 
 const predefinedColors = [
@@ -40,7 +41,7 @@ const predefinedIcons = [
   '💼', '🌟', '🔥', '📈', '🎪', '🏠', '🌍', '🎵', '📚', '⚽'
 ];
 
-export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps) {
+export function CreateSpaceDialog({ open, onOpenChange, parentSpaceId }: CreateSpaceDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -92,14 +93,20 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
   });
 
   const onSubmit = (data: CreateSpaceData) => {
-    mutation.mutate(data);
+    const spaceData = {
+      ...data,
+      parentSpaceId
+    };
+    mutation.mutate(spaceData);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Create New Space</DialogTitle>
+          <DialogTitle>
+            {parentSpaceId ? 'Create New Subspace' : 'Create New Space'}
+          </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
