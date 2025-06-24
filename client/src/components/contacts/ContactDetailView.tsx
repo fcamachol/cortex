@@ -21,8 +21,8 @@ import type { ContactWithRelations } from "@shared/schema";
 
 // Relationship form schema
 const relationshipFormSchema = z.object({
-  contactBId: z.number().min(1, "Contact is required"),
-  relationshipAToB: z.string().min(1, "Relationship type is required"),
+  contactBId: z.number().min(1, "Please select a contact"),
+  relationshipAToB: z.string().min(1, "Please specify the relationship"),
   relationshipBToA: z.string().optional(),
 });
 
@@ -571,6 +571,191 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                   <CardContent className="pt-6">
                     <div className="text-center text-gray-500">
                       No personal relationships recorded
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            {/* Relationships Tab */}
+            <TabsContent value="relationships" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Contact Relationships</h3>
+                <Button 
+                  onClick={() => setIsAddingRelationship(true)}
+                  size="sm"
+                  disabled={isAddingRelationship || editingRelationshipId !== null}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Relationship
+                </Button>
+              </div>
+
+              {/* Add/Edit Relationship Form */}
+              {(isAddingRelationship || editingRelationshipId !== null) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      {editingRelationshipId ? 'Edit Relationship' : 'Add New Relationship'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Form {...relationshipForm}>
+                      <form 
+                        onSubmit={relationshipForm.handleSubmit(
+                          editingRelationshipId ? handleUpdateRelationship : handleCreateRelationship
+                        )}
+                        className="space-y-4"
+                      >
+                        <FormField
+                          control={relationshipForm.control}
+                          name="contactBId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Related Contact</FormLabel>
+                              <Select 
+                                onValueChange={(value) => field.onChange(parseInt(value))}
+                                value={field.value?.toString() || ""}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select a contact" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {contactsList
+                                    .filter(c => c.contactId !== contact.contactId)
+                                    .map((c) => (
+                                      <SelectItem key={c.contactId} value={c.contactId.toString()}>
+                                        {c.fullName}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={relationshipForm.control}
+                          name="relationshipAToB"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                {contact.fullName} is _____ to the selected contact
+                              </FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="e.g., brother, colleague, friend"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={relationshipForm.control}
+                          name="relationshipBToA"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                The selected contact is _____ to {contact.fullName}
+                              </FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="e.g., sister, manager, friend"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="flex gap-2">
+                          <Button 
+                            type="submit"
+                            disabled={createRelationshipMutation.isPending || updateRelationshipMutation.isPending}
+                          >
+                            {createRelationshipMutation.isPending || updateRelationshipMutation.isPending
+                              ? "Saving..."
+                              : editingRelationshipId ? "Update Relationship" : "Add Relationship"
+                            }
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="outline"
+                            onClick={handleCancelRelationshipEdit}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Existing Relationships */}
+              {relationshipsList.length > 0 ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Existing Relationships</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {relationshipsList.map((relationship: any) => {
+                        const relatedContact = contactsList.find(c => c.contactId === relationship.contactBId);
+                        return (
+                          <div key={relationship.relationshipId} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex-1">
+                              <div className="font-medium">{relatedContact?.fullName || 'Unknown Contact'}</div>
+                              <div className="text-sm text-gray-600">
+                                {contact.fullName} is {relationship.relationshipAToB || 'unspecified'} to {relatedContact?.fullName}
+                                {relationship.relationshipBToA && (
+                                  <span>
+                                    <br />
+                                    {relatedContact?.fullName} is {relationship.relationshipBToA} to {contact.fullName}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditRelationship(relationship)}
+                                disabled={isAddingRelationship || editingRelationshipId !== null}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm('Are you sure you want to delete this relationship?')) {
+                                    handleDeleteRelationship(relationship.relationshipId);
+                                  }
+                                }}
+                                disabled={deleteRelationshipMutation.isPending}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center text-gray-500">
+                      No relationships recorded for this contact
                     </div>
                   </CardContent>
                 </Card>
