@@ -242,11 +242,20 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
   };
 
   const renderSpace = (space: Space, level: number = 0, index: number = 0) => {
-    const hasChildren = space.childSpaces && space.childSpaces.length > 0;
+    const children = getChildSpaces(space.spaceId);
+    const hasChildren = children && children.length > 0;
     const isExpanded = expandedSpaces.has(space.spaceId);
     const isSelected = selectedSpaceId === space.spaceId;
     const items = getSpaceItems(space.spaceId);
     const hasItems = items.length > 0;
+    
+    console.log(`Space "${space.spaceName}" (ID: ${space.spaceId}):`, {
+      hasItems,
+      hasChildren,
+      itemsCount: items?.length || 0,
+      childrenCount: children?.length || 0,
+      children: children?.map(c => c.spaceName) || []
+    });
 
     return (
       <Draggable key={space.spaceId} draggableId={`space-${space.spaceId}`} index={index}>
