@@ -302,14 +302,11 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                 <div
                   ref={dropProvided.innerRef}
                   {...dropProvided.droppableProps}
-                  className={`${
-                    dropSnapshot.isDraggingOver ? 'bg-blue-100 dark:bg-blue-900/30 rounded-lg' : ''
-                  }`}
                 >
                   <div 
                     className={`group flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors ${
                       isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''
-                    } ${snapshot.isDragging ? 'shadow-lg bg-white dark:bg-gray-800 border border-blue-300' : ''}`}
+                    } ${dropSnapshot.isDraggingOver ? 'bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-400' : ''} ${snapshot.isDragging ? 'opacity-50' : ''}`}
                     style={{ 
                       paddingLeft: `${4 + level * 6}px`
                     }}
@@ -513,7 +510,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     className={`space-y-0.5 mt-0.5 ${
-                      snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/20 rounded-md p-1' : ''
+                      snapshot.isDraggingOver ? 'bg-blue-100 dark:bg-blue-900/30 border-2 border-dashed border-blue-400 rounded-md p-1' : ''
                     }`}
                     style={{ marginLeft: `${4 + level * 6}px` }}
                   >
