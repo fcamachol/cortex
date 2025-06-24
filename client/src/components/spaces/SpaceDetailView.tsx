@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { useLocation } from 'wouter';
+
 import { ProjectForm } from '../tasks/ProjectForm';
 import { TaskForm } from '../tasks/TaskForm';
 import { 

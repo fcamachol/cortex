@@ -58,7 +58,12 @@ export default function Dashboard() {
   // Listen for space selection events
   useEffect(() => {
     const handleSpaceSelection = (event: CustomEvent) => {
-      setSelectedSpaceId(event.detail.spaceId);
+      // Handle both individual space selection and "back to all spaces"
+      if (event.detail && event.detail.spaceId === null) {
+        setSelectedSpaceId(null); // Back to all spaces
+      } else if (event.detail && event.detail.spaceId) {
+        setSelectedSpaceId(event.detail.spaceId);
+      }
     };
 
     window.addEventListener('spaceSelected', handleSpaceSelection as EventListener);
