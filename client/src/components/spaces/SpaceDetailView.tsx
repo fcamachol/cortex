@@ -309,7 +309,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
           {/* Breadcrumb - Dynamic for any depth */}
           {(() => {
             const breadcrumbPath = buildBreadcrumbPath(spaceId, allFlatSpaces);
-            if (breadcrumbPath.length <= 1) return null;
+            if (breadcrumbPath.length === 0) return null;
             
             return (
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
@@ -319,18 +319,24 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                 >
                   All
                 </button>
-                {breadcrumbPath.slice(0, -1).map((breadcrumbSpace, index) => (
+                {breadcrumbPath.map((breadcrumbSpace, index) => (
                   <div key={breadcrumbSpace.spaceId} className="flex items-center gap-2">
                     <ChevronRight className="h-4 w-4" />
-                    <button
-                      onClick={() => {
-                        const pathSegments = breadcrumbPath.slice(0, index + 1).map(s => s.spaceId);
-                        navigate(`/spaces/${pathSegments.join('/')}`);
-                      }}
-                      className="hover:text-gray-900 dark:hover:text-gray-100"
-                    >
-                      {breadcrumbSpace.spaceName}
-                    </button>
+                    {index === breadcrumbPath.length - 1 ? (
+                      <span className="text-gray-900 dark:text-gray-100 font-medium">
+                        {breadcrumbSpace.spaceName}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          const pathSegments = breadcrumbPath.slice(0, index + 1).map(s => s.spaceId);
+                          navigate(`/spaces/${pathSegments.join('/')}`);
+                        }}
+                        className="hover:text-gray-900 dark:hover:text-gray-100"
+                      >
+                        {breadcrumbSpace.spaceName}
+                      </button>
+                    )}
                   </div>
                 ))}
                 <ChevronRight className="h-4 w-4" />
