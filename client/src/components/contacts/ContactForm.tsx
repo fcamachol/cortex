@@ -11,7 +11,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, ChevronDown, ChevronRight, User, Briefcase, Heart, Phone, Mail, FileText, X } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, User, Briefcase, Heart, Phone, Mail, FileText, X, Trash2, MapPin } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
 // Enhanced Contact Schema with all possible fields
 const contactFormSchema = z.object({
@@ -189,6 +190,27 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
 
   const removeAddress = (id: string) => {
     setAddresses(addresses.filter(address => address.id !== id));
+  };
+
+  // Functions for managing notes
+  const addNote = () => {
+    const newNote = {
+      id: Date.now().toString(),
+      title: "",
+      content: "",
+    };
+    setNotes([...notes, newNote]);
+    setIsNotesOpen(true);
+  };
+
+  const updateNote = (id: string, field: string, value: string) => {
+    setNotes(notes.map(note => 
+      note.id === id ? { ...note, [field]: value } : note
+    ));
+  };
+
+  const removeNote = (id: string) => {
+    setNotes(notes.filter(note => note.id !== id));
   };
 
   return (
@@ -646,8 +668,13 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
                   ) : (
                     <ChevronRight className="h-4 w-4" />
                   )}
-                  <User className="h-4 w-4" />
-                  <span className="font-medium">Additional Notes</span>
+                  <FileText className="h-4 w-4" />
+                  <span className="font-medium">Notes</span>
+                  {notes.length > 0 && (
+                    <span className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+                      {notes.length}
+                    </span>
+                  )}
                   {!isNotesOpen && (
                     <Plus className="h-4 w-4 ml-auto text-blue-600" />
                   )}
@@ -655,23 +682,45 @@ export function ContactForm({ onSuccess, ownerUserId, spaceId }: ContactFormProp
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-4 pl-6 pt-2">
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Additional notes about this contact..."
-                        className="min-h-[100px]"
-                        {...field} 
+              {notes.map((note) => (
+                <Card key={note.id} className="p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder="Title (e.g., Cuenta de banco)"
+                        value={note.title}
+                        onChange={(e) => updateNote(note.id, "title", e.target.value)}
+                        className="flex-1"
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeNote(note.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Textarea
+                      placeholder="Content..."
+                      value={note.content}
+                      onChange={(e) => updateNote(note.id, "content", e.target.value)}
+                      className="min-h-[60px]"
+                    />
+                  </div>
+                </Card>
+              ))}
+              
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addNote}
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Note
+              </Button>
             </CollapsibleContent>
           </Collapsible>
 
