@@ -245,9 +245,23 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
 
   const getChildSpaces = (parentSpaceId: number): Space[] => {
     if (!spaces) return [];
-    // Find the parent space first
-    const parentSpace = spaces.find(space => space.spaceId === parentSpaceId);
-    if (parentSpace && parentSpace.childSpaces) {
+    
+    // Function to recursively find a space by ID in the nested structure
+    const findSpaceById = (spaceList: Space[], targetId: number): Space | null => {
+      for (const space of spaceList) {
+        if (space.spaceId === targetId) {
+          return space;
+        }
+        if (space.childSpaces && space.childSpaces.length > 0) {
+          const found = findSpaceById(space.childSpaces, targetId);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    
+    const parentSpace = findSpaceById(spaces, parentSpaceId);
+    if (parentSpace && parentSpace.childSpaces && parentSpace.childSpaces.length > 0) {
       console.log(`Found children for space ${parentSpaceId}:`, parentSpace.childSpaces.map(c => `${c.spaceName} (ID: ${c.spaceId})`));
       return parentSpace.childSpaces;
     }
