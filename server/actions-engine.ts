@@ -44,12 +44,13 @@ export class ActionsEngine {
     
     switch (actionType) {
       case 'create_task':
+        return await ActionsEngine.createTask(config, context);
       case 'create_project':
       case 'create_note':
       case 'create_file':
       case 'create_waiting_for':
       case 'create_someday_maybe':
-        return await ActionsEngine.createGTDTask(config, context);
+        return await ActionsEngine.createTask(config, context);
       case 'create_calendar_event':
         return await ActionsEngine.createCalendarEvent(config, context);
       case 'send_message':
