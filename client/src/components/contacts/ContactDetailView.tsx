@@ -188,27 +188,21 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
           <DialogHeader>
             <DialogTitle>Edit Contact</DialogTitle>
           </DialogHeader>
-          <ContactForm
-            userId={contact.ownerUserId}
-            interests={interests}
+          <ContactFormBlocks
+            ownerUserId={contact.ownerUserId}
+            spaceId={1}
             initialData={{
               fullName: contact.fullName,
               relationship: contact.relationship || "",
               profilePictureUrl: contact.profilePictureUrl || "",
               notes: contact.notes || "",
-              phones: contact.phones || [],
-              emails: contact.emails || [],
-              addresses: contact.addresses || [],
-              aliases: contact.aliases || [],
-              specialDates: contact.specialDates?.map(d => ({
-                ...d,
-                eventDate: new Date(d.eventDate).toISOString().split('T')[0]
-              })) || [],
-              interestIds: contact.interests?.map(i => i.interestId) || [],
             }}
-            onSubmit={handleUpdate}
-            onCancel={() => setIsEditing(false)}
-            isLoading={updateContactMutation.isPending}
+            onSuccess={() => {
+              setIsEditing(false);
+              onUpdate();
+            }}
+            isEditMode={true}
+            contactId={contact.contactId}
           />
         </DialogContent>
       </Dialog>

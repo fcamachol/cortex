@@ -261,7 +261,8 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
               variant="ghost"
               size="sm"
               className="w-full h-10 p-0 justify-center"
-              title="Spaces"
+              title="Spaces - Click to expand sidebar"
+              onClick={() => setIsCollapsed(false)}
             >
               <Hash className="h-4 w-4" />
             </Button>

@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from 
 import type { CrmContact } from "@shared/schema";
 import { ContactFormBlocks } from "@/components/contacts/ContactFormBlocks";
 import { ContactModal } from "@/components/contacts/ContactModal";
+import ContactDetailView from "@/components/contacts/ContactDetailView";
 import { CompanyForm } from "@/components/contacts/CompanyForm";
 
 interface ContactsPageProps {
@@ -25,6 +26,7 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
   const [isAddContactOpen, setIsAddContactOpen] = React.useState(false);
   const [selectedContact, setSelectedContact] = React.useState<CrmContact | null>(null);
   const [showContactModal, setShowContactModal] = React.useState(false);
+  const [editingContact, setEditingContact] = React.useState<CrmContact | null>(null);
 
   const { data: contactsList = [], isLoading: contactsLoading } = useQuery({
     queryKey: ['/api/crm/contacts', userId],
@@ -59,6 +61,20 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
     console.log('Contact clicked:', contact);
     setSelectedContact(contact);
     setShowContactModal(true);
+  };
+
+  const handleEditContact = (contact: CrmContact) => {
+    setEditingContact(contact);
+    setShowContactModal(false);
+  };
+
+  const handleCloseEdit = () => {
+    setEditingContact(null);
+  };
+
+  const handleUpdateContact = () => {
+    // Refetch contacts after update
+    window.location.reload(); // Simple refresh for now
   };
 
   const handleCompanyClick = (company: any) => {
@@ -477,19 +493,27 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
       </div>
 
       {/* Contact Modal */}
-      <ContactModal
-        contact={selectedContact}
-        isOpen={showContactModal}
-        onClose={() => {
-          setShowContactModal(false);
-          setSelectedContact(null);
-        }}
-        onEdit={(contact) => {
-          setSelectedContact(contact);
-          setShowContactModal(false);
-          setIsAddContactOpen(true);
-        }}
-      />
+      {selectedContact && !editingContact && (
+        <ContactModal
+          contact={selectedContact}
+          isOpen={showContactModal}
+          onClose={() => {
+            setShowContactModal(false);
+            setSelectedContact(null);
+          }}
+          onEdit={handleEditContact}
+        />
+      )}
+
+      {/* Contact Edit Modal */}
+      {editingContact && (
+        <ContactDetailView
+          contact={editingContact}
+          interests={[]} 
+          onClose={handleCloseEdit}
+          onUpdate={handleUpdateContact}
+        />
+      )}
     </div>
   );
 }
