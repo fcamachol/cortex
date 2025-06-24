@@ -173,7 +173,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId }: ContactFo
   };
 
   return (
-    <div className="space-y-4 max-w-2xl mx-auto p-6">
+    <div className="space-y-4 max-w-4xl mx-auto p-6">
       <form onSubmit={onSubmit} className="space-y-4">
         {/* Header with avatar and contact info */}
         <div className="space-y-4">
