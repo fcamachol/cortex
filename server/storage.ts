@@ -899,18 +899,73 @@ class DatabaseStorage {
      */
     async getActionRulesByTrigger(triggerType: string, triggerValue: string, instanceId: string): Promise<any[]> {
         try {
-            // Find all active rules for the given instance that match the trigger type
+            console.log(`🔍 [getActionRulesByTrigger] Searching for ${triggerType}:${triggerValue}:${instanceId}`);
+            
+            // Get ALL active rules first, then filter in code for better debugging
             const rules = await db.select()
                 .from(actionRules)
-                .where(and(
-                    eq(actionRules.isActive, true),
-                    eq(actionRules.triggerType, triggerType as any),
-                    // Check if the trigger_conditions JSONB contains the trigger value
-                    sql`trigger_conditions ->> 'emoji' = ${triggerValue} OR trigger_conditions ->> 'hashtag' = ${triggerValue}`
-                ));
+                .where(eq(actionRules.isActive, true));
+
+            console.log(`🔍 [getActionRulesByTrigger] Found ${rules.length} total active rules`);
+            console.log('🔍 [getActionRulesByTrigger] All rules:', rules.map(r => ({
+                ruleName: r.ruleName,
+                triggerType: r.triggerType,
+                triggerConditions: r.triggerConditions
+            })));
+
+            // Filter by trigger type and conditions
+            const matchingRules = rules.filter(rule => {
+                console.log(`🔍 [getActionRulesByTrigger] Checking rule "${rule.ruleName}" (${rule.triggerType})`);
+                
+                if (rule.triggerType !== triggerType) {
+                    console.log(`🔍 [getActionRulesByTrigger] Rule type mismatch: ${rule.triggerType} !== ${triggerType}`);
+                    return false;
+                }
+                
+                const conditions = rule.triggerConditions as any || {};
+                console.log(`🔍 [getActionRulesByTrigger] Rule conditions:`, conditions);
+                
+                switch (triggerType) {
+                    case 'reaction':
+                        // Check multiple possible formats for reactions
+                        const reactions = conditions.reactions || [];
+                        const emoji = conditions.emoji;
+                        const reaction_emoji = conditions.reaction_emoji;
+                        const value = conditions.value;
+                        
+                        console.log(`🔍 [getActionRulesByTrigger] Checking reaction formats:`, {
+                            reactions,
+                            emoji,
+                            reaction_emoji,
+                            value,
+                            triggerValue
+                        });
+                        
+                        const matches = reactions.includes(triggerValue) || 
+                                      emoji === triggerValue || 
+                                      reaction_emoji === triggerValue ||
+                                      value === triggerValue;
+                        
+                        console.log(`🔍 [getActionRulesByTrigger] Match result: ${matches}`);
+                        return matches;
+                        
+                    case 'keyword':
+                        const keywords = conditions.keywords || [];
+                        return keywords.some((keyword: string) => 
+                            triggerValue.toLowerCase().includes(keyword.toLowerCase())
+                        );
+                        
+                    case 'hashtag':
+                        const hashtag = conditions.hashtag;
+                        return triggerValue === hashtag;
+                        
+                    default:
+                        return false;
+                }
+            });
 
             // Filter by instance if the rule has instance filters
-            return rules.filter(rule => {
+            const finalRules = matchingRules.filter(rule => {
                 if (!rule.instanceFilters) return true; // Rule applies to all instances
                 const filters = rule.instanceFilters as any;
                 if (Array.isArray(filters.include) && filters.include.length > 0) {
@@ -921,6 +976,9 @@ class DatabaseStorage {
                 }
                 return true;
             });
+
+            console.log(`🔍 [getActionRulesByTrigger] Found ${finalRules.length} final matching rules`);
+            return finalRules;
 
         } catch (error) {
             console.error('Error fetching action rules by trigger:', error);
