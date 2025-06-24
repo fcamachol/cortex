@@ -105,18 +105,18 @@ export function ContactModal({ contact, isOpen, onClose, onEdit }: ContactModalP
           {/* Relationships & Groups Section */}
           <Collapsible open={relationshipsOpen} onOpenChange={setRelationshipsOpen}>
             <CollapsibleTrigger asChild>
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <div className="bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
                 <div className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-3">
                     <Users className="h-5 w-5 text-gray-500" />
-                    <h3 className="font-medium text-sm text-gray-600 dark:text-gray-400 uppercase tracking-wide">RELATIONSHIPS & GROUPS</h3>
+                    <h3 className="font-medium text-gray-900">RELATIONSHIPS & GROUPS</h3>
                   </div>
-                  {relationshipsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {relationshipsOpen ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
                 </div>
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 border-t-0 rounded-b-lg p-4">
+              <div className="bg-white border border-gray-200 border-t-0 rounded-b-lg p-4">
                 <div className="space-y-4">
                   {contact.relationship && (
                     <div>
@@ -140,18 +140,18 @@ export function ContactModal({ contact, isOpen, onClose, onEdit }: ContactModalP
           {/* Personal Details Section */}
           <Collapsible open={personalDetailsOpen} onOpenChange={setPersonalDetailsOpen}>
             <CollapsibleTrigger asChild>
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <div className="bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
                 <div className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-3">
                     <Calendar className="h-5 w-5 text-gray-500" />
-                    <h3 className="font-medium text-sm text-gray-600 dark:text-gray-400 uppercase tracking-wide">PERSONAL DETAILS</h3>
+                    <h3 className="font-medium text-gray-900">PERSONAL DETAILS</h3>
                   </div>
-                  {personalDetailsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {personalDetailsOpen ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
                 </div>
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 border-t-0 rounded-b-lg p-4">
+              <div className="bg-white border border-gray-200 border-t-0 rounded-b-lg p-4">
                 <div className="space-y-4">
                   <div>
                     <div className="flex items-center gap-2 mb-2">
@@ -171,71 +171,75 @@ export function ContactModal({ contact, isOpen, onClose, onEdit }: ContactModalP
           </Collapsible>
 
           {/* Activity Section */}
-          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4">
-            <div className="space-y-4">
-              <h3 className="font-medium text-sm text-gray-600 dark:text-gray-400 uppercase tracking-wide">ACTIVITY</h3>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg">
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="font-medium text-gray-900">ACTIVITY</h3>
+            </div>
+            
+            {/* Tab Navigation */}
+            <div className="flex border-b border-gray-200">
+              {[
+                { id: 'tasks', label: 'Tasks', icon: Tag },
+                { id: 'events', label: 'Events', icon: Calendar },
+                { id: 'finance', label: 'Finance', icon: Building2 },
+                { id: 'notes', label: 'Notes & Docs', icon: Mail }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-green-500 text-green-600 bg-white'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <tab.icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab Content */}
+            <div className="p-4 bg-white rounded-b-lg">
+              {activeTab === 'tasks' && (
+                <div className="text-center py-8">
+                  <Tag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 text-sm">No tasks found for this contact</p>
+                  <Button variant="outline" size="sm" className="mt-2">
+                    Add Task
+                  </Button>
+                </div>
+              )}
               
-              <div className="flex gap-6">
-                {[
-                  { id: 'tasks', label: 'Tasks' },
-                  { id: 'events', label: 'Events' },
-                  { id: 'finance', label: 'Finance' },
-                  { id: 'notes', label: 'Notes & Docs' }
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`text-sm font-medium transition-colors ${
-                      activeTab === tab.id
-                        ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                    }`}
-                  >
-                    [ {tab.label} ]
-                  </button>
-                ))}
-              </div>
-
-              <div className="border-t border-gray-300 dark:border-gray-600"></div>
-
-              <div className="space-y-3">
-                {activeTab === 'tasks' && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3 text-sm">
-                      <span className="text-green-600">✓</span>
-                      <span>Finalize appointment for {contact.fullName}'s check-up</span>
-                      <span className="text-gray-500 ml-auto">Due: June 27, 2025</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <span className="text-gray-400">☐</span>
-                      <span>{contact.fullName}'s Annual Check-up</span>
-                      <span className="text-gray-500 ml-auto">Date: July 15, 2025</span>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'events' && (
-                  <div className="text-sm text-gray-500">
-                    No upcoming events
-                  </div>
-                )}
-
-                {activeTab === 'finance' && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3 text-sm">
-                      <span className="text-red-600">▼</span>
-                      <span>-$2,500.00 Payment for Consultation</span>
-                      <span className="text-gray-500 ml-auto">Date: May 20, 2025</span>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'notes' && (
-                  <div className="text-sm text-gray-500">
-                    No notes or documents
-                  </div>
-                )}
-              </div>
+              {activeTab === 'events' && (
+                <div className="text-center py-8">
+                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 text-sm">No events found for this contact</p>
+                  <Button variant="outline" size="sm" className="mt-2">
+                    Add Event
+                  </Button>
+                </div>
+              )}
+              
+              {activeTab === 'finance' && (
+                <div className="text-center py-8">
+                  <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 text-sm">No financial records found for this contact</p>
+                  <Button variant="outline" size="sm" className="mt-2">
+                    Add Transaction
+                  </Button>
+                </div>
+              )}
+              
+              {activeTab === 'notes' && (
+                <div className="text-center py-8">
+                  <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 text-sm">No notes or documents found for this contact</p>
+                  <Button variant="outline" size="sm" className="mt-2">
+                    Add Note
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
