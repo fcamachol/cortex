@@ -127,6 +127,7 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 24, 2025: Added ContactModal with collapsible sections and Activity module with Tasks, Events, Finance, and Notes & Docs tabs - provides comprehensive contact view with organized information blocks
 - June 24, 2025: Updated company blocks to use dropdown with existing companies and modal for creating new ones - companies are now properly linked entities instead of free text input
 - June 24, 2025: Restructured contact form to use collapsible section-based organization - Contact Info, Relationships & Groups, and Personal Details sections with sub-block capabilities, Notes as standalone blocks with dedicated Add Note button
 - June 24, 2025: Organized contact information blocks into three logical categories (Contact Info, Relationships & Groups, Personal Details) following consistent order across all contacts - improved Add Information Block menu with proper section groupings

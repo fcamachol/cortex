@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { CrmContact } from "@shared/schema";
 import { ContactFormBlocks } from "@/components/contacts/ContactFormBlocks";
+import { ContactModal } from "@/components/contacts/ContactModal";
 import { CompanyForm } from "@/components/contacts/CompanyForm";
 
 interface ContactsPageProps {
