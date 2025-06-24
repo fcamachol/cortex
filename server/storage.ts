@@ -84,7 +84,7 @@ class DatabaseStorage {
                 eq(appSpaces.creatorUserId, userId),
                 eq(appSpaces.isArchived, false)
             ))
-            .orderBy(appSpaces.level, appSpaces.displayOrder, appSpaces.createdAt);
+            .orderBy(appSpaces.displayOrder, appSpaces.createdAt);
 
             // Build hierarchical structure with unlimited nesting
             const spacesMap = new Map();
