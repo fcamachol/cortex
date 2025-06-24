@@ -20,7 +20,13 @@ const actionRuleSchema = z.object({
   ruleName: z.string().min(1, "Rule name is required"),
   description: z.string().optional(),
   triggerType: z.enum(["reaction", "hashtag", "keyword", "time_based", "location", "contact_group"]),
-  actionType: z.enum(["create_task", "create_calendar_event", "send_message", "add_label", "update_contact", "move_to_folder", "send_notification", "webhook"]),
+  actionType: z.enum([
+    "create_task", "create_project", "create_note", "store_file", "create_document",
+    "create_calendar_event", "send_message", "add_label", "update_contact", 
+    "move_to_folder", "send_notification", "webhook", "create_space",
+    "update_project_status", "create_checklist", "assign_to_space",
+    "create_financial_record", "schedule_meeting", "create_invoice", "update_task_priority"
+  ]),
   isActive: z.boolean().default(true),
   cooldownMinutes: z.number().min(0).default(0),
   maxExecutionsPerDay: z.number().min(1).default(100),

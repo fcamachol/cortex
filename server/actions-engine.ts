@@ -55,12 +55,32 @@ export class ActionsEngine {
         return await ActionsEngine.createSpace(config, context);
       case 'create_calendar_event':
         return await ActionsEngine.createCalendarEvent(config, context);
+      case 'schedule_meeting':
+        return await ActionsEngine.scheduleMeeting(config, context);
       case 'send_message':
         return await ActionsEngine.sendMessage(config, context);
       case 'add_label':
         return await ActionsEngine.addLabel(config, context);
+      case 'update_contact':
+        return await ActionsEngine.updateContact(config, context);
+      case 'update_project_status':
+        return await ActionsEngine.updateProjectStatus(config, context);
+      case 'update_task_priority':
+        return await ActionsEngine.updateTaskPriority(config, context);
+      case 'create_checklist':
+        return await ActionsEngine.createChecklist(config, context);
+      case 'assign_to_space':
+        return await ActionsEngine.assignToSpace(config, context);
+      case 'create_financial_record':
+        return await ActionsEngine.createFinancialRecord(config, context);
+      case 'create_invoice':
+        return await ActionsEngine.createInvoice(config, context);
+      case 'move_to_folder':
+        return await ActionsEngine.moveToFolder(config, context);
       case 'send_notification':
         return await ActionsEngine.sendNotification(config, context);
+      case 'webhook':
+        return await ActionsEngine.callWebhook(config, context);
       default:
         console.log(`❌ Unknown action type: ${actionType}`);
         return { success: false, error: `Unknown action type: ${actionType}` };
