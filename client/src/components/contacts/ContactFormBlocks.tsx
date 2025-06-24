@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Phone, Mail, MapPin, Building2, Users, Link as LinkIcon, Calendar, Tag, MessageSquare, Plus, MoreHorizontal, X, User, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
 // Block types organized by categories for consistent order across all contacts
@@ -568,6 +570,171 @@ function PersonalDetailsSection({ blocks, onUpdate, onRemove, onAddSubBlock }: {
   );
 }
 
+// Company Block Component with dropdown and modal
+function CompanyBlock({ block, onUpdate }: { 
+  block: Block; 
+  onUpdate: (blockId: string, field: string, value: any) => void;
+}) {
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState('');
+  const [newCompanyType, setNewCompanyType] = useState('');
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch companies for dropdown
+  const { data: companies = [] } = useQuery({
+    queryKey: ['/api/crm/companies'],
+  });
+
+  // Create company mutation
+  const createCompanyMutation = useMutation({
+    mutationFn: async (companyData: any) => {
+      return await apiRequest('/api/crm/companies', 'POST', companyData);
+    },
+    onSuccess: (newCompany) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/companies'] });
+      onUpdate(block.id, 'companyId', newCompany.id);
+      onUpdate(block.id, 'companyName', newCompany.companyName);
+      setShowCreateModal(false);
+      setNewCompanyName('');
+      setNewCompanyType('');
+      toast({
+        title: "Company created",
+        description: `${newCompany.companyName} has been added successfully.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error creating company",
+        description: "Failed to create the company. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateCompany = () => {
+    if (!newCompanyName.trim()) {
+      toast({
+        title: "Company name required",
+        description: "Please enter a company name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createCompanyMutation.mutate({
+      companyName: newCompanyName,
+      businessType: newCompanyType || 'Other',
+    });
+  };
+
+  const handleCompanySelect = (companyId: string) => {
+    const selectedCompany = companies.find((c: any) => c.id.toString() === companyId);
+    if (selectedCompany) {
+      onUpdate(block.id, 'companyId', selectedCompany.id);
+      onUpdate(block.id, 'companyName', selectedCompany.companyName);
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <div>
+        <label className="block text-sm font-medium text-gray-600 mb-1">Company</label>
+        <div className="flex gap-2">
+          <Select value={block.data.companyId?.toString() || ''} onValueChange={handleCompanySelect}>
+            <SelectTrigger className="h-10 border-gray-300 rounded-lg">
+              <SelectValue placeholder="Select company..." />
+            </SelectTrigger>
+            <SelectContent>
+              {companies.map((company: any) => (
+                <SelectItem key={company.id} value={company.id.toString()}>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-gray-500" />
+                    {company.companyName}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 px-3"
+                type="button"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Create New Company</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div>
+                  <Label htmlFor="companyName">Company Name</Label>
+                  <Input
+                    id="companyName"
+                    value={newCompanyName}
+                    onChange={(e) => setNewCompanyName(e.target.value)}
+                    placeholder="Enter company name"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="businessType">Business Type</Label>
+                  <Select value={newCompanyType} onValueChange={setNewCompanyType}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select business type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Healthcare">Healthcare</SelectItem>
+                      <SelectItem value="Technology">Technology</SelectItem>
+                      <SelectItem value="Finance">Finance</SelectItem>
+                      <SelectItem value="Education">Education</SelectItem>
+                      <SelectItem value="Manufacturing">Manufacturing</SelectItem>
+                      <SelectItem value="Retail">Retail</SelectItem>
+                      <SelectItem value="Services">Services</SelectItem>
+                      <SelectItem value="Non-profit">Non-profit</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowCreateModal(false)}
+                    disabled={createCompanyMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleCreateCompany}
+                    disabled={createCompanyMutation.isPending}
+                  >
+                    {createCompanyMutation.isPending ? 'Creating...' : 'Create Company'}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-600 mb-1">Role</label>
+        <Input
+          placeholder="Lead Designer"
+          value={block.data.role || ''}
+          onChange={(e) => onUpdate(block.id, 'role', e.target.value)}
+          className="h-10 border-gray-300 rounded-lg"
+        />
+      </div>
+    </div>
+  );
+}
+
 // Block Content based on type
 function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: string, field: string, value: any) => void }) {
   switch (block.type) {
@@ -669,28 +836,7 @@ function BlockContent({ block, onUpdate }: { block: Block; onUpdate: (blockId: s
       );
 
     case 'company':
-      return (
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Company</label>
-            <Input
-              placeholder="CreativeCo"
-              value={block.data.name}
-              onChange={(e) => onUpdate(block.id, 'name', e.target.value)}
-              className="h-10 border-gray-300 rounded-lg"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Role</label>
-            <Input
-              placeholder="Lead Designer"
-              value={block.data.role}
-              onChange={(e) => onUpdate(block.id, 'role', e.target.value)}
-              className="h-10 border-gray-300 rounded-lg"
-            />
-          </div>
-        </div>
-      );
+      return <CompanyBlock block={block} onUpdate={onUpdate} />;
 
     case 'note':
       return (
