@@ -362,70 +362,111 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
             {/* Space Items Preview */}
             {isExpanded && hasItems && (
               <div 
-                className="ml-6 space-y-1"
-                style={{ marginLeft: `${32 + level * 12}px` }}
+                className="space-y-1"
+                style={{ marginLeft: `${24 + level * 12}px` }}
               >
-                {items.slice(0, 5).map((item: SpaceItem) => {
-                  const IconComponent = getSpaceItemIcon(item.itemType);
-                  return (
-                    <div
-                      key={item.itemId}
-                      className="flex items-center gap-2 px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer transition-colors"
-                      onClick={() => {
-                        setLocation(`/spaces/${space.spaceId}?item=${item.itemId}`);
-                      }}
-                    >
-                      <IconComponent className="h-3 w-3 opacity-60" />
-                      <span className="truncate">{item.title}</span>
-                      {item.itemType === 'task' && item.metadata?.status && (
-                        <Badge variant="outline" className="text-xs h-4 px-1">
-                          {item.metadata.status}
-                        </Badge>
-                      )}
-                    </div>
-                  );
-                })}
-                
-                {items.length > 5 && (
-                  <div className="px-2 py-1 text-xs text-gray-400">
-                    +{items.length - 5} more items
+                {/* Workspace/Content Section Header */}
+                <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded-md mt-1">
+                  <div className="w-4 h-4 bg-gray-300 dark:bg-gray-600 rounded flex items-center justify-center">
+                    <CheckSquare className="h-2.5 w-2.5 text-gray-600 dark:text-gray-300" />
                   </div>
-                )}
-                
-                <div className="px-2 py-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-full justify-start text-xs text-gray-500 hover:text-gray-700"
-                    onClick={() => {
-                      setLocation(`/spaces/${space.spaceId}?new=true`);
-                    }}
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add item
-                  </Button>
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Workspace
+                  </span>
+                  <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-4 w-4 p-0"
+                      onClick={() => setLocation(`/spaces/${space.spaceId}?new=true`)}
+                    >
+                      <Plus className="h-2.5 w-2.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-4 w-4 p-0"
+                    >
+                      <MoreHorizontal className="h-2.5 w-2.5" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Items List */}
+                <div className="ml-4 space-y-0.5">
+                  {items.slice(0, 5).map((item: SpaceItem) => {
+                    const IconComponent = getSpaceItemIcon(item.itemType);
+                    return (
+                      <div
+                        key={item.itemId}
+                        className="flex items-center gap-2 px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer transition-colors group"
+                        onClick={() => {
+                          setLocation(`/spaces/${space.spaceId}?item=${item.itemId}`);
+                        }}
+                      >
+                        <div className="w-3 h-3 flex items-center justify-center">
+                          <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        </div>
+                        <IconComponent className="h-3 w-3 opacity-60" />
+                        <span className="truncate flex-1">{item.title}</span>
+                        {item.itemType === 'task' && item.metadata?.status && (
+                          <Badge variant="outline" className="text-xs h-4 px-1">
+                            {item.metadata.status}
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+                  
+                  {items.length > 5 && (
+                    <div className="px-2 py-1 text-xs text-gray-400 ml-5">
+                      +{items.length - 5} more items
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Show empty state when expanded but no items */}
+            {/* Show empty workspace section when expanded but no items */}
             {isExpanded && !hasItems && !hasChildren && (
               <div 
-                className="ml-6 px-2 py-2 text-xs text-gray-400"
-                style={{ marginLeft: `${32 + level * 12}px` }}
+                className="space-y-1"
+                style={{ marginLeft: `${24 + level * 12}px` }}
               >
-                <div className="text-center">
-                  <Folder className="h-4 w-4 mx-auto mb-1 opacity-40" />
-                  <div>Empty space</div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 mt-1 text-xs"
-                    onClick={() => setLocation(`/spaces/${space.spaceId}?new=true`)}
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add content
-                  </Button>
+                {/* Empty Workspace Section */}
+                <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded-md mt-1 group">
+                  <div className="w-4 h-4 bg-gray-300 dark:bg-gray-600 rounded flex items-center justify-center">
+                    <CheckSquare className="h-2.5 w-2.5 text-gray-600 dark:text-gray-300" />
+                  </div>
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Workspace
+                  </span>
+                  <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-4 w-4 p-0"
+                      onClick={() => setLocation(`/spaces/${space.spaceId}?new=true`)}
+                    >
+                      <Plus className="h-2.5 w-2.5" />
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Empty state content */}
+                <div className="ml-4 px-2 py-2 text-xs text-gray-400">
+                  <div className="text-center">
+                    <div className="text-xs text-gray-400 mb-1">No content yet</div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-xs"
+                      onClick={() => setLocation(`/spaces/${space.spaceId}?new=true`)}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add first item
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
