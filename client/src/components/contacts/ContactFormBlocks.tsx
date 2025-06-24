@@ -112,14 +112,16 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
-      setContactName('');
-      setRelationship('Client');
-      setProfession('');
-      setCompany('');
-      setBlocks([]);
+      if (!isEditMode) {
+        setContactName('');
+        setRelationship('Client');
+        setProfession('');
+        setCompany('');
+        setBlocks([]);
+      }
       toast({
         title: "Success",
-        description: "Contact created successfully",
+        description: isEditMode ? "Contact updated successfully" : "Contact created successfully",
       });
       if (onSuccess) {
         onSuccess();
@@ -316,7 +318,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm font-medium rounded-lg"
               disabled={createContactMutation.isPending}
             >
-              {createContactMutation.isPending ? "Creating Contact..." : "Create Contact"}
+              {createContactMutation.isPending ? (isEditMode ? "Updating Contact..." : "Creating Contact...") : (isEditMode ? "Update Contact" : "Create Contact")}
             </Button>
           ) : (
             <Button 
@@ -324,7 +326,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm font-medium rounded-lg"
               disabled={createContactMutation.isPending}
             >
-              {createContactMutation.isPending ? "Creating Contact..." : "Create Contact"}
+              {createContactMutation.isPending ? (isEditMode ? "Updating Contact..." : "Creating Contact...") : (isEditMode ? "Update Contact" : "Create Contact")}
             </Button>
           )}
         </div>
