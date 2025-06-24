@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cortex CRM Mobile</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .mobile-container {
+            max-width: 414px;
+            margin: 0 auto;
+            height: 100vh;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            background: #075E54;
+            color: white;
+            padding: 20px 16px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+        
+        .bottom-nav {
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            padding: 8px 0;
+        }
+        
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px;
+            cursor: pointer;
+            color: #999;
+            font-size: 12px;
+            transition: color 0.2s;
+        }
+        
+        .nav-item.active {
+            color: #25D366;
+        }
+        
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            margin-bottom: 4px;
+            fill: currentColor;
+        }
+        
+        .conversation-item {
+            display: flex;
+            padding: 16px 0;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+        }
+        
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 25px;
+            background: #25D366;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin-right: 12px;
+        }
+        
+        .conversation-content {
+            flex: 1;
+        }
+        
+        .conversation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        
+        .contact-name {
+            font-weight: 600;
+            font-size: 16px;
+            color: #000;
+        }
+        
+        .timestamp {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .last-message {
+            color: #666;
+            font-size: 14px;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .unread-badge {
+            background: #25D366;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 6px;
+            font-size: 11px;
+            min-width: 20px;
+            text-align: center;
+            margin-left: 8px;
+        }
+        
+        .task-item {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        
+        .task-title {
+            font-weight: 600;
+            color: #000;
+            flex: 1;
+        }
+        
+        .priority-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .priority-high {
+            background: #ffe6e6;
+            color: #d32f2f;
+        }
+        
+        .priority-medium {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+        
+        .priority-low {
+            background: #e8f5e8;
+            color: #388e3c;
+        }
+        
+        .task-due {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .contact-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .contact-info {
+            flex: 1;
+            margin-left: 12px;
+        }
+        
+        .contact-name-mobile {
+            font-weight: 600;
+            color: #000;
+            margin-bottom: 2px;
+        }
+        
+        .contact-phone {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .search-bar {
+            background: #f0f0f0;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 20px;
+            margin-bottom: 16px;
+            font-size: 16px;
+            width: 100%;
+        }
+        
+        .finance-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .balance-amount {
+            font-size: 32px;
+            font-weight: 700;
+            color: #000;
+            margin-bottom: 4px;
+        }
+        
+        .balance-label {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .quick-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .action-btn {
+            flex: 1;
+            background: #25D366;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        function MobileApp() {
+            const [activeTab, setActiveTab] = useState('conversations');
+            const [conversations, setConversations] = useState([]);
+            const [tasks, setTasks] = useState([]);
+            const [contacts, setContacts] = useState([]);
+            
+            // Fetch real data from your backend
+            useEffect(() => {
+                // Replace with your actual API endpoints
+                fetchConversations();
+                fetchTasks();
+                fetchContacts();
+            }, []);
+            
+            const fetchConversations = async () => {
+                try {
+                    // Using your existing API
+                    const response = await fetch('/api/whatsapp/conversations/7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setConversations(data.slice(0, 10)); // Show first 10
+                    }
+                } catch (error) {
+                    console.log('Using sample data');
+                    // Sample data for demo
+                    setConversations([
+                        { id: 1, name: 'María González', lastMessage: 'Gracias por la información', time: '14:30', unread: 2, avatar: 'MG' },
+                        { id: 2, name: 'Carlos López', lastMessage: '¿Cuándo podemos reunirnos?', time: '13:45', unread: 0, avatar: 'CL' },
+                        { id: 3, name: 'Ana Rodríguez', lastMessage: 'Perfecto, nos vemos mañana', time: '12:20', unread: 1, avatar: 'AR' },
+                        { id: 4, name: 'Juan Pérez', lastMessage: 'Enviando documentos...', time: '11:15', unread: 0, avatar: 'JP' },
+                        { id: 5, name: 'Elena Martín', lastMessage: 'Ok, entendido', time: '10:30', unread: 3, avatar: 'EM' }
+                    ]);
+                }
+            };
+            
+            const fetchTasks = async () => {
+                try {
+                    const response = await fetch('/api/crm/tasks/7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setTasks(data.slice(0, 10));
+                    }
+                } catch (error) {
+                    // Sample tasks
+                    setTasks([
+                        { id: 1, title: 'Llamar a cliente nuevo', priority: 'high', due: 'Hoy 15:00', status: 'pending' },
+                        { id: 2, title: 'Enviar propuesta comercial', priority: 'medium', due: 'Mañana', status: 'in_progress' },
+                        { id: 3, title: 'Revisar contratos pendientes', priority: 'low', due: '25 Jun', status: 'pending' },
+                        { id: 4, title: 'Reunión equipo ventas', priority: 'medium', due: '26 Jun', status: 'scheduled' }
+                    ]);
+                }
+            };
+            
+            const fetchContacts = async () => {
+                try {
+                    const response = await fetch('/api/contacts/7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setContacts(data.slice(0, 15));
+                    }
+                } catch (error) {
+                    // Sample contacts
+                    setContacts([
+                        { id: 1, name: 'María González', phone: '+52 55 1234 5678', avatar: 'MG' },
+                        { id: 2, name: 'Carlos López', phone: '+52 55 2345 6789', avatar: 'CL' },
+                        { id: 3, name: 'Ana Rodríguez', phone: '+52 55 3456 7890', avatar: 'AR' },
+                        { id: 4, name: 'Juan Pérez', phone: '+52 55 4567 8901', avatar: 'JP' },
+                        { id: 5, name: 'Elena Martín', phone: '+52 55 5678 9012', avatar: 'EM' }
+                    ]);
+                }
+            };
+            
+            const renderContent = () => {
+                switch (activeTab) {
+                    case 'conversations':
+                        return (
+                            <div>
+                                {conversations.map(conv => (
+                                    <div key={conv.id} className="conversation-item">
+                                        <div className="avatar">{conv.avatar || conv.name?.charAt(0) || '?'}</div>
+                                        <div className="conversation-content">
+                                            <div className="conversation-header">
+                                                <span className="contact-name">{conv.name || conv.contact_name || 'Unknown'}</span>
+                                                <div style={{display: 'flex', alignItems: 'center'}}>
+                                                    <span className="timestamp">{conv.time || '00:00'}</span>
+                                                    {conv.unread > 0 && <span className="unread-badge">{conv.unread}</span>}
+                                                </div>
+                                            </div>
+                                            <div className="last-message">{conv.lastMessage || conv.last_message || 'No messages'}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    
+                    case 'tasks':
+                        return (
+                            <div>
+                                {tasks.map(task => (
+                                    <div key={task.id} className="task-item">
+                                        <div className="task-header">
+                                            <div className="task-title">{task.title || task.name || 'Untitled Task'}</div>
+                                            <span className={`priority-badge priority-${task.priority || 'medium'}`}>
+                                                {task.priority || 'Medium'}
+                                            </span>
+                                        </div>
+                                        <div className="task-due">{task.due || task.due_date || 'No due date'}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    
+                    case 'contacts':
+                        return (
+                            <div>
+                                <input 
+                                    type="text" 
+                                    placeholder="Buscar contactos..." 
+                                    className="search-bar"
+                                />
+                                {contacts.map(contact => (
+                                    <div key={contact.id} className="contact-item">
+                                        <div className="avatar">{contact.avatar || contact.name?.charAt(0) || '?'}</div>
+                                        <div className="contact-info">
+                                            <div className="contact-name-mobile">{contact.name || 'Unknown Contact'}</div>
+                                            <div className="contact-phone">{contact.phone || contact.primary_phone || 'No phone'}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    
+                    case 'finance':
+                        return (
+                            <div>
+                                <div className="finance-card">
+                                    <div className="balance-amount">$45,280.50</div>
+                                    <div className="balance-label">Balance Total</div>
+                                </div>
+                                <div className="quick-actions">
+                                    <button className="action-btn">Ingreso</button>
+                                    <button className="action-btn">Gasto</button>
+                                    <button className="action-btn">Transferir</button>
+                                </div>
+                                <div className="task-item">
+                                    <div className="task-header">
+                                        <div className="task-title">Pago recibido - María González</div>
+                                        <span style={{color: '#25D366', fontWeight: '600'}}>+$1,200</span>
+                                    </div>
+                                    <div className="task-due">Hoy 14:30</div>
+                                </div>
+                                <div className="task-item">
+                                    <div className="task-header">
+                                        <div className="task-title">Gastos oficina</div>
+                                        <span style={{color: '#d32f2f', fontWeight: '600'}}>-$350</span>
+                                    </div>
+                                    <div className="task-due">Ayer 16:45</div>
+                                </div>
+                            </div>
+                        );
+                    
+                    default:
+                        return (
+                            <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
+                                <h3>Próximamente</h3>
+                                <p>Esta sección estará disponible pronto</p>
+                            </div>
+                        );
+                }
+            };
+            
+            const getHeaderTitle = () => {
+                switch (activeTab) {
+                    case 'conversations': return 'Cortex CRM';
+                    case 'tasks': return 'Tareas';
+                    case 'contacts': return 'Contactos';
+                    case 'calendar': return 'Calendario';
+                    case 'finance': return 'Finanzas';
+                    case 'settings': return 'Configuración';
+                    default: return 'Cortex CRM';
+                }
+            };
+            
+            return (
+                <div className="mobile-container">
+                    <div className="header">
+                        <h1>{getHeaderTitle()}</h1>
+                        <div style={{width: '24px', height: '24px', cursor: 'pointer'}}>
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12,16A2,2 0 0,1 14,18A2,2 0 0,1 12,20A2,2 0 0,1 10,18A2,2 0 0,1 12,16M12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12A2,2 0 0,1 12,10M12,4A2,2 0 0,1 14,6A2,2 0 0,1 12,8A2,2 0 0,1 10,6A2,2 0 0,1 12,4Z" />
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <div className="content">
+                        {renderContent()}
+                    </div>
+                    
+                    <div className="bottom-nav">
+                        <div 
+                            className={`nav-item ${activeTab === 'conversations' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('conversations')}
+                        >
+                            <svg className="nav-icon" viewBox="0 0 24 24">
+                                <path d="M12,3C6.5,3 2,6.6 2,11C2,13.8 3.6,16.3 6,17.8L5,22L10.3,19.8C10.8,19.9 11.4,20 12,20C17.5,20 22,16.4 22,11S17.5,3 12,3Z" />
+                            </svg>
+                            <span>Chats</span>
+                        </div>
+                        
+                        <div 
+                            className={`nav-item ${activeTab === 'tasks' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('tasks')}
+                        >
+                            <svg className="nav-icon" viewBox="0 0 24 24">
+                                <path d="M10,17L5,12L6.41,10.58L10,14.17L17.59,6.58L19,8M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z" />
+                            </svg>
+                            <span>Tareas</span>
+                        </div>
+                        
+                        <div 
+                            className={`nav-item ${activeTab === 'contacts' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('contacts')}
+                        >
+                            <svg className="nav-icon" viewBox="0 0 24 24">
+                                <path d="M16,4C16.88,4 17.67,4.5 18,5.26L20,9H16V11H20.5L20.5,12A8,8 0 0,1 12.5,20H5A2,2 0 0,1 3,18V8A2,2 0 0,1 5,6H14.5C15.07,6 15.58,6.29 15.84,6.75L16.82,8.5H10V10.5H17.82L16,4M12,8A2,2 0 0,0 10,10V12A2,2 0 0,0 12,14A2,2 0 0,0 14,12V10A2,2 0 0,0 12,8Z" />
+                            </svg>
+                            <span>Contactos</span>
+                        </div>
+                        
+                        <div 
+                            className={`nav-item ${activeTab === 'calendar' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('calendar')}
+                        >
+                            <svg className="nav-icon" viewBox="0 0 24 24">
+                                <path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z" />
+                            </svg>
+                            <span>Calendario</span>
+                        </div>
+                        
+                        <div 
+                            className={`nav-item ${activeTab === 'finance' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('finance')}
+                        >
+                            <svg className="nav-icon" viewBox="0 0 24 24">
+                                <path d="M3,6H21V18H3V6M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M7,8A2,2 0 0,1 5,10V14A2,2 0 0,1 7,16H17A2,2 0 0,1 19,14V10A2,2 0 0,1 17,8H7Z" />
+                            </svg>
+                            <span>Finanzas</span>
+                        </div>
+                        
+                        <div 
+                            className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('settings')}
+                        >
+                            <svg className="nav-icon" viewBox="0 0 24 24">
+                                <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" />
+                            </svg>
+                            <span>Ajustes</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        
+        ReactDOM.render(<MobileApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+~/workspace$ cd cortex-mobile-app
+npm install --legacy-peer-deps
+npx expo start --web
+bash: cd: cortex-mobile-app: No such file or directory
+
+removed 35 packages, and audited 1121 packages in 3s
+
+194 packages are looking for funding
+  run `npm fund` for details
+
+1 low severity vulnerability
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+Starting project at /home/runner/workspace
+Starting Metro Bundler
+The following packages should be updated for best compatibility with the installed expo version:
+  expo@53.0.9 - expected version: 53.0.12
+  expo-blur@14.1.4 - expected version: ~14.1.5
+  expo-image@2.1.7 - expected version: ~2.3.0
+  expo-router@5.0.6 - expected version: ~5.1.0
+  expo-splash-screen@0.30.8 - expected version: ~0.30.9
+  expo-symbols@0.4.4 - expected version: ~0.4.5
+  expo-system-ui@5.0.7 - expected version: ~5.0.9
+  expo-web-browser@14.1.6 - expected version: ~14.2.0
+  react-native@0.79.2 - expected version: 0.79.4
+  react-native-screens@4.10.0 - expected version: ~4.11.1
+  jest-expo@53.0.5 - expected version: ~53.0.7
+Your project may not work correctly until you install the expected versions of the packages.
+▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+█ ▄▄▄▄▄ █▄▄▄ ▀ ██▄█ ▄▄▄▄▄ █
+█ █   █ ██▄▀ █ ▀▀▀█ █   █ █
+█ █▄▄▄█ ██▀▄ ▄▀▀█▀█ █▄▄▄█ █
+█▄▄▄▄▄▄▄█ ▀▄█ ▀▄█▄█▄▄▄▄▄▄▄█
+█  ▀▄▄█▄▀█▄▀█▄▀█▀▀█▄█▀█▀▀▄█
+█▄▄▀▄▄▀▄▀ ▄██▄▄▄ ▀▀███▄▀▀ █
+█ ▀▀▀ █▄▀ ▄ █▀█▄ █ ▄▀▀█▀ ██
+█ ▄ ▀ ▄▄ ▀▄▀█▀▄▀▄▀▀▄▀ ▄▀  █
+█▄█▄███▄▄ ▄▀ ▄▄   ▄▄▄  ▄▀▄█
+█ ▄▄▄▄▄ ██▀ ▀▄  █ █▄█ ███ █
+█ █   █ █ ▀ ▄ ▀█▄▄▄  ▄ █▀▀█
+█ █▄▄▄█ █▀▀▀ ▀█▄█▄▀▀▀▄█   █
+█▄▄▄▄▄▄▄█▄▄▄▄██▄▄▄█▄▄▄███▄█
+
+› Metro waiting on exp://172.31.128.47:8081
+› Scan the QR code above with Expo Go (Android) or the Camera app
+(iOS)
+
+› Web is waiting on http://localhost:8081
+
+› Using Expo Go
+› Press s │ switch to development build
+
+› Press a │ open Android
+› Press w │ open web
+
+› Press j │ open debugger
+› Press r │ reload app
+› Press m │ toggle menu
+› shift+m │ more tools
+› Press o │ open project code in your editor
+
+› Press ? │ show all commands
+
+Logs for your project will appear below. Press Ctrl+C to exit.
+λ Bundled 18450ms node_modules/expo-router/node/render.js (912 modules)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (960/9
+60)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (9
+12/912)
+Web node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+
+λ Bundled 12539ms node_modules/expo-router/node/render.js (1 module)
+λ Bundled 12533ms node_modules/expo-router/node/render.js (1 module)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (960/9
+60)
+Web node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 21216ms node_modules/expo-router/entry.js (960 modules)
+Web Bundled 15244ms node_modules/expo-router/entry.js (1 module)
+Web Bundled 15173ms node_modules/expo-router/entry.js (1 module)
+Web Bundled 10359ms node_modules/expo-router/entry.js (961 modules)
+Web Bundled 53ms node_modules/expo-router/entry.js (1 module)
+Web Bundled 56ms node_modules/expo-router/entry.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+ LOG  [web] Logs will appear in the browser console
+ LOG  [web] Logs will appear in the browser console
