@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Phone, Mail, MapPin, Building2, Users, Calendar, Tag, ChevronDown, ChevronUp, Edit } from "lucide-react";
 import type { CrmContact } from "@shared/schema";
@@ -72,31 +71,27 @@ export function ContactModal({ contact, isOpen, onClose, onEdit }: ContactModalP
           </div>
         </DialogHeader>
 
-        <div className="space-y-6 pt-4">
+        <div className="space-y-4 pt-4">
           {/* Contact Info Section */}
           <Collapsible open={contactInfoOpen} onOpenChange={setContactInfoOpen}>
             <CollapsibleTrigger asChild>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
-                <div className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-5 w-5 text-gray-500" />
-                    <h3 className="font-medium text-gray-900">CONTACT INFO</h3>
-                  </div>
-                  {contactInfoOpen ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
+              <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Phone className="h-5 w-5 text-gray-500" />
+                  <h3 className="font-medium text-gray-900">CONTACT INFO</h3>
                 </div>
+                {contactInfoOpen ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="bg-white border border-gray-200 border-t-0 rounded-b-lg p-4">
-                <div className="space-y-4">
-                  {contact.notes && (
-                    <div className="text-sm text-gray-600">
-                      {contact.notes}
-                    </div>
-                  )}
-                  <div className="text-sm text-gray-500">
-                    Detailed contact information will be displayed here once the full contact schema is integrated.
+              <div className="px-4 pb-4 space-y-3">
+                {contact.notes && (
+                  <div className="text-sm text-gray-700">
+                    {contact.notes}
                   </div>
+                )}
+                <div className="text-sm text-gray-500">
+                  Detailed contact information will be displayed here once the full contact schema is integrated.
                 </div>
               </div>
             </CollapsibleContent>
@@ -105,33 +100,25 @@ export function ContactModal({ contact, isOpen, onClose, onEdit }: ContactModalP
           {/* Relationships & Groups Section */}
           <Collapsible open={relationshipsOpen} onOpenChange={setRelationshipsOpen}>
             <CollapsibleTrigger asChild>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
-                <div className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <Users className="h-5 w-5 text-gray-500" />
-                    <h3 className="font-medium text-gray-900">RELATIONSHIPS & GROUPS</h3>
-                  </div>
-                  {relationshipsOpen ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
+              <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Users className="h-5 w-5 text-gray-500" />
+                  <h3 className="font-medium text-gray-900">RELATIONSHIPS & GROUPS</h3>
                 </div>
+                {relationshipsOpen ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="bg-white border border-gray-200 border-t-0 rounded-b-lg p-4">
-                <div className="space-y-4">
-                  {contact.relationship && (
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Users className="h-4 w-4 text-blue-500" />
-                        <span className="text-sm font-medium">Relationship</span>
-                      </div>
-                      <div className="ml-6">
-                        <Badge variant="outline">{contact.relationship}</Badge>
-                      </div>
-                    </div>
-                  )}
-                  <div className="text-sm text-gray-500">
-                    Company affiliations and group memberships will be displayed here.
+              <div className="px-4 pb-4 space-y-3">
+                {contact.relationship && (
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm font-medium text-gray-700">Relationship</span>
+                    <span className="text-sm text-gray-900 ml-2">{contact.relationship}</span>
                   </div>
+                )}
+                <div className="text-sm text-gray-500">
+                  Company affiliations and group memberships will be displayed here.
                 </div>
               </div>
             </CollapsibleContent>
@@ -140,44 +127,39 @@ export function ContactModal({ contact, isOpen, onClose, onEdit }: ContactModalP
           {/* Personal Details Section */}
           <Collapsible open={personalDetailsOpen} onOpenChange={setPersonalDetailsOpen}>
             <CollapsibleTrigger asChild>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
-                <div className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <Calendar className="h-5 w-5 text-gray-500" />
-                    <h3 className="font-medium text-gray-900">PERSONAL DETAILS</h3>
-                  </div>
-                  {personalDetailsOpen ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
+              <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-5 w-5 text-gray-500" />
+                  <h3 className="font-medium text-gray-900">PERSONAL DETAILS</h3>
                 </div>
+                {personalDetailsOpen ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="bg-white border border-gray-200 border-t-0 rounded-b-lg p-4">
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Calendar className="h-4 w-4 text-purple-500" />
-                      <span className="text-sm font-medium">Created</span>
-                    </div>
-                    <div className="ml-6 text-sm text-gray-600">
-                      {new Date(contact.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    Special dates, interests, and other personal details will be displayed here.
-                  </div>
+              <div className="px-4 pb-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-purple-500" />
+                  <span className="text-sm font-medium text-gray-700">Created</span>
+                  <span className="text-sm text-gray-900 ml-2">
+                    {new Date(contact.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="text-sm text-gray-500">
+                  Special dates, interests, and other personal details will be displayed here.
                 </div>
               </div>
             </CollapsibleContent>
           </Collapsible>
 
           {/* Activity Section */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg">
-            <div className="p-4 border-b border-gray-200">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 px-4">
+              <Tag className="h-5 w-5 text-gray-500" />
               <h3 className="font-medium text-gray-900">ACTIVITY</h3>
             </div>
             
             {/* Tab Navigation */}
-            <div className="flex border-b border-gray-200">
+            <div className="flex gap-2 px-4">
               {[
                 { id: 'tasks', label: 'Tasks', icon: Tag },
                 { id: 'events', label: 'Events', icon: Calendar },
@@ -187,10 +169,10 @@ export function ContactModal({ contact, isOpen, onClose, onEdit }: ContactModalP
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-full transition-colors ${
                     activeTab === tab.id
-                      ? 'border-green-500 text-green-600 bg-white'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
                   <tab.icon className="h-4 w-4" />
@@ -200,7 +182,7 @@ export function ContactModal({ contact, isOpen, onClose, onEdit }: ContactModalP
             </div>
 
             {/* Tab Content */}
-            <div className="p-4 bg-white rounded-b-lg">
+            <div className="px-4">
               {activeTab === 'tasks' && (
                 <div className="text-center py-8">
                   <Tag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
