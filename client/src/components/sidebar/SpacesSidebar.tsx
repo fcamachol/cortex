@@ -313,14 +313,14 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                 className="opacity-0 group-hover:opacity-60 hover:opacity-100 cursor-grab active:cursor-grabbing"
                 onClick={(e) => e.stopPropagation()}
               >
-                <GripVertical className="h-3 w-3 text-gray-400" />
+                <GripVertical className="h-2.5 w-2.5 text-gray-400" />
               </div>
 
               {/* Expand/Collapse Button */}
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-4 w-4 p-0 opacity-60 hover:opacity-100"
+                className="h-3 w-3 p-0 opacity-60 hover:opacity-100"
                 onClick={(e) => {
                   e.stopPropagation();
                   if (hasChildren || hasItems) {
@@ -329,18 +329,18 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                 }}
               >
                 {(hasChildren || hasItems) ? (
-                  isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />
+                  isExpanded ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronRight className="h-2.5 w-2.5" />
                 ) : (
-                  <div className="w-3 h-3" />
+                  <div className="w-2.5 h-2.5" />
                 )}
               </Button>
 
               {/* Space Icon */}
               <div 
-                className="w-5 h-5 rounded flex items-center justify-center text-xs flex-shrink-0"
+                className="w-4 h-4 rounded flex items-center justify-center text-xs flex-shrink-0"
                 style={{ backgroundColor: space.color || '#3B82F6', color: 'white' }}
               >
-                {space.icon || (hasChildren ? <FolderOpen className="h-3 w-3" /> : <Folder className="h-3 w-3" />)}
+                {space.icon || (hasChildren ? <FolderOpen className="h-2.5 w-2.5" /> : <Folder className="h-2.5 w-2.5" />)}
               </div>
 
               {/* Space Name */}
@@ -350,7 +350,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
 
               {/* Item Count Badge */}
               {hasItems && (
-                <Badge variant="outline" className="text-xs h-4 px-1 opacity-60">
+                <Badge variant="outline" className="text-xs h-3 px-1 opacity-60">
                   {items.length}
                 </Badge>
               )}
@@ -358,17 +358,17 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
               {/* Category badge removed per user request - redundant with section headers */}
 
               {/* Actions */}
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0"
+                  className="h-5 w-5 p-0"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleCreateSubspace(space.spaceId);
                   }}
                 >
-                  <Plus className="h-3 w-3" />
+                  <Plus className="h-2.5 w-2.5" />
                 </Button>
                 
                 <DropdownMenu>
@@ -376,10 +376,10 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 w-6 p-0"
+                      className="h-5 w-5 p-0"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <MoreHorizontal className="h-3 w-3" />
+                      <MoreHorizontal className="h-2.5 w-2.5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -497,10 +497,10 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className={`space-y-1 mt-1 ${
+                    className={`space-y-0.5 mt-0.5 ${
                       snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/20 rounded-md p-1' : ''
                     }`}
-                    style={{ marginLeft: `${12 + level * 16}px` }}
+                    style={{ marginLeft: `${8 + level * 12}px` }}
                   >
                     {children.map((childSpace, childIndex) => (
                       <div key={childSpace.spaceId}>
