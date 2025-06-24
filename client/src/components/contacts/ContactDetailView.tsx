@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, Edit, Phone, Mail, MapPin, Calendar, Building2, Users, Heart, Tag } from "lucide-react";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { X, Edit, Phone, Mail, MapPin, Calendar, Building2, Users, Heart, Tag, Plus, ArrowRight, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,9 +9,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import ContactForm from "./ContactForm";
 import { apiRequest } from "@/lib/queryClient";
 import type { ContactWithRelations } from "@shared/schema";
+
+// Relationship form schema
+const relationshipFormSchema = z.object({
+  contactBId: z.number().min(1, "Contact is required"),
+  relationshipAToB: z.string().min(1, "Relationship type is required"),
+  relationshipBToA: z.string().optional(),
+});
+
+type RelationshipFormData = z.infer<typeof relationshipFormSchema>;
 
 interface ContactDetailViewProps {
   contact: ContactWithRelations;

@@ -35,6 +35,9 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
     staleTime: 30000,
   });
 
+  // Ensure contacts is always an array
+  const contactsList = Array.isArray(contacts) ? contacts : [];
+
   // Fetch upcoming special dates
   const { data: upcomingDates = [] } = useQuery({
     queryKey: ['/api/crm/contacts/upcoming-dates', userId],
@@ -69,6 +72,11 @@ export default function ContactsPage({ userId }: ContactsPageProps) {
   // Filter contacts based on active tab
   const getFilteredContacts = () => {
     const contactsList = searchTerm.length >= 2 ? searchResults : contacts;
+    
+    // Ensure we have an array
+    if (!Array.isArray(contactsList)) {
+      return [];
+    }
     
     switch (activeTab) {
       case "family":
