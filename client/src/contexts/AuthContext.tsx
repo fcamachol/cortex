@@ -24,6 +24,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check if user is already authenticated on app start
   useEffect(() => {
+    // For development, bypass authentication
+    if (process.env.NODE_ENV === 'development') {
+      setUser({ userId: 'dev-user', email: 'dev@example.com', fullName: 'Development User' });
+      setIsLoading(false);
+      return;
+    }
+    
     const token = localStorage.getItem('auth_token');
     if (token) {
       checkAuthStatus();
