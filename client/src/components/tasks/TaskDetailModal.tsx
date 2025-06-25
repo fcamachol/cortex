@@ -75,6 +75,10 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
   const [messageLoading, setMessageLoading] = useState(false);
   const [messageError, setMessageError] = useState<any>(null);
   
+  // State for message replies
+  const [messageReplies, setMessageReplies] = useState<any[]>([]);
+  const [repliesLoading, setRepliesLoading] = useState(false);
+  
 
 
   // State for chat information
@@ -129,6 +133,42 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
     };
 
     fetchMessageData();
+  }, [task?.triggeringMessageId, task?.instanceId]);
+
+  // Fetch message replies when task changes
+  useEffect(() => {
+    const fetchMessageReplies = async () => {
+      if (!task?.triggeringMessageId || !task?.instanceId) {
+        setMessageReplies([]);
+        return;
+      }
+
+      setRepliesLoading(true);
+
+      try {
+        const response = await fetch(`/api/whatsapp/message-replies?originalMessageId=${task.triggeringMessageId}&instanceId=${task.instanceId}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch replies: ${response.status}`);
+        }
+
+        const replies = await response.json();
+        setMessageReplies(replies);
+      } catch (error: any) {
+        console.error('Error fetching message replies:', error);
+        setMessageReplies([]);
+      } finally {
+        setRepliesLoading(false);
+      }
+    };
+
+    fetchMessageReplies();
   }, [task?.triggeringMessageId, task?.instanceId]);
 
 
@@ -345,6 +385,30 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
       }
       
 
+      
+      // Refresh replies to show the new reply
+      setTimeout(async () => {
+        if (task?.triggeringMessageId && task?.instanceId) {
+          setRepliesLoading(true);
+          try {
+            const response = await fetch(`/api/whatsapp/message-replies?originalMessageId=${task.triggeringMessageId}&instanceId=${task.instanceId}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42`, {
+              method: 'GET',
+              headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+              }
+            });
+            if (response.ok) {
+              const replies = await response.json();
+              setMessageReplies(replies);
+            }
+          } catch (error) {
+            console.error('Error refreshing replies:', error);
+          } finally {
+            setRepliesLoading(false);
+          }
+        }
+      }, 2000);
       
       setReplyMessage("");
       setIsReplying(false);
