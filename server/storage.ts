@@ -364,7 +364,11 @@ class DatabaseStorage {
         const updateSet: Partial<InsertWhatsappContact> = {};
         
         // Always set lastUpdatedAt for updates
-        updateSet.lastUpdatedAt = new Date();
+        if (Object.keys(updateSet).length === 0) {
+            updateSet.lastUpdatedAt = new Date();
+        } else {
+            updateSet.lastUpdatedAt = new Date();
+        }
         
         // Only update push name if the new one is better than existing
         if (contact.pushName && contact.pushName !== contact.jid) {

@@ -522,7 +522,9 @@ export async function registerRoutes(app: Express): Promise<void> {
               jid: systemContactJid,
               instanceId,
               pushName: 'System',
-              isMe: false
+              isBusiness: false,
+              isMe: false,
+              isBlocked: false
             });
             senderJid = systemContactJid;
           } catch (contactError) {
