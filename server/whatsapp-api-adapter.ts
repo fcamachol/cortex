@@ -892,6 +892,62 @@ export const WebhookApiAdapter = {
         }
     },
 
+    async handleDirectReaction(instanceId: string, data: any): Promise<void> {
+        try {
+            console.log(`👍 [${instanceId}] Processing direct reaction event`);
+            console.log('Reaction data:', JSON.stringify(data, null, 2));
+            
+            // Extract reaction details from the data
+            const reactionText = data.reaction?.text;
+            const originalMessageId = data.reaction?.key?.id;
+            const reactorJid = data.key?.remoteJid;
+            const reactionMessageId = data.key?.id;
+            
+            if (!reactionText || !originalMessageId || !reactorJid) {
+                console.log('Missing required reaction data, skipping');
+                return;
+            }
+            
+            console.log(`🎯 Processing reaction: ${reactionText} on message ${originalMessageId} by ${reactorJid}`);
+            
+            // Store the reaction in database
+            const reactionData = {
+                reactionId: reactionMessageId,
+                messageId: originalMessageId,
+                instanceId: instanceId,
+                reactorJid: reactorJid,
+                reactionText: reactionText,
+                reactionTimestamp: data.messageTimestamp ? new Date(data.messageTimestamp * 1000) : new Date()
+            };
+            
+            await storage.upsertWhatsappMessageReaction(reactionData);
+            
+            // Process actions based on reaction
+            const messageContext = {
+                messageId: originalMessageId,
+                instanceId: instanceId,
+                chatId: reactorJid,
+                senderJid: reactorJid,
+                content: `Reaction: ${reactionText}`,
+                hashtags: [],
+                keywords: [],
+                timestamp: new Date(),
+                fromMe: false,
+                reaction: reactionText,
+                originalSenderJid: reactorJid
+            };
+            
+            // Import and trigger action processing
+            const { ActionsEngine } = await import('./actions-engine');
+            await ActionsEngine.processMessageForActions(messageContext);
+            
+            console.log(`✅ [${instanceId}] Reaction ${reactionText} processed successfully`);
+            
+        } catch (error) {
+            console.error(`❌ [${instanceId}] Error processing direct reaction:`, error);
+        }
+    },
+
     async ensureDependenciesForMessage(cleanMessage: WhatsappMessages, rawMessage: any): Promise<void> {
         const isGroup = cleanMessage.chatId.endsWith('@g.us');
         
