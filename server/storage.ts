@@ -806,6 +806,36 @@ class DatabaseStorage {
         return { id: 'placeholder', ...eventData };
     }
 
+    // CRM Calendar Events - Source of truth for internal app events
+    async createCrmCalendarEvent(eventData: any): Promise<any> {
+        try {
+            console.log('📅 Creating calendar event in CRM schema:', eventData.title);
+            
+            const result = await db.execute(sql`
+                INSERT INTO crm.calendar_events (
+                    owner_user_id, title, description, start_time, end_time, 
+                    is_all_day, location, meet_link, status, priority, 
+                    reminder_minutes, instance_id, created_at, updated_at
+                )
+                VALUES (
+                    ${eventData.ownerUserId}, ${eventData.title}, ${eventData.description}, 
+                    ${eventData.startTime}, ${eventData.endTime}, ${eventData.isAllDay || false}, 
+                    ${eventData.location}, ${eventData.meetLink}, ${eventData.status || 'confirmed'}, 
+                    ${eventData.priority || 'normal'}, ${eventData.reminderMinutes || 15}, 
+                    ${eventData.instanceId}, NOW(), NOW()
+                )
+                RETURNING *
+            `);
+            
+            const createdEvent = result.rows?.[0] || result[0];
+            console.log('✅ CRM calendar event created successfully:', createdEvent.title || eventData.title);
+            return createdEvent;
+        } catch (error) {
+            console.error('❌ Error creating CRM calendar event:', error);
+            throw error;
+        }
+    }
+
     async updateCalendarEvent(id: string, eventData: any): Promise<any> {
         return { id, ...eventData };
     }

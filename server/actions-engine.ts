@@ -377,22 +377,28 @@ export class ActionsEngine {
     const nlpAnalysis = ActionsEngine.analyzeMessageIntelligently(fullContextText);
     
     try {
-      // Use calendar service to create the event
-      const calendarEvent = await calendarService.createEventFromMessage(
-        '7804247f-3ae8-4eb2-8c6d-2c44f967ad42', // Default user ID
-        conversationContext || context.content,
-        {
-          suggestedTitle: eventTitle,
-          suggestedDueDate: nlpAnalysis.suggestedDueDate,
-          extractedLocation: nlpAnalysis.extractedLocation,
-          needsMeetLink: nlpAnalysis.needsMeetLink
-        }
-      );
+      // Create event in CRM schema first (source of truth)
+      const eventData = {
+        ownerUserId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42',
+        title: eventTitle,
+        description: `Event created from WhatsApp message:\n\n"${conversationContext || context.content}"`,
+        startTime: nlpAnalysis.suggestedDueDate || new Date(Date.now() + 60*60*1000),
+        endTime: new Date((nlpAnalysis.suggestedDueDate || new Date(Date.now() + 60*60*1000)).getTime() + 60*60*1000),
+        isAllDay: false,
+        location: nlpAnalysis.extractedLocation,
+        meetLink: nlpAnalysis.needsMeetLink ? 'To be added' : null,
+        status: 'confirmed',
+        priority: nlpAnalysis.isUrgent ? 'high' : 'normal',
+        reminderMinutes: 15,
+        instanceId: context.instanceId
+      };
 
-      console.log('✅ Calendar event created successfully:', calendarEvent);
+      const crmEvent = await storage.createCrmCalendarEvent(eventData);
+
+      console.log('✅ Calendar event created in CRM schema:', crmEvent.title || eventTitle);
       return { 
         success: true, 
-        data: calendarEvent, 
+        data: crmEvent, 
         nlpEnhanced: true, 
         conversationAware: !!conversationContext 
       };
