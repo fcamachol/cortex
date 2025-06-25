@@ -61,7 +61,7 @@ export const SseManager = {
         });
 
         // Send the event to all connected clients
-        for (const [clientId, res] of sseConnections.entries()) {
+        for (const [clientId, res] of Array.from(sseConnections.entries())) {
             try {
                 res.write(`data: ${messageData}\n\n`);
             } catch (error) {
@@ -90,7 +90,7 @@ export const SseManager = {
         });
 
         // Send the event to all connected clients
-        for (const [clientId, res] of sseConnections.entries()) {
+        for (const [clientId, res] of Array.from(sseConnections.entries())) {
             try {
                 res.write(`data: ${taskData}\n\n`);
             } catch (error) {
@@ -119,7 +119,7 @@ export const SseManager = {
         });
 
         // Send the event to all connected clients
-        for (const [clientId, res] of sseConnections.entries()) {
+        for (const [clientId, res] of Array.from(sseConnections.entries())) {
             try {
                 res.write(`data: ${reactionData}\n\n`);
             } catch (error) {
@@ -146,7 +146,7 @@ export const SseManager = {
         });
 
         // Send the event to all connected clients
-        for (const [clientId, res] of sseConnections.entries()) {
+        for (const [clientId, res] of Array.from(sseConnections.entries())) {
             try {
                 res.write(`data: ${chatData}\n\n`);
             } catch (error) {
