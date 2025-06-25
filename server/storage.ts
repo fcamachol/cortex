@@ -12,7 +12,7 @@ import {
     // Actions Schema
     actionRules, actionExecutions,
     // CRM Schema - Comprehensive Contacts Module
-    crmProjects, crmTasks, crmCompanies,
+    crmProjects, crmTasks, crmCompanies, crmCalendarEvents,
     crmContacts, crmContactPhones, crmContactEmails, crmContactAddresses, 
     crmContactAliases, crmSpecialDates, crmInterests, crmContactInterests,
     crmCompanyMembers, crmContactGroups, crmContactGroupMembers, crmContactRelationships,

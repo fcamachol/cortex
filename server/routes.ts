@@ -2277,6 +2277,34 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // CRM Calendar Events - CRUD operations for CRM calendar events
+  app.get('/api/crm/calendar-events', async (req, res) => {
+    try {
+      console.log('📅 Fetching CRM calendar events...');
+      const result = await db.execute(sql`
+        SELECT * FROM crm.calendar_events 
+        ORDER BY created_at DESC
+      `);
+      const events = result.rows || result;
+      console.log('📅 Found events:', events.length);
+      res.json(events);
+    } catch (error) {
+      console.error('❌ Error fetching CRM calendar events:', error);
+      res.status(500).json({ error: 'Failed to fetch CRM calendar events' });
+    }
+  });
+
+  app.post('/api/crm/calendar-events', async (req, res) => {
+    try {
+      const eventData = req.body;
+      const createdEvent = await storage.createCalendarEvent(eventData);
+      res.json(createdEvent);
+    } catch (error) {
+      console.error('Error creating CRM calendar event:', error);
+      res.status(500).json({ error: 'Failed to create CRM calendar event' });
+    }
+  });
+
   // WhatsApp number validation endpoint
   app.post('/api/whatsapp/validate-number', async (req, res) => {
     try {
