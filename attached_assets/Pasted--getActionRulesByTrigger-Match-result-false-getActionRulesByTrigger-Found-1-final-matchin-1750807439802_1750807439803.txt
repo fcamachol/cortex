@@ -1,0 +1,86 @@
+
+🔍 [getActionRulesByTrigger] Match result: false
+🔍 [getActionRulesByTrigger] Found 1 final matching rules
+🔍 Debug: Found 1 rules for reaction:📝:live-test-1750199771
+🔍 Rules data: [
+  {
+    ruleId: '3a54ac25-d3fa-4be6-b379-0f64e3e14705',
+    userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42',
+    workspaceId: null,
+    spaceId: null,
+    ruleName: 'Demo Note Saver',
+    description: 'Saves important messages as notes',
+    isActive: true,
+    triggerType: 'reaction',
+    triggerConditions: { reactions: [Array] },
+    actionType: 'create_note',
+    actionConfig: {
+      title: 'Note from {{sender}}',
+      content: '{{content}}',
+      spaceId: 1
+    },
+    instanceFilters: null,
+    contactFilters: null,
+    performerFilters: null,
+    timeFilters: null,
+    cooldownMinutes: 0,
+    maxExecutionsPerDay: 100,
+    totalExecutions: 0,
+    lastExecutedAt: null,
+    createdAt: 2025-06-24T22:58:20.643Z,
+    updatedAt: 2025-06-24T23:09:00.947Z
+  }
+]
+🔍 Rule field debug: {
+  ruleName: 'Demo Note Saver',
+  actionType: 'create_note',
+  keys: [
+    'ruleId',              'userId',
+    'workspaceId',         'spaceId',
+    'ruleName',            'description',
+    'isActive',            'triggerType',
+    'triggerConditions',   'actionType',
+    'actionConfig',        'instanceFilters',
+    'contactFilters',      'performerFilters',
+    'timeFilters',         'cooldownMinutes',
+    'maxExecutionsPerDay', 'totalExecutions',
+    'lastExecutedAt',      'createdAt',
+    'updatedAt'
+  ]
+}
+⚡ Executing action rule: Demo Note Saver (create_note)
+🎯 Executing action: create_note
+📝 Creating note from action trigger
+🔧 Processing template variables with context: {
+  messageId: '3A5C361CDB2A02920097',
+  content: 'Gtd 12',
+  reactorJid: '5215579188699@s.whatsapp.net',
+  senderJid: '5215579188699@s.whatsapp.net'
+}
+🔧 Template replacement: "Note from {{sender}}" -> "Note from 5215579188699@s.whatsapp.net"
+🔧 Template replacement: "{{content}}" -> "Gtd 12"
+📝 Note data prepared: {
+  title: 'Note from 5215579188699@s.whatsapp.net',
+  content: 'Gtd 12',
+  spaceId: 1,
+  userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42',
+  instanceId: 'live-test-1750199771',
+  triggeringMessageId: '3A5C361CDB2A02920097',
+  relatedChatJid: '5215579188699@s.whatsapp.net'
+}
+Error creating note: ReferenceError: spaceItems is not defined
+    at DatabaseStorage.createNote (/home/runner/workspace/server/storage.ts:2716:25)
+    at Object.createNoteAction (/home/runner/workspace/server/action-service.ts:152:47)
+    at Object.executeAction (/home/runner/workspace/server/action-service.ts:115:28)
+    at Object.triggerAction (/home/runner/workspace/server/action-service.ts:94:28)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.processReaction (/home/runner/workspace/server/action-service.ts:51:13)
+❌ Error creating note: ReferenceError: spaceItems is not defined
+    at DatabaseStorage.createNote (/home/runner/workspace/server/storage.ts:2716:25)
+    at Object.createNoteAction (/home/runner/workspace/server/action-service.ts:152:47)
+    at Object.executeAction (/home/runner/workspace/server/action-service.ts:115:28)
+    at Object.triggerAction (/home/runner/workspace/server/action-service.ts:94:28)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.processReaction (/home/runner/workspace/server/action-service.ts:51:13)
+GET /api/whatsapp/conversations/7804247f-3ae8-4eb2-8c6d-2c44f967ad42 304 
+GET /api/whatsapp/conversations/7804247f-3ae8-4eb2-8c6d-2c44f967ad42 304 

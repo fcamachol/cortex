@@ -12,7 +12,7 @@ import {
     // Actions Schema
     actionRules,
     // CRM Schema - Comprehensive Contacts Module
-    crmProjects, crmTasks, crmCompanies, 
+    crmProjects, crmTasks, crmCompanies, notes,
     crmContacts, crmContactPhones, crmContactEmails, crmContactAddresses, 
     crmContactAliases, crmSpecialDates, crmInterests, crmContactInterests,
     crmCompanyMembers, crmContactGroups, crmContactGroupMembers, crmContactRelationships,
@@ -2695,32 +2695,33 @@ class DatabaseStorage {
 
     async createNote(noteData: any): Promise<any> {
         try {
-            const spaceItem = {
-                spaceId: noteData.spaceId || 1,
-                itemType: 'note' as const,
+            const note = {
                 title: noteData.title,
                 content: noteData.content,
-                status: 'active',
+                category: 'automation',
                 priority: 'medium',
+                status: 'active',
                 createdBy: noteData.userId,
                 assignedTo: noteData.userId,
                 metadata: {
                     instanceId: noteData.instanceId,
                     triggeringMessageId: noteData.triggeringMessageId,
                     relatedChatJid: noteData.relatedChatJid,
-                    autoCreated: true
+                    autoCreated: true,
+                    spaceId: noteData.spaceId,
+                    source: 'whatsapp-reaction'
                 }
             };
 
-            const [createdItem] = await db
-                .insert(spaceItems)
-                .values(spaceItem)
+            const [createdNote] = await db
+                .insert(notes)
+                .values(note)
                 .returning();
 
-            console.log('Note created successfully:', createdItem.title);
-            return createdItem;
+            console.log('✅ Note created successfully in CRM schema:', createdNote.title);
+            return createdNote;
         } catch (error) {
-            console.error('Error creating note:', error);
+            console.error('❌ Error creating note in CRM schema:', error);
             throw error;
         }
     }
