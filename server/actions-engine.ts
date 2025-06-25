@@ -47,6 +47,8 @@ export class ActionsEngine {
         return await ActionsEngine.createProject(config, context);
       case 'create_note':
         return await ActionsEngine.createNote(config, context);
+      case 'create_financial_record':
+        return await ActionsEngine.createFinancialRecord(config, context);
       case 'store_file':
         return await ActionsEngine.storeFile(config, context);
       case 'create_document':
@@ -427,6 +429,86 @@ export class ActionsEngine {
     console.log('🔔 Sending notification');
     // Implementation would send notification
     return { success: true, notification: config.notification };
+  }
+
+  private static async createFinancialRecord(config: any, context: TriggerContext): Promise<any> {
+    console.log('💰 Creating financial record (payable bill) with automatic task generation');
+    
+    // Process config templates
+    const processedConfig = {
+      description: ActionsEngine.interpolateTemplate(config.description || 'Bill from WhatsApp message', context),
+      amount: config.amount || 0,
+      vendor: ActionsEngine.interpolateTemplate(config.vendor || 'Unknown Vendor', context),
+      dueDate: config.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      category: config.category || 'general'
+    };
+
+    console.log('🔄 Processed financial record config:', processedConfig);
+
+    try {
+      // 1. Create the authoritative financial record (payable bill) first
+      const payableData = {
+        description: processedConfig.description,
+        amount: processedConfig.amount,
+        vendor: processedConfig.vendor,
+        dueDate: processedConfig.dueDate,
+        category: processedConfig.category,
+        status: 'pending',
+        instanceId: context.instanceId,
+        triggeringMessageId: context.messageId,
+        relatedChatJid: context.chatId
+      };
+
+      const payableResult = await db.execute(sql`
+        INSERT INTO finance.payables (description, amount, vendor, due_date, category, status, instance_id, triggering_message_id, related_chat_jid)
+        VALUES (${payableData.description}, ${payableData.amount}, ${payableData.vendor}, ${payableData.dueDate}, ${payableData.category}, ${payableData.status}, ${payableData.instanceId}, ${payableData.triggeringMessageId}, ${payableData.relatedChatJid})
+        RETURNING payable_id, description, amount, vendor, due_date
+      `);
+
+      const newPayable = payableResult.rows[0];
+      console.log('✅ Payable bill created:', newPayable);
+
+      // 2. Automatically create a companion task for the bill payment
+      const taskTitle = `Pay Bill: ${newPayable.vendor} - $${newPayable.amount}`;
+      const taskDescription = `Payment task for bill: ${newPayable.description}\n\nBill Details:\n- Vendor: ${newPayable.vendor}\n- Amount: $${newPayable.amount}\n- Due Date: ${new Date(newPayable.due_date).toLocaleDateString()}\n\nCreated from WhatsApp message in chat: ${context.chatId}`;
+
+      const taskData = {
+        title: taskTitle,
+        description: taskDescription,
+        priority: 'medium',
+        status: 'to_do',
+        dueDate: new Date(newPayable.due_date),
+        linkedPayableId: newPayable.payable_id,
+        instanceId: context.instanceId,
+        triggeringMessageId: context.messageId,
+        relatedChatJid: context.chatId
+      };
+
+      const taskResult = await db.execute(sql`
+        INSERT INTO crm.tasks (title, description, priority, status, due_date, linked_payable_id, instance_id, triggering_message_id, related_chat_jid)
+        VALUES (${taskData.title}, ${taskData.description}, ${taskData.priority}, ${taskData.status}, ${taskData.dueDate}, ${taskData.linkedPayableId}, ${taskData.instanceId}, ${taskData.triggeringMessageId}, ${taskData.relatedChatJid})
+        RETURNING task_id, title, description, status
+      `);
+
+      const newTask = taskResult.rows[0];
+      console.log('✅ Companion payment task created:', newTask);
+
+      // Notify clients about both creations for real-time updates
+      ActionsEngine.notifyTaskCreated(newTask);
+
+      return { 
+        success: true, 
+        data: {
+          payable: newPayable,
+          task: newTask
+        },
+        message: `Created payable bill for ${newPayable.vendor} ($${newPayable.amount}) with automatic payment task`
+      };
+
+    } catch (error) {
+      console.error('❌ Error creating financial record and task:', error);
+      return { success: false, error: String(error) };
+    }
   }
 
   static analyzeMessageIntelligently(text: string): NLPAnalysis {

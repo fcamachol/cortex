@@ -1365,7 +1365,8 @@ class DatabaseStorage {
                 createdByUserId: taskData.createdByUserId || null,
                 spaceId: taskData.spaceId || null,
                 projectId: taskData.projectId || null,
-                parentTaskId: taskData.parentTaskId || null
+                parentTaskId: taskData.parentTaskId || null,
+                linkedPayableId: taskData.linkedPayableId || null
             })
             .returning();
         return task;
@@ -1586,12 +1587,27 @@ class DatabaseStorage {
 
     async createPayable(data: any): Promise<any> {
         try {
-            // Placeholder implementation
-            return {
-                payableId: Date.now(),
-                ...data,
-                createdAt: new Date()
-            };
+            const result = await db.execute(sql`
+                INSERT INTO finance.payables (
+                    description, amount, vendor, due_date, category, status,
+                    instance_id, triggering_message_id, related_chat_jid
+                )
+                VALUES (
+                    ${data.description}, ${data.amount}, ${data.vendor}, 
+                    ${data.dueDate}, ${data.category || 'general'}, ${data.status || 'pending'},
+                    ${data.instanceId || null}, ${data.triggeringMessageId || null}, ${data.relatedChatJid || null}
+                )
+                RETURNING 
+                    payable_id as "payableId",
+                    description,
+                    amount,
+                    vendor,
+                    due_date as "dueDate",
+                    category,
+                    status,
+                    created_at as "createdAt"
+            `);
+            return result.rows[0];
         } catch (error) {
             console.error('Error creating payable:', error);
             throw error;
