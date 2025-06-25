@@ -2879,10 +2879,13 @@ class DatabaseStorage {
                 })
                 .from(actionExecutions)
                 .where(
-                    and(
-                        ruleId ? eq(actionExecutions.ruleId, ruleId) : undefined,
-                        status ? eq(actionExecutions.status, status) : undefined
-                    )
+                    ruleId && status ? 
+                        and(eq(actionExecutions.ruleId, ruleId), eq(actionExecutions.status, status)) :
+                    ruleId ? 
+                        eq(actionExecutions.ruleId, ruleId) :
+                    status ? 
+                        eq(actionExecutions.status, status) : 
+                        undefined
                 )
                 .orderBy(desc(actionExecutions.executedAt))
                 .limit(limit);
