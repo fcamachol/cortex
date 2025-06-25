@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { WebhookApiAdapter } from './whatsapp-api-adapter'; // Import the next layer
+import { webhookReliability } from './webhook-reliability';
 
 /**
  * @class WebhookController
@@ -25,24 +26,33 @@ export const WebhookController = {
             // 1. Acknowledge receipt immediately.
             res.status(200).json({ status: "received" });
 
-            // 2. Create standardized event payload for our adapter
+            // 2. Capture event with reliability system FIRST for guaranteed persistence
+            const eventId = await webhookReliability.captureWebhookEvent(
+                instanceName, 
+                eventType, 
+                eventPayload
+            );
+
+            // 3. Create standardized event payload for our adapter
             const standardizedEvent = {
                 event: eventType.replace('-', '.'), // Convert "messages-upsert" to "messages.upsert"
                 data: eventPayload.data || eventPayload, // Extract nested data if present
-                instanceId: instanceName
+                instanceId: instanceName,
+                reliabilityId: eventId
             };
 
-            console.log(`🎯 [${instanceName}] Processing webhook: ${eventType} -> ${standardizedEvent.event}`);
+            console.log(`🎯 [${instanceName}] Processing webhook: ${eventType} -> ${standardizedEvent.event} [${eventId}]`);
 
             // --- LOUD WEBHOOK DIAGNOSTICS FOR ALL EVENT TYPES ---
             console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
             console.log(`!!!    WEBHOOK EVENT: ${standardizedEvent.event.toUpperCase().padEnd(25)} !!!`);
             console.log(`!!!    INSTANCE: ${instanceName.padEnd(30)} !!!`);
+            console.log(`!!!    RELIABILITY ID: ${eventId.padEnd(25)} !!!`);
             console.log(`!!!    DATA TYPE: ${typeof standardizedEvent.data}                      !!!`);
             console.log(`!!!    RAW EVENT: ${eventType.padEnd(27)} !!!`);
             console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
 
-            // 3. Pass the raw payload to the next layer for processing asynchronously.
+            // 4. Pass the raw payload to the next layer for processing asynchronously.
             // We don't `await` this, allowing the HTTP response to be sent instantly.
             WebhookApiAdapter.processIncomingEvent(instanceName, standardizedEvent);
 

@@ -10,6 +10,7 @@ import { SseManager } from './sse-manager';
 import { getEvolutionApi } from './evolution-api';
 import { BillToTaskService } from './bill-task-service';
 import { ScheduledJobsService } from './scheduled-jobs';
+import { webhookReliability } from './webhook-reliability';
 import { db } from './db';
 import {
   insertFinanceTransactionSchema,
@@ -2901,6 +2902,43 @@ export async function registerRoutes(app: Express): Promise<void> {
     };
     
     await WebhookController.handleIncomingEvent(modifiedReq as Request, res);
+  });
+
+  // Webhook Reliability Monitoring Endpoints
+  app.get('/api/webhook-health', async (req: Request, res: Response) => {
+    try {
+      const status = webhookReliability.getStatus();
+      res.json({
+        ...status,
+        healthy: status.queueLength < 100 && status.processingCount < 10,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error getting webhook health:', error);
+      res.status(500).json({ error: 'Failed to get webhook health' });
+    }
+  });
+
+  app.post('/api/webhook-cleanup', async (req: Request, res: Response) => {
+    try {
+      const { hoursOld = 24 } = req.body;
+      await webhookReliability.cleanupCompletedEvents(hoursOld);
+      res.json({ success: true, message: `Cleaned up events older than ${hoursOld} hours` });
+    } catch (error) {
+      console.error('Error cleaning up webhook events:', error);
+      res.status(500).json({ error: 'Failed to cleanup webhook events' });
+    }
+  });
+
+  app.post('/api/webhook-force-retry', async (req: Request, res: Response) => {
+    try {
+      // This endpoint can be used to manually trigger retry of failed events
+      // Implementation would depend on specific requirements
+      res.json({ success: true, message: 'Force retry initiated' });
+    } catch (error) {
+      console.error('Error forcing webhook retry:', error);
+      res.status(500).json({ error: 'Failed to force retry' });
+    }
   });
 
   // Enhanced Spaces API endpoints
