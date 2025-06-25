@@ -124,7 +124,18 @@ export const WebhookApiAdapter = {
             const storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
             console.log(`✅ [${instanceId}] Sent message stored: ${storedMessage.messageId}`);
             
+            // Notify real-time clients of sent message AND conversation update
             SseManager.notifyClientsOfNewMessage(storedMessage);
+            SseManager.notifyClientsOfChatUpdate({
+                chatId: cleanMessage.chatId,
+                instanceId,
+                lastMessage: {
+                    content: cleanMessage.content,
+                    timestamp: cleanMessage.timestamp,
+                    fromMe: cleanMessage.fromMe
+                }
+            });
+            
             ActionService.processNewMessage(storedMessage);
 
         } catch (error) {
@@ -191,7 +202,18 @@ export const WebhookApiAdapter = {
                     await this.handleNewAudioMessage(instanceId, rawMessage);
                 }
                 
+                // Notify real-time clients of new message AND conversation update
                 SseManager.notifyClientsOfNewMessage(storedMessage);
+                SseManager.notifyClientsOfChatUpdate({
+                    chatId: cleanMessage.chatId,
+                    instanceId,
+                    lastMessage: {
+                        content: cleanMessage.content,
+                        timestamp: cleanMessage.timestamp,
+                        fromMe: cleanMessage.fromMe
+                    }
+                });
+                
                 ActionService.processNewMessage(storedMessage);
 
             } catch (error) {

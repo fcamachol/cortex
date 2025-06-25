@@ -522,13 +522,30 @@ export async function registerRoutes(app: Express): Promise<void> {
               jid: systemContactJid,
               instanceId,
               pushName: 'System',
-              isGroup: false,
               profilePictureUrl: null,
               isMe: false
             });
             senderJid = systemContactJid;
           } catch (contactError) {
             console.warn(`Could not create system contact, falling back to webhook: ${contactError}`);
+            
+            // Even without local storage, trigger conversation refresh for immediate UI update
+            try {
+              const { SseManager } = await import('./sse-manager');
+              SseManager.notifyClientsOfChatUpdate({
+                chatId,
+                instanceId,
+                lastMessage: {
+                  content: message,
+                  timestamp: new Date(),
+                  fromMe: true
+                }
+              });
+              console.log(`📡 [${instanceId}] SSE conversation refresh sent (webhook fallback)`);
+            } catch (sseError) {
+              console.error(`📡 [${instanceId}] Failed to send SSE update:`, sseError);
+            }
+            
             // Fall back to webhook processing - continue without immediate storage
             res.json(result.data);
             return;
@@ -559,13 +576,39 @@ export async function registerRoutes(app: Express): Promise<void> {
           const storedMessage = await storage.upsertWhatsappMessage(sentMessage);
           console.log(`✅ [${instanceId}] Sent message stored locally: ${storedMessage.messageId}`);
           
-          // Notify connected clients via SSE
+          // Immediately trigger conversation list refresh via SSE
           const { SseManager } = await import('./sse-manager');
           SseManager.notifyClientsOfNewMessage(storedMessage);
-          console.log(`📡 [${instanceId}] SSE notification sent for message: ${storedMessage.messageId}`);
+          SseManager.notifyClientsOfChatUpdate({
+            chatId,
+            instanceId,
+            lastMessage: {
+              content: message,
+              timestamp: new Date(),
+              fromMe: true
+            }
+          });
+          console.log(`📡 [${instanceId}] SSE notifications sent for message: ${storedMessage.messageId}`);
+          
         } catch (localStorageError) {
           console.error(`⚠️ [${instanceId}] Failed to store sent message locally:`, localStorageError);
-          // Continue anyway - the webhook will eventually catch it
+          
+          // Even if local storage fails, still trigger conversation refresh
+          try {
+            const { SseManager } = await import('./sse-manager');
+            SseManager.notifyClientsOfChatUpdate({
+              chatId,
+              instanceId,
+              lastMessage: {
+                content: message,
+                timestamp: new Date(),
+                fromMe: true
+              }
+            });
+            console.log(`📡 [${instanceId}] SSE conversation refresh sent despite storage failure`);
+          } catch (sseError) {
+            console.error(`📡 [${instanceId}] Failed to send SSE update:`, sseError);
+          }
         }
         
         res.json(result.data);
