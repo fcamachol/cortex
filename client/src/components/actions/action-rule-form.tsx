@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const actionRuleSchema = z.object({
   ruleName: z.string().min(1, "Rule name is required"),
@@ -83,6 +83,9 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
         title: "Rule created",
         description: "Action rule has been created successfully",
       });
+      // Invalidate relevant query caches
+      queryClient.invalidateQueries({ queryKey: ['/api/actions/rules'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/actions/stats'] });
       onSave();
     },
   });
@@ -94,6 +97,9 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
         title: "Rule updated",
         description: "Action rule has been updated successfully",
       });
+      // Invalidate relevant query caches
+      queryClient.invalidateQueries({ queryKey: ['/api/actions/rules'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/actions/stats'] });
       onSave();
     },
   });
