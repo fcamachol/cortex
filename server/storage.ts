@@ -12,7 +12,7 @@ import {
     // Actions Schema
     actionRules,
     // CRM Schema - Comprehensive Contacts Module
-    crmProjects, crmTasks, crmCompanies, notes,
+    crmProjects, crmTasks, crmCompanies,
     crmContacts, crmContactPhones, crmContactEmails, crmContactAddresses, 
     crmContactAliases, crmSpecialDates, crmInterests, crmContactInterests,
     crmCompanyMembers, crmContactGroups, crmContactGroupMembers, crmContactRelationships,
@@ -2713,10 +2713,14 @@ class DatabaseStorage {
                 }
             };
 
-            const [createdNote] = await db
-                .insert(notes)
-                .values(note)
-                .returning();
+            // Use raw SQL to insert into CRM notes table
+            const result = await db.execute(sql`
+                INSERT INTO crm.notes (title, content, created_by_user_id, instance_id, space_id, created_at, updated_at)
+                VALUES (${noteData.title}, ${noteData.content}, ${noteData.userId}, ${noteData.instanceId}, ${noteData.spaceId || 1}, NOW(), NOW())
+                RETURNING *
+            `);
+            
+            const createdNote = result[0];
 
             console.log('✅ Note created successfully in CRM schema:', createdNote.title);
             return createdNote;
