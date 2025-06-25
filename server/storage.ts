@@ -10,7 +10,7 @@ import {
     // Legacy Schema
     tasks, contacts,
     // Actions Schema
-    actionRules,
+    actionRules, actionExecutions,
     // CRM Schema - Comprehensive Contacts Module
     crmProjects, crmTasks, crmCompanies,
     crmContacts, crmContactPhones, crmContactEmails, crmContactAddresses, 
