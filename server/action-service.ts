@@ -16,13 +16,19 @@ export const ActionService = {
 
     async processNewMessage(storedMessage: any): Promise<void> {
         try {
+            console.log(`🔍 Processing new message for actions: ${storedMessage.messageId}`);
+            
             // Process business logic with the stored message
             if (storedMessage.quotedMessageId) {
                 this.handleReplyToContextMessage(storedMessage.instanceId, storedMessage);
             }
 
             if (storedMessage.content) {
+                // Process hashtag triggers
                 this.processHashtagTriggers(storedMessage);
+                
+                // Process keyword triggers for financial automation
+                await this.processKeywordTriggers(storedMessage);
             }
         } catch (error) {
             console.error(`❌ Error processing new message ${storedMessage.messageId}:`, error);
