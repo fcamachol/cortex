@@ -361,14 +361,7 @@ class DatabaseStorage {
         const existing = existingContact[0];
         
         // Build the update object dynamically to avoid undefined values
-        const updateSet: Partial<InsertWhatsappContact> = {};
-        
-        // Always set lastUpdatedAt for updates
-        if (Object.keys(updateSet).length === 0) {
-            updateSet.lastUpdatedAt = new Date();
-        } else {
-            updateSet.lastUpdatedAt = new Date();
-        }
+        const updateSet: any = {};
         
         // Only update push name if the new one is better than existing
         if (contact.pushName && contact.pushName !== contact.jid) {
@@ -386,6 +379,17 @@ class DatabaseStorage {
         if (contact.verifiedName) updateSet.verifiedName = contact.verifiedName;
         if (typeof contact.isBusiness === 'boolean') updateSet.isBusiness = contact.isBusiness;
         if (typeof contact.isBlocked === 'boolean') updateSet.isBlocked = contact.isBlocked;
+        
+        // Always update the timestamp
+        updateSet.lastUpdatedAt = new Date();
+
+        // If no meaningful updates, just ensure we have something to update
+        if (Object.keys(updateSet).length === 1) {
+            // Only timestamp, force at least one field update
+            if (!updateSet.pushName && contact.pushName) {
+                updateSet.pushName = contact.pushName;
+            }
+        }
 
         const [result] = await db.insert(whatsappContacts)
             .values(contact)
