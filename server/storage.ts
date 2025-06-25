@@ -2713,17 +2713,10 @@ class DatabaseStorage {
                 }
             };
 
-            // Get the first available space or use ID 29 as fallback
-            const spaceResult = await db.execute(sql`
-                SELECT space_id FROM app.spaces WHERE creator_user_id = ${noteData.userId} LIMIT 1
-            `);
-            
-            const spaceId = spaceResult.length > 0 ? spaceResult[0].space_id : 29;
-            
-            // Use raw SQL to insert into CRM notes table
+            // Create note without space assignment - notes are standalone
             const result = await db.execute(sql`
-                INSERT INTO crm.notes (title, content, created_by_user_id, instance_id, space_id, created_at, updated_at)
-                VALUES (${noteData.title}, ${noteData.content}, ${noteData.userId}, ${noteData.instanceId}, ${spaceId}, NOW(), NOW())
+                INSERT INTO crm.notes (title, content, created_by_user_id, instance_id, created_at, updated_at)
+                VALUES (${noteData.title}, ${noteData.content}, ${noteData.userId}, ${noteData.instanceId}, NOW(), NOW())
                 RETURNING *
             `);
             
