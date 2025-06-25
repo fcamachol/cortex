@@ -817,10 +817,6 @@ class DatabaseStorage {
         return result.rows[0];
     }
 
-    async getProjects(): Promise<any[]> {
-        return [];
-    }
-
     async getChecklistItems(): Promise<any[]> {
         return [];
     }
@@ -883,11 +879,9 @@ class DatabaseStorage {
     async createGroupPlaceholderIfNeeded(groupJid: string, instanceId: string): Promise<void> {
         await db.insert(whatsappGroups)
             .values({
-                groupJid,
                 instanceId,
-                subject: 'Group',
-                createdAt: new Date(),
-                updatedAt: new Date()
+                groupJid,
+                subject: 'Group'
             })
             .onConflictDoNothing({
                 target: [whatsappGroups.groupJid, whatsappGroups.instanceId]
