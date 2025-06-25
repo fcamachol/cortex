@@ -1506,16 +1506,50 @@ export const WebhookApiAdapter = {
     },
     
     async mapApiPayloadToWhatsappChat(rawChat: any, instanceId: string): Promise<Omit<WhatsappChats, 'createdAt' | 'updatedAt'> | null> {
+        // --- LOUD CHAT MAPPING DIAGNOSTICS ---
+        console.log('🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍');
+        console.log('🔍                    CHAT MAPPING ANALYSIS                     🔍');
+        console.log('🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍');
+        console.log('🔍 INSTANCE ID:', instanceId);
+        console.log('🔍 RAW CHAT TYPE:', typeof rawChat);
+        console.log('🔍 FULL RAW CHAT PAYLOAD:');
+        console.log(JSON.stringify(rawChat, null, 4));
+        console.log('🔍');
+        console.log('🔍 ID FIELD ANALYSIS:');
+        console.log('🔍   - rawChat.id:', rawChat.id);
+        console.log('🔍   - rawChat.remoteJid:', rawChat.remoteJid);
+        console.log('🔍   - rawChat.chatId:', rawChat.chatId);
+        console.log('🔍   - rawChat.key?.remoteJid:', rawChat.key?.remoteJid);
+        console.log('🔍   - rawChat.key:', JSON.stringify(rawChat.key, null, 2));
+        console.log('🔍');
+        console.log('🔍 ALL CHAT PAYLOAD KEYS:', Object.keys(rawChat));
+        console.log('🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍');
+
         let chatId = rawChat.id || rawChat.remoteJid;
+        
+        console.log('🎯 EXTRACTED CHAT ID:', chatId);
+        console.log('🎯 CHAT ID TYPE:', typeof chatId);
+        console.log('🎯 INSTANCE ID:', instanceId);
+        console.log('🎯 INSTANCE ID TYPE:', typeof instanceId);
+        
         if (!chatId || typeof chatId !== 'string' || chatId.trim() === '' || !instanceId || typeof instanceId !== 'string' || instanceId.trim() === '') {
-            console.warn(`Invalid chat data - chatId: ${chatId}, instanceId: ${instanceId}`);
+            console.error('❌❌❌ CRITICAL VALIDATION FAILURE ❌❌❌');
+            console.error('❌ chatId:', chatId, 'Type:', typeof chatId);
+            console.error('❌ instanceId:', instanceId, 'Type:', typeof instanceId);
+            console.error('❌ Complete rawChat for debugging:');
+            console.error(JSON.stringify(rawChat, null, 2));
+            console.error('❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌');
             return null;
         }
 
         // Debug and fix malformed chat IDs in chat creation
         if (chatId && !chatId.includes('@') && chatId.length > 20) {
-            console.error(`🚨 MALFORMED CHAT ID IN CHAT CREATION: "${chatId}"`);
-            console.error(`Raw chat data:`, JSON.stringify(rawChat, null, 2));
+            console.error(`🚨🚨🚨 MALFORMED CHAT ID DETECTED 🚨🚨🚨`);
+            console.error(`🚨 Malformed ID: "${chatId}"`);
+            console.error(`🚨 Length: ${chatId.length}`);
+            console.error(`🚨 Contains @: ${chatId.includes('@')}`);
+            console.error(`🚨 Raw chat data causing malformation:`);
+            console.error(JSON.stringify(rawChat, null, 2));
             
             // Try to find the correct JID in the chat data
             const correctJid = this.extractCorrectJidFromChat(rawChat);
@@ -1524,6 +1558,7 @@ export const WebhookApiAdapter = {
                 chatId = correctJid;
             } else {
                 console.error(`❌ Could not find correct chat JID, skipping chat creation`);
+                console.error(`❌ All available fields in rawChat:`, Object.keys(rawChat));
                 return null;
             }
         }
