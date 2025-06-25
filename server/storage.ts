@@ -2832,6 +2832,144 @@ class DatabaseStorage {
         }
     }
 
+    // Missing storage methods for production deployment
+    async createAppUser(userData: any): Promise<any> {
+        try {
+            const [user] = await db
+                .insert(appUsers)
+                .values(userData)
+                .returning();
+            return user;
+        } catch (error) {
+            console.error('Error creating app user:', error);
+            throw error;
+        }
+    }
+
+    async getActionRule(ruleId: string): Promise<any> {
+        try {
+            const [rule] = await db
+                .select()
+                .from(actionRules)
+                .where(eq(actionRules.ruleId, ruleId));
+            return rule;
+        } catch (error) {
+            console.error('Error getting action rule:', error);
+            return null;
+        }
+    }
+
+    async deleteActionRule(ruleId: string): Promise<boolean> {
+        try {
+            await db
+                .delete(actionRules)
+                .where(eq(actionRules.ruleId, ruleId));
+            return true;
+        } catch (error) {
+            console.error('Error deleting action rule:', error);
+            return false;
+        }
+    }
+
+    async getCalendars(spaceId: string): Promise<any[]> {
+        try {
+            return await db
+                .select()
+                .from(calendarEvents)
+                .where(eq(calendarEvents.spaceId, spaceId));
+        } catch (error) {
+            console.error('Error getting calendars:', error);
+            return [];
+        }
+    }
+
+    async createCalendar(calendarData: any): Promise<any> {
+        try {
+            const [calendar] = await db
+                .insert(calendarEvents)
+                .values(calendarData)
+                .returning();
+            return calendar;
+        } catch (error) {
+            console.error('Error creating calendar:', error);
+            throw error;
+        }
+    }
+
+    async updateCalendar(calendarId: string, updateData: any): Promise<any> {
+        try {
+            const [calendar] = await db
+                .update(calendarEvents)
+                .set(updateData)
+                .where(eq(calendarEvents.eventId, calendarId))
+                .returning();
+            return calendar;
+        } catch (error) {
+            console.error('Error updating calendar:', error);
+            throw error;
+        }
+    }
+
+    async deleteCalendar(calendarId: string): Promise<boolean> {
+        try {
+            await db
+                .delete(calendarEvents)
+                .where(eq(calendarEvents.eventId, calendarId));
+            return true;
+        } catch (error) {
+            console.error('Error deleting calendar:', error);
+            return false;
+        }
+    }
+
+    async upsertGroup(groupData: any): Promise<any> {
+        try {
+            const [group] = await db
+                .insert(whatsappGroups)
+                .values(groupData)
+                .onConflictDoUpdate({
+                    target: [whatsappGroups.instanceId, whatsappGroups.groupJid],
+                    set: groupData
+                })
+                .returning();
+            return group;
+        } catch (error) {
+            console.error('Error upserting group:', error);
+            throw error;
+        }
+    }
+
+    async updatePayable(payableId: string, updateData: any): Promise<any> {
+        try {
+            const [payable] = await db
+                .update(financePayables)
+                .set(updateData)
+                .where(eq(financePayables.payableId, parseInt(payableId)))
+                .returning();
+            return payable;
+        } catch (error) {
+            console.error('Error updating payable:', error);
+            throw error;
+        }
+    }
+
+    async upsertCallLog(callData: any): Promise<any> {
+        try {
+            const [callLog] = await db
+                .insert(whatsappCallLogs)
+                .values(callData)
+                .onConflictDoUpdate({
+                    target: [whatsappCallLogs.instanceId, whatsappCallLogs.callId],
+                    set: callData
+                })
+                .returning();
+            return callLog;
+        } catch (error) {
+            console.error('Error upserting call log:', error);
+            throw error;
+        }
+    }
+
     // Action Execution Logging
     async createActionExecution(executionData: {
         ruleId: string;

@@ -7,13 +7,13 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { lookup } from 'mime-types';
 import {
-    type WhatsappMessages,
-    type WhatsappContacts,
-    type WhatsappChats,
-    type WhatsappGroups,
-    type WhatsappCallLogs,
-    type WhatsappMessageReactions,
-    type WhatsappMessageMedia,
+    whatsappMessages,
+    whatsappContacts,
+    whatsappChats,
+    whatsappGroups,
+    whatsappCallLogs,
+    whatsappMessageReactions,
+    whatsappMessageMedia,
     type InsertWhatsappMessageMedia
 } from '@shared/schema';
 
