@@ -134,7 +134,27 @@ export const SseManager = {
      * Notifies clients of contact/chat updates that should refresh conversation list
      */
     notifyClientsOfChatUpdate(updateData: any) {
-        this.notifyClients('chat_updated', updateData);
+        if (sseConnections.size === 0) {
+            return; // No clients to notify
+        }
+        
+        console.log(`📡 Notifying ${sseConnections.size} connected clients of chat update`);
+        
+        const chatData = JSON.stringify({
+            type: 'conversation_updated',
+            payload: updateData
+        });
+
+        // Send the event to all connected clients
+        for (const [clientId, res] of sseConnections.entries()) {
+            try {
+                res.write(`data: ${chatData}\n\n`);
+            } catch (error) {
+                console.error(`📡 Error sending to client ${clientId}:`, error);
+                // Remove broken connection
+                sseConnections.delete(clientId);
+            }
+        }
     },
 
     /**
