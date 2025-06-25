@@ -75,9 +75,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
   const [messageLoading, setMessageLoading] = useState(false);
   const [messageError, setMessageError] = useState<any>(null);
   
-  // State for message thread
-  const [messageThread, setMessageThread] = useState<any[]>([]);
-  const [threadLoading, setThreadLoading] = useState(false);
+
 
   // State for chat information
   const [chatInfo, setChatInfo] = useState<any>(null);
@@ -133,42 +131,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
     fetchMessageData();
   }, [task?.triggeringMessageId, task?.instanceId]);
 
-  // Fetch message thread when task changes
-  useEffect(() => {
-    const fetchMessageThread = async () => {
-      if (!task?.triggeringMessageId || !task?.instanceId) {
-        setMessageThread([]);
-        return;
-      }
 
-      setThreadLoading(true);
-
-      try {
-        // Use the new API endpoint to get only actual replies to the specific message
-        const response = await fetch(`/api/whatsapp/message-replies?originalMessageId=${task.triggeringMessageId}&instanceId=${task.instanceId}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42`, {
-          method: 'GET',
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch thread: ${response.status}`);
-        }
-
-        const messageThread = await response.json();
-        setMessageThread(messageThread);
-      } catch (error: any) {
-        console.error('Error fetching message thread:', error);
-        setMessageThread([]);
-      } finally {
-        setThreadLoading(false);
-      }
-    };
-
-    fetchMessageThread();
-  }, [task?.relatedChatJid, task?.instanceId, task?.triggeringMessageId, task?.createdAt]);
 
   // Fetch chat information when task changes
   useEffect(() => {
@@ -381,31 +344,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
         onUpdate(task.taskId, updates);
       }
       
-      // Refresh message thread to show the new reply
-      setTimeout(async () => {
-        if (task?.relatedChatJid && task?.instanceId) {
-          setThreadLoading(true);
-          try {
-            const response = await fetch(`/api/whatsapp/chat-messages?chatId=${encodeURIComponent(task.relatedChatJid)}&instanceId=${task.instanceId}&limit=50`);
-            if (response.ok) {
-              const messages = await response.json();
-              const relevantMessages = messages.filter((msg: any) => {
-                if (msg.messageId === task.triggeringMessageId) return true;
-                if (msg.quotedMessageId === task.triggeringMessageId) return true;
-                if (msg.timestamp && new Date(msg.timestamp) >= new Date(task.createdAt)) return true;
-                if (msg.fromMe === true) return true;
-                return false;
-              });
-              relevantMessages.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-              setMessageThread(relevantMessages);
-            }
-          } catch (error) {
-            console.error('Error refreshing message thread:', error);
-          } finally {
-            setThreadLoading(false);
-          }
-        }
-      }, 2000);
+
       
       setReplyMessage("");
       setIsReplying(false);
