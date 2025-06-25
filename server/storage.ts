@@ -2749,20 +2749,7 @@ class DatabaseStorage {
             console.error('Error updating action rule:', error);
             throw error;
         }
-    },
-
-    async deleteActionRule(ruleId: string): Promise<boolean> {
-        try {
-            const result = await db.execute(sql`
-                DELETE FROM actions.action_rules 
-                WHERE rule_id = ${ruleId}
-            `);
-            return result.rowCount > 0;
-        } catch (error) {
-            console.error('Error deleting action rule:', error);
-            throw error;
-        }
-    },
+    }
 
     async createNote(noteData: any): Promise<any> {
         try {
