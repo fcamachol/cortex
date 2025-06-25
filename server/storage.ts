@@ -2807,7 +2807,7 @@ class DatabaseStorage {
             console.error('Error fetching message replies:', error);
             return [];
         }
-    },
+    }
 
     async createPayable(payableData: any): Promise<any> {
         try {
