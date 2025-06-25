@@ -29,6 +29,9 @@ export const ActionService = {
                 
                 // Process keyword triggers for financial automation
                 await this.processKeywordTriggers(storedMessage);
+                
+                // Process keyword triggers for financial automation
+                await this.processKeywordTriggers(storedMessage);
             }
         } catch (error) {
             console.error(`❌ Error processing new message ${storedMessage.messageId}:`, error);
@@ -119,6 +122,9 @@ export const ActionService = {
                 break;
             case 'create_note':
                 await this.createNoteAction(config, triggerContext);
+                break;
+            case 'create_financial_record':
+                await this.createFinancialRecordAction(config, triggerContext);
                 break;
             case 'create_calendar_event':
                 await this.createCalendarEventAction(config, triggerContext);
@@ -221,6 +227,71 @@ export const ActionService = {
     async addLabelAction(config: any, triggerContext: any): Promise<void> {
         console.log('🏷️ Adding label from action trigger');
         // Implementation for adding labels to chats/messages
+    },
+
+    async processKeywordTriggers(storedMessage: any): Promise<void> {
+        if (!storedMessage.content) return;
+        
+        console.log(`🔍 Processing keyword triggers for: "${storedMessage.content}"`);
+        
+        // Get all active keyword-based action rules
+        const keywordRules = await storage.getActionRulesByTrigger('keyword', storedMessage.content, storedMessage.instanceId);
+        
+        console.log(`🎯 Found ${keywordRules.length} keyword rules for message`);
+        
+        for (const rule of keywordRules) {
+            console.log(`⚡ Executing keyword action: ${rule.ruleName} (${rule.actionType})`);
+            
+            await this.executeAction(rule.actionType, rule.actionConfig, {
+                instanceId: storedMessage.instanceId,
+                triggerType: 'keyword',
+                triggerValue: storedMessage.content,
+                context: {
+                    messageId: storedMessage.messageId,
+                    content: storedMessage.content,
+                    senderJid: storedMessage.senderJid,
+                    chatId: storedMessage.chatJid
+                },
+                rule
+            });
+        }
+    },
+
+    async createFinancialRecordAction(config: any, triggerContext: any): Promise<void> {
+        console.log('💰 Creating financial record from action trigger');
+        
+        try {
+            // Process template variables in config
+            const processedConfig = this.processTemplateVariables(config, triggerContext);
+            
+            console.log('🔄 Processed financial config:', processedConfig);
+            
+            // Create the trigger context for ActionsEngine
+            const actionsContext = {
+                instanceId: triggerContext.instanceId,
+                messageId: triggerContext.context.messageId,
+                chatId: triggerContext.context.chatId,
+                senderJid: triggerContext.context.senderJid,
+                content: triggerContext.context.content,
+                keywords: [], // Will be populated by ActionsEngine
+                hashtags: [],
+                reaction: null
+            };
+            
+            // Import and use ActionsEngine for financial record creation
+            const { ActionsEngine } = await import('./actions-engine');
+            const result = await ActionsEngine.executeAction('create_financial_record', processedConfig, actionsContext);
+            
+            console.log('✅ Financial record creation result:', result);
+            
+            if (result.success) {
+                // Notify clients via SSE if needed
+                SseManager.notifyTaskCreated(result.data.task);
+            }
+            
+        } catch (error) {
+            console.error('❌ Error creating financial record:', error);
+        }
     },
 
     processTemplateVariables(config: any, triggerContext: any): any {
