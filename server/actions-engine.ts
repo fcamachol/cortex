@@ -460,17 +460,17 @@ export class ActionsEngine {
       };
 
       const payableResult = await db.execute(sql`
-        INSERT INTO finance.payables (description, amount, vendor, due_date, category, status, instance_id, triggering_message_id, related_chat_jid)
-        VALUES (${payableData.description}, ${payableData.amount}, ${payableData.vendor}, ${payableData.dueDate}, ${payableData.category}, ${payableData.status}, ${payableData.instanceId}, ${payableData.triggeringMessageId}, ${payableData.relatedChatJid})
-        RETURNING payable_id, description, amount, vendor, due_date
+        INSERT INTO finance.payables (space_id, description, total_amount, due_date, status)
+        VALUES (1, ${payableData.description}, ${payableData.amount}, ${payableData.dueDate}, ${payableData.status})
+        RETURNING payable_id, description, total_amount, due_date
       `);
 
       const newPayable = payableResult.rows[0];
       console.log('✅ Payable bill created:', newPayable);
 
       // 2. Automatically create a companion task for the bill payment
-      const taskTitle = `Pay Bill: ${newPayable.vendor} - $${newPayable.amount}`;
-      const taskDescription = `Payment task for bill: ${newPayable.description}\n\nBill Details:\n- Vendor: ${newPayable.vendor}\n- Amount: $${newPayable.amount}\n- Due Date: ${new Date(newPayable.due_date).toLocaleDateString()}\n\nCreated from WhatsApp message in chat: ${context.chatId}`;
+      const taskTitle = `Pay Bill: ${processedConfig.vendor} - $${newPayable.total_amount}`;
+      const taskDescription = `Payment task for bill: ${newPayable.description}\n\nBill Details:\n- Vendor: ${processedConfig.vendor}\n- Amount: $${newPayable.total_amount}\n- Due Date: ${new Date(newPayable.due_date).toLocaleDateString()}\n\nCreated from WhatsApp message in chat: ${context.chatId}`;
 
       const taskData = {
         title: taskTitle,
@@ -502,7 +502,7 @@ export class ActionsEngine {
           payable: newPayable,
           task: newTask
         },
-        message: `Created payable bill for ${newPayable.vendor} ($${newPayable.amount}) with automatic payment task`
+        message: `Created payable bill for ${processedConfig.vendor} ($${newPayable.total_amount}) with automatic payment task`
       };
 
     } catch (error) {

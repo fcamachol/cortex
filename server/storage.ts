@@ -1562,23 +1562,25 @@ class DatabaseStorage {
 
     async getPayables(): Promise<any[]> {
         try {
-            // Return placeholder data for now
-            return [
-                {
-                    payableId: 1,
-                    vendorName: "Office Supplies Inc",
-                    amount: 1200,
-                    dueDate: "2025-07-01",
-                    status: "pending"
-                },
-                {
-                    payableId: 2,
-                    vendorName: "Marketing Agency",
-                    amount: 4200,
-                    dueDate: "2025-07-15",
-                    status: "pending"
-                }
-            ];
+            const result = await db.execute(sql`
+                SELECT 
+                    p.payable_id as "payableId",
+                    p.description,
+                    p.total_amount as "totalAmount",
+                    p.amount_paid as "amountPaid",
+                    p.due_date as "dueDate",
+                    p.status,
+                    p.category_id as "categoryId",
+                    p.contact_id as "contactId",
+                    p.created_at as "createdAt",
+                    t.task_id as "linkedTaskId",
+                    t.title as "linkedTaskTitle",
+                    t.status as "linkedTaskStatus"
+                FROM finance.payables p
+                LEFT JOIN crm.tasks t ON t.linked_payable_id = p.payable_id
+                ORDER BY p.due_date ASC, p.created_at DESC
+            `);
+            return result.rows;
         } catch (error) {
             console.error('Error getting payables:', error);
             return [];
@@ -1589,21 +1591,17 @@ class DatabaseStorage {
         try {
             const result = await db.execute(sql`
                 INSERT INTO finance.payables (
-                    description, amount, vendor, due_date, category, status,
-                    instance_id, triggering_message_id, related_chat_jid
+                    space_id, description, total_amount, due_date, status, contact_id
                 )
                 VALUES (
-                    ${data.description}, ${data.amount}, ${data.vendor}, 
-                    ${data.dueDate}, ${data.category || 'general'}, ${data.status || 'pending'},
-                    ${data.instanceId || null}, ${data.triggeringMessageId || null}, ${data.relatedChatJid || null}
+                    ${data.spaceId || 1}, ${data.description}, ${data.amount}, 
+                    ${data.dueDate}, ${data.status || 'unpaid'}, ${data.contactId || null}
                 )
                 RETURNING 
                     payable_id as "payableId",
                     description,
-                    amount,
-                    vendor,
+                    total_amount as "totalAmount",
                     due_date as "dueDate",
-                    category,
                     status,
                     created_at as "createdAt"
             `);
