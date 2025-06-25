@@ -2896,6 +2896,41 @@ class DatabaseStorage {
         }
     }
 
+    async createCalendarEvent(eventData: any): Promise<any> {
+        try {
+            console.log('📅 Creating calendar event:', eventData);
+            
+            // Map the event data to the correct schema format
+            const calendarEventData = {
+                title: eventData.title,
+                description: eventData.description,
+                startTime: eventData.startTime,
+                endTime: eventData.endTime,
+                spaceId: eventData.spaceId || null,
+                calendarId: eventData.calendarId,
+                isAllDay: eventData.isAllDay || false,
+                location: eventData.location || null,
+                attendees: eventData.attendees || null,
+                recurrenceRule: eventData.recurrenceRule || null,
+                reminderMinutes: eventData.reminderMinutes || null,
+                eventColor: eventData.eventColor || null,
+                visibility: eventData.visibility || 'default',
+                status: eventData.status || 'confirmed'
+            };
+            
+            const [calendar] = await db
+                .insert(calendarEvents)
+                .values(calendarEventData)
+                .returning();
+                
+            console.log('✅ Calendar event created successfully:', calendar.eventId);
+            return calendar;
+        } catch (error) {
+            console.error('❌ Error creating calendar event:', error);
+            throw error;
+        }
+    }
+
     async updateCalendar(calendarId: string, updateData: any): Promise<any> {
         try {
             const [calendar] = await db
