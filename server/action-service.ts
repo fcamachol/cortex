@@ -113,36 +113,63 @@ export const ActionService = {
 
     async executeAction(actionType: string, config: any, triggerContext: any): Promise<void> {
         console.log(`🎯 Executing action: ${actionType}`);
+        const startTime = Date.now();
         
         try {
+            let result: any = null;
+            
             switch (actionType) {
                 case 'create_task':
-                    await this.createTaskAction(config, triggerContext);
+                    result = await this.createTaskAction(config, triggerContext);
                     break;
                 case 'create_note':
-                    await this.createNoteAction(config, triggerContext);
+                    result = await this.createNoteAction(config, triggerContext);
                     break;
                 case 'create_financial_record':
-                    await this.createFinancialRecordAction(config, triggerContext);
+                    result = await this.createFinancialRecordAction(config, triggerContext);
                     break;
                 case 'create_calendar_event':
-                    await this.createCalendarEventAction(config, triggerContext);
+                    result = await this.createCalendarEventAction(config, triggerContext);
                     break;
                 case 'send_message':
-                    await this.sendMessageAction(config, triggerContext);
+                    result = await this.sendMessageAction(config, triggerContext);
                     break;
                 case 'add_label':
-                    await this.addLabelAction(config, triggerContext);
+                    result = await this.addLabelAction(config, triggerContext);
                     break;
                 default:
                     console.log(`⚠️ Unknown action type: ${actionType}`);
+                    throw new Error(`Unknown action type: ${actionType}`);
             }
+            
+            // Log successful execution
+            await this.logActionExecution(
+                triggerContext.rule,
+                'success',
+                result,
+                null,
+                Date.now() - startTime,
+                triggerContext
+            );
+            
         } catch (error) {
             console.error(`❌ Error executing action ${actionType}:`, error);
+            
+            // Log failed execution
+            await this.logActionExecution(
+                triggerContext.rule,
+                'failed',
+                null,
+                error.message,
+                Date.now() - startTime,
+                triggerContext
+            );
+            
+            throw error;
         }
     },
 
-    async createNoteAction(config: any, triggerContext: any): Promise<void> {
+    async createNoteAction(config: any, triggerContext: any): Promise<any> {
         console.log('📝 Creating note from action trigger');
         
         // Process template variables in config

@@ -944,8 +944,8 @@ export const WebhookApiAdapter = {
             };
             
             // Import and trigger action processing
-            const { ActionsEngine } = await import('./actions-engine');
-            await ActionsEngine.processMessageForActions(messageContext);
+            const { ActionService } = await import('./action-service');
+            await ActionService.processNewMessage(messageContext, instanceId);
             
             console.log(`✅ [${instanceId}] Reaction ${reactionText} processed successfully`);
             
