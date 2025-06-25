@@ -238,32 +238,44 @@ class DatabaseStorage {
     }
     
     async getWhatsappConversations(userId: string): Promise<any[]> {
-        try {
-            // Simplified query to avoid timeouts
-            const results = await db.select({
-                chatId: whatsappChats.chatId,
-                instanceId: whatsappChats.instanceId,
-                type: whatsappChats.type,
-                unreadCount: whatsappChats.unreadCount,
-                lastMessageTimestamp: whatsappChats.lastMessageTimestamp,
-                displayName: whatsappChats.chatId,
-                profilePictureUrl: sql`NULL`,
-                lastMessageContent: sql`''`,
-                lastMessageFromMe: sql`false`,
-                actualLastMessageTime: whatsappChats.lastMessageTimestamp,
-                lastMessageType: sql`'text'`
-            })
-            .from(whatsappChats)
-            .innerJoin(whatsappInstances, eq(whatsappChats.instanceId, whatsappInstances.instanceId))
-            .where(eq(whatsappInstances.clientId, userId))
-            .orderBy(desc(whatsappChats.lastMessageTimestamp))
-            .limit(50);
-            
-            return results;
-        } catch (error) {
-            console.error('Error in getWhatsappConversations:', error);
-            return [];
-        }
+        // Use SQL to get conversations with last message content
+        // Only include conversations that have at least one actual message
+        const results = await db.execute(sql`
+            SELECT 
+                c.chat_id as "chatId",
+                c.instance_id as "instanceId", 
+                c.type,
+                c.unread_count as "unreadCount",
+                c.last_message_timestamp as "lastMessageTimestamp",
+                CASE 
+                    WHEN c.type = 'group' THEN COALESCE(g.subject, 'Group')
+                    WHEN ct.push_name IS NOT NULL AND ct.push_name != '' AND ct.push_name != c.chat_id 
+                        THEN ct.push_name
+                    ELSE REPLACE(REPLACE(c.chat_id, '@s.whatsapp.net', ''), '@g.us', '')
+                END as "displayName",
+                ct.profile_picture_url as "profilePictureUrl",
+                COALESCE(last_msg.content, '') as "lastMessageContent",
+                last_msg.from_me as "lastMessageFromMe",
+                last_msg.timestamp as "actualLastMessageTime",
+                last_msg.message_type as "lastMessageType"
+            FROM whatsapp.chats c
+            INNER JOIN whatsapp.instances i ON c.instance_id = i.instance_id
+            LEFT JOIN whatsapp.contacts ct ON c.chat_id = ct.jid AND c.instance_id = ct.instance_id
+            LEFT JOIN whatsapp.groups g ON c.chat_id = g.group_jid AND c.instance_id = g.instance_id
+            INNER JOIN LATERAL (
+                SELECT m.content, m.from_me, m.timestamp, m.message_type
+                FROM whatsapp.messages m
+                WHERE m.chat_id = c.chat_id AND m.instance_id = c.instance_id
+                  AND m.content IS NOT NULL 
+                  AND m.content != ''
+                ORDER BY m.timestamp DESC
+                LIMIT 1
+            ) last_msg ON true
+            WHERE i.client_id = ${userId}
+            ORDER BY last_msg.timestamp DESC
+        `);
+
+        return results.rows;
     }
     
     async getWhatsappContacts(userId: string): Promise<WhatsappContact[]> {

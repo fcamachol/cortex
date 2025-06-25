@@ -24,9 +24,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check if user is already authenticated on app start
   useEffect(() => {
-    // For development, use your actual user ID
+    // For development, bypass authentication
     if (process.env.NODE_ENV === 'development') {
-      setUser({ userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42', email: 'user@example.com', fullName: 'User' });
+      setUser({ userId: 'dev-user', email: 'dev@example.com', fullName: 'Development User' });
       setIsLoading(false);
       return;
     }

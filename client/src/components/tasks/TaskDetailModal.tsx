@@ -75,11 +75,9 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
   const [messageLoading, setMessageLoading] = useState(false);
   const [messageError, setMessageError] = useState<any>(null);
   
-  // State for message replies
-  const [messageReplies, setMessageReplies] = useState<any[]>([]);
-  const [repliesLoading, setRepliesLoading] = useState(false);
-  
-
+  // State for message thread
+  const [messageThread, setMessageThread] = useState<any[]>([]);
+  const [threadLoading, setThreadLoading] = useState(false);
 
   // State for chat information
   const [chatInfo, setChatInfo] = useState<any>(null);
@@ -135,17 +133,18 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
     fetchMessageData();
   }, [task?.triggeringMessageId, task?.instanceId]);
 
-  // Fetch message replies when task changes
+  // Fetch message thread when task changes
   useEffect(() => {
-    const fetchMessageReplies = async () => {
+    const fetchMessageThread = async () => {
       if (!task?.triggeringMessageId || !task?.instanceId) {
-        setMessageReplies([]);
+        setMessageThread([]);
         return;
       }
 
-      setRepliesLoading(true);
+      setThreadLoading(true);
 
       try {
+        // Use the new API endpoint to get only actual replies to the specific message
         const response = await fetch(`/api/whatsapp/message-replies?originalMessageId=${task.triggeringMessageId}&instanceId=${task.instanceId}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42`, {
           method: 'GET',
           headers: {
@@ -155,24 +154,21 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch replies: ${response.status}`);
+          throw new Error(`Failed to fetch thread: ${response.status}`);
         }
 
-        const replies = await response.json();
-        console.log('Fetched message replies:', replies);
-        setMessageReplies(replies);
+        const messageThread = await response.json();
+        setMessageThread(messageThread);
       } catch (error: any) {
-        console.error('Error fetching message replies:', error);
-        setMessageReplies([]);
+        console.error('Error fetching message thread:', error);
+        setMessageThread([]);
       } finally {
-        setRepliesLoading(false);
+        setThreadLoading(false);
       }
     };
 
-    fetchMessageReplies();
-  }, [task?.triggeringMessageId, task?.instanceId]);
-
-
+    fetchMessageThread();
+  }, [task?.relatedChatJid, task?.instanceId, task?.triggeringMessageId, task?.createdAt]);
 
   // Fetch chat information when task changes
   useEffect(() => {
@@ -385,28 +381,28 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
         onUpdate(task.taskId, updates);
       }
       
-
-      
-      // Refresh replies to show the new reply
+      // Refresh message thread to show the new reply
       setTimeout(async () => {
-        if (task?.triggeringMessageId && task?.instanceId) {
-          setRepliesLoading(true);
+        if (task?.relatedChatJid && task?.instanceId) {
+          setThreadLoading(true);
           try {
-            const response = await fetch(`/api/whatsapp/message-replies?originalMessageId=${task.triggeringMessageId}&instanceId=${task.instanceId}&userId=7804247f-3ae8-4eb2-8c6d-2c44f967ad42`, {
-              method: 'GET',
-              headers: {
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-              }
-            });
+            const response = await fetch(`/api/whatsapp/chat-messages?chatId=${encodeURIComponent(task.relatedChatJid)}&instanceId=${task.instanceId}&limit=50`);
             if (response.ok) {
-              const replies = await response.json();
-              setMessageReplies(replies);
+              const messages = await response.json();
+              const relevantMessages = messages.filter((msg: any) => {
+                if (msg.messageId === task.triggeringMessageId) return true;
+                if (msg.quotedMessageId === task.triggeringMessageId) return true;
+                if (msg.timestamp && new Date(msg.timestamp) >= new Date(task.createdAt)) return true;
+                if (msg.fromMe === true) return true;
+                return false;
+              });
+              relevantMessages.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+              setMessageThread(relevantMessages);
             }
           } catch (error) {
-            console.error('Error refreshing replies:', error);
+            console.error('Error refreshing message thread:', error);
           } finally {
-            setRepliesLoading(false);
+            setThreadLoading(false);
           }
         }
       }, 2000);
@@ -865,45 +861,61 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                     </div>
                   ) : null}
 
-                  {/* Message Replies Section */}
-                  {messageReplies && messageReplies.length > 0 && (
-                    <div className="mt-3 space-y-2">
+                  {/* Message Thread */}
+                  {messageThread.length > 0 && (
+                    <div className="mt-4 space-y-3">
                       <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                        <Reply className="h-4 w-4" />
-                        Replies ({messageReplies.length})
+                        <MessageSquare className="h-4 w-4" />
+                        Message Thread ({messageThread.length})
                       </h4>
-                      <div className="space-y-2 max-h-60 overflow-y-auto">
-                        {messageReplies.map((reply, index) => (
-                          <div key={reply.messageId || index} className="p-3 bg-gray-50 rounded-lg border">
-                            <div className="text-sm text-gray-800 whitespace-pre-wrap">
-                              "{reply.content || "No reply content"}"
-                            </div>
-                            <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-                              <span>
-                                From: {reply.fromMe ? "You" : 
-                                      reply.isGroupChat ? 
-                                        (reply.participantName || reply.senderName || reply.senderJid?.split('@')[0] || "Unknown sender") :
-                                        (reply.senderName || reply.senderJid?.split('@')[0] || "Unknown sender")
-                                     }
-                              </span>
-                              <span>
-                                {reply.timestamp 
-                                  ? format(new Date(reply.timestamp), "MMM dd, yyyy 'at' h:mm a")
-                                  : 'Unknown time'
-                                }
-                              </span>
-                            </div>
+                      <div className="max-h-60 overflow-y-auto space-y-2 border rounded-lg p-3 bg-gray-50">
+                        {threadLoading ? (
+                          <div className="text-center text-sm text-gray-500 py-4">
+                            Loading message thread...
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Loading state for replies */}
-                  {repliesLoading && (
-                    <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-dashed">
-                      <div className="text-sm text-gray-500 text-center">
-                        Loading message replies...
+                        ) : (
+                          messageThread.map((msg, index) => (
+                            <div
+                              key={msg.messageId || index}
+                              className={`p-3 rounded-lg ${
+                                msg.fromMe 
+                                  ? 'bg-blue-50 border-l-4 border-blue-600 ml-6 shadow-sm' 
+                                  : 'bg-white border-l-4 border-gray-300 mr-6 shadow-sm'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                                <span className={`font-medium ${msg.fromMe ? 'text-blue-700' : 'text-gray-700'}`}>
+                                  {msg.fromMe ? 'You' : (
+                                    msg.rawApiPayload?.pushName || 
+                                    msg.senderName || 
+                                    msg.senderJid?.split('@')[0] || 
+                                    'Contact'
+                                  )}
+                                </span>
+                                <span className="text-xs">
+                                  {msg.timestamp ? format(new Date(msg.timestamp), "MMM dd, h:mm a") : 'Unknown time'}
+                                </span>
+                              </div>
+                              <div className={`text-sm whitespace-pre-wrap ${
+                                msg.fromMe ? 'text-blue-900' : 'text-gray-800'
+                              }`}>
+                                {msg.content || 'No content'}
+                              </div>
+                              {msg.quotedMessageId === task.triggeringMessageId && (
+                                <div className="mt-2 text-xs text-purple-600 flex items-center gap-1">
+                                  <Reply className="h-3 w-3" />
+                                  Reply to original message
+                                </div>
+                              )}
+                              {msg.fromMe && (
+                                <div className="mt-1 text-xs text-blue-500 flex items-center gap-1">
+                                  <Send className="h-3 w-3" />
+                                  Sent from task
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   )}

@@ -14,12 +14,11 @@ if (!process.env.DATABASE_URL) {
 
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  // More aggressive connection settings for Neon stability
-  max: 3, // Allow more connections for better performance
-  min: 1, // Keep one connection alive
-  idleTimeoutMillis: 10000,
-  connectionTimeoutMillis: 8000, // Longer timeout
-  acquireTimeoutMillis: 10000,
+  // Optimized connection settings for Neon
+  max: 1, // Single connection to prevent Neon limits
+  min: 0,
+  idleTimeoutMillis: 5000,
+  connectionTimeoutMillis: 3000,
 });
 
 export const db = drizzle({ client: pool, schema });
