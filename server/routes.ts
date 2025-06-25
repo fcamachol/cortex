@@ -1120,15 +1120,33 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.get('/api/actions/executions', async (req: AuthRequest, res: Response) => {
+    try {
+      const { ruleId, status, limit } = req.query;
+      const executions = await storage.getActionExecutions(
+        ruleId as string,
+        status as string, 
+        parseInt(limit as string) || 100
+      );
+      res.json(executions);
+    } catch (error) {
+      console.error('Error fetching action executions:', error);
+      res.status(500).json({ error: 'Failed to fetch action executions' });
+    }
+  });
+
   app.get('/api/actions/stats', async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
       const rules = await storage.getActionRules(userId);
+      const recentExecutions = await storage.getActionExecutions(undefined, undefined, 100);
       const stats = {
         totalRules: rules.length,
         activeRules: rules.filter(r => r.isActive).length,
-        totalExecutions: rules.reduce((sum, rule) => sum + (rule.totalExecutions || 0), 0),
-        recentExecutions: 0 // Would need separate query for recent executions
+        totalExecutions: recentExecutions.length,
+        recentExecutions: recentExecutions.filter(e => 
+          new Date(e.executedAt) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+        ).length
       };
       res.json(stats);
     } catch (error) {

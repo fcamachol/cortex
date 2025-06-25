@@ -389,15 +389,34 @@ export const ActionService = {
         return null;
     },
 
-    async logActionExecution(rule: any, result: any): Promise<void> {
+    async logActionExecution(
+        rule: any, 
+        status: string, 
+        result: any, 
+        errorMessage: string | null, 
+        processingTimeMs: number,
+        triggerContext: any
+    ): Promise<void> {
         try {
-            // Simple logging for now since action_executions table structure needs verification
-            console.log('📊 Action execution logged:', {
+            const executionData = {
                 ruleId: rule.ruleId,
-                ruleName: rule.ruleName,
-                result: result,
-                timestamp: new Date().toISOString()
-            });
+                triggeredBy: triggerContext.context.messageId || triggerContext.context.reactorJid || 'unknown',
+                triggerData: {
+                    messageId: triggerContext.context.messageId,
+                    content: triggerContext.context.content,
+                    senderJid: triggerContext.context.senderJid,
+                    reactorJid: triggerContext.context.reactorJid,
+                    instanceId: triggerContext.instanceId
+                },
+                status,
+                result,
+                errorMessage,
+                processingTimeMs
+            };
+            
+            const execution = await storage.createActionExecution(executionData);
+            console.log(`📊 Action execution logged: ${execution.executionId} (${status})`);
+            
         } catch (error) {
             console.error('❌ Error logging action execution:', error);
         }
