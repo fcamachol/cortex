@@ -197,8 +197,11 @@ export const ActionService = {
             if (typeof SseManager !== 'undefined' && SseManager.notifyClientsOfNewNote) {
                 SseManager.notifyClientsOfNewNote(createdNote);
             }
+            
+            return { noteId: createdNote.noteId, title: noteData.title };
         } catch (error) {
             console.error('❌ Error creating note:', error);
+            throw error;
         }
     },
 

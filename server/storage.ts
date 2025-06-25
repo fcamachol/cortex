@@ -2843,31 +2843,20 @@ class DatabaseStorage {
         processingTimeMs?: number;
     }): Promise<any> {
         try {
-            const result = await this.db.query(`
-                INSERT INTO actions.action_executions (
-                    rule_id, triggered_by, trigger_data, status, result, error_message, processing_time_ms
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-                RETURNING 
-                    execution_id as "executionId",
-                    rule_id as "ruleId",
-                    triggered_by as "triggeredBy",
-                    trigger_data as "triggerData",
-                    status,
-                    result,
-                    error_message as "errorMessage",
-                    executed_at as "executedAt",
-                    processing_time_ms as "processingTimeMs"
-            `, [
-                executionData.ruleId,
-                executionData.triggeredBy,
-                JSON.stringify(executionData.triggerData),
-                executionData.status,
-                executionData.result ? JSON.stringify(executionData.result) : null,
-                executionData.errorMessage,
-                executionData.processingTimeMs
-            ]);
+            const [execution] = await db
+                .insert(actionExecutions)
+                .values({
+                    ruleId: executionData.ruleId,
+                    triggeredBy: executionData.triggeredBy,
+                    triggerData: executionData.triggerData,
+                    status: executionData.status,
+                    result: executionData.result,
+                    errorMessage: executionData.errorMessage,
+                    processingTimeMs: executionData.processingTimeMs
+                })
+                .returning();
             
-            return result.rows[0];
+            return execution;
         } catch (error) {
             console.error('Storage createActionExecution - error:', error);
             throw error;
@@ -2876,41 +2865,29 @@ class DatabaseStorage {
 
     async getActionExecutions(ruleId?: string, status?: string, limit: number = 100): Promise<any[]> {
         try {
-            let query = `
-                SELECT 
-                    execution_id as "executionId",
-                    rule_id as "ruleId",
-                    triggered_by as "triggeredBy",
-                    trigger_data as "triggerData",
-                    status,
-                    result,
-                    error_message as "errorMessage",
-                    executed_at as "executedAt",
-                    processing_time_ms as "processingTimeMs"
-                FROM actions.action_executions
-                WHERE 1=1
-            `;
+            const result = await db
+                .select({
+                    executionId: actionExecutions.executionId,
+                    ruleId: actionExecutions.ruleId,
+                    triggeredBy: actionExecutions.triggeredBy,
+                    triggerData: actionExecutions.triggerData,
+                    status: actionExecutions.status,
+                    result: actionExecutions.result,
+                    errorMessage: actionExecutions.errorMessage,
+                    executedAt: actionExecutions.executedAt,
+                    processingTimeMs: actionExecutions.processingTimeMs
+                })
+                .from(actionExecutions)
+                .where(
+                    and(
+                        ruleId ? eq(actionExecutions.ruleId, ruleId) : undefined,
+                        status ? eq(actionExecutions.status, status) : undefined
+                    )
+                )
+                .orderBy(desc(actionExecutions.executedAt))
+                .limit(limit);
             
-            const params: any[] = [];
-            let paramIndex = 1;
-            
-            if (ruleId) {
-                query += ` AND rule_id = $${paramIndex}`;
-                params.push(ruleId);
-                paramIndex++;
-            }
-            
-            if (status) {
-                query += ` AND status = $${paramIndex}`;
-                params.push(status);
-                paramIndex++;
-            }
-            
-            query += ` ORDER BY executed_at DESC LIMIT $${paramIndex}`;
-            params.push(limit);
-            
-            const result = await this.db.query(query, params);
-            return result.rows;
+            return result;
         } catch (error) {
             console.error('Storage getActionExecutions - error:', error);
             return [];
