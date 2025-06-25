@@ -710,7 +710,24 @@ class DatabaseStorage {
 
     // Alias for backward compatibility with existing webhook code
     async upsertWhatsappMessageReaction(reaction: InsertWhatsappMessageReaction): Promise<WhatsappMessageReaction> {
-        return this.upsertWhatsappReaction(reaction);
+        try {
+            const [result] = await db
+                .insert(whatsappMessageReactions)
+                .values(reaction)
+                .onConflictDoUpdate({
+                    target: [whatsappMessageReactions.reactionId],
+                    set: {
+                        reactionEmoji: reaction.reactionEmoji,
+                        timestamp: reaction.timestamp,
+                        fromMe: reaction.fromMe
+                    }
+                })
+                .returning();
+            return result;
+        } catch (error) {
+            console.error('Error upserting reaction:', error);
+            throw error;
+        }
     }
 
     async upsertWhatsappMessageMedia(media: InsertWhatsappMessageMedia): Promise<WhatsappMessageMedia> {

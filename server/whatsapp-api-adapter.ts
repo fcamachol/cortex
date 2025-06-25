@@ -916,11 +916,17 @@ export const WebhookApiAdapter = {
                 messageId: originalMessageId,
                 instanceId: instanceId,
                 reactorJid: reactorJid,
-                reactionText: reactionText,
-                reactionTimestamp: data.messageTimestamp ? new Date(data.messageTimestamp * 1000) : new Date()
+                reactionEmoji: reactionText,
+                timestamp: data.messageTimestamp ? new Date(data.messageTimestamp * 1000) : new Date(),
+                fromMe: false
             };
             
-            await storage.upsertWhatsappMessageReaction(reactionData);
+            try {
+                await storage.upsertWhatsappMessageReaction(reactionData);
+                console.log(`📝 [${instanceId}] Reaction stored in database successfully`);
+            } catch (error) {
+                console.log(`⚠️ [${instanceId}] Reaction storage failed, proceeding with action processing:`, error.message);
+            }
             
             // Process actions based on reaction
             const messageContext = {
