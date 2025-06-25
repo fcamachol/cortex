@@ -348,19 +348,57 @@ export const WebhookApiAdapter = {
      * Handles chat creation and updates, with enhanced group subject processing.
      */
     async handleChatsUpsert(instanceId: string, data: any): Promise<void> {
-        // --- LOUD DIAGNOSTIC LOG ---
-        console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-        console.log('!!!       CHATS.UPSERT WEBHOOK WAS CALLED     !!!');
-        console.log(`!!!  DATA TYPE: ${typeof data}                    !!!`);
-        console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-        // ---------------------------
+        // --- ULTRA LOUD CHATS.UPSERT DIAGNOSTICS ---
+        console.log('🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨');
+        console.log('🚨              CHATS.UPSERT WEBHOOK CALLED                   🚨');
+        console.log('🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨');
+        console.log('🚨 INSTANCE ID:', instanceId);
+        console.log('🚨 DATA TYPE:', typeof data);
+        console.log('🚨 IS ARRAY:', Array.isArray(data));
+        console.log('🚨 FULL RAW DATA:');
+        console.log(JSON.stringify(data, null, 4));
+        console.log('🚨');
+        console.log('🚨 DATA STRUCTURE ANALYSIS:');
+        console.log('🚨   - data.chats exists:', !!data.chats);
+        console.log('🚨   - data.chats is array:', Array.isArray(data.chats));
+        console.log('🚨   - data.chats length:', data.chats?.length);
+        console.log('🚨   - data is array:', Array.isArray(data));
+        console.log('🚨   - data length if array:', Array.isArray(data) ? data.length : 'N/A');
+        console.log('🚨');
+        console.log('🚨 ALL DATA KEYS:', Object.keys(data));
+        console.log('🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨');
         
         const chats = Array.isArray(data.chats) ? data.chats : Array.isArray(data) ? data : [data];
-        if (!chats || chats.length === 0) return;
         
-        for (const rawChat of chats) {
+        console.log('🎯 EXTRACTED CHATS ARRAY:');
+        console.log('🎯   - Type:', typeof chats);
+        console.log('🎯   - Is Array:', Array.isArray(chats));
+        console.log('🎯   - Length:', chats?.length);
+        console.log('🎯   - Full chats array:', JSON.stringify(chats, null, 2));
+        console.log('🎯');
+        
+        if (!chats || chats.length === 0) {
+            console.error('❌❌❌ NO CHATS TO PROCESS ❌❌❌');
+            console.error('❌ chats is null/undefined:', !chats);
+            console.error('❌ chats length is 0:', chats?.length === 0);
+            console.error('❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌');
+            return;
+        }
+        
+        console.log(`🔄 PROCESSING ${chats.length} CHATS...`);
+        
+        for (let i = 0; i < chats.length; i++) {
+            const rawChat = chats[i];
+            console.log(`📝 PROCESSING CHAT ${i + 1}/${chats.length}:`);
+            console.log(`📝   Raw chat type: ${typeof rawChat}`);
+            console.log(`📝   Raw chat keys: ${Object.keys(rawChat)}`);
+            console.log(`📝   Raw chat data:`, JSON.stringify(rawChat, null, 2));
+            
             const cleanChat = await this.mapApiPayloadToWhatsappChat(rawChat, instanceId);
+            
             if (cleanChat) {
+                console.log(`✅ SUCCESSFULLY MAPPED CHAT ${i + 1}:`, JSON.stringify(cleanChat, null, 2));
+                
                 // Ensure the chat exists as a contact first with proper name resolution
                 let contactData = { id: cleanChat.chatId };
                 
@@ -396,8 +434,15 @@ export const WebhookApiAdapter = {
                     name: cleanChat.name,
                     type: cleanChat.type
                 });
+            } else {
+                console.error(`❌❌❌ FAILED TO MAP CHAT ${i + 1} ❌❌❌`);
+                console.error(`❌ Original raw chat that failed mapping:`);
+                console.error(JSON.stringify(rawChat, null, 2));
+                console.error(`❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌`);
             }
         }
+        
+        console.log('🚨🚨🚨 CHATS.UPSERT PROCESSING COMPLETED 🚨🚨🚨');
     },
 
     /**
