@@ -78,7 +78,14 @@ export default function ChatInterface({
   useEffect(() => {
     if (waitingReplyData) {
       const messageIds = new Set(waitingReplyData.map((item: any) => item.message_id));
-      setWaitingReplyMessages(messageIds);
+      setWaitingReplyMessages(prev => {
+        // Only update if the sets are different to prevent infinite loops
+        if (prev.size !== messageIds.size || 
+            Array.from(prev).some(id => !messageIds.has(id))) {
+          return messageIds;
+        }
+        return prev;
+      });
     }
   }, [waitingReplyData]);
 
@@ -240,7 +247,7 @@ export default function ChatInterface({
     const eventSource = new EventSource('/api/events');
     eventSourceRef.current = eventSource;
 
-    eventSource.onmessage = (event) => {
+    const handleMessage = (event) => {
       try {
         const data = JSON.parse(event.data);
         
