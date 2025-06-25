@@ -210,7 +210,7 @@ export const SseManager = {
         });
 
         // Send the event to all connected clients
-        for (const [clientId, res] of sseConnections.entries()) {
+        for (const [clientId, res] of Array.from(sseConnections.entries())) {
             try {
                 res.write(`data: ${eventData}\n\n`);
             } catch (error) {
@@ -221,33 +221,7 @@ export const SseManager = {
         }
     },
 
-    /**
-     * Pushes a group update to all connected clients for immediate UI refresh.
-     * This function should be called when group names change from Evolution API.
-     */
-    notifyClientsOfGroupUpdate(groupUpdate: any) {
-        if (sseConnections.size === 0) {
-            return; // No clients to notify
-        }
-        
-        console.log(`📡 Notifying ${sseConnections.size} connected clients of group update: ${groupUpdate.subject}`);
-        
-        const groupData = JSON.stringify({
-            type: 'group_update',
-            payload: groupUpdate
-        });
 
-        // Send the event to all connected clients
-        for (const [clientId, res] of sseConnections.entries()) {
-            try {
-                res.write(`data: ${groupData}\n\n`);
-            } catch (error) {
-                console.error(`📡 Error sending to client ${clientId}:`, error);
-                // Remove broken connection
-                sseConnections.delete(clientId);
-            }
-        }
-    }
 };
 
 // Export the SseManager for compatibility
