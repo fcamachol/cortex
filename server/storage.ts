@@ -2713,16 +2713,19 @@ class DatabaseStorage {
                 }
             };
 
+            // Generate title if missing - use chat ID and date format
+            const finalTitle = noteData.title || `${noteData.relatedChatJid || 'Unknown'} ${new Date().toLocaleDateString()}`;
+            
             // Create note without space assignment - notes are standalone
             const result = await db.execute(sql`
                 INSERT INTO crm.notes (title, content, created_by_user_id, instance_id, created_at, updated_at)
-                VALUES (${noteData.title}, ${noteData.content}, ${noteData.userId}, ${noteData.instanceId}, NOW(), NOW())
+                VALUES (${finalTitle}, ${noteData.content}, ${noteData.userId}, ${noteData.instanceId}, NOW(), NOW())
                 RETURNING *
             `);
             
-            const createdNote = result[0];
+            const createdNote = result.rows?.[0] || result[0] || { title: finalTitle, content: noteData.content };
 
-            console.log('✅ Note created successfully in CRM schema:', createdNote.title);
+            console.log('✅ Note created successfully in CRM schema:', createdNote.title || finalTitle);
             return createdNote;
         } catch (error) {
             console.error('❌ Error creating note in CRM schema:', error);

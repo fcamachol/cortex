@@ -1834,51 +1834,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         // Directory doesn't exist or other error - continue to fallback
       }
       
-      // Second, try to download from Evolution API if not cached
-      try {
-        console.log(`📥 Downloading audio from Evolution API for message: ${messageId}`);
-        
-        // Get the message data to construct proper payload for downloadMedia
-        const messages = await storage.getWhatsappMessages(instanceId);
-        const messageData = messages.find(msg => msg.messageId === messageId);
-        if (!messageData || !messageData.rawApiPayload) {
-          throw new Error('Message data not found or invalid');
-        }
-        
-        const downloadedMedia = await evolutionApi.downloadMedia(instanceId, process.env.EVOLUTION_API_KEY!, messageData.rawApiPayload);
-        
-        if (downloadedMedia) {
-          // Determine file extension from mimetype
-          const extension = downloadedMedia.mimetype.split('/')[1] || 'ogg';
-          const fileName = `${messageId}.${extension}`;
-          const storagePath = path.resolve(currentDir, '../media_storage', instanceId);
-          
-          // Save the buffer to file
-          await fsPromises.mkdir(storagePath, { recursive: true });
-          await fsPromises.writeFile(path.join(storagePath, fileName), downloadedMedia.buffer);
-          
-          console.log(`✅ Playable audio file saved: ${fileName}`);
-          
-          // Serve the downloaded file
-          res.setHeader('Content-Type', downloadedMedia.mimetype);
-          res.setHeader('Cache-Control', 'public, max-age=3600');
-          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-          res.setHeader('Access-Control-Allow-Origin', '*');
-          res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
-          res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
-          res.setHeader('Accept-Ranges', 'bytes');
-          res.setHeader('X-Content-Type-Options', 'nosniff');
-          res.setHeader('Referrer-Policy', 'no-referrer-when-downgrade');
-          res.setHeader('Content-Length', downloadedMedia.buffer.length.toString());
-          
-          console.log(`✅ Serving fresh Evolution API download: ${messageId}`);
-          return res.send(downloadedMedia.buffer);
-        }
-      } catch (downloadError) {
-        console.error(`❌ Error downloading from Evolution API:`, downloadError);
-      }
+      // Media downloads should only happen during webhook processing, not on-demand
       
-      // Second, check if base64 data is in the webhook payload
+      // Check if base64 data is available from webhook processing
       const audioMessage = rawPayload?.message?.audioMessage;
       if (audioMessage?.base64) {
         console.log(`✅ Found base64 data in webhook payload for ${messageId}`);
