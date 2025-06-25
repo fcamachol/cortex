@@ -461,7 +461,13 @@ export class ActionsEngine {
 
       const payableResult = await db.execute(sql`
         INSERT INTO finance.payables (space_id, description, total_amount, due_date, status)
-        VALUES (1, ${payableData.description}, ${payableData.amount}, ${payableData.dueDate}, ${payableData.status})
+        VALUES (
+          (SELECT space_id FROM app.spaces LIMIT 1), 
+          ${payableData.description}, 
+          ${payableData.amount}, 
+          ${payableData.dueDate}, 
+          ${payableData.status}
+        )
         RETURNING payable_id, description, total_amount, due_date
       `);
 
@@ -486,7 +492,17 @@ export class ActionsEngine {
 
       const taskResult = await db.execute(sql`
         INSERT INTO crm.tasks (title, description, priority, status, due_date, linked_payable_id, instance_id, triggering_message_id, related_chat_jid)
-        VALUES (${taskData.title}, ${taskData.description}, ${taskData.priority}, ${taskData.status}, ${taskData.dueDate}, ${taskData.linkedPayableId}, ${taskData.instanceId}, ${taskData.triggeringMessageId}, ${taskData.relatedChatJid})
+        VALUES (
+          ${taskData.title}, 
+          ${taskData.description}, 
+          ${taskData.priority}, 
+          ${taskData.status}, 
+          ${taskData.dueDate}, 
+          ${taskData.linkedPayableId}, 
+          COALESCE(${taskData.instanceId}, (SELECT instance_id FROM whatsapp.instances LIMIT 1)), 
+          ${taskData.triggeringMessageId}, 
+          ${taskData.relatedChatJid}
+        )
         RETURNING task_id, title, description, status
       `);
 
