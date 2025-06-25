@@ -127,6 +127,7 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 25, 2025: Added proper CRM calendar events architecture - created crm.calendar_events table as source of truth for internal app events, separate from calendar.events sync layer, following best practice separation between internal CRM functionality and external calendar integration
 - June 25, 2025: Fixed app crashes and contact editing errors - resolved infinite re-render loops in ChatInterface component by stabilizing useEffect dependencies, implemented missing getMessageReplies method in storage class to fix contact editing functionality, and ensured stable SSE connections for real-time updates without performance issues
 - June 25, 2025: Fixed 📝 reaction trigger system with standalone CRM notes architecture - made space_id nullable in crm.notes table, removed fallback space assignment logic, implemented proper title generation with chat ID and date format for untitled notes, and ensured notes are truly standalone entities that can be optionally linked to contacts, spaces, tasks, events, companies, or groups without mandatory relationships
 - June 25, 2025: Optimized media processing to eliminate on-demand downloads - removed Evolution API downloads from media endpoint to only serve cached files processed during webhook events, preventing unnecessary API calls when users browse conversations
