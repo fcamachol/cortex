@@ -12,10 +12,28 @@ import { ScheduledJobsService } from "./scheduled-jobs";
     const app = express();
     const server = createServer(app);
 
+    // Configure server timeouts for SSE connections
+    server.timeout = 0; // Disable server timeout for SSE
+    server.keepAliveTimeout = 65000; // Keep connections alive
+    server.headersTimeout = 66000; // Headers timeout
+
     // 2. Setup Middleware
     // Use a large limit to handle webhooks with base64 media
     app.use(express.json({ limit: '50mb' }));
     app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+    // Add CORS headers for production deployment
+    app.use((req, res, next) => {
+        res.header('Access-Control-Allow-Origin', '*');
+        res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control');
+        
+        if (req.method === 'OPTIONS') {
+            res.sendStatus(200);
+        } else {
+            next();
+        }
+    });
 
     // Optional: Add a simple logging middleware
     app.use((req, res, next) => {

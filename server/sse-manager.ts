@@ -18,10 +18,13 @@ export const SseManager = {
      * It sets the necessary headers and stores the connection.
      */
     handleNewConnection(req: Request, res: Response) {
-        // Set headers for SSE connection
+        // Set headers for SSE connection with CORS support
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
+        res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
         res.flushHeaders(); // Flush the headers to establish the connection
 
         const clientId = Date.now().toString() + Math.random().toString(36).substring(2);
@@ -29,17 +32,34 @@ export const SseManager = {
         console.log(`📡 SSE Client connected: ${clientId}`);
 
         // Send a welcome message
-        res.write(`data: ${JSON.stringify({ type: 'connected', message: 'Welcome to the real-time event stream!' })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'connected', clientId, message: 'Welcome to the real-time event stream!' })}\n\n`);
 
-        // Remove the client from the map when they disconnect
-        req.on('close', () => {
+        // Set up heartbeat to keep connection alive
+        const heartbeatInterval = setInterval(() => {
+            try {
+                res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`);
+            } catch (error) {
+                console.log(`🔌 Heartbeat failed for client ${clientId}, removing connection`);
+                clearInterval(heartbeatInterval);
+                sseConnections.delete(clientId);
+            }
+        }, 30000); // Send heartbeat every 30 seconds
+
+        // Clean up function
+        const cleanup = () => {
+            clearInterval(heartbeatInterval);
             sseConnections.delete(clientId);
             console.log(`🔌 SSE Client disconnected: ${clientId}`);
-        });
+        };
 
-        req.on('aborted', () => {
-            sseConnections.delete(clientId);
-            console.log(`🔌 SSE Client aborted: ${clientId}`);
+        // Remove the client from the map when they disconnect
+        req.on('close', cleanup);
+        req.on('aborted', cleanup);
+        res.on('close', cleanup);
+        res.on('finish', cleanup);
+        res.on('error', (error) => {
+            console.log(`🔌 SSE Connection error for ${clientId}:`, error.message);
+            cleanup();
         });
     },
 

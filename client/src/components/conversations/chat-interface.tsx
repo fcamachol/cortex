@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 // WebSocket functionality removed - using webhook-based system
 import { apiRequest } from "@/lib/queryClient";
 import { formatPhoneNumber } from "@/lib/phoneUtils";
+import { useSSE } from "@/hooks/useSSE";
 
 interface ChatInterfaceProps {
   conversationId: string | null;
@@ -240,12 +241,9 @@ export default function ChatInterface({
     },
   });
   
-  useEffect(() => {
+  // Set up SSE listener for real-time updates using centralized hook
+  useSSE((data) => {
     if (!stableConversationId) return;
-
-    console.log('Setting up SSE connection for real-time messages');
-    const eventSource = new EventSource('/api/events');
-    eventSourceRef.current = eventSource;
 
     const handleMessage = (event) => {
       try {
