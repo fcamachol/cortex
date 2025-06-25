@@ -1,0 +1,326 @@
+📥 Fetching media from Evolution API for message: 3A800E6574477E7BC1E2
+📥 Downloading audio from Evolution API for message: 3A800E6574477E7BC1E2
+📥 Fetching media from Evolution API for message: 3AAE2DB28F853C36256B
+📥 Downloading audio from Evolution API for message: 3AAE2DB28F853C36256B
+📥 Fetching media from Evolution API for message: 3A0006686A9156FC1D01
+📥 Downloading audio from Evolution API for message: 3A0006686A9156FC1D01
+📥 Fetching media from Evolution API for message: 3A67D37C64DCD2587099
+📥 Downloading audio from Evolution API for message: 3A67D37C64DCD2587099
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A800E6574477E7BC1E2 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A800E6574477E7BC1E2 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3AAE2DB28F853C36256B - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3AAE2DB28F853C36256B 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A0006686A9156FC1D01 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A0006686A9156FC1D01 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A67D37C64DCD2587099 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A67D37C64DCD2587099 404 
+📥 Fetching media from Evolution API for message: 3A93DE5676E39D3E6E83
+📥 Downloading audio from Evolution API for message: 3A93DE5676E39D3E6E83
+📥 Fetching media from Evolution API for message: 3A510B8E188D963A6673
+📥 Downloading audio from Evolution API for message: 3A510B8E188D963A6673
+📥 Fetching media from Evolution API for message: 3AD83234DE0551119FC5
+📥 Downloading audio from Evolution API for message: 3AD83234DE0551119FC5
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A93DE5676E39D3E6E83 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A93DE5676E39D3E6E83 404 
+📥 Fetching media from Evolution API for message: 3ACE2359EEF6E83A02DA
+📥 Downloading audio from Evolution API for message: 3ACE2359EEF6E83A02DA
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A510B8E188D963A6673 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A510B8E188D963A6673 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3AD83234DE0551119FC5 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3AD83234DE0551119FC5 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3ACE2359EEF6E83A02DA - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3ACE2359EEF6E83A02DA 404 
+📥 Fetching media from Evolution API for message: 3AA429158004B60D9DD5
+📥 Downloading audio from Evolution API for message: 3AA429158004B60D9DD5
+📥 Fetching media from Evolution API for message: 3A4A6D11A31B888BDD6D
+📥 Downloading audio from Evolution API for message: 3A4A6D11A31B888BDD6D
+📥 Fetching media from Evolution API for message: 3AA93BCCB4DD3B0B9C81
+📥 Downloading audio from Evolution API for message: 3AA93BCCB4DD3B0B9C81
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3AA429158004B60D9DD5 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3AA429158004B60D9DD5 404 
+📥 Fetching media from Evolution API for message: 3ACFD204469405F11D42
+📥 Downloading audio from Evolution API for message: 3ACFD204469405F11D42
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A4A6D11A31B888BDD6D - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A4A6D11A31B888BDD6D 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3AA93BCCB4DD3B0B9C81 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3AA93BCCB4DD3B0B9C81 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3ACFD204469405F11D42 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3ACFD204469405F11D42 404 
+📥 Fetching media from Evolution API for message: 3AA0BC8DD6E7F2CAD563
+📥 Downloading audio from Evolution API for message: 3AA0BC8DD6E7F2CAD563
+📥 Fetching media from Evolution API for message: COMPREHENSIVE_BASE64_AUDIO_TEST
+📥 Downloading audio from Evolution API for message: COMPREHENSIVE_BASE64_AUDIO_TEST
+📥 Fetching media from Evolution API for message: 3A18C0B98C69C457DBFA
+📥 Downloading audio from Evolution API for message: 3A18C0B98C69C457DBFA
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3AA0BC8DD6E7F2CAD563 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3AA0BC8DD6E7F2CAD563 404 
+📥 Fetching media from Evolution API for message: TEST_CORRECTED_MEDIA_1750671586623
+📥 Downloading audio from Evolution API for message: TEST_CORRECTED_MEDIA_1750671586623
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for COMPREHENSIVE_BASE64_AUDIO_TEST - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/COMPREHENSIVE_BASE64_AUDIO_TEST 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A18C0B98C69C457DBFA - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A18C0B98C69C457DBFA 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for TEST_CORRECTED_MEDIA_1750671586623 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/TEST_CORRECTED_MEDIA_1750671586623 404 
+📥 Fetching media from Evolution API for message: TEST_CORRECTED_MEDIA_1750672081210
+📥 Downloading audio from Evolution API for message: TEST_CORRECTED_MEDIA_1750672081210
+📥 Fetching media from Evolution API for message: TEST_CORRECTED_MEDIA_1750671448900
+📥 Downloading audio from Evolution API for message: TEST_CORRECTED_MEDIA_1750671448900
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for TEST_CORRECTED_MEDIA_1750672081210 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/TEST_CORRECTED_MEDIA_1750672081210 404 
+📥 Fetching media from Evolution API for message: TEST_CORRECTED_MEDIA_1750671417446
+📥 Downloading audio from Evolution API for message: TEST_CORRECTED_MEDIA_1750671417446
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for TEST_CORRECTED_MEDIA_1750671448900 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/TEST_CORRECTED_MEDIA_1750671448900 404 
+📥 Fetching media from Evolution API for message: TEST_CORRECTED_MEDIA_1750671299670
+📥 Downloading audio from Evolution API for message: TEST_CORRECTED_MEDIA_1750671299670
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for TEST_CORRECTED_MEDIA_1750671417446 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/TEST_CORRECTED_MEDIA_1750671417446 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for TEST_CORRECTED_MEDIA_1750671299670 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/TEST_CORRECTED_MEDIA_1750671299670 404 
+📥 Fetching media from Evolution API for message: TEST_CORRECTED_MEDIA_1750671602108
+📥 Downloading audio from Evolution API for message: TEST_CORRECTED_MEDIA_1750671602108
+📥 Fetching media from Evolution API for message: TEST_CORRECTED_MEDIA_1750671238262
+📥 Downloading audio from Evolution API for message: TEST_CORRECTED_MEDIA_1750671238262
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for TEST_CORRECTED_MEDIA_1750671602108 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/TEST_CORRECTED_MEDIA_1750671602108 404 
+📥 Fetching media from Evolution API for message: TEST_CORRECTED_MEDIA_1750671611394
+📥 Downloading audio from Evolution API for message: TEST_CORRECTED_MEDIA_1750671611394
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for TEST_CORRECTED_MEDIA_1750671238262 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/TEST_CORRECTED_MEDIA_1750671238262 404 
+📥 Fetching media from Evolution API for message: TEST_CORRECTED_MEDIA_1750672248094
+📥 Downloading audio from Evolution API for message: TEST_CORRECTED_MEDIA_1750672248094
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for TEST_CORRECTED_MEDIA_1750671611394 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/TEST_CORRECTED_MEDIA_1750671611394 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for TEST_CORRECTED_MEDIA_1750672248094 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/TEST_CORRECTED_MEDIA_1750672248094 404 
+📥 Fetching media from Evolution API for message: TEST_CORRECTED_MEDIA_1750671852112
+📥 Downloading audio from Evolution API for message: TEST_CORRECTED_MEDIA_1750671852112
+📥 Fetching media from Evolution API for message: TEST_CORRECTED_MEDIA_1750672280644
+📥 Downloading audio from Evolution API for message: TEST_CORRECTED_MEDIA_1750672280644
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for TEST_CORRECTED_MEDIA_1750671852112 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/TEST_CORRECTED_MEDIA_1750671852112 404 
+📥 Fetching media from Evolution API for message: 3A8BB8B1A47CA50D1C2D
+📥 Downloading audio from Evolution API for message: 3A8BB8B1A47CA50D1C2D
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for TEST_CORRECTED_MEDIA_1750672280644 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/TEST_CORRECTED_MEDIA_1750672280644 404 
+📥 Fetching media from Evolution API for message: 3ACBDBABC0C52BD395D2
+📥 Downloading audio from Evolution API for message: 3ACBDBABC0C52BD395D2
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A8BB8B1A47CA50D1C2D - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A8BB8B1A47CA50D1C2D 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3ACBDBABC0C52BD395D2 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3ACBDBABC0C52BD395D2 404 
+📥 Fetching media from Evolution API for message: 3A8CF268E45CF0AE5BC1
+📥 Downloading audio from Evolution API for message: 3A8CF268E45CF0AE5BC1
+📥 Fetching media from Evolution API for message: 3ADAC697B3A0143B42D5
+📥 Downloading audio from Evolution API for message: 3ADAC697B3A0143B42D5
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A8CF268E45CF0AE5BC1 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A8CF268E45CF0AE5BC1 404 
+📥 Fetching media from Evolution API for message: 3A5445E6A3B5B6D2B1DF
+📥 Downloading audio from Evolution API for message: 3A5445E6A3B5B6D2B1DF
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3ADAC697B3A0143B42D5 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3ADAC697B3A0143B42D5 404 
+📥 Fetching media from Evolution API for message: 3A65D49B22BC26EFA9AC
+📥 Downloading audio from Evolution API for message: 3A65D49B22BC26EFA9AC
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A5445E6A3B5B6D2B1DF - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A5445E6A3B5B6D2B1DF 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A65D49B22BC26EFA9AC - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A65D49B22BC26EFA9AC 404 
+📥 Fetching media from Evolution API for message: 3AA03431330B86825AEC
+📥 Downloading audio from Evolution API for message: 3AA03431330B86825AEC
+📥 Fetching media from Evolution API for message: 3AE33EDED589A0AC27E2
+📥 Downloading audio from Evolution API for message: 3AE33EDED589A0AC27E2
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3AA03431330B86825AEC - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3AA03431330B86825AEC 404 
+📥 Fetching media from Evolution API for message: 3A240045CDE24BF99F88
+📥 Downloading audio from Evolution API for message: 3A240045CDE24BF99F88
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3AE33EDED589A0AC27E2 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3AE33EDED589A0AC27E2 404 
+📥 Fetching media from Evolution API for message: 3AB547C6D1B6FE7254AF
+📥 Downloading audio from Evolution API for message: 3AB547C6D1B6FE7254AF
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A240045CDE24BF99F88 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A240045CDE24BF99F88 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3AB547C6D1B6FE7254AF - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3AB547C6D1B6FE7254AF 404 
+📥 Fetching media from Evolution API for message: 3ABDD94D30F74C2A1C28
+📥 Downloading audio from Evolution API for message: 3ABDD94D30F74C2A1C28
+📥 Fetching media from Evolution API for message: 3A2F7F6F272D12B59B70
+📥 Downloading audio from Evolution API for message: 3A2F7F6F272D12B59B70
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3ABDD94D30F74C2A1C28 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3ABDD94D30F74C2A1C28 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A2F7F6F272D12B59B70 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A2F7F6F272D12B59B70 404 
+📥 Fetching media from Evolution API for message: 3A289A76B36BEF76CB32
+📥 Downloading audio from Evolution API for message: 3A289A76B36BEF76CB32
+📥 Fetching media from Evolution API for message: 3A90C398C389F7FC5880
+📥 Downloading audio from Evolution API for message: 3A90C398C389F7FC5880
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A289A76B36BEF76CB32 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A289A76B36BEF76CB32 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A90C398C389F7FC5880 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A90C398C389F7FC5880 404 
+📥 Fetching media from Evolution API for message: TEST_GETBASE64_1750675952502
+📥 Downloading audio from Evolution API for message: TEST_GETBASE64_1750675952502
+📥 Fetching media from Evolution API for message: 3A9F785D16CCA1CCEE32
+📥 Downloading audio from Evolution API for message: 3A9F785D16CCA1CCEE32
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for TEST_GETBASE64_1750675952502 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/TEST_GETBASE64_1750675952502 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A9F785D16CCA1CCEE32 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A9F785D16CCA1CCEE32 404 
+📥 Fetching media from Evolution API for message: 3A69FD0B35BF7D000075
+📥 Downloading audio from Evolution API for message: 3A69FD0B35BF7D000075
+📥 Fetching media from Evolution API for message: ENHANCED_DOWNLOAD_1750676580790
+📥 Downloading audio from Evolution API for message: ENHANCED_DOWNLOAD_1750676580790
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A69FD0B35BF7D000075 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A69FD0B35BF7D000075 404 
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for ENHANCED_DOWNLOAD_1750676580790 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/ENHANCED_DOWNLOAD_1750676580790 404 
+📥 Fetching media from Evolution API for message: 3A22F20DFB15C869255E
+✅ Found Evolution API media file: 3A22F20DFB15C869255E.ogg; codecs=opus
+✅ Serving Evolution API media: 3A22F20DFB15C869255E from /home/runner/workspace/media_storage/live-test-1750199771/3A22F20DFB15C869255E.ogg; codecs=opus
+GET /api/whatsapp/media/live-test-1750199771/3A22F20DFB15C869255E 304 
+📥 Fetching media from Evolution API for message: 3A7597427C96361F9452
+📥 Downloading audio from Evolution API for message: 3A7597427C96361F9452
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3A7597427C96361F9452 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3A7597427C96361F9452 404 
+📥 Fetching media from Evolution API for message: 3AA869490209359407C1
+📥 Downloading audio from Evolution API for message: 3AA869490209359407C1
+❌ Error downloading from Evolution API: Error: Message data not found or invalid
+    at <anonymous> (/home/runner/workspace/server/routes.ts:1845:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+❌ Media not available for 3AA869490209359407C1 - no cached file or base64 data
+GET /api/whatsapp/media/live-test-1750199771/3AA869490209359407C1 404 
