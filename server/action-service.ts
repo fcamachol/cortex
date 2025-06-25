@@ -29,9 +29,6 @@ export const ActionService = {
                 
                 // Process keyword triggers for financial automation
                 await this.processKeywordTriggers(storedMessage);
-                
-                // Process keyword triggers for financial automation
-                await this.processKeywordTriggers(storedMessage);
             }
         } catch (error) {
             console.error(`❌ Error processing new message ${storedMessage.messageId}:`, error);
@@ -266,28 +263,50 @@ export const ActionService = {
             
             console.log('🔄 Processed financial config:', processedConfig);
             
-            // Create the trigger context for ActionsEngine
-            const actionsContext = {
-                instanceId: triggerContext.instanceId,
-                messageId: triggerContext.context.messageId,
-                chatId: triggerContext.context.chatId,
-                senderJid: triggerContext.context.senderJid,
-                content: triggerContext.context.content,
-                keywords: [], // Will be populated by ActionsEngine
-                hashtags: [],
-                reaction: null
+            // Extract financial details from message content using NLP
+            const nlpAnalysis = this.analyzeContentWithNLP(triggerContext.context.content || '');
+            const extractedAmount = this.extractAmountFromText(triggerContext.context.content || '');
+            
+            // Create payable record
+            const payableData = {
+                spaceId: processedConfig.spaceId || 1, // Default space
+                description: processedConfig.description || `Bill from WhatsApp: ${triggerContext.context.content}`,
+                totalAmount: extractedAmount || processedConfig.amount || 0,
+                dueDate: nlpAnalysis.suggestedDueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days default
+                status: 'unpaid',
+                createdAt: new Date(),
+                updatedAt: new Date()
             };
             
-            // Import and use ActionsEngine for financial record creation
-            const { ActionsEngine } = await import('./actions-engine');
-            const result = await ActionsEngine.executeAction('create_financial_record', processedConfig, actionsContext);
+            // Save payable to database
+            const createdPayable = await storage.createPayable(payableData);
+            console.log('✅ Payable created:', createdPayable.payableId);
             
-            console.log('✅ Financial record creation result:', result);
+            // Create companion payment task
+            const taskData = {
+                title: processedConfig.taskTitle || `Pay Bill: ${triggerContext.context.senderJid} - $${createdPayable.totalAmount}`,
+                description: `Payment task for bill: ${createdPayable.description}\n\nBill Details:\n- Amount: $${createdPayable.totalAmount}\n- Due Date: ${createdPayable.dueDate}\n\nCreated from WhatsApp automation system`,
+                priority: nlpAnalysis.isUrgent ? 'high' : 'medium',
+                status: 'to_do',
+                dueDate: createdPayable.dueDate,
+                linkedPayableId: createdPayable.payableId,
+                instanceId: triggerContext.instanceId,
+                triggeringMessageId: triggerContext.context.messageId,
+                relatedChatJid: triggerContext.context.chatId
+            };
             
-            if (result.success) {
-                // Notify clients via SSE if needed
-                SseManager.notifyTaskCreated(result.data.task);
-            }
+            const createdTask = await storage.createTask(taskData);
+            console.log('✅ Payment task created:', createdTask.taskId);
+            
+            // Log action execution
+            await this.logActionExecution(triggerContext.rule, {
+                payableId: createdPayable.payableId,
+                taskId: createdTask.taskId,
+                amount: createdPayable.totalAmount
+            });
+            
+            // Notify clients via SSE
+            SseManager.notifyTaskCreated(createdTask);
             
         } catch (error) {
             console.error('❌ Error creating financial record:', error);

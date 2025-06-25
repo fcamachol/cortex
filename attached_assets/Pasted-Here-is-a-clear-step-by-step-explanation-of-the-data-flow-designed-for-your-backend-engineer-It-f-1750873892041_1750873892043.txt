@@ -1,0 +1,38 @@
+Here is a clear, step-by-step explanation of the data flow, designed for your backend engineer. It follows the professional, layered architecture we've designed and is illustrated in the Canvas diagram.
+
+Backend Data Flow: From Webhook to Action
+This process is designed to be robust, secure, and asynchronous. Each layer has one specific job.
+
+Step 1: The "Front Door" (Webhook Controller)
+
+File: webhook-controller.ts
+Action: The Evolution API sends a raw HTTP POST request to a unique endpoint like /api/whatsapp/webhook/{instanceName}.
+Responsibility: This controller's only job is to be extremely fast and dumb.
+It receives the raw request.
+It does a quick, basic validation (e.g., "does the payload exist?").
+It immediately sends a 200 OK response back to the Evolution API. This is critical to prevent the API from thinking our server is down and retrying the request.
+It then asynchronously passes the full, raw JSON payload to the next layer, the WhatsAppApiAdapter, without waiting for it to finish processing.
+Step 2: The "Translator" (WhatsApp API Adapter)
+
+File: whatsapp-api-adapter.ts
+Action: This layer receives the raw JSON payload.
+Responsibility: Its only job is to be the "translator." It knows the messy, sometimes inconsistent structure of the Evolution API payload and its sole purpose is to convert that into our clean, predictable internal data objects that perfectly match our database schemas.
+It inspects the event type (messages.upsert, groups.update, etc.).
+It calls the correct mapping function (e.g., mapApiPayloadToWhatsappMessage).
+It produces a clean, validated object (e.g., a cleanMessage object).
+It then passes this clean object to the "Brain" of the application, the ActionService.
+Step 3: The "Kitchen" / Brain (Action Service)
+
+File: action-service.ts
+Action: This is where all the complex business logic happens. It receives a clean data object from the adapter (e.g., a new message or a reaction).
+Responsibility:
+Persist the Core Data: Its first command is always to the Storage Layer to save the primary data (e.g., "save this new message," "save this reaction"). This ensures we have a record of the event before we try to act on it.
+Check for Active Rules: After the data is saved, it asks the crucial question: "Should this event trigger an automation?"
+It commands the Storage Layer to query the actions.action_rules table to find any active rules that match the trigger (e.g., trigger_type = 'reaction' and trigger_conditions contains the specific emoji).
+If a rule is found, it proceeds with the action logic:
+It reads the action_type (e.g., 'create_task') and action_config from the rule.
+It gathers any additional context needed (e.g., fetching the original message if the trigger was on a reply).
+It calls the NLP library to parse for dates or locations.
+It commands the Storage Layer to perform the final database operation (e.g., INSERT a new row into crm.tasks).
+Log the Execution: After the action is performed, it commands the Storage Layer to create a record in actions.action_executions, providing a complete audit trail of what happened.
+This layered approach ensures that your core business logic is completely separate from your data ingestion and API communication layers, making the entire system much more robust and maintainable.
