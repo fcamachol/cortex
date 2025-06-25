@@ -127,6 +127,8 @@ The system implements a sophisticated media processing pipeline:
 - **Error Handling**: Comprehensive error logging and recovery
 
 ## Changelog
+- June 25, 2025: Fixed 📝 reaction trigger system with standalone CRM notes architecture - made space_id nullable in crm.notes table, removed fallback space assignment logic, implemented proper title generation with chat ID and date format for untitled notes, and ensured notes are truly standalone entities that can be optionally linked to contacts, spaces, tasks, events, companies, or groups without mandatory relationships
+- June 25, 2025: Optimized media processing to eliminate on-demand downloads - removed Evolution API downloads from media endpoint to only serve cached files processed during webhook events, preventing unnecessary API calls when users browse conversations
 - June 24, 2025: Enhanced actions system with comprehensive automation types - expanded action types to include project creation, note creation, file storage, document creation, space management, financial records, meeting scheduling, invoice creation, and task priority updates, providing comprehensive automation capabilities for WhatsApp message triggers
 - June 24, 2025: Successfully implemented comprehensive CRM projects table with space assignment functionality - added crmProjects table to schema with full CRUD operations, storage methods, API endpoints, and space assignment for both projects and tasks, enabling proper hierarchical organization within spaces
 - June 24, 2025: Updated space navigation - space cards in all views (grid, list, hierarchy) now navigate directly to space detail view instead of opening modals, providing seamless hierarchical navigation experience
