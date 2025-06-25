@@ -521,7 +521,8 @@ export async function registerRoutes(app: Express): Promise<void> {
             await storage.upsertWhatsappContact({
               jid: systemContactJid,
               instanceId,
-              pushName: 'System'
+              pushName: 'System',
+              isMe: false
             });
             senderJid = systemContactJid;
           } catch (contactError) {
