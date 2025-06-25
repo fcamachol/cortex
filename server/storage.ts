@@ -2898,35 +2898,33 @@ class DatabaseStorage {
 
     async createCalendarEvent(eventData: any): Promise<any> {
         try {
-            console.log('📅 Creating calendar event:', eventData);
+            console.log('📅 Creating calendar event in CRM schema:', eventData.title);
             
-            // Map the event data to the correct schema format
-            const calendarEventData = {
-                title: eventData.title,
-                description: eventData.description,
-                startTime: eventData.startTime,
-                endTime: eventData.endTime,
-                spaceId: eventData.spaceId || null,
-                calendarId: eventData.calendarId,
-                isAllDay: eventData.isAllDay || false,
-                location: eventData.location || null,
-                attendees: eventData.attendees || null,
-                recurrenceRule: eventData.recurrenceRule || null,
-                reminderMinutes: eventData.reminderMinutes || null,
-                eventColor: eventData.eventColor || null,
-                visibility: eventData.visibility || 'default',
-                status: eventData.status || 'confirmed'
-            };
+            const result = await db.execute(sql`
+                INSERT INTO crm.calendar_events (
+                    created_by_user_id, title, description, start_time, end_time, 
+                    is_all_day, location, instance_id, created_at, updated_at
+                )
+                VALUES (
+                    ${eventData.ownerUserId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'}, 
+                    ${eventData.title}, 
+                    ${eventData.description}, 
+                    ${eventData.startTime}, 
+                    ${eventData.endTime}, 
+                    ${eventData.isAllDay || false}, 
+                    ${eventData.location}, 
+                    ${eventData.instanceId}, 
+                    NOW(), 
+                    NOW()
+                )
+                RETURNING *
+            `);
             
-            const [calendar] = await db
-                .insert(calendarEvents)
-                .values(calendarEventData)
-                .returning();
-                
-            console.log('✅ Calendar event created successfully:', calendar.eventId);
-            return calendar;
+            const createdEvent = result.rows?.[0] || result[0];
+            console.log('✅ CRM calendar event created successfully:', createdEvent?.title || eventData.title);
+            return createdEvent;
         } catch (error) {
-            console.error('❌ Error creating calendar event:', error);
+            console.error('❌ Error creating CRM calendar event:', error);
             throw error;
         }
     }

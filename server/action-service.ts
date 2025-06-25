@@ -244,6 +244,8 @@ export const ActionService = {
             description: processedConfig.description || 'Event created from WhatsApp',
             startTime: nlpAnalysis.suggestedDueDate || new Date(),
             endTime: nlpAnalysis.suggestedDueDate ? new Date(nlpAnalysis.suggestedDueDate.getTime() + 3600000) : new Date(Date.now() + 3600000),
+            instanceId: triggerContext.instanceId,
+            ownerUserId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42',
             calendarId: 1 // Default calendar
         };
         

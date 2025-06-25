@@ -1323,6 +1323,25 @@ export const crmTasks = crmSchema.table("tasks", {
   spaceId: integer("space_id"),
 });
 
+// CRM Calendar Events - Source of truth for internal app events
+export const crmCalendarEvents = crmSchema.table("calendar_events", {
+  eventId: serial("event_id").primaryKey(),
+  createdByUserId: uuid("created_by_user_id").notNull().references(() => appUsers.userId),
+  instanceId: varchar("instance_id", { length: 100 }),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  startTime: timestamp("start_time", { withTimezone: true }),
+  endTime: timestamp("end_time", { withTimezone: true }),
+  isAllDay: boolean("is_all_day").notNull().default(false),
+  location: varchar("location", { length: 512 }),
+  attendees: jsonb("attendees"),
+  reminderMinutes: integer("reminder_minutes"),
+  recurrenceRule: varchar("recurrence_rule", { length: 255 }),
+  status: varchar("status", { length: 50 }).default("confirmed"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // =========================================================================
 // CRM RELATIONS - Comprehensive relationship definitions
 // =========================================================================
