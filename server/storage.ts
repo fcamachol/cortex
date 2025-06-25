@@ -2661,6 +2661,8 @@ class DatabaseStorage {
                     trigger_conditions as "triggerConditions",
                     action_type as "actionType",
                     action_config as "actionConfig",
+                    performer_filters as "performerFilters",
+                    instance_filters as "instanceFilters",
                     is_active as "isActive",
                     total_executions as "totalExecutions",
                     last_executed_at as "lastExecutedAt",
@@ -2725,6 +2727,8 @@ class DatabaseStorage {
                     trigger_conditions = ${JSON.stringify(ruleData.triggerConditions || ruleData.trigger_conditions || {})},
                     action_type = ${ruleData.actionType || ruleData.action_type},
                     action_config = ${JSON.stringify(ruleData.actionConfig || ruleData.action_config || {})},
+                    performer_filters = ${JSON.stringify(ruleData.performerFilters || ruleData.performer_filters || {})},
+                    instance_filters = ${JSON.stringify(ruleData.instanceFilters || ruleData.instance_filters || {})},
                     is_active = ${ruleData.isActive !== undefined ? ruleData.isActive : (ruleData.is_active !== undefined ? ruleData.is_active : true)},
                     updated_at = NOW()
                 WHERE rule_id = ${ruleId}
@@ -2736,6 +2740,8 @@ class DatabaseStorage {
                     trigger_conditions as "triggerConditions",
                     action_type as "actionType",
                     action_config as "actionConfig",
+                    performer_filters as "performerFilters",
+                    instance_filters as "instanceFilters",
                     is_active as "isActive",
                     total_executions as "totalExecutions",
                     last_executed_at as "lastExecutedAt",
