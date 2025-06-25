@@ -813,16 +813,13 @@ class DatabaseStorage {
             
             const result = await db.execute(sql`
                 INSERT INTO crm.calendar_events (
-                    owner_user_id, title, description, start_time, end_time, 
-                    is_all_day, location, meet_link, status, priority, 
-                    reminder_minutes, instance_id, created_at, updated_at
+                    created_by_user_id, title, description, start_time, end_time, 
+                    is_all_day, location, instance_id, created_at, updated_at
                 )
                 VALUES (
                     ${eventData.ownerUserId}, ${eventData.title}, ${eventData.description}, 
                     ${eventData.startTime}, ${eventData.endTime}, ${eventData.isAllDay || false}, 
-                    ${eventData.location}, ${eventData.meetLink}, ${eventData.status || 'confirmed'}, 
-                    ${eventData.priority || 'normal'}, ${eventData.reminderMinutes || 15}, 
-                    ${eventData.instanceId}, NOW(), NOW()
+                    ${eventData.location}, ${eventData.instanceId}, NOW(), NOW()
                 )
                 RETURNING *
             `);

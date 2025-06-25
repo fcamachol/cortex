@@ -96,6 +96,10 @@ export const WebhookApiAdapter = {
             case 'SEND_MESSAGE':
                 await this.handleSendMessage(instanceId, data);
                 break;
+            case 'messages.reaction':
+            case 'MESSAGES_REACTION':
+                await this.handleDirectReaction(instanceId, data);
+                break;
             default:
                 console.log(`- Unhandled event type in adapter: ${eventType}`);
         }
