@@ -800,64 +800,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                     </div>
                   ) : null}
 
-                  {/* Message Thread */}
-                  {messageThread.length > 0 && (
-                    <div className="mt-4 space-y-3">
-                      <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                        <MessageSquare className="h-4 w-4" />
-                        Message Thread ({messageThread.length})
-                      </h4>
-                      <div className="max-h-60 overflow-y-auto space-y-2 border rounded-lg p-3 bg-gray-50">
-                        {threadLoading ? (
-                          <div className="text-center text-sm text-gray-500 py-4">
-                            Loading message thread...
-                          </div>
-                        ) : (
-                          messageThread.map((msg, index) => (
-                            <div
-                              key={msg.messageId || index}
-                              className={`p-3 rounded-lg ${
-                                msg.fromMe 
-                                  ? 'bg-blue-50 border-l-4 border-blue-600 ml-6 shadow-sm' 
-                                  : 'bg-white border-l-4 border-gray-300 mr-6 shadow-sm'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                                <span className={`font-medium ${msg.fromMe ? 'text-blue-700' : 'text-gray-700'}`}>
-                                  {msg.fromMe ? 'You' : (
-                                    msg.rawApiPayload?.pushName || 
-                                    msg.senderName || 
-                                    msg.senderJid?.split('@')[0] || 
-                                    'Contact'
-                                  )}
-                                </span>
-                                <span className="text-xs">
-                                  {msg.timestamp ? format(new Date(msg.timestamp), "MMM dd, h:mm a") : 'Unknown time'}
-                                </span>
-                              </div>
-                              <div className={`text-sm whitespace-pre-wrap ${
-                                msg.fromMe ? 'text-blue-900' : 'text-gray-800'
-                              }`}>
-                                {msg.content || 'No content'}
-                              </div>
-                              {msg.quotedMessageId === task.triggeringMessageId && (
-                                <div className="mt-2 text-xs text-purple-600 flex items-center gap-1">
-                                  <Reply className="h-3 w-3" />
-                                  Reply to original message
-                                </div>
-                              )}
-                              {msg.fromMe && (
-                                <div className="mt-1 text-xs text-blue-500 flex items-center gap-1">
-                                  <Send className="h-3 w-3" />
-                                  Sent from task
-                                </div>
-                              )}
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
+
 
                   {/* Reply Interface */}
                   <div className="mt-3 space-y-2">
