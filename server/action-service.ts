@@ -1,6 +1,7 @@
 import { storage } from './storage';
 import { SseManager } from './sse-manager';
 import * as chrono from 'chrono-node';
+import { nanoid } from 'nanoid';
 import { 
     type InsertWhatsappMessage,
     type InsertWhatsappMessageReaction
@@ -113,27 +114,31 @@ export const ActionService = {
     async executeAction(actionType: string, config: any, triggerContext: any): Promise<void> {
         console.log(`🎯 Executing action: ${actionType}`);
         
-        switch (actionType) {
-            case 'create_task':
-                await this.createTaskAction(config, triggerContext);
-                break;
-            case 'create_note':
-                await this.createNoteAction(config, triggerContext);
-                break;
-            case 'create_financial_record':
-                await this.createFinancialRecordAction(config, triggerContext);
-                break;
-            case 'create_calendar_event':
-                await this.createCalendarEventAction(config, triggerContext);
-                break;
-            case 'send_message':
-                await this.sendMessageAction(config, triggerContext);
-                break;
-            case 'add_label':
-                await this.addLabelAction(config, triggerContext);
-                break;
-            default:
-                console.log(`⚠️ Unknown action type: ${actionType}`);
+        try {
+            switch (actionType) {
+                case 'create_task':
+                    await this.createTaskAction(config, triggerContext);
+                    break;
+                case 'create_note':
+                    await this.createNoteAction(config, triggerContext);
+                    break;
+                case 'create_financial_record':
+                    await this.createFinancialRecordAction(config, triggerContext);
+                    break;
+                case 'create_calendar_event':
+                    await this.createCalendarEventAction(config, triggerContext);
+                    break;
+                case 'send_message':
+                    await this.sendMessageAction(config, triggerContext);
+                    break;
+                case 'add_label':
+                    await this.addLabelAction(config, triggerContext);
+                    break;
+                default:
+                    console.log(`⚠️ Unknown action type: ${actionType}`);
+            }
+        } catch (error) {
+            console.error(`❌ Error executing action ${actionType}:`, error);
         }
     },
 
@@ -371,6 +376,31 @@ export const ActionService = {
             word.length > 3 && 
             !['this', 'that', 'with', 'from', 'they', 'have', 'been', 'will', 'para', 'esto', 'como', 'pero'].includes(word)
         ).slice(0, 5);
+    },
+
+    extractAmountFromText(text: string): number | null {
+        // Extract monetary amounts from text
+        const amountRegex = /\$?(\d+(?:\.\d{2})?)/g;
+        const matches = text.match(amountRegex);
+        if (matches && matches.length > 0) {
+            const amount = parseFloat(matches[0].replace('$', ''));
+            return isNaN(amount) ? null : amount;
+        }
+        return null;
+    },
+
+    async logActionExecution(rule: any, result: any): Promise<void> {
+        try {
+            // Simple logging for now since action_executions table structure needs verification
+            console.log('📊 Action execution logged:', {
+                ruleId: rule.ruleId,
+                ruleName: rule.ruleName,
+                result: result,
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('❌ Error logging action execution:', error);
+        }
     },
 
     async processHashtagTriggers(message: InsertWhatsappMessage): Promise<void> {

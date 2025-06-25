@@ -2807,6 +2807,29 @@ class DatabaseStorage {
             console.error('Error fetching message replies:', error);
             return [];
         }
+    },
+
+    async createPayable(payableData: any): Promise<any> {
+        try {
+            console.log('💰 Creating payable:', payableData);
+            
+            const [payable] = await db
+                .insert(financePayables)
+                .values({
+                    spaceId: payableData.spaceId,
+                    description: payableData.description,
+                    totalAmount: payableData.totalAmount,
+                    dueDate: payableData.dueDate,
+                    status: payableData.status || 'unpaid'
+                })
+                .returning();
+            
+            console.log('✅ Payable created successfully:', payable);
+            return payable;
+        } catch (error) {
+            console.error('❌ Error creating payable:', error);
+            throw error;
+        }
     }
 }
 
