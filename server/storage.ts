@@ -2749,7 +2749,7 @@ class DatabaseStorage {
             console.error('Error updating action rule:', error);
             throw error;
         }
-    }
+    },
 
     async createNote(noteData: any): Promise<any> {
         try {
