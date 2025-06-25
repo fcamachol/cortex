@@ -521,9 +521,7 @@ export async function registerRoutes(app: Express): Promise<void> {
             await storage.upsertWhatsappContact({
               jid: systemContactJid,
               instanceId,
-              pushName: 'System',
-              profilePictureUrl: null,
-              isMe: false
+              pushName: 'System'
             });
             senderJid = systemContactJid;
           } catch (contactError) {
@@ -542,6 +540,10 @@ export async function registerRoutes(app: Express): Promise<void> {
                 }
               });
               console.log(`📡 [${instanceId}] SSE conversation refresh sent (webhook fallback)`);
+              
+              // Force immediate refresh of conversation data
+              SseManager.notifyClients('conversation_list_refresh', { instanceId });
+              
             } catch (sseError) {
               console.error(`📡 [${instanceId}] Failed to send SSE update:`, sseError);
             }
@@ -605,7 +607,11 @@ export async function registerRoutes(app: Express): Promise<void> {
                 fromMe: true
               }
             });
+            
+            // Force immediate refresh of conversation data
+            SseManager.notifyClients('conversation_list_refresh', { instanceId });
             console.log(`📡 [${instanceId}] SSE conversation refresh sent despite storage failure`);
+            
           } catch (sseError) {
             console.error(`📡 [${instanceId}] Failed to send SSE update:`, sseError);
           }
