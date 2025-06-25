@@ -2732,6 +2732,24 @@ class DatabaseStorage {
             throw error;
         }
     }
+    async getMessageReplies(originalMessageId: string, instanceId: string): Promise<any[]> {
+        try {
+            const replies = await db.select()
+                .from(whatsappMessages)
+                .where(
+                    and(
+                        eq(whatsappMessages.quotedMessageId, originalMessageId),
+                        eq(whatsappMessages.instanceId, instanceId)
+                    )
+                )
+                .orderBy(asc(whatsappMessages.timestamp));
+            
+            return replies;
+        } catch (error) {
+            console.error('Error fetching message replies:', error);
+            return [];
+        }
+    }
 }
 
 export const storage = new DatabaseStorage();
