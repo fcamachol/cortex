@@ -159,6 +159,7 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
         }
 
         const replies = await response.json();
+        console.log('Fetched message replies:', replies);
         setMessageReplies(replies);
       } catch (error: any) {
         console.error('Error fetching message replies:', error);
@@ -864,7 +865,48 @@ export function TaskDetailModal({ task, isOpen, onClose, onUpdate, onDelete, onR
                     </div>
                   ) : null}
 
-
+                  {/* Message Replies Section */}
+                  {messageReplies && messageReplies.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                        <Reply className="h-4 w-4" />
+                        Replies ({messageReplies.length})
+                      </h4>
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {messageReplies.map((reply, index) => (
+                          <div key={reply.messageId || index} className="p-3 bg-gray-50 rounded-lg border">
+                            <div className="text-sm text-gray-800 whitespace-pre-wrap">
+                              "{reply.content || "No reply content"}"
+                            </div>
+                            <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                              <span>
+                                From: {reply.fromMe ? "You" : 
+                                      reply.isGroupChat ? 
+                                        (reply.participantName || reply.senderName || reply.senderJid?.split('@')[0] || "Unknown sender") :
+                                        (reply.senderName || reply.senderJid?.split('@')[0] || "Unknown sender")
+                                     }
+                              </span>
+                              <span>
+                                {reply.timestamp 
+                                  ? format(new Date(reply.timestamp), "MMM dd, yyyy 'at' h:mm a")
+                                  : 'Unknown time'
+                                }
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Loading state for replies */}
+                  {repliesLoading && (
+                    <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-dashed">
+                      <div className="text-sm text-gray-500 text-center">
+                        Loading message replies...
+                      </div>
+                    </div>
+                  )}
 
                   {/* Reply Interface */}
                   <div className="mt-3 space-y-2">
