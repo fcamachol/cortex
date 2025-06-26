@@ -1015,7 +1015,7 @@ export default function ChatInterface({
               <Avatar className="w-10 h-10">
                 <AvatarImage src={conversation?.contact?.profilePictureUrl} />
                 <AvatarFallback>
-                  {conversation?.title?.charAt(0) || 'U'}
+                  {conversation ? getConversationDisplayName(conversation).charAt(0) : 'U'}
                 </AvatarFallback>
               </Avatar>
               {/* Instance indicator circle */}
