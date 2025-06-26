@@ -255,7 +255,7 @@ class DatabaseStorage {
                 last_msg.timestamp as "actualLastMessageTime",
                 last_msg.message_type as "lastMessageType"
             FROM whatsapp.chats c
-            INNER JOIN whatsapp.instances i ON c.instance_id = i.instance_name
+            INNER JOIN whatsapp.instances i ON c.instance_id = i.instance_id
             LEFT JOIN whatsapp.contacts ct ON c.chat_id = ct.jid AND c.instance_id = ct.instance_id
             LEFT JOIN whatsapp.groups g ON c.chat_id = g.group_jid AND c.instance_id = g.instance_id
             LEFT JOIN LATERAL (
