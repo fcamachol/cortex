@@ -197,6 +197,9 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
               relationship: contact.relationship || "",
               profilePictureUrl: contact.profilePictureUrl || "",
               notes: contact.notes || "",
+              phones: contact.phones || [],
+              emails: contact.emails || [],
+              addresses: contact.addresses || [],
             }}
             onSuccess={() => {
               setIsEditing(false);

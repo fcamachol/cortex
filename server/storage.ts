@@ -596,8 +596,12 @@ class DatabaseStorage {
                 ))
                 .limit(1);
 
-            const pushName = whatsappContact[0]?.pushName || 'WhatsApp Contact';
-            console.log(`👤 Using push name: ${pushName}`);
+            // Use push name if available, otherwise fall back to phone number
+            const pushName = whatsappContact[0]?.pushName;
+            const contactName = pushName && pushName.trim() !== '' && pushName !== phoneNumber 
+                ? pushName 
+                : phoneNumber;
+            console.log(`👤 Using contact name: ${contactName} (from ${pushName ? 'push name' : 'phone number'})`);
             
             // Create CRM contact using the correct schema structure
             console.log(`📝 Creating CRM contact record...`);
@@ -605,7 +609,7 @@ class DatabaseStorage {
                 .insert(crmContacts)
                 .values({
                     ownerUserId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42', // Default user
-                    fullName: pushName,
+                    fullName: contactName,
                     relationship: 'WhatsApp Contact',
                     notes: `Automatically created from WhatsApp chat: ${chatId}\nInstance: ${instanceId}\nCreated from WhatsApp label: Yes`,
                 })
@@ -626,7 +630,7 @@ class DatabaseStorage {
                 console.log(`✅ Phone record created for: ${phoneNumber}`);
             }
 
-            console.log(`✅ Successfully created CRM contact for WhatsApp chat: ${chatId} -> ${pushName} (ID: ${newCrmContact.contactId})`);
+            console.log(`✅ Successfully created CRM contact for WhatsApp chat: ${chatId} -> ${contactName} (ID: ${newCrmContact.contactId})`);
         } catch (error) {
             console.error(`❌ Error creating CRM contact from WhatsApp chat ${chatId}:`, error);
             console.error(`❌ Error details:`, error.message);

@@ -53,6 +53,9 @@ interface ContactFormBlocksProps {
     relationship?: string;
     profilePictureUrl?: string;
     notes?: string;
+    phones?: any[];
+    emails?: any[];
+    addresses?: any[];
   };
 }
 
