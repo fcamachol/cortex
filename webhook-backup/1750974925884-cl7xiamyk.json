@@ -1,0 +1,26 @@
+{
+  "id": "1750974925884-cl7xiamyk",
+  "timestamp": "2025-06-26T21:55:25.884Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages-update",
+  "payload": {
+    "event": "messages.update",
+    "instance": "live-test-1750199771",
+    "data": {
+      "messageId": "cmcdw06o50m2oo24rb5skhj85",
+      "keyId": "3AC289E14752EFCE1A31",
+      "remoteJid": "5215579188699@s.whatsapp.net",
+      "fromMe": false,
+      "participant": "5215579188699@s.whatsapp.net",
+      "status": "READ",
+      "instanceId": "c5215849-bfb9-413c-aa94-dfa911c8310a"
+    },
+    "destination": "https://cf94481b-abb0-462d-99ce-66c0beae05d0-00-25qqlo4pnl49g.worf.replit.dev/api/evolution/webhook/live-test-1750199771",
+    "date_time": "2025-06-26T18:55:25.668Z",
+    "sender": "15103165094@s.whatsapp.net",
+    "server_url": "https://evolution-api-evolution-api.vuswn0.easypanel.host",
+    "apikey": "119FA240-45ED-46A7-AE13-5A1B7C909D7D"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
