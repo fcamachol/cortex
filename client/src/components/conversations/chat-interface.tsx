@@ -411,7 +411,7 @@ export default function ChatInterface({
       if (!chatId || !finalInstanceId) throw new Error('Missing conversation or instance ID');
       
       const payload: any = {
-        instanceId: finalInstanceId,
+        instanceName: finalInstanceId, // Using instance_name as per database schema
         chatId: chatId,
         message: text,
       };
@@ -825,14 +825,7 @@ export default function ChatInterface({
     };
 
     const handleWindowBlur = () => {
-      if (conversationId && instanceId && messageInput && messageInput.trim()) {
-        saveDraftMutation.mutate({
-          chatId: conversationId,
-          instanceId,
-          content: messageInput,
-          replyToMessageId: replyToMessage?.messageId || null
-        });
-      }
+      // Draft functionality removed for system optimization
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);

@@ -497,18 +497,18 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Send WhatsApp message (with optional reply)
   app.post('/api/whatsapp/send-message', async (req: Request, res: Response) => {
     try {
-      const { instanceId, chatId, message, quotedMessageId, isForwarded } = req.body;
+      const { instanceName, instanceId, chatId, message, quotedMessageId, isForwarded } = req.body;
+      const finalInstanceName = instanceName || instanceId; // Support both field names for compatibility
       
-      if (!instanceId || !chatId || !message) {
-        return res.status(400).json({ error: 'instanceId, chatId, and message are required' });
+      if (!finalInstanceName || !chatId || !message) {
+        return res.status(400).json({ error: 'instanceName, chatId, and message are required' });
       }
 
       const { WhatsAppAPIAdapter } = await import('./whatsapp-api-adapter');
-      const result = await WhatsAppAPIAdapter.sendMessage(instanceId, chatId, message, quotedMessageId, isForwarded);
+      const result = await WhatsAppAPIAdapter.sendMessage(finalInstanceName, chatId, message, quotedMessageId, isForwarded);
       
       if (result.success) {
-        // Automatically delete draft when message is sent successfully
-        await storage.deleteDraft(chatId, instanceId);
+        // Draft functionality removed for system optimization
         
         // Create an immediate local message record for the sent message
         // This ensures the sender sees their message immediately
