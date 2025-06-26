@@ -74,6 +74,65 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
 
+  // Initialize blocks from existing contact data
+  React.useEffect(() => {
+    if (isEditMode && initialData) {
+      const initialBlocks: Block[] = [];
+      
+      // Add phone blocks
+      if (initialData.phones && initialData.phones.length > 0) {
+        initialData.phones.forEach((phone: any) => {
+          initialBlocks.push({
+            id: crypto.randomUUID(),
+            type: 'phone',
+            data: {
+              number: phone.phoneNumber,
+              type: phone.label || 'Mobile',
+              isPrimary: phone.isPrimary || false,
+              hasWhatsApp: phone.isWhatsappLinked || false,
+            }
+          });
+        });
+      }
+      
+      // Add email blocks
+      if (initialData.emails && initialData.emails.length > 0) {
+        initialData.emails.forEach((email: any) => {
+          initialBlocks.push({
+            id: crypto.randomUUID(),
+            type: 'email',
+            data: {
+              address: email.emailAddress,
+              type: email.label || 'Personal',
+              isPrimary: email.isPrimary || false,
+            }
+          });
+        });
+      }
+      
+      // Add address blocks
+      if (initialData.addresses && initialData.addresses.length > 0) {
+        initialData.addresses.forEach((address: any) => {
+          initialBlocks.push({
+            id: crypto.randomUUID(),
+            type: 'address',
+            data: {
+              street: address.streetAddress,
+              city: address.city,
+              state: address.state,
+              zipCode: address.zipCode,
+              country: address.country,
+              type: address.label || 'Home',
+              isPrimary: address.isPrimary || false,
+            }
+          });
+        });
+      }
+      
+      setBlocks(initialBlocks);
+    }
+  }, [isEditMode, initialData]);
+
   const createContactMutation = useMutation({
     mutationFn: async () => {
       // Process blocks into contact data
