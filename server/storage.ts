@@ -1959,13 +1959,34 @@ class DatabaseStorage {
     // CRM CONTACT GROUPS METHODS
     // =========================================================================
 
-    async getContactGroups(spaceId: number): Promise<any[]> {
-        return await db.select().from(crmContactGroups)
-            .where(and(
-                eq(crmContactGroups.spaceId, spaceId),
-                eq(crmContactGroups.isActive, true)
-            ))
-            .orderBy(desc(crmContactGroups.createdAt));
+    async getContactGroups(contactId: number): Promise<any[]> {
+        // Get groups that this contact is a member of
+        const result = await db.select({
+            groupId: crmContactGroups.groupId,
+            groupName: crmContactGroups.groupName,
+            groupDescription: crmContactGroups.groupDescription,
+            groupIcon: crmContactGroups.groupIcon,
+            roleInGroup: crmContactGroupMembers.roleInGroup,
+            joinedAt: crmContactGroupMembers.joinedAt
+        })
+        .from(crmContactGroupMembers)
+        .innerJoin(crmContactGroups, eq(crmContactGroupMembers.groupId, crmContactGroups.groupId))
+        .where(and(
+            eq(crmContactGroupMembers.contactId, contactId),
+            eq(crmContactGroups.isActive, true)
+        ))
+        .orderBy(desc(crmContactGroupMembers.joinedAt));
+        
+        return result.map(row => ({
+            group: {
+                groupId: row.groupId,
+                groupName: row.groupName,
+                groupDescription: row.groupDescription,
+                groupIcon: row.groupIcon
+            },
+            roleInGroup: row.roleInGroup,
+            joinedAt: row.joinedAt
+        }));
     }
 
     async getContactGroupWithMembers(groupId: string): Promise<any> {

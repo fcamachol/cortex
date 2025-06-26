@@ -310,7 +310,7 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
             {/* Contact Information Tab */}
             <TabsContent value="contact" className="space-y-4">
               {/* Phone Numbers */}
-              {contact.phones && contact.phones.length > 0 && (
+              {(fullContactDetails?.phones || contact.phones) && (fullContactDetails?.phones || contact.phones).length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -320,7 +320,7 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {contact.phones.map((phone, index) => (
+                      {(fullContactDetails?.phones || contact.phones).map((phone, index) => (
                         <div key={index} className="flex items-center gap-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
@@ -347,7 +347,7 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
               )}
 
               {/* Email Addresses */}
-              {contact.emails && contact.emails.length > 0 && (
+              {(fullContactDetails?.emails || contact.emails) && (fullContactDetails?.emails || contact.emails).length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -357,7 +357,7 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {contact.emails.map((email, index) => (
+                      {(fullContactDetails?.emails || contact.emails).map((email, index) => (
                         <div key={index} className="flex items-center gap-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
