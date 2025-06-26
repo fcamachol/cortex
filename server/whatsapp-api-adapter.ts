@@ -30,12 +30,14 @@ export const WebhookApiAdapter = {
      */
     async processIncomingEvent(instanceId: string, event: any): Promise<void> {
         const { event: eventType, data, sender } = event;
-        console.log(`📨 [${instanceId}] Translating event: ${eventType}`);
+        // Map instanceId to instanceName for internal consistency
+        const instanceName = instanceId;
+        console.log(`📨 [${instanceName}] Translating event: ${eventType}`);
         
         // --- LOUD WEBHOOK DIAGNOSTICS FOR ALL EVENT TYPES ---
         console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
         console.log(`!!!    WEBHOOK EVENT: ${eventType.toUpperCase().padEnd(25)} !!!`);
-        console.log(`!!!    INSTANCE: ${instanceId.padEnd(30)} !!!`);
+        console.log(`!!!    INSTANCE: ${instanceName.padEnd(30)} !!!`);
         console.log(`!!!    DATA TYPE: ${typeof data}                      !!!`);
         console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
         
@@ -49,17 +51,17 @@ export const WebhookApiAdapter = {
             case 'MESSAGES_UPSERT':
                 const potentialMessage = Array.isArray(data.messages) ? data.messages[0] : data;
                 if (potentialMessage?.message?.reactionMessage) {
-                    await this.handleReaction(instanceId, potentialMessage, sender);
+                    await this.handleReaction(instanceName, potentialMessage, sender);
                 } else {
-                    await this.handleMessageUpsert(instanceId, data);
+                    await this.handleMessageUpsert(instanceName, data);
                 }
                 break;
             case 'messages.update':
             case 'MESSAGES_UPDATE':
                 if (data.updates && data.updates[0]?.message?.reactionMessage) {
-                     await this.handleReaction(instanceId, data.updates[0], sender);
+                     await this.handleReaction(instanceName, data.updates[0], sender);
                 } else {
-                    await this.handleMessageUpdate(instanceId, data);
+                    await this.handleMessageUpdate(instanceName, data);
                 }
                 break;
             case 'contacts.upsert':
