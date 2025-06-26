@@ -69,8 +69,16 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
     },
   });
 
-  // Get the first available instance name (most users have one instance)
-  const instanceName = instances?.[0]?.instanceName;
+  // Get the correct instance name for media - try to find the one that matches the message's instanceName
+  const getInstanceNameForMessage = (message: Message) => {
+    // First try to use the message's instanceName if available
+    if (message.instanceName) {
+      return message.instanceName;
+    }
+    // Otherwise, find the instance that has this message's media
+    // For now, use the first available instance
+    return instances?.[0]?.instanceName;
+  };
 
   // Fetch conversations
   const { data: chats, isLoading: chatsLoading } = useQuery({
@@ -272,7 +280,7 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
                                   </span>
                                 </div>
                                 <AudioPlayer
-                                  src={`/api/whatsapp/media/${message.instanceName || instanceName}/${message.messageId}`}
+                                  src={`/api/whatsapp/media/${getInstanceNameForMessage(message)}/${message.messageId}`}
                                   duration={message.media.durationSeconds}
                                   className="bg-transparent"
                                 />
@@ -306,7 +314,7 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
                                   </span>
                                 </div>
                                 <a
-                                  href={`/api/whatsapp/media/${message.instanceName || instanceName}/${message.messageId}`}
+                                  href={`/api/whatsapp/media/${getInstanceNameForMessage(message)}/${message.messageId}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-blue-500 hover:underline text-sm"
