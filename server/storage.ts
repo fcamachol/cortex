@@ -296,8 +296,8 @@ class DatabaseStorage {
         return results.map(r => r.contact);
     }
     
-    async getWhatsappGroups(instanceId: string): Promise<WhatsappGroup[]> {
-        return await db.select().from(whatsappGroups).where(eq(whatsappGroups.instanceName, instanceId));
+    async getWhatsappGroups(instanceName: string): Promise<WhatsappGroup[]> {
+        return await db.select().from(whatsappGroups).where(eq(whatsappGroups.instanceName, instanceName));
     }
 
     async getWhatsappChat(chatId: string, instanceId: string): Promise<WhatsappChat | null> {
@@ -709,7 +709,7 @@ class DatabaseStorage {
         const [result] = await db.insert(whatsappMessageReactions)
             .values(reaction)
             .onConflictDoUpdate({
-                target: [whatsappMessageReactions.messageId, whatsappMessageReactions.instanceId, whatsappMessageReactions.reactorJid],
+                target: [whatsappMessageReactions.messageId, whatsappMessageReactions.instanceName, whatsappMessageReactions.reactorJid],
                 set: updateSet
             })
             .returning();
@@ -743,7 +743,7 @@ class DatabaseStorage {
         const [existing] = await db.select().from(whatsappMessageMedia)
             .where(and(
                 eq(whatsappMessageMedia.messageId, media.messageId),
-                eq(whatsappMessageMedia.instanceId, media.instanceId)
+                eq(whatsappMessageMedia.instanceName, media.instanceName)
             ))
             .limit(1);
 
@@ -775,22 +775,22 @@ class DatabaseStorage {
         }
     }
 
-    async getWhatsappMessageMedia(messageId: string, instanceId: string): Promise<WhatsappMessageMedia | undefined> {
+    async getWhatsappMessageMedia(messageId: string, instanceName: string): Promise<WhatsappMessageMedia | undefined> {
         const [result] = await db.select().from(whatsappMessageMedia)
             .where(and(
                 eq(whatsappMessageMedia.messageId, messageId),
-                eq(whatsappMessageMedia.instanceId, instanceId)
+                eq(whatsappMessageMedia.instanceName, instanceName)
             ))
             .limit(1);
         return result;
     }
 
-    async updateWhatsappMessageMediaPath(messageId: string, instanceId: string, localPath: string): Promise<void> {
+    async updateWhatsappMessageMediaPath(messageId: string, instanceName: string, localPath: string): Promise<void> {
         await db.update(whatsappMessageMedia)
             .set({ fileLocalPath: localPath })
             .where(and(
                 eq(whatsappMessageMedia.messageId, messageId),
-                eq(whatsappMessageMedia.instanceId, instanceId)
+                eq(whatsappMessageMedia.instanceName, instanceName)
             ));
     }
 
@@ -885,15 +885,15 @@ class DatabaseStorage {
     }
 
     // Group placeholder creation
-    async createGroupPlaceholderIfNeeded(groupJid: string, instanceId: string): Promise<void> {
+    async createGroupPlaceholderIfNeeded(groupJid: string, instanceName: string): Promise<void> {
         await db.insert(whatsappGroups)
             .values({
-                instanceId,
+                instanceName,
                 groupJid,
                 subject: 'Group'
             })
             .onConflictDoNothing({
-                target: [whatsappGroups.groupJid, whatsappGroups.instanceId]
+                target: [whatsappGroups.groupJid, whatsappGroups.instanceName]
             });
     }
 
