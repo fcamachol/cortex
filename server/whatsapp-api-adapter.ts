@@ -1293,7 +1293,7 @@ export const WebhookApiAdapter = {
 
         return {
             messageId: rawMessage.key.id,
-            instanceName: instanceId,
+            instanceName: instanceName,
             chatId: rawMessage.key.remoteJid,
             senderJid: rawMessage.key.participant || rawMessage.key.remoteJid,
             fromMe: correctedFromMe,
