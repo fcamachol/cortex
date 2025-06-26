@@ -73,15 +73,38 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  
+  // WhatsApp data state
+  const [whatsappData, setWhatsappData] = useState<Record<string, any>>({});
+  const [originalWhatsappName, setOriginalWhatsappName] = useState<string>('');
+
+  // Fetch WhatsApp data for existing contact
+  React.useEffect(() => {
+    if (isEditMode && contactId) {
+      fetch(`/api/crm/contacts/${contactId}/whatsapp-data`)
+        .then(res => res.json())
+        .then(data => {
+          setWhatsappData(data.whatsappData || {});
+          // Set original WhatsApp name if available
+          const whatsappEntries = Object.values(data.whatsappData || {});
+          if (whatsappEntries.length > 0) {
+            const firstEntry = whatsappEntries[0] as any;
+            setOriginalWhatsappName(firstEntry.pushName || firstEntry.name || '');
+          }
+        })
+        .catch(console.error);
+    }
+  }, [isEditMode, contactId]);
 
   // Initialize blocks from existing contact data
   React.useEffect(() => {
     if (isEditMode && initialData) {
       const initialBlocks: Block[] = [];
       
-      // Add phone blocks
+      // Add phone blocks with WhatsApp data integration
       if (initialData.phones && initialData.phones.length > 0) {
         initialData.phones.forEach((phone: any) => {
+          const whatsappInfo = whatsappData[phone.phoneNumber];
           initialBlocks.push({
             id: crypto.randomUUID(),
             type: 'phone',
@@ -89,7 +112,8 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
               number: phone.phoneNumber,
               type: phone.label || 'Mobile',
               isPrimary: phone.isPrimary || false,
-              hasWhatsApp: phone.isWhatsappLinked || false,
+              hasWhatsApp: phone.isWhatsappLinked || !!whatsappInfo,
+              whatsappName: whatsappInfo?.pushName || whatsappInfo?.name,
             }
           });
         });
@@ -131,7 +155,74 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
       
       setBlocks(initialBlocks);
     }
-  }, [isEditMode, initialData]);
+  }, [isEditMode, initialData, whatsappData]);
+
+  // Auto-link phone numbers to WhatsApp when added
+  const handleAutoLinkPhone = async (phoneNumber: string) => {
+    if (!isEditMode || !contactId) return;
+    
+    try {
+      const response = await fetch(`/api/crm/contacts/${contactId}/auto-link-phone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.linked && result.whatsappData) {
+          setWhatsappData(prev => ({
+            ...prev,
+            [phoneNumber]: result.whatsappData
+          }));
+          
+          // Pre-populate contact name if it's empty and WhatsApp has a name
+          if (!contactName && result.whatsappData.pushName) {
+            setContactName(result.whatsappData.pushName);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Auto-link phone error:', error);
+    }
+  };
+
+  // Sync name changes to WhatsApp
+  const handleNameSync = async (newName: string) => {
+    if (!isEditMode || !contactId || !originalWhatsappName) return;
+    
+    // Only sync if name actually changed
+    if (newName === originalWhatsappName) return;
+    
+    try {
+      // Find the WhatsApp JID for this contact
+      const whatsappEntries = Object.entries(whatsappData);
+      for (const [phoneNumber, data] of whatsappEntries) {
+        const whatsappJid = `${phoneNumber}@s.whatsapp.net`;
+        
+        await fetch(`/api/crm/contacts/${contactId}/sync-whatsapp-name`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            newName, 
+            whatsappJid 
+          })
+        });
+      }
+      
+      toast({
+        title: "Name Synchronized",
+        description: "Contact name updated in WhatsApp",
+      });
+    } catch (error) {
+      console.error('Name sync error:', error);
+      toast({
+        title: "Sync Warning",
+        description: "Name updated locally but WhatsApp sync failed",
+        variant: "destructive",
+      });
+    }
+  };
 
   const createContactMutation = useMutation({
     mutationFn: async () => {
@@ -206,6 +297,23 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
     };
     setBlocks([...blocks, newBlock]);
     setShowBlockMenu(false);
+  }
+
+  // Enhanced block update with WhatsApp integration
+  const updateBlockWithWhatsApp = (id: string, field: string, value: any) => {
+    setBlocks(blocks.map(block => {
+      if (block.id === id) {
+        const updatedData = { ...block.data, [field]: value };
+        
+        // Auto-link phone numbers when they're added or changed
+        if (block.type === 'phone' && field === 'number' && value && value !== block.data.number) {
+          handleAutoLinkPhone(value);
+        }
+        
+        return { ...block, data: updatedData };
+      }
+      return block;
+    }));
   };
 
   const updateBlock = (blockId: string, field: string, value: any) => {
@@ -279,6 +387,12 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
               placeholder="Enter contact name"
               value={contactName}
               onChange={(e) => setContactName(e.target.value)}
+              onBlur={(e) => {
+                // Sync name changes to WhatsApp when user finishes editing
+                if (isEditMode && e.target.value !== originalWhatsappName) {
+                  handleNameSync(e.target.value);
+                }
+              }}
               className="h-12 border-2 border-gray-900 rounded-lg px-4 text-base font-medium focus:border-gray-900 focus:ring-0"
               required
             />
@@ -315,10 +429,11 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
             {/* Contact Info Section */}
             <ContactInfoSection 
               blocks={blocks.filter(b => ['phone', 'email', 'address'].includes(b.type))}
-              onUpdate={updateBlock}
+              onUpdate={updateBlockWithWhatsApp}
               onRemove={removeBlock}
               onAddSubBlock={addBlock}
               ownerUserId={ownerUserId}
+              whatsappData={whatsappData}
             />
 
             {/* Relationships & Groups Section */}
@@ -451,12 +566,13 @@ function BlockComponent({ block, onUpdate, onRemove, ownerUserId }: BlockCompone
 }
 
 // Section Components for organized blocks
-function ContactInfoSection({ blocks, onUpdate, onRemove, onAddSubBlock, ownerUserId }: {
+function ContactInfoSection({ blocks, onUpdate, onRemove, onAddSubBlock, ownerUserId, whatsappData }: {
   blocks: Block[];
   onUpdate: (blockId: string, field: string, value: any) => void;
   onRemove: (blockId: string) => void;
   onAddSubBlock: (type: string) => void;
   ownerUserId: string;
+  whatsappData?: Record<string, any>;
 }) {
   const [isOpen, setIsOpen] = useState(true);
 
