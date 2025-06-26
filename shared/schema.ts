@@ -292,7 +292,7 @@ export const whatsappInstancesRelations = relations(whatsappInstances, ({ many }
 export const whatsappContactsRelations = relations(whatsappContacts, ({ one, many }) => ({
   instance: one(whatsappInstances, {
     fields: [whatsappContacts.instanceId],
-    references: [whatsappInstances.instanceId],
+    references: [whatsappInstances.instanceName],
   }),
   chats: many(whatsappChats),
   sentMessages: many(whatsappMessages),
@@ -302,7 +302,7 @@ export const whatsappContactsRelations = relations(whatsappContacts, ({ one, man
 export const whatsappChatsRelations = relations(whatsappChats, ({ one, many }) => ({
   instance: one(whatsappInstances, {
     fields: [whatsappChats.instanceId],
-    references: [whatsappInstances.instanceId],
+    references: [whatsappInstances.instanceName],
   }),
   contact: one(whatsappContacts, {
     fields: [whatsappChats.chatId, whatsappChats.instanceId],
@@ -316,7 +316,7 @@ export const whatsappChatsRelations = relations(whatsappChats, ({ one, many }) =
 export const whatsappMessagesRelations = relations(whatsappMessages, ({ one, many }) => ({
   instance: one(whatsappInstances, {
     fields: [whatsappMessages.instanceId],
-    references: [whatsappInstances.instanceId],
+    references: [whatsappInstances.instanceName],
   }),
   chat: one(whatsappChats, {
     fields: [whatsappMessages.chatId, whatsappMessages.instanceId],
@@ -340,7 +340,7 @@ export const whatsappMessageDeletionsRelations = relations(whatsappMessageDeleti
   }),
   instance: one(whatsappInstances, {
     fields: [whatsappMessageDeletions.instanceId],
-    references: [whatsappInstances.instanceId],
+    references: [whatsappInstances.instanceName],
   }),
   chat: one(whatsappChats, {
     fields: [whatsappMessageDeletions.chatId, whatsappMessageDeletions.instanceId],
@@ -1525,7 +1525,7 @@ export const crmContactRelationshipsRelations = relations(crmContactRelationship
 export const crmProjectsRelations = relations(crmProjects, ({ one, many }) => ({
   instance: one(whatsappInstances, {
     fields: [crmProjects.instanceId],
-    references: [whatsappInstances.instanceId],
+    references: [whatsappInstances.instanceName],
   }),
   space: one(appSpaces, {
     fields: [crmProjects.spaceId],
@@ -1538,7 +1538,7 @@ export const crmProjectsRelations = relations(crmProjects, ({ one, many }) => ({
 export const crmTasksRelations = relations(crmTasks, ({ one }) => ({
   instance: one(whatsappInstances, {
     fields: [crmTasks.instanceId],
-    references: [whatsappInstances.instanceId],
+    references: [whatsappInstances.instanceName],
   }),
   project: one(crmProjects, {
     fields: [crmTasks.projectId],

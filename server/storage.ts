@@ -225,12 +225,12 @@ class DatabaseStorage {
     // =========================================================================
 
     async getInstanceById(instanceId: string): Promise<WhatsappInstance | null> {
-        const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceId, instanceId));
+        const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceName, instanceId));
         return instance || null;
     }
 
     async getWhatsappInstance(instanceId: string): Promise<WhatsappInstance | null> {
-        const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceId, instanceId));
+        const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceName, instanceId));
         return instance || null;
     }
     
@@ -239,7 +239,7 @@ class DatabaseStorage {
         const results = await db.execute(sql`
             SELECT 
                 c.chat_id as "chatId",
-                c.instance_id as "instanceId", 
+                c.instance_name as "instanceName", 
                 c.type,
                 c.unread_count as "unreadCount",
                 c.last_message_timestamp as "lastMessageTimestamp",
@@ -287,7 +287,7 @@ class DatabaseStorage {
     async getWhatsappContacts(userId: string): Promise<WhatsappContact[]> {
         const results = await db.select({ contact: whatsappContacts })
             .from(whatsappContacts)
-            .innerJoin(whatsappInstances, eq(whatsappContacts.instanceId, whatsappInstances.instanceId))
+            .innerJoin(whatsappInstances, eq(whatsappContacts.instanceName, whatsappInstances.instanceName))
             .where(and(
                 eq(whatsappInstances.clientId, userId),
                 eq(whatsappContacts.isMe, false)
@@ -297,14 +297,14 @@ class DatabaseStorage {
     }
     
     async getWhatsappGroups(instanceId: string): Promise<WhatsappGroup[]> {
-        return await db.select().from(whatsappGroups).where(eq(whatsappGroups.instanceId, instanceId));
+        return await db.select().from(whatsappGroups).where(eq(whatsappGroups.instanceName, instanceId));
     }
 
     async getWhatsappChat(chatId: string, instanceId: string): Promise<WhatsappChat | null> {
         const [chat] = await db.select().from(whatsappChats).where(
             and(
                 eq(whatsappChats.chatId, chatId),
-                eq(whatsappChats.instanceId, instanceId)
+                eq(whatsappChats.instanceName, instanceId)
             )
         );
         return chat || null;
@@ -314,7 +314,7 @@ class DatabaseStorage {
         const [group] = await db.select().from(whatsappGroups).where(
             and(
                 eq(whatsappGroups.groupJid, groupJid),
-                eq(whatsappGroups.instanceId, instanceId)
+                eq(whatsappGroups.instanceName, instanceId)
             )
         );
         return group || null;
@@ -328,7 +328,7 @@ class DatabaseStorage {
                 is_connected, visibility, owner_jid, last_connection_at
             )
             VALUES (
-                ${instance.instanceId}, 
+                ${instance.instanceName}, 
                 ${instance.displayName}, 
                 ${instance.clientId}, 
                 ${instance.apiKey}, 
@@ -359,7 +359,7 @@ class DatabaseStorage {
             .where(
                 and(
                     eq(whatsappContacts.jid, contact.jid),
-                    eq(whatsappContacts.instanceId, contact.instanceId)
+                    eq(whatsappContacts.instanceName, contact.instanceName)
                 )
             )
             .limit(1);
@@ -400,7 +400,7 @@ class DatabaseStorage {
         const [result] = await db.insert(whatsappContacts)
             .values(contact)
             .onConflictDoUpdate({
-                target: [whatsappContacts.jid, whatsappContacts.instanceId],
+                target: [whatsappContacts.jid, whatsappContacts.instanceName],
                 set: updateSet
             })
             .returning();
@@ -412,7 +412,7 @@ class DatabaseStorage {
         const [result] = await db.insert(whatsappChats)
             .values(chat)
             .onConflictDoUpdate({
-                target: [whatsappChats.chatId, whatsappChats.instanceId],
+                target: [whatsappChats.chatId, whatsappChats.instanceName],
                 set: {
                     unreadCount: chat.unreadCount,
                     lastMessageTimestamp: chat.lastMessageTimestamp,
@@ -427,7 +427,7 @@ class DatabaseStorage {
         const [result] = await db.insert(whatsappGroups)
             .values(group)
             .onConflictDoUpdate({
-                target: [whatsappGroups.groupJid, whatsappGroups.instanceId],
+                target: [whatsappGroups.groupJid, whatsappGroups.instanceName],
                 set: {
                     subject: group.subject,
                     description: group.description,
@@ -443,7 +443,7 @@ class DatabaseStorage {
         console.log(`🔊 LOUD DEBUG - upsertWhatsappMessage called with:`);
         console.log(`🔊   messageId: "${message.messageId}"`);
         console.log(`🔊   chatId: "${message.chatId}" (length: ${message.chatId?.length})`);
-        console.log(`🔊   instanceId: "${message.instanceId}"`);
+        console.log(`🔊   instanceId: "${message.instanceName}"`);
         console.log(`🔊   senderJid: "${message.senderJid}"`);
         console.log(`🔊   content: "${message.content?.substring(0, 50)}..."`);
         console.log(`🔊   fromMe: ${message.fromMe}`);
@@ -451,12 +451,12 @@ class DatabaseStorage {
         console.log(`🔊   Full message object:`, JSON.stringify(message, null, 2));
         
         // Ensure the chat exists before inserting the message
-        await this.ensureChatExists(message.chatId, message.instanceId);
+        await this.ensureChatExists(message.chatId, message.instanceName);
 
         const [result] = await db.insert(whatsappMessages)
             .values(message)
             .onConflictDoUpdate({
-                target: [whatsappMessages.messageId, whatsappMessages.instanceId],
+                target: [whatsappMessages.messageId, whatsappMessages.instanceName],
                 set: {
                     content: message.content,
                     isEdited: message.isEdited,
@@ -474,7 +474,7 @@ class DatabaseStorage {
                     last_message_timestamp = ${message.timestamp},
                     updated_at = NOW()
                 WHERE chat_id = ${message.chatId} 
-                AND instance_id = ${message.instanceId}
+                AND instance_id = ${message.instanceName}
                 AND (last_message_timestamp IS NULL OR last_message_timestamp < ${message.timestamp})
             `);
         }
@@ -526,7 +526,7 @@ class DatabaseStorage {
             .from(whatsappContacts)
             .where(and(
                 eq(whatsappContacts.jid, jid),
-                eq(whatsappContacts.instanceId, instanceId)
+                eq(whatsappContacts.instanceName, instanceId)
             ))
             .limit(1);
 
@@ -596,7 +596,7 @@ class DatabaseStorage {
         const baseQuery = db
             .select({
                 messageId: whatsappMessages.messageId,
-                instanceId: whatsappMessages.instanceId,
+                instanceId: whatsappMessages.instanceName,
                 chatId: whatsappMessages.chatId,
                 senderJid: whatsappMessages.senderJid,
                 fromMe: whatsappMessages.fromMe,
@@ -631,7 +631,7 @@ class DatabaseStorage {
                 whatsappMessageMedia,
                 and(
                     eq(whatsappMessages.messageId, whatsappMessageMedia.messageId),
-                    eq(whatsappMessages.instanceId, whatsappMessageMedia.instanceId)
+                    eq(whatsappMessages.instanceName, whatsappMessageMedia.instanceName)
                 )
             );
 
@@ -639,14 +639,14 @@ class DatabaseStorage {
         if (chatId) {
             query = baseQuery
                 .where(and(
-                    eq(whatsappMessages.instanceId, instanceId),
+                    eq(whatsappMessages.instanceName, instanceId),
                     eq(whatsappMessages.chatId, chatId)
                 ))
                 .orderBy(desc(whatsappMessages.timestamp))
                 .limit(limit);
         } else {
             query = baseQuery
-                .where(eq(whatsappMessages.instanceId, instanceId))
+                .where(eq(whatsappMessages.instanceName, instanceId))
                 .orderBy(desc(whatsappMessages.timestamp))
                 .limit(limit);
         }
@@ -657,7 +657,7 @@ class DatabaseStorage {
         const result = rawResults.map(row => {
             const message: any = {
                 messageId: row.messageId,
-                instanceId: row.instanceId,
+                instanceId: row.instanceName,
                 chatId: row.chatId,
                 senderJid: row.senderJid,
                 fromMe: row.fromMe,
@@ -705,7 +705,7 @@ class DatabaseStorage {
         const [result] = await db.select().from(whatsappMessages)
             .where(and(
                 eq(whatsappMessages.messageId, messageId),
-                eq(whatsappMessages.instanceId, instanceId)
+                eq(whatsappMessages.instanceName, instanceId)
             ))
             .limit(1);
         return result;
@@ -719,7 +719,7 @@ class DatabaseStorage {
         const [result] = await db.insert(whatsappMessageReactions)
             .values(reaction)
             .onConflictDoUpdate({
-                target: [whatsappMessageReactions.messageId, whatsappMessageReactions.instanceId, whatsappMessageReactions.reactorJid],
+                target: [whatsappMessageReactions.messageId, whatsappMessageReactions.instanceName, whatsappMessageReactions.reactorJid],
                 set: updateSet
             })
             .returning();
@@ -753,7 +753,7 @@ class DatabaseStorage {
         const [existing] = await db.select().from(whatsappMessageMedia)
             .where(and(
                 eq(whatsappMessageMedia.messageId, media.messageId),
-                eq(whatsappMessageMedia.instanceId, media.instanceId)
+                eq(whatsappMessageMedia.instanceName, media.instanceName)
             ))
             .limit(1);
 
@@ -789,7 +789,7 @@ class DatabaseStorage {
         const [result] = await db.select().from(whatsappMessageMedia)
             .where(and(
                 eq(whatsappMessageMedia.messageId, messageId),
-                eq(whatsappMessageMedia.instanceId, instanceId)
+                eq(whatsappMessageMedia.instanceName, instanceId)
             ))
             .limit(1);
         return result;
@@ -800,7 +800,7 @@ class DatabaseStorage {
             .set({ fileLocalPath: localPath })
             .where(and(
                 eq(whatsappMessageMedia.messageId, messageId),
-                eq(whatsappMessageMedia.instanceId, instanceId)
+                eq(whatsappMessageMedia.instanceName, instanceId)
             ));
     }
 
@@ -847,7 +847,7 @@ class DatabaseStorage {
                     endTime: eventData.endTime || null,
                     isAllDay: eventData.isAllDay || false,
                     location: eventData.location || null,
-                    instanceId: eventData.instanceId || null,
+                    instanceId: eventData.instanceName || null,
                     triggeringMessageId: eventData.triggeringMessageId || null,
                     projectId: eventData.projectId || null,
                     taskId: eventData.taskId || null,
@@ -903,7 +903,7 @@ class DatabaseStorage {
                 subject: 'Group'
             })
             .onConflictDoNothing({
-                target: [whatsappGroups.groupJid, whatsappGroups.instanceId]
+                target: [whatsappGroups.groupJid, whatsappGroups.instanceName]
             });
     }
 
@@ -1066,7 +1066,7 @@ class DatabaseStorage {
                 updatedAt: new Date()
             })
             .onConflictDoUpdate({
-                target: [whatsappGroupParticipants.groupJid, whatsappGroupParticipants.participantJid, whatsappGroupParticipants.instanceId],
+                target: [whatsappGroupParticipants.groupJid, whatsappGroupParticipants.participantJid, whatsappGroupParticipants.instanceName],
                 set: {
                     isAdmin: participant.isAdmin,
                     isSuperAdmin: participant.isSuperAdmin,
@@ -1082,7 +1082,7 @@ class DatabaseStorage {
             .where(and(
                 eq(whatsappGroupParticipants.groupJid, groupJid),
                 eq(whatsappGroupParticipants.participantJid, participantJid),
-                eq(whatsappGroupParticipants.instanceId, instanceId)
+                eq(whatsappGroupParticipants.instanceName, instanceId)
             ));
     }
 
@@ -1096,7 +1096,7 @@ class DatabaseStorage {
             .where(and(
                 eq(whatsappGroupParticipants.groupJid, groupJid),
                 eq(whatsappGroupParticipants.participantJid, participantJid),
-                eq(whatsappGroupParticipants.instanceId, instanceId)
+                eq(whatsappGroupParticipants.instanceName, instanceId)
             ));
     }
 
@@ -1105,7 +1105,7 @@ class DatabaseStorage {
             .from(whatsappGroupParticipants)
             .where(and(
                 eq(whatsappGroupParticipants.groupJid, groupJid),
-                eq(whatsappGroupParticipants.instanceId, instanceId)
+                eq(whatsappGroupParticipants.instanceName, instanceId)
             ));
     }
 
@@ -1114,7 +1114,7 @@ class DatabaseStorage {
             .from(whatsappContacts)
             .where(and(
                 eq(whatsappContacts.jid, jid),
-                eq(whatsappContacts.instanceId, instanceId)
+                eq(whatsappContacts.instanceName, instanceId)
             ))
             .limit(1);
         return result;
@@ -1128,7 +1128,7 @@ class DatabaseStorage {
         return await db.select()
             .from(whatsappContacts)
             .where(and(
-                eq(whatsappContacts.instanceId, instanceId),
+                eq(whatsappContacts.instanceName, instanceId),
                 ilike(whatsappContacts.jid, jidPattern)
             ));
     }
@@ -1137,7 +1137,7 @@ class DatabaseStorage {
         return await db.select()
             .from(whatsappChats)
             .where(and(
-                eq(whatsappChats.instanceId, instanceId),
+                eq(whatsappChats.instanceName, instanceId),
                 ilike(whatsappChats.chatId, chatIdPattern)
             ));
     }
@@ -1146,7 +1146,7 @@ class DatabaseStorage {
         return await db.select()
             .from(whatsappGroups)
             .where(and(
-                eq(whatsappGroups.instanceId, instanceId),
+                eq(whatsappGroups.instanceName, instanceId),
                 ilike(whatsappGroups.groupJid, groupJidPattern)
             ));
     }
@@ -1155,7 +1155,7 @@ class DatabaseStorage {
         await db.delete(whatsappContacts)
             .where(and(
                 eq(whatsappContacts.jid, jid),
-                eq(whatsappContacts.instanceId, instanceId)
+                eq(whatsappContacts.instanceName, instanceId)
             ));
     }
 
@@ -1163,7 +1163,7 @@ class DatabaseStorage {
         await db.delete(whatsappChats)
             .where(and(
                 eq(whatsappChats.chatId, chatId),
-                eq(whatsappChats.instanceId, instanceId)
+                eq(whatsappChats.instanceName, instanceId)
             ));
     }
 
@@ -1171,7 +1171,7 @@ class DatabaseStorage {
         await db.delete(whatsappGroups)
             .where(and(
                 eq(whatsappGroups.groupJid, groupJid),
-                eq(whatsappGroups.instanceId, instanceId)
+                eq(whatsappGroups.instanceName, instanceId)
             ));
     }
 
@@ -1181,7 +1181,7 @@ class DatabaseStorage {
                 ...updateData,
                 updatedAt: new Date()
             })
-            .where(eq(whatsappInstances.instanceId, instanceId))
+            .where(eq(whatsappInstances.instanceName, instanceId))
             .returning();
         
         return updatedInstance;
@@ -1189,7 +1189,7 @@ class DatabaseStorage {
 
     async deleteWhatsappInstance(instanceId: string): Promise<void> {
         await db.delete(whatsappInstances)
-            .where(eq(whatsappInstances.instanceId, instanceId));
+            .where(eq(whatsappInstances.instanceName, instanceId));
     }
 
     async updateConversation(chatId: string, instanceId: string, updates: any): Promise<void> {
@@ -1200,7 +1200,7 @@ class DatabaseStorage {
             })
             .where(and(
                 eq(whatsappChats.chatId, chatId),
-                eq(whatsappChats.instanceId, instanceId)
+                eq(whatsappChats.instanceName, instanceId)
             ));
     }
 
@@ -1209,21 +1209,21 @@ class DatabaseStorage {
         await db.delete(whatsappMessages)
             .where(and(
                 eq(whatsappMessages.chatId, chatId),
-                eq(whatsappMessages.instanceId, instanceId)
+                eq(whatsappMessages.instanceName, instanceId)
             ));
         
         // Delete drafts for this chat
         await db.delete(whatsappDrafts)
             .where(and(
                 eq(whatsappDrafts.chatId, chatId),
-                eq(whatsappDrafts.instanceId, instanceId)
+                eq(whatsappDrafts.instanceName, instanceId)
             ));
         
         // Then delete the chat
         await db.delete(whatsappChats)
             .where(and(
                 eq(whatsappChats.chatId, chatId),
-                eq(whatsappChats.instanceId, instanceId)
+                eq(whatsappChats.instanceName, instanceId)
             ));
     }
 
@@ -1234,7 +1234,7 @@ class DatabaseStorage {
     async getAllDrafts(instanceId: string): Promise<WhatsappDraft[]> {
         return await db.select()
             .from(whatsappDrafts)
-            .where(eq(whatsappDrafts.instanceId, instanceId))
+            .where(eq(whatsappDrafts.instanceName, instanceId))
             .orderBy(desc(whatsappDrafts.updatedAt));
     }
 
@@ -1243,7 +1243,7 @@ class DatabaseStorage {
             .from(whatsappDrafts)
             .where(and(
                 eq(whatsappDrafts.chatId, chatId),
-                eq(whatsappDrafts.instanceId, instanceId)
+                eq(whatsappDrafts.instanceName, instanceId)
             ));
         return draft || null;
     }
@@ -1269,12 +1269,12 @@ class DatabaseStorage {
     async upsertDraft(draftData: InsertWhatsappDraft): Promise<WhatsappDraft> {
         // If content is empty, delete the draft instead of upserting
         if (!draftData.content || draftData.content.trim() === '') {
-            await this.deleteDraft(draftData.chatId, draftData.instanceId);
+            await this.deleteDraft(draftData.chatId, draftData.instanceName);
             // Return a dummy draft object for API consistency
             return {
                 messageId: '',
                 chatId: draftData.chatId,
-                instanceId: draftData.instanceId,
+                instanceId: draftData.instanceName,
                 content: '',
                 replyToMessageId: null,
                 createdAt: new Date(),
@@ -1283,7 +1283,7 @@ class DatabaseStorage {
         }
 
         // Check if draft already exists for this chat/instance
-        const existingDraft = await this.getDraft(draftData.chatId, draftData.instanceId);
+        const existingDraft = await this.getDraft(draftData.chatId, draftData.instanceName);
         
         if (existingDraft) {
             // Update existing draft
@@ -1314,7 +1314,7 @@ class DatabaseStorage {
         await db.delete(whatsappDrafts)
             .where(and(
                 eq(whatsappDrafts.chatId, chatId),
-                eq(whatsappDrafts.instanceId, instanceId)
+                eq(whatsappDrafts.instanceName, instanceId)
             ));
     }
 
@@ -1330,7 +1330,7 @@ class DatabaseStorage {
     async createProject(projectData: any): Promise<CrmProject> {
         const [project] = await db.insert(crmProjects)
             .values({
-                instanceId: projectData.instanceId || 'default-instance',
+                instanceId: projectData.instanceName || 'default-instance',
                 projectName: projectData.projectName || projectData.project_name,
                 description: projectData.description,
                 status: projectData.status || 'active',
@@ -1373,7 +1373,7 @@ class DatabaseStorage {
     async createTask(taskData: any): Promise<any> {
         const [task] = await db.insert(crmTasks)
             .values({
-                instanceId: taskData.instanceId,
+                instanceId: taskData.instanceName,
                 title: taskData.title,
                 description: taskData.description,
                 status: taskData.status || 'pending',
@@ -1400,7 +1400,7 @@ class DatabaseStorage {
         let query = db.select().from(crmTasks).orderBy(desc(crmTasks.createdAt));
         
         if (instanceId) {
-            query = query.where(eq(crmTasks.instanceId, instanceId));
+            query = query.where(eq(crmTasks.instanceName, instanceId));
         }
         
         return await query;
@@ -1419,13 +1419,13 @@ class DatabaseStorage {
         const [result] = await db.insert(whatsappMessageUpdates)
             .values({
                 messageId: updateData.messageId,
-                instanceId: updateData.instanceId,
+                instanceId: updateData.instanceName,
                 status: updateData.status,
                 timestamp: updateData.timestamp || new Date()
             })
             .returning();
         
-        console.log(`💾 [${updateData.instanceId}] Message update logged: ${updateData.messageId} -> ${updateData.status}`);
+        console.log(`💾 [${updateData.instanceName}] Message update logged: ${updateData.messageId} -> ${updateData.status}`);
         return result;
     }
 
@@ -1434,7 +1434,7 @@ class DatabaseStorage {
             .from(whatsappMessageUpdates)
             .where(and(
                 eq(whatsappMessageUpdates.messageId, messageId),
-                eq(whatsappMessageUpdates.instanceId, instanceId)
+                eq(whatsappMessageUpdates.instanceName, instanceId)
             ))
             .orderBy(desc(whatsappMessageUpdates.timestamp));
     }
@@ -1446,7 +1446,7 @@ class DatabaseStorage {
         .from(whatsappMessageUpdates)
         .where(and(
             eq(whatsappMessageUpdates.messageId, messageId),
-            eq(whatsappMessageUpdates.instanceId, instanceId)
+            eq(whatsappMessageUpdates.instanceName, instanceId)
         ))
         .orderBy(desc(whatsappMessageUpdates.timestamp))
         .limit(1);
@@ -2906,7 +2906,7 @@ class DatabaseStorage {
                     title: finalTitle,
                     content: noteData.content || 'Automatically created note',
                     createdByUserId: noteData.userId,
-                    instanceId: noteData.instanceId,
+                    instanceId: noteData.instanceName,
                     spaceId: noteData.spaceId,
                     triggeringMessageId: noteData.triggeringMessageId,
                     relatedChatJid: noteData.relatedChatJid,
@@ -2927,7 +2927,7 @@ class DatabaseStorage {
                 .where(
                     and(
                         eq(whatsappMessages.quotedMessageId, originalMessageId),
-                        eq(whatsappMessages.instanceId, instanceId)
+                        eq(whatsappMessages.instanceName, instanceId)
                     )
                 )
                 .orderBy(asc(whatsappMessages.timestamp));
@@ -3060,7 +3060,7 @@ class DatabaseStorage {
                 .insert(whatsappGroups)
                 .values(groupData)
                 .onConflictDoUpdate({
-                    target: [whatsappGroups.instanceId, whatsappGroups.groupJid],
+                    target: [whatsappGroups.instanceName, whatsappGroups.groupJid],
                     set: groupData
                 })
                 .returning();
@@ -3091,7 +3091,7 @@ class DatabaseStorage {
                 .insert(whatsappCallLogs)
                 .values(callData)
                 .onConflictDoUpdate({
-                    target: [whatsappCallLogs.instanceId, whatsappCallLogs.callId],
+                    target: [whatsappCallLogs.instanceName, whatsappCallLogs.callId],
                     set: callData
                 })
                 .returning();
@@ -3202,7 +3202,7 @@ class DatabaseStorage {
                     await db.update(crmContacts)
                         .set({
                             whatsappJid: contact.jid,
-                            whatsappInstanceId: contact.instanceId,
+                            whatsappInstanceId: contact.instanceName,
                             isWhatsappLinked: true,
                             whatsappLinkedAt: new Date(),
                             updatedAt: new Date()
