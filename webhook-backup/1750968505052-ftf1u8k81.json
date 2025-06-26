@@ -1,0 +1,27 @@
+{
+  "id": "1750968505052-ftf1u8k81",
+  "timestamp": "2025-06-26T20:08:25.052Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "messages-upsert",
+  "payload": {
+    "key": {
+      "id": "TEST_MALFORMED_INDIVIDUAL_456",
+      "fromMe": true,
+      "remoteJid": "5214422501780@s.whatsapp.net",
+      "participant": null
+    },
+    "messageType": "conversation",
+    "message": {
+      "conversation": "Test message with malformed individual chat ID"
+    },
+    "messageTimestamp": 1750968504,
+    "pushName": "Owner",
+    "source": "android",
+    "contact": {
+      "id": "5214422501780@s.whatsapp.net",
+      "name": "Contact Name"
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

@@ -130,7 +130,7 @@ export const WebhookApiAdapter = {
             SseManager.notifyClientsOfNewMessage(storedMessage);
             SseManager.notifyClientsOfChatUpdate({
                 chatId: cleanMessage.chatId,
-                instanceId: instanceId,
+                instanceName: instanceId,
                 lastMessage: {
                     content: cleanMessage.content,
                     timestamp: cleanMessage.timestamp,
@@ -232,7 +232,7 @@ export const WebhookApiAdapter = {
              if(messageId && status) {
                  await storage.createWhatsappMessageUpdate({
                      messageId: messageId,
-                     instanceId: instanceId,
+                     instanceName: instanceId,
                      status: status,
                      timestamp: new Date()
                  });

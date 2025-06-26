@@ -1,0 +1,29 @@
+{
+  "id": "1750968505036-i68jj6y4y",
+  "timestamp": "2025-06-26T20:08:25.036Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "messages-upsert",
+  "payload": {
+    "key": {
+      "id": "TEST_MALFORMED_GROUP_REAL",
+      "fromMe": false,
+      "remoteJid": "5215551053317@s.whatsapp.net",
+      "participant": "5215551053317@s.whatsapp.net"
+    },
+    "messageType": "conversation",
+    "message": {
+      "conversation": "Test group message - should correct malformed remoteJid to proper group JID"
+    },
+    "messageTimestamp": 1750968504,
+    "pushName": "Test Group Member",
+    "source": "android",
+    "metadata": {
+      "groupInfo": {
+        "jid": "5215551053317-1438010896@g.us",
+        "subject": "Test Group Chat"
+      }
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
