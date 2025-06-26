@@ -68,7 +68,7 @@ export const WebhookApiAdapter = {
             case 'contacts.update':
             case 'CONTACTS_UPSERT':
             case 'CONTACTS_UPDATE':
-                await this.handleContactsUpsert(instanceId, data);
+                await this.handleContactsUpsert(instanceName, data);
                 break;
             case 'chats.upsert':
             case 'chats.update':
@@ -76,31 +76,31 @@ export const WebhookApiAdapter = {
             case 'CHATS_UPSERT':
             case 'CHATS_UPDATE':
             case 'CHATS_DELETE':
-                await this.handleChatsUpsert(instanceId, data);
+                await this.handleChatsUpsert(instanceName, data);
                 break;
             case 'groups.upsert':
             case 'GROUPS_UPSERT':
-                 await this.handleGroupsUpsert(instanceId, data);
+                 await this.handleGroupsUpsert(instanceName, data);
                  break;
             case 'groups.update':
             case 'GROUP_UPDATE':
             case 'group.update':
-                 await this.handleGroupUpdate(instanceId, data);
+                 await this.handleGroupUpdate(instanceName, data);
                  break;
             case 'group.participants.update':
             case 'GROUP_PARTICIPANTS_UPDATE':
-                 await this.handleGroupParticipantsUpdate(instanceId, data);
+                 await this.handleGroupParticipantsUpdate(instanceName, data);
                  break;
             case 'call':
-                await this.handleCall(instanceId, data);
+                await this.handleCall(instanceName, data);
                 break;
             case 'send.message':
             case 'SEND_MESSAGE':
-                await this.handleSendMessage(instanceId, data);
+                await this.handleSendMessage(instanceName, data);
                 break;
             case 'messages.reaction':
             case 'MESSAGES_REACTION':
-                await this.handleDirectReaction(instanceId, data);
+                await this.handleDirectReaction(instanceName, data);
                 break;
             default:
                 console.log(`- Unhandled event type in adapter: ${eventType}`);
