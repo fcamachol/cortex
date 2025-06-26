@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { WebhookApiAdapter } from './whatsapp-api-adapter'; // Import the next layer
 import { webhookReliability } from './webhook-reliability';
+import { messageRecovery } from './message-recovery-system';
 
 /**
  * @class WebhookController
@@ -54,11 +55,38 @@ export const WebhookController = {
 
             // 4. Pass the raw payload to the next layer for processing asynchronously.
             // We don't `await` this, allowing the HTTP response to be sent instantly.
-            WebhookApiAdapter.processIncomingEvent(instanceName, standardizedEvent);
+            // But we wrap it to capture any processing failures for recovery
+            WebhookApiAdapter.processIncomingEvent(instanceName, standardizedEvent)
+                .catch(async (processingError) => {
+                    console.error(`❌ [${instanceName}] Processing failed:`, processingError);
+                    
+                    // Capture failed message for recovery
+                    await messageRecovery.captureFailedMessage(
+                        instanceName,
+                        eventType,
+                        eventPayload,
+                        processingError.message || 'Processing error'
+                    ).catch(recoveryError => {
+                        console.error('❌ Failed to capture message for recovery:', recoveryError);
+                    });
+                    
+                    console.log(`💾 [${instanceName}] Captured failed event for recovery: ${eventType}`);
+                });
 
         } catch (error) {
             console.error('❌ Critical error in webhook handler:', error);
-            // The response has likely already been sent, so we just log the error.
+            
+            // Capture critical errors for recovery if possible
+            try {
+                await messageRecovery.captureFailedMessage(
+                    instanceName || 'unknown',
+                    eventType || 'unknown',
+                    eventPayload || {},
+                    error.message || 'Critical webhook error'
+                );
+            } catch (recoveryError) {
+                console.error('❌ Failed to capture critical error for recovery:', recoveryError);
+            }
         }
     }
 };

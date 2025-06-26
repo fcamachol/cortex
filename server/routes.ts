@@ -11,6 +11,7 @@ import { getEvolutionApi } from './evolution-api';
 import { BillToTaskService } from './bill-task-service';
 import { ScheduledJobsService } from './scheduled-jobs';
 import { webhookReliability } from './webhook-reliability';
+import { messageRecovery } from './message-recovery-system';
 import { db } from './db';
 import {
   insertFinanceTransactionSchema,
