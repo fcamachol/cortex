@@ -1466,6 +1466,96 @@ export const WebhookApiAdapter = {
         return null;
     },
 
+    /**
+     * Extract correct JID from malformed chat data sent by Evolution API
+     */
+    async extractCorrectJidFromChat(rawChat: any): Promise<string | null> {
+        // First, look for proper JID patterns in various chat fields
+        const possibleJids = [
+            rawChat.id,
+            rawChat.remoteJid,
+            rawChat.chatId,
+            rawChat.key?.remoteJid,
+            rawChat.jid,
+            rawChat.participantJid,
+            rawChat.owner
+        ].filter(Boolean);
+
+        // Check if any field contains a proper WhatsApp JID format
+        for (const jid of possibleJids) {
+            if (typeof jid === 'string' && (jid.includes('@s.whatsapp.net') || jid.includes('@g.us'))) {
+                return jid;
+            }
+        }
+
+        // Handle malformed Evolution API internal IDs
+        const malformedId = rawChat.id || rawChat.remoteJid;
+        if (malformedId && typeof malformedId === 'string' && malformedId.length > 20 && !malformedId.includes('@')) {
+            console.log(`🔧 Attempting to correct malformed chat ID: ${malformedId}`);
+            
+            // Look for JID patterns in the entire chat object
+            const chatStr = JSON.stringify(rawChat);
+            
+            // Look for group JID pattern first
+            const groupJidMatch = chatStr.match(/(\d{10,15}-\d+@g\.us)/);
+            if (groupJidMatch) {
+                console.log(`🔧 Extracted group JID from chat data: ${groupJidMatch[1]}`);
+                return groupJidMatch[1];
+            }
+            
+            // Look for individual JID pattern
+            const individualJidMatch = chatStr.match(/(\d{10,15}@s\.whatsapp\.net)/);
+            if (individualJidMatch) {
+                console.log(`🔧 Extracted individual JID from chat data: ${individualJidMatch[1]}`);
+                return individualJidMatch[1];
+            }
+
+            // For Evolution API internal IDs where no JID is found in the chat data,
+            // we need to call Evolution API to resolve the internal ID to a proper JID
+            console.warn(`⚠️ Evolution API internal ID detected: ${malformedId}`);
+            console.warn(`⚠️ This requires API lookup to resolve to proper WhatsApp JID`);
+            
+            // In production, you would implement Evolution API lookup here:
+            // const resolvedJid = await this.resolveInternalIdToJid(malformedId, instanceName);
+            
+            // Try to find the JID by contact name as last resort
+            if (rawChat.name && rawChat.name !== 'Group Chat' && rawChat.name !== '') {
+                console.log(`🔧 Attempting to find JID by contact name: "${rawChat.name}"`);
+                try {
+                    const resolvedJid = await this.findJidByContactName(rawChat.name, instanceName);
+                    if (resolvedJid) {
+                        console.log(`🎯 Successfully resolved malformed ID to: ${resolvedJid}`);
+                        return resolvedJid;
+                    }
+                } catch (error) {
+                    console.error(`❌ Error looking up contact by name:`, error.message);
+                }
+            }
+            
+            console.error(`❌ Cannot resolve Evolution API internal ID: ${malformedId}`);
+            return null;
+        }
+
+        return null;
+    },
+
+    /**
+     * Find JID by contact name in the database
+     */
+    async findJidByContactName(contactName: string, instanceName: string): Promise<string | null> {
+        try {
+            const contacts = await storage.findWhatsappContactsByName(contactName, instanceName);
+            if (contacts && contacts.length > 0) {
+                // Return the first matching contact's JID
+                return contacts[0].jid;
+            }
+            return null;
+        } catch (error) {
+            console.error(`❌ Error finding contact by name:`, error.message);
+            return null;
+        }
+    },
+
     async mapApiPayloadToWhatsappContact(rawContact: any, instanceName: string): Promise<Omit<WhatsappContacts, 'firstSeenAt' | 'lastUpdatedAt'> | null> {
         const jid = rawContact.id || rawContact.remoteJid;
         if (!jid || !instanceName) return null;
@@ -1551,13 +1641,17 @@ export const WebhookApiAdapter = {
             console.error(JSON.stringify(rawChat, null, 2));
             
             // Try to find the correct JID in the chat data
-            const correctJid = this.extractCorrectJidFromChat(rawChat);
+            const correctJid = await this.extractCorrectJidFromChat(rawChat);
             if (correctJid) {
                 console.log(`🔧 Found correct chat JID: "${correctJid}", replacing malformed ID`);
                 chatId = correctJid;
             } else {
                 console.error(`❌ Could not find correct chat JID, skipping chat creation`);
                 console.error(`❌ All available fields in rawChat:`, Object.keys(rawChat));
+                console.error(`❌❌❌ FAILED TO MAP CHAT 1 ❌❌❌`);
+                console.error(`❌ Original raw chat that failed mapping:`);
+                console.error(JSON.stringify(rawChat, null, 2));
+                console.error(`❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌`);
                 return null;
             }
         }

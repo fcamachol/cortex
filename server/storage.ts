@@ -1100,6 +1100,20 @@ class DatabaseStorage {
         return result;
     }
 
+    async findWhatsappContactsByName(contactName: string, instanceName: string): Promise<WhatsappContact[]> {
+        const results = await db.select()
+            .from(whatsappContacts)
+            .where(and(
+                eq(whatsappContacts.instanceName, instanceName),
+                or(
+                    eq(whatsappContacts.pushName, contactName),
+                    eq(whatsappContacts.verifiedName, contactName)
+                )
+            ))
+            .limit(10);
+        return results;
+    }
+
     // =========================================================================
     // PATTERN-BASED QUERY METHODS FOR CLEANUP OPERATIONS
     // =========================================================================
