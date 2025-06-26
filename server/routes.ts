@@ -1819,12 +1819,12 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // Media serving endpoint - fetch from Evolution API in real-time
-  app.get('/api/whatsapp/media/:instanceId/:messageId', async (req: Request, res: Response) => {
+  app.get('/api/whatsapp/media/:instanceName/:messageId', async (req: Request, res: Response) => {
     try {
-      const { instanceId, messageId } = req.params;
+      const { instanceName, messageId } = req.params;
       
       // Get instance credentials for Evolution API
-      const instance = await storage.getWhatsappInstance(instanceId);
+      const instance = await storage.getWhatsappInstance(instanceName);
       if (!instance?.apiKey) {
         return res.status(404).json({ error: 'Instance not found or missing API key' });
       }
