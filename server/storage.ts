@@ -233,6 +233,20 @@ class DatabaseStorage {
         const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceName, instanceName));
         return instance || null;
     }
+
+    async getWhatsappInstanceWithCredentials(instanceName: string): Promise<any | null> {
+        const result = await db.execute(sql`
+            SELECT 
+                instance_name as "instanceName",
+                instance_id as "apiKey",
+                display_name as "displayName",
+                webhook_url as "webhookUrl",
+                is_connected as "isConnected"
+            FROM whatsapp.instances 
+            WHERE instance_name = ${instanceName}
+        `);
+        return result.rows[0] || null;
+    }
     
     async getWhatsappConversations(userId: string): Promise<any[]> {
         // Use SQL to get conversations with last message content

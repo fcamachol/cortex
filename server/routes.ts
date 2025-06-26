@@ -1824,7 +1824,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       const { instanceName, messageId } = req.params;
       
       // Get instance credentials for Evolution API
-      const instance = await storage.getWhatsappInstance(instanceName);
+      const instance = await storage.getWhatsappInstanceWithCredentials(instanceName);
       if (!instance?.apiKey) {
         return res.status(404).json({ error: 'Instance not found or missing API key' });
       }
