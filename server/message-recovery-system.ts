@@ -238,35 +238,21 @@ export class MessageRecoverySystem {
    */
   private async recoverMessage(payload: any, instanceId: string): Promise<boolean> {
     try {
-      const messageData = payload.data;
+      // For message recovery, process through the proper Evolution API adapter
+      const { WebhookApiAdapter } = await import('./whatsapp-api-adapter');
       
-      // Ensure chat exists first
-      if (messageData.key?.remoteJid) {
-        await storage.ensureChatExists(messageData.key.remoteJid, instanceId);
-      }
-
-      // Create message record
-      const message = {
-        messageId: messageData.key?.id || `recovered-${Date.now()}`,
-        instanceName: instanceId, // Use instanceName field for consistency
-        chatId: messageData.key?.remoteJid || 'unknown',
-        senderJid: messageData.key?.fromMe ? `system@${instanceId}` : messageData.key?.remoteJid || 'unknown',
-        fromMe: messageData.key?.fromMe || false,
-        messageType: messageData.messageType || 'text',
-        content: messageData.message?.conversation || messageData.message?.text || '[Recovered Message]',
-        timestamp: new Date(messageData.messageTimestamp * 1000 || Date.now()),
-        quotedMessageId: messageData.message?.extendedTextMessage?.contextInfo?.stanzaId || null,
-        isForwarded: false,
-        forwardingScore: 0,
-        isStarred: false,
-        isEdited: false,
-        lastEditedAt: null,
-        sourcePlatform: 'recovered',
-        rawApiPayload: payload
+      // Create proper event structure for the adapter
+      const eventData = {
+        event: 'messages.upsert',
+        data: Array.isArray(payload.data) ? payload.data : [payload.data],
+        instanceId: instanceId,
+        instanceName: instanceId
       };
-
-      await storage.upsertWhatsappMessage(message);
-      console.log(`✅ Successfully recovered message: ${message.messageId}`);
+      
+      // Process through the proper adapter with Evolution API structure
+      await WebhookApiAdapter.processIncomingEvent(instanceId, eventData);
+      
+      console.log(`✅ Successfully recovered message events through proper adapter`);
       return true;
     } catch (error) {
       console.error('❌ Failed to recover message:', error);
@@ -279,21 +265,21 @@ export class MessageRecoverySystem {
    */
   private async recoverContact(payload: any, instanceId: string): Promise<boolean> {
     try {
-      const contactData = payload.data;
+      // For contact recovery, process through the proper Evolution API adapter
+      const { WebhookApiAdapter } = await import('./whatsapp-api-adapter');
       
-      const contact = {
-        jid: contactData.id || 'unknown',
-        instanceName: instanceId, // Use instanceName field for consistency
-        pushName: contactData.name || contactData.pushName || 'Unknown',
-        verifiedName: contactData.verifiedName || null,
-        profilePictureUrl: contactData.profilePictureUrl || null,
-        isBusiness: contactData.isBusiness || false,
-        isMe: contactData.isMe || false,
-        isBlocked: contactData.isBlocked || false
+      // Create proper event structure for the adapter
+      const eventData = {
+        event: 'contacts.upsert',
+        data: Array.isArray(payload.data) ? payload.data : [payload.data],
+        instanceId: instanceId,
+        instanceName: instanceId
       };
-
-      await storage.upsertWhatsappContact(contact);
-      console.log(`✅ Successfully recovered contact: ${contact.jid}`);
+      
+      // Process through the proper adapter with Evolution API structure
+      await WebhookApiAdapter.processIncomingEvent(instanceId, eventData);
+      
+      console.log(`✅ Successfully recovered contact events through proper adapter`);
       return true;
     } catch (error) {
       console.error('❌ Failed to recover contact:', error);
@@ -306,22 +292,23 @@ export class MessageRecoverySystem {
    */
   private async recoverChat(payload: any, instanceId: string): Promise<boolean> {
     try {
-      const chatData = payload.data;
+      // For chat recovery, we need to process through the proper Evolution API adapter
+      // instead of directly creating chat objects to avoid malformed chat ID issues
       
-      const chat = {
-        chatId: chatData.id || 'unknown',
-        instanceName: instanceId, // Use instanceName field for consistency
-        type: (chatData.id?.includes('@g.us') ? 'group' : 'individual') as 'group' | 'individual',
-        unreadCount: chatData.unreadCount || 0,
-        isArchived: chatData.archived || false,
-        isPinned: chatData.pinned || false,
-        isMuted: chatData.muted || false,
-        muteEndTimestamp: null,
-        lastMessageTimestamp: chatData.conversationTimestamp ? new Date(chatData.conversationTimestamp * 1000) : null
+      const { WebhookApiAdapter } = await import('./whatsapp-api-adapter');
+      
+      // Create proper event structure for the adapter
+      const eventData = {
+        event: 'chats.upsert',
+        data: Array.isArray(payload.data) ? payload.data : [payload.data],
+        instanceId: instanceId,
+        instanceName: instanceId
       };
-
-      await storage.upsertWhatsappChat(chat);
-      console.log(`✅ Successfully recovered chat: ${chat.chatId}`);
+      
+      // Process through the proper adapter with Evolution API structure
+      await WebhookApiAdapter.processIncomingEvent(instanceId, eventData);
+      
+      console.log(`✅ Successfully recovered chat events through proper adapter`);
       return true;
     } catch (error) {
       console.error('❌ Failed to recover chat:', error);
