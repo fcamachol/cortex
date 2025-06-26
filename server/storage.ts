@@ -1090,21 +1090,21 @@ class DatabaseStorage {
             ));
     }
 
-    async getGroupParticipants(groupJid: string, instanceId: string): Promise<WhatsappGroupParticipant[]> {
+    async getGroupParticipants(groupJid: string, instanceName: string): Promise<WhatsappGroupParticipant[]> {
         return await db.select()
             .from(whatsappGroupParticipants)
             .where(and(
                 eq(whatsappGroupParticipants.groupJid, groupJid),
-                eq(whatsappGroupParticipants.instanceId, instanceId)
+                eq(whatsappGroupParticipants.instanceName, instanceName)
             ));
     }
 
-    async getWhatsappContact(jid: string, instanceId: string): Promise<WhatsappContact | undefined> {
+    async getWhatsappContact(jid: string, instanceName: string): Promise<WhatsappContact | undefined> {
         const [result] = await db.select()
             .from(whatsappContacts)
             .where(and(
                 eq(whatsappContacts.jid, jid),
-                eq(whatsappContacts.instanceId, instanceId)
+                eq(whatsappContacts.instanceName, instanceName)
             ))
             .limit(1);
         return result;
@@ -1114,54 +1114,54 @@ class DatabaseStorage {
     // PATTERN-BASED QUERY METHODS FOR CLEANUP OPERATIONS
     // =========================================================================
 
-    async getContactsByPattern(instanceId: string, jidPattern: string): Promise<WhatsappContact[]> {
+    async getContactsByPattern(instanceName: string, jidPattern: string): Promise<WhatsappContact[]> {
         return await db.select()
             .from(whatsappContacts)
             .where(and(
-                eq(whatsappContacts.instanceId, instanceId),
+                eq(whatsappContacts.instanceName, instanceName),
                 ilike(whatsappContacts.jid, jidPattern)
             ));
     }
 
-    async getChatsByPattern(instanceId: string, chatIdPattern: string): Promise<WhatsappChat[]> {
+    async getChatsByPattern(instanceName: string, chatIdPattern: string): Promise<WhatsappChat[]> {
         return await db.select()
             .from(whatsappChats)
             .where(and(
-                eq(whatsappChats.instanceId, instanceId),
+                eq(whatsappChats.instanceName, instanceName),
                 ilike(whatsappChats.chatId, chatIdPattern)
             ));
     }
 
-    async getGroupsByPattern(instanceId: string, groupJidPattern: string): Promise<WhatsappGroup[]> {
+    async getGroupsByPattern(instanceName: string, groupJidPattern: string): Promise<WhatsappGroup[]> {
         return await db.select()
             .from(whatsappGroups)
             .where(and(
-                eq(whatsappGroups.instanceId, instanceId),
+                eq(whatsappGroups.instanceName, instanceName),
                 ilike(whatsappGroups.groupJid, groupJidPattern)
             ));
     }
 
-    async deleteWhatsappContact(jid: string, instanceId: string): Promise<void> {
+    async deleteWhatsappContact(jid: string, instanceName: string): Promise<void> {
         await db.delete(whatsappContacts)
             .where(and(
                 eq(whatsappContacts.jid, jid),
-                eq(whatsappContacts.instanceId, instanceId)
+                eq(whatsappContacts.instanceName, instanceName)
             ));
     }
 
-    async deleteWhatsappChat(chatId: string, instanceId: string): Promise<void> {
+    async deleteWhatsappChat(chatId: string, instanceName: string): Promise<void> {
         await db.delete(whatsappChats)
             .where(and(
                 eq(whatsappChats.chatId, chatId),
-                eq(whatsappChats.instanceId, instanceId)
+                eq(whatsappChats.instanceName, instanceName)
             ));
     }
 
-    async deleteWhatsappGroup(groupJid: string, instanceId: string): Promise<void> {
+    async deleteWhatsappGroup(groupJid: string, instanceName: string): Promise<void> {
         await db.delete(whatsappGroups)
             .where(and(
                 eq(whatsappGroups.groupJid, groupJid),
-                eq(whatsappGroups.instanceId, instanceId)
+                eq(whatsappGroups.instanceName, instanceName)
             ));
     }
 
