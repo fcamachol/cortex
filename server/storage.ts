@@ -451,7 +451,7 @@ class DatabaseStorage {
         console.log(`🔊   Full message object:`, JSON.stringify(message, null, 2));
         
         // Ensure the chat exists before inserting the message
-        await this.ensureChatExists(message.chatId, message.instanceId);
+        await this.ensureChatExists(message.chatId, message.instanceName);
 
         const [result] = await db.insert(whatsappMessages)
             .values(message)
