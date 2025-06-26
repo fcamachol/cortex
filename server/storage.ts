@@ -324,11 +324,11 @@ class DatabaseStorage {
         // Use raw SQL to handle the visibility field requirement
         const result = await db.execute(sql`
             INSERT INTO whatsapp.instances (
-                instance_id, display_name, client_id, api_key, webhook_url, 
+                instance_name, display_name, client_id, api_key, webhook_url, 
                 is_connected, visibility, owner_jid, last_connection_at
             )
             VALUES (
-                ${instance.instanceId}, 
+                ${instance.instanceName || instance.instanceId}, 
                 ${instance.displayName}, 
                 ${instance.clientId}, 
                 ${instance.apiKey}, 
@@ -338,7 +338,7 @@ class DatabaseStorage {
                 ${instance.ownerJid}, 
                 ${instance.lastConnectionAt}
             )
-            ON CONFLICT (instance_id) DO UPDATE SET
+            ON CONFLICT (instance_name) DO UPDATE SET
                 display_name = EXCLUDED.display_name,
                 api_key = EXCLUDED.api_key,
                 webhook_url = EXCLUDED.webhook_url,
@@ -1067,16 +1067,16 @@ class DatabaseStorage {
         return result;
     }
 
-    async removeGroupParticipant(groupJid: string, participantJid: string, instanceId: string): Promise<void> {
+    async removeGroupParticipant(groupJid: string, participantJid: string, instanceName: string): Promise<void> {
         await db.delete(whatsappGroupParticipants)
             .where(and(
                 eq(whatsappGroupParticipants.groupJid, groupJid),
                 eq(whatsappGroupParticipants.participantJid, participantJid),
-                eq(whatsappGroupParticipants.instanceId, instanceId)
+                eq(whatsappGroupParticipants.instanceName, instanceName)
             ));
     }
 
-    async updateGroupParticipantRole(groupJid: string, participantJid: string, instanceId: string, isAdmin: boolean): Promise<void> {
+    async updateGroupParticipantRole(groupJid: string, participantJid: string, instanceName: string, isAdmin: boolean): Promise<void> {
         await db.update(whatsappGroupParticipants)
             .set({
                 isAdmin: isAdmin,
@@ -1086,7 +1086,7 @@ class DatabaseStorage {
             .where(and(
                 eq(whatsappGroupParticipants.groupJid, groupJid),
                 eq(whatsappGroupParticipants.participantJid, participantJid),
-                eq(whatsappGroupParticipants.instanceId, instanceId)
+                eq(whatsappGroupParticipants.instanceName, instanceName)
             ));
     }
 
