@@ -623,6 +623,7 @@ class DatabaseStorage {
                     fullName: contactName,
                     relationship: 'WhatsApp Contact',
                     notes: `Automatically created from WhatsApp chat: ${chatId}\nInstance: ${instanceId}\nCreated from WhatsApp label: Yes`,
+                    whatsappInstanceId: instanceId, // Store the WhatsApp instance
                 })
                 .returning();
 
