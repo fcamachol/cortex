@@ -2441,7 +2441,7 @@ export const WhatsAppAPIAdapter = {
             
             // Get instance to retrieve API key
             const instance = await storage.getWhatsappInstance(instanceId);
-            if (!instance?.apiKey) {
+            if (!instance?.instanceId) {
                 return { success: false, error: 'Instance API key not found' };
             }
 
