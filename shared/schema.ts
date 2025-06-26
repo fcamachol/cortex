@@ -1,4 +1,4 @@
-import { pgTable, pgSchema, text, boolean, timestamp, uuid, integer, jsonb, bigint, varchar, serial, numeric, index, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, pgSchema, text, boolean, timestamp, uuid, integer, jsonb, bigint, varchar, serial, numeric, index, primaryKey, uniqueIndex } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -160,7 +160,10 @@ export const whatsappMessageReactions = whatsappSchema.table("message_reactions"
   reactionEmoji: varchar("reaction_emoji", { length: 10 }),
   fromMe: boolean("from_me").notNull().default(false),
   timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  // Unique constraint allowing same message_id across different instances
+  uq_reaction: uniqueIndex("uq_reaction").on(table.messageId, table.instanceName, table.reactorJid),
+}));
 
 export const whatsappMessageUpdates = whatsappSchema.table("message_updates", {
   updateId: serial("update_id").primaryKey(),
