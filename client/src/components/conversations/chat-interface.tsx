@@ -717,18 +717,9 @@ export default function ChatInterface({
   const prevInstanceId = useRef<string | null>(null);
   const prevMessageInput = useRef<string>("");
 
-  // Load draft content when conversation changes
+  // Clear message input when switching conversations
   useEffect(() => {
-    // Save draft for previous conversation if there was content
-    if (prevConversationId.current && prevInstanceId.current && prevMessageInput.current.trim()) {
-      // Extract chatId from previous conversationId
-      const prevChatId = prevConversationId.current?.includes(':') 
-        ? prevConversationId.current.split(':')[1] 
-        : prevConversationId.current;
-      saveDraftOnSwitch(prevChatId, prevInstanceId.current, prevMessageInput.current);
-    }
-
-    // Always clear input first when switching conversations
+    // Always clear input when switching conversations
     if (conversationId !== prevConversationId.current) {
       setMessageInput("");
       setReplyToMessage(null);
@@ -737,7 +728,7 @@ export default function ChatInterface({
     // Update refs for next conversation switch
     prevConversationId.current = conversationId;
     prevInstanceId.current = finalInstanceId;
-  }, [conversationId, finalInstanceId]); // Remove currentDraft dependency
+  }, [conversationId, finalInstanceId]);
 
   // Track loaded drafts to prevent infinite loops
   const loadedDrafts = useRef<Set<string>>(new Set());
@@ -877,7 +868,7 @@ export default function ChatInterface({
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('blur', handleWindowBlur);
     };
-  }, [conversationId, instanceId, messageInput, replyToMessage, saveDraftMutation]);
+  }, [conversationId, instanceId, messageInput, replyToMessage]);
 
   // Completely disable automatic scrolling - user controls scroll position
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
