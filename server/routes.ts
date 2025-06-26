@@ -1818,7 +1818,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Media serving endpoint - fetch from Evolution API in real-time
+  // Media serving endpoint - serve from database file_local_path
   app.get('/api/whatsapp/media/:instanceName/:messageId', async (req: Request, res: Response) => {
     try {
       const { instanceName, messageId } = req.params;
@@ -1829,86 +1829,40 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(404).json({ error: 'Instance not found' });
       }
 
-      // Get the original message with raw API payload for media download
-      const message = await storage.getWhatsappMessageById(messageId, instanceName);
-      if (!message?.rawApiPayload) {
-        return res.status(404).json({ error: 'Original message data not found' });
+      console.log(`📥 Fetching media from database for message: ${messageId}`);
+      
+      // Get media info from database
+      const mediaInfo = await storage.getWhatsappMessageMedia(messageId, instanceName);
+      if (!mediaInfo || !mediaInfo.fileLocalPath) {
+        return res.status(404).json({ error: 'Media file not found in database' });
       }
 
-      console.log(`📥 Fetching media from Evolution API for message: ${messageId}`);
+      // Check if the file exists at the stored path
+      const filePath = path.resolve(process.cwd(), mediaInfo.fileLocalPath);
       
-      // For this test case, let's check if the webhook already included base64 data
-      const { getEvolutionApi } = await import('./evolution-api');
-      const evolutionApi = getEvolutionApi();
-      
-      let rawPayload;
-      if (typeof message.rawApiPayload === 'string') {
-        rawPayload = JSON.parse(message.rawApiPayload);
-      } else {
-        rawPayload = message.rawApiPayload;
-      }
-      
-      // First, check for Evolution API downloaded media files
-      const mediaStoragePath = path.resolve(process.cwd(), 'media_storage', instanceName);
       try {
-        const mediaFiles = await fsPromises.readdir(mediaStoragePath);
-        const mediaFile = mediaFiles.find(file => file.startsWith(messageId));
+        const stats = await fsPromises.stat(filePath);
+        const mimeType = mediaInfo.mimetype || lookup(path.extname(filePath)) || 'audio/ogg; codecs=opus';
         
-        if (mediaFile) {
-          const filePath = path.join(mediaStoragePath, mediaFile);
-          const stats = await fsPromises.stat(filePath);
-          const mimeType = lookup(path.extname(mediaFile)) || 'audio/ogg; codecs=opus';
-          
-          console.log(`✅ Found Evolution API media file: ${mediaFile}`);
-          
-          res.setHeader('Content-Type', mimeType);
-          res.setHeader('Cache-Control', 'public, max-age=3600');
-          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-          res.setHeader('Access-Control-Allow-Origin', '*');
-          res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
-          res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
-          res.setHeader('Accept-Ranges', 'bytes');
-          res.setHeader('X-Content-Type-Options', 'nosniff');
-          res.setHeader('Referrer-Policy', 'no-referrer-when-downgrade');
-          res.setHeader('Content-Length', stats.size.toString());
-          
-          console.log(`✅ Serving Evolution API media: ${messageId} from ${filePath}`);
-          return res.sendFile(filePath);
-        }
-      } catch (err) {
-        // Directory doesn't exist or other error - continue to fallback
-      }
-      
-      // Media downloads should only happen during webhook processing, not on-demand
-      
-      // Check if base64 data is available from webhook processing
-      const audioMessage = rawPayload?.message?.audioMessage;
-      if (audioMessage?.base64) {
-        console.log(`✅ Found base64 data in webhook payload for ${messageId}`);
-        const fileBuffer = Buffer.from(audioMessage.base64, 'base64');
-        
-        // Serve the OGG file directly - modern browsers support this format natively
-        const mimeType = audioMessage.mimetype || 'audio/ogg; codecs=opus';
+        console.log(`✅ Found media file: ${filePath}`);
         
         res.setHeader('Content-Type', mimeType);
-        res.setHeader('Content-Length', fileBuffer.length.toString());
-        res.setHeader('Accept-Ranges', 'bytes');
         res.setHeader('Cache-Control', 'public, max-age=3600');
         res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
         res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Referrer-Policy', 'no-referrer-when-downgrade');
+        res.setHeader('Content-Length', stats.size.toString());
         
-        console.log(`✅ Serving base64 OGG media from webhook: ${messageId} (${fileBuffer.length} bytes)`);
-        return res.send(fileBuffer);
+        console.log(`✅ Serving media: ${messageId} from ${filePath}`);
+        return res.sendFile(filePath);
+      } catch (fileError) {
+        console.error(`❌ File not found at path: ${filePath}`);
+        return res.status(404).json({ error: 'Media file not found on filesystem' });
       }
-      
-      // No media available
-      console.log(`❌ Media not available for ${messageId} - no cached file or base64 data`);
-      return res.status(404).json({ 
-        error: 'Media not available', 
-        message: 'This audio file was not cached during webhook processing.' 
-      });
       
     } catch (error) {
       console.error(`❌ Error fetching media for ${req.params.messageId}:`, error.message);

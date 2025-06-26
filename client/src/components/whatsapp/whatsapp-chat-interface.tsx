@@ -58,6 +58,20 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
   const [messageText, setMessageText] = useState('');
   const queryClient = useQueryClient();
 
+  // Fetch WhatsApp instances for this user to get the correct instanceName
+  const { data: instances, isLoading: instancesLoading } = useQuery({
+    queryKey: ['whatsapp-instances', userId],
+    queryFn: async () => {
+      const response = await fetch(`/api/whatsapp/instances/${userId}`);
+      if (!response.ok) throw new Error('Failed to fetch instances');
+      const data = await response.json();
+      return data;
+    },
+  });
+
+  // Get the first available instance name (most users have one instance)
+  const instanceName = instances?.[0]?.instanceName;
+
   // Fetch conversations
   const { data: chats, isLoading: chatsLoading } = useQuery({
     queryKey: ['whatsapp-chats', instanceId],
@@ -258,7 +272,7 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
                                   </span>
                                 </div>
                                 <AudioPlayer
-                                  src={`/api/whatsapp/media/${message.instanceName || instanceId}/${message.messageId}`}
+                                  src={`/api/whatsapp/media/${message.instanceName || instanceName}/${message.messageId}`}
                                   duration={message.media.durationSeconds}
                                   className="bg-transparent"
                                 />
@@ -273,7 +287,7 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
                                   <span className="text-sm font-medium">Image</span>
                                 </div>
                                 <img
-                                  src={`/api/whatsapp/media/${message.instanceName || instanceId}/${message.messageId}`}
+                                  src={`/api/whatsapp/media/${message.instanceName || instanceName}/${message.messageId}`}
                                   alt="Shared image"
                                   className="max-w-full rounded"
                                   style={{ maxHeight: '300px' }}
