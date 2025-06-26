@@ -833,29 +833,24 @@ class DatabaseStorage {
     }
 
     async createCalendarEvent(eventData: any): Promise<any> {
-        return { id: 'placeholder', ...eventData };
-    }
-
-    // CRM Calendar Events - Source of truth for internal app events
-    async createCrmCalendarEvent(eventData: any): Promise<any> {
         try {
             console.log('📅 Creating calendar event in CRM schema:', eventData.title);
             
-            const result = await db.execute(sql`
-                INSERT INTO crm.calendar_events (
-                    created_by_user_id, title, description, start_time, end_time, 
-                    is_all_day, location, instance_id, created_at, updated_at
-                )
-                VALUES (
-                    ${eventData.ownerUserId}, ${eventData.title}, ${eventData.description}, 
-                    ${eventData.startTime}, ${eventData.endTime}, ${eventData.isAllDay || false}, 
-                    ${eventData.location}, ${eventData.instanceId}, NOW(), NOW()
-                )
-                RETURNING *
-            `);
+            const [createdEvent] = await db
+                .insert(crmCalendarEvents)
+                .values({
+                    createdByUserId: eventData.ownerUserId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42',
+                    title: eventData.title,
+                    description: eventData.description || null,
+                    startTime: eventData.startTime || new Date(),
+                    endTime: eventData.endTime || null,
+                    isAllDay: eventData.isAllDay || false,
+                    location: eventData.location || null,
+                    instanceId: eventData.instanceId || null,
+                })
+                .returning();
             
-            const createdEvent = result.rows?.[0] || result[0];
-            console.log('✅ CRM calendar event created successfully:', createdEvent.title || eventData.title);
+            console.log('✅ CRM calendar event created successfully:', createdEvent.title);
             return createdEvent;
         } catch (error) {
             console.error('❌ Error creating CRM calendar event:', error);
@@ -2937,8 +2932,8 @@ class DatabaseStorage {
         try {
             return await db
                 .select()
-                .from(calendarEvents)
-                .where(eq(calendarEvents.spaceId, spaceId));
+                .from(crmCalendarEvents)
+                .orderBy(crmCalendarEvents.createdAt);
         } catch (error) {
             console.error('Error getting calendars:', error);
             return [];
@@ -2948,7 +2943,7 @@ class DatabaseStorage {
     async createCalendar(calendarData: any): Promise<any> {
         try {
             const [calendar] = await db
-                .insert(calendarEvents)
+                .insert(crmCalendarEvents)
                 .values(calendarData)
                 .returning();
             return calendar;
@@ -2958,38 +2953,14 @@ class DatabaseStorage {
         }
     }
 
-    async createCalendarEvent(eventData: any): Promise<any> {
-        try {
-            console.log('📅 Creating calendar event in CRM schema:', eventData.title);
-            
-            const [event] = await db
-                .insert(crmCalendarEvents)
-                .values({
-                    createdByUserId: eventData.ownerUserId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42',
-                    title: eventData.title,
-                    description: eventData.description || null,
-                    startTime: eventData.startTime || new Date(),
-                    endTime: eventData.endTime || null,
-                    isAllDay: eventData.isAllDay || false,
-                    location: eventData.location || null,
-                    instanceId: eventData.instanceId || null,
-                })
-                .returning();
-            
-            console.log('✅ CRM calendar event created successfully:', event?.title || eventData.title);
-            return event;
-        } catch (error) {
-            console.error('❌ Error creating CRM calendar event:', error);
-            throw error;
-        }
-    }
+
 
     async updateCalendar(calendarId: string, updateData: any): Promise<any> {
         try {
             const [calendar] = await db
-                .update(calendarEvents)
+                .update(crmCalendarEvents)
                 .set(updateData)
-                .where(eq(calendarEvents.eventId, calendarId))
+                .where(eq(crmCalendarEvents.eventId, parseInt(calendarId)))
                 .returning();
             return calendar;
         } catch (error) {
@@ -3001,8 +2972,8 @@ class DatabaseStorage {
     async deleteCalendar(calendarId: string): Promise<boolean> {
         try {
             await db
-                .delete(calendarEvents)
-                .where(eq(calendarEvents.eventId, calendarId));
+                .delete(crmCalendarEvents)
+                .where(eq(crmCalendarEvents.eventId, parseInt(calendarId)));
             return true;
         } catch (error) {
             console.error('Error deleting calendar:', error);
