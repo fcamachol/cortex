@@ -710,17 +710,7 @@ export default function ChatInterface({
   // Disable draft loading completely to prevent infinite loops
   const currentDraft = null;
 
-  // Save current draft when switching conversations
-  const saveDraftOnSwitch = (oldChatId: string, oldInstanceId: string, messageContent: string) => {
-    if (oldChatId && oldInstanceId && messageContent && messageContent.trim()) {
-      saveDraftMutation.mutate({
-        chatId: oldChatId, // Use raw chatId, not conversationId
-        instanceId: oldInstanceId,
-        content: messageContent,
-        replyToMessageId: replyToMessage?.messageId || null
-      });
-    }
-  };
+  // Draft functionality removed for system optimization
 
   // Refs to track previous conversation state for draft saving
   const prevConversationId = useRef<string | null>(null);
@@ -791,31 +781,7 @@ export default function ChatInterface({
     prevMessageInput.current = messageInput;
   }, [messageInput]);
 
-  // Draft saving mutation
-  const saveDraftMutation = useMutation({
-    mutationFn: async ({ chatId, instanceId, content, replyToMessageId }: any) => {
-      // Ensure we always use raw chatId, never composite identifier
-      const rawChatId = chatId?.includes(':') ? chatId.split(':')[1] : chatId;
-      
-      const response = await fetch('/api/whatsapp/drafts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          chatId: rawChatId, // Always use raw chat ID
-          instanceId,
-          content,
-          replyToMessageId
-        })
-      });
-      if (!response.ok) throw new Error('Failed to save draft');
-      return response.json();
-    },
-    onSuccess: () => {
-      // SSE will handle real-time updates to conversation list
-    }
-  });
+  // Draft functionality removed for system optimization
 
   // Draft deletion mutation
   const deleteDraftMutation = useMutation({

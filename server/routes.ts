@@ -654,74 +654,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Draft management endpoints
-  app.get('/api/whatsapp/drafts/:instanceId', async (req: Request, res: Response) => {
-    try {
-      const { instanceId } = req.params;
-      const drafts = await storage.getAllDrafts(instanceId);
-      res.json(drafts);
-    } catch (error) {
-      console.error('Error fetching drafts:', error);
-      res.status(500).json({ error: 'Failed to fetch drafts' });
-    }
-  });
-
-  app.post('/api/whatsapp/drafts', async (req: Request, res: Response) => {
-    try {
-      let data = req.body;
-      
-      // Handle sendBeacon blob data if content-type is application/json
-      if (req.headers['content-type'] === 'application/json' && typeof req.body === 'string') {
-        data = JSON.parse(req.body);
-      }
-      
-      const { chatId, instanceId, content, replyToMessageId } = data;
-      
-      if (!chatId || !instanceId || content === undefined) {
-        return res.status(400).json({ error: 'chatId, instanceId, and content are required' });
-      }
-
-      const draft = await storage.upsertDraft({
-        chatId,
-        instanceId,
-        content,
-        replyToMessageId: replyToMessageId || null
-      });
-      
-      // Notify all connected clients about the draft change
-      const { SseManager } = await import('./sse-manager');
-      SseManager.notifyClients('draft_updated', {
-        chatId,
-        instanceId,
-        content,
-        messageId: draft.messageId
-      });
-      
-      res.json(draft);
-    } catch (error) {
-      console.error('Error saving draft:', error);
-      res.status(500).json({ error: 'Failed to save draft' });
-    }
-  });
-
-  app.delete('/api/whatsapp/drafts/:instanceId/:chatId', async (req: Request, res: Response) => {
-    try {
-      const { instanceId, chatId } = req.params;
-      await storage.deleteDraft(chatId, instanceId);
-      
-      // Notify all connected clients about the draft deletion
-      const { SseManager } = await import('./sse-manager');
-      SseManager.notifyClients('draft_deleted', {
-        chatId,
-        instanceId
-      });
-      
-      res.json({ success: true });
-    } catch (error) {
-      console.error('Error deleting draft:', error);
-      res.status(500).json({ error: 'Failed to delete draft' });
-    }
-  });
+  // Drafts functionality removed for system optimization
 
   app.get('/api/spaces', async (req: Request, res: Response) => {
     try {
