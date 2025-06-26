@@ -240,8 +240,9 @@ export const WebhookApiAdapter = {
                 }
                 
                 console.log(`💾 About to store message: ${cleanMessage.messageId}`);
+                let storedMessage;
                 try {
-                    const storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
+                    storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
                     console.log(`✅ [${instanceId}] Message stored: ${storedMessage.messageId}`);
                 } catch (storageError) {
                     console.error(`❌ [${instanceId}] Error storing message:`, storageError);
@@ -1038,7 +1039,10 @@ export const WebhookApiAdapter = {
      * Guarantees all dependency records exist for a given message.
      */
     async ensureDependenciesForMessage(cleanMessage: any, rawMessage: any): Promise<void> {
+        console.log(`🔧 [ensureDependenciesForMessage] Starting dependency creation for message ${cleanMessage.messageId}`);
+        console.log(`🔧 [ensureDependenciesForMessage] ChatId: ${cleanMessage.chatId}, InstanceName: ${cleanMessage.instanceName}`);
         const isGroup = cleanMessage.chatId.endsWith('@g.us');
+        console.log(`🔧 [ensureDependenciesForMessage] Is group chat: ${isGroup}`);
         
         // For individual chats, create contact for the other person (not instance owner)
         if (!isGroup && cleanMessage.chatId === cleanMessage.senderJid && !cleanMessage.fromMe) {
@@ -1084,9 +1088,11 @@ export const WebhookApiAdapter = {
 
         if (isGroup) {
             // For groups, proactively update with latest Evolution API data
+            console.log(`🔧 [ensureDependenciesForMessage] Handling group activity for ${cleanMessage.chatId}`);
             const { GroupMetadataFetcher } = await import('./group-metadata-fetcher');
             GroupMetadataFetcher.handleGroupActivity(cleanMessage.chatId, cleanMessage.instanceName);
         }
+        console.log(`✅ [ensureDependenciesForMessage] Completed successfully for message ${cleanMessage.messageId}`);
     },
 
     // --- Data Mapping Functions ---
