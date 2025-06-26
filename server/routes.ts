@@ -2942,6 +2942,20 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Message Recovery System Status
+  app.get('/api/message-recovery/status', async (req: Request, res: Response) => {
+    try {
+      const status = await messageRecovery.getStatus();
+      res.json({
+        ...status,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error getting message recovery status:', error);
+      res.status(500).json({ error: 'Failed to get message recovery status' });
+    }
+  });
+
   // Enhanced Spaces API endpoints
   app.patch('/api/spaces/:spaceId', async (req: Request, res: Response) => {
     try {
