@@ -405,9 +405,6 @@ class DatabaseStorage {
             })
             .returning();
         
-        // Automatically check for CRM contact linking when WhatsApp contact is created/updated
-        await this.autoLinkWhatsAppToCrm(result);
-        
         return result;
     }
 
@@ -3197,60 +3194,7 @@ class DatabaseStorage {
         return normalized;
     }
 
-    /**
-     * Auto-links WhatsApp contacts to CRM contacts when WhatsApp contact is created/updated
-     * @param whatsappContact - WhatsApp contact data
-     */
-    async autoLinkWhatsAppToCrm(whatsappContact: any): Promise<void> {
-        try {
-            const phoneFromJid = whatsappContact.jid.replace('@s.whatsapp.net', '');
-            const possiblePhones = [
-                phoneFromJid,
-                `+${phoneFromJid}`,
-                phoneFromJid.startsWith('+') ? phoneFromJid.substring(1) : phoneFromJid
-            ];
-            
-            // Search CRM contacts with matching phone numbers
-            const potentialMatches = await db.select({
-                contactId: crmContacts.contactId,
-                fullName: crmContacts.fullName,
-                phoneNumber: crmContactPhones.phoneNumber,
-                phoneId: crmContactPhones.phoneId
-            })
-            .from(crmContacts)
-            .innerJoin(crmContactPhones, eq(crmContacts.contactId, crmContactPhones.contactId))
-            .where(
-                or(
-                    ...possiblePhones.map(phone => 
-                        ilike(crmContactPhones.phoneNumber, `%${phone}%`)
-                    )
-                )
-            );
-            
-            if (potentialMatches.length === 1) {
-                // Exact match found, auto-link
-                const match = potentialMatches[0];
-                
-                await db.update(crmContacts)
-                    .set({
-                        whatsappJid: whatsappContact.jid,
-                        whatsappInstanceId: whatsappContact.instanceId,
-                        isWhatsappLinked: true,
-                        whatsappLinkedAt: new Date(),
-                        updatedAt: new Date()
-                    })
-                    .where(eq(crmContacts.contactId, match.contactId));
-                
-                await db.update(crmContactPhones)
-                    .set({ isWhatsappLinked: true })
-                    .where(eq(crmContactPhones.phoneId, match.phoneId));
-                
-                console.log(`🔗 Auto-linked WhatsApp contact ${whatsappContact.jid} to CRM contact ${match.fullName}`);
-            }
-        } catch (error) {
-            console.error('Error auto-linking WhatsApp to CRM:', error);
-        }
-    }
+
 }
 
 export const storage = new DatabaseStorage();

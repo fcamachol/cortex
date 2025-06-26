@@ -898,6 +898,45 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // WhatsApp-CRM Contact Linking endpoints
+  app.post('/api/contacts/:contactId/link-whatsapp', async (req: Request, res: Response) => {
+    try {
+      const { contactId } = req.params;
+      const { phoneNumber } = req.body;
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ error: 'Phone number is required' });
+      }
+      
+      await storage.linkContactToWhatsApp(parseInt(contactId), phoneNumber);
+      res.json({ success: true, message: 'WhatsApp linking checked' });
+    } catch (error) {
+      console.error('Error linking contact to WhatsApp:', error);
+      res.status(500).json({ error: 'Failed to link contact to WhatsApp' });
+    }
+  });
+
+  app.get('/api/contacts/:contactId/whatsapp-status', async (req: Request, res: Response) => {
+    try {
+      const { contactId } = req.params;
+      const contact = await storage.getCrmContactById(parseInt(contactId));
+      
+      if (!contact) {
+        return res.status(404).json({ error: 'Contact not found' });
+      }
+      
+      res.json({
+        isWhatsappLinked: contact.isWhatsappLinked || false,
+        whatsappJid: contact.whatsappJid || null,
+        whatsappInstanceId: contact.whatsappInstanceId || null,
+        whatsappLinkedAt: contact.whatsappLinkedAt || null
+      });
+    } catch (error) {
+      console.error('Error getting WhatsApp status:', error);
+      res.status(500).json({ error: 'Failed to get WhatsApp status' });
+    }
+  });
+
   app.post('/api/crm/tasks', async (req: Request, res: Response) => {
     try {
       const taskData = req.body;
