@@ -2417,10 +2417,10 @@ export const WebhookApiAdapter = {
                     const { cacheBase64Media } = await import('./media-downloader');
                     const evolutionApi = getEvolutionApi();
                     
-                    // Get instance API key
-                    const instance = await storage.getWhatsappInstance(instanceId);
-                    if (!instance?.apiKey) {
-                        console.error(`❌ [${instanceId}] No API key found for media download: ${messageId}`);
+                    // Instances don't store API keys - use global Evolution API key
+                    const globalApiKey = process.env.EVOLUTION_API_KEY;
+                    if (!globalApiKey) {
+                        console.error(`❌ [${instanceId}] No global API key found for media download: ${messageId}`);
                         return;
                     }
                     
@@ -2436,7 +2436,7 @@ export const WebhookApiAdapter = {
                     // Step 2: Make API call to download media using the stored media_key for authentication
                     const downloadResponse = await evolutionApi.downloadMedia(
                         instanceId,
-                        instance.apiKey,
+                        globalApiKey,
                         {
                             key: rawMessage.key,
                             message: rawMessage.message,
