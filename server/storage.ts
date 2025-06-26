@@ -408,6 +408,8 @@ class DatabaseStorage {
     }
 
     async upsertWhatsappChat(chat: InsertWhatsappChat): Promise<WhatsappChat> {
+        console.log(`📥 Upserting WhatsApp chat: ${chat.chatId} (type: ${chat.type})`);
+        
         const [result] = await db.insert(whatsappChats)
             .values(chat)
             .onConflictDoUpdate({
@@ -419,6 +421,15 @@ class DatabaseStorage {
                 }
             })
             .returning();
+
+        // Create CRM contact for individual chats automatically (both new and existing)
+        if (chat.type === 'individual' && chat.chatId.endsWith('@s.whatsapp.net')) {
+            console.log(`🏗️ Creating CRM contact for individual chat: ${chat.chatId}`);
+            await this.createCrmContactFromWhatsappChat(chat.chatId, chat.instanceId);
+        } else {
+            console.log(`🚫 Skipping CRM contact creation - type: ${chat.type}, chatId: ${chat.chatId}`);
+        }
+
         return result;
     }
     
