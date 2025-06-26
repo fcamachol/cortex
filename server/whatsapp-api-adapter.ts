@@ -30,14 +30,30 @@ export const WebhookApiAdapter = {
      */
     async processIncomingEvent(instanceId: string, event: any): Promise<void> {
         const { event: eventType, data, sender } = event;
-        // Map instanceId to instanceName for internal consistency
-        const instanceName = instanceId;
-        console.log(`📨 [${instanceName}] Translating event: ${eventType}`);
+        
+        // Dynamic instance field detection from Evolution API payload
+        // Evolution API can send either instanceId OR instanceName - we must respect both
+        let instanceIdentifier: string;
+        
+        if (event.instanceName) {
+            // Evolution API sent instanceName field
+            instanceIdentifier = event.instanceName;
+            console.log(`🔍 Evolution API provided instanceName: ${instanceIdentifier}`);
+        } else if (event.instanceId) {
+            // Evolution API sent instanceId field  
+            instanceIdentifier = event.instanceId;
+            console.log(`🔍 Evolution API provided instanceId: ${instanceIdentifier}`);
+        } else {
+            // Fallback to webhook route parameter
+            instanceIdentifier = instanceId;
+            console.log(`🔍 Using webhook route instanceId: ${instanceIdentifier}`);
+        }
+        console.log(`📨 [${instanceIdentifier}] Translating event: ${eventType}`);
         
         // --- LOUD WEBHOOK DIAGNOSTICS FOR ALL EVENT TYPES ---
         console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
         console.log(`!!!    WEBHOOK EVENT: ${eventType.toUpperCase().padEnd(25)} !!!`);
-        console.log(`!!!    INSTANCE: ${instanceName.padEnd(30)} !!!`);
+        console.log(`!!!    INSTANCE: ${instanceIdentifier.padEnd(30)} !!!`);
         console.log(`!!!    DATA TYPE: ${typeof data}                      !!!`);
         console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
         
@@ -51,24 +67,24 @@ export const WebhookApiAdapter = {
             case 'MESSAGES_UPSERT':
                 const potentialMessage = Array.isArray(data.messages) ? data.messages[0] : data;
                 if (potentialMessage?.message?.reactionMessage) {
-                    await this.handleReaction(instanceName, potentialMessage, sender);
+                    await this.handleReaction(instanceIdentifier, potentialMessage, sender);
                 } else {
-                    await this.handleMessageUpsert(instanceName, data);
+                    await this.handleMessageUpsert(instanceIdentifier, data);
                 }
                 break;
             case 'messages.update':
             case 'MESSAGES_UPDATE':
                 if (data.updates && data.updates[0]?.message?.reactionMessage) {
-                     await this.handleReaction(instanceName, data.updates[0], sender);
+                     await this.handleReaction(instanceIdentifier, data.updates[0], sender);
                 } else {
-                    await this.handleMessageUpdate(instanceName, data);
+                    await this.handleMessageUpdate(instanceIdentifier, data);
                 }
                 break;
             case 'contacts.upsert':
             case 'contacts.update':
             case 'CONTACTS_UPSERT':
             case 'CONTACTS_UPDATE':
-                await this.handleContactsUpsert(instanceName, data);
+                await this.handleContactsUpsert(instanceIdentifier, data);
                 break;
             case 'chats.upsert':
             case 'chats.update':
@@ -76,31 +92,31 @@ export const WebhookApiAdapter = {
             case 'CHATS_UPSERT':
             case 'CHATS_UPDATE':
             case 'CHATS_DELETE':
-                await this.handleChatsUpsert(instanceName, data);
+                await this.handleChatsUpsert(instanceIdentifier, data);
                 break;
             case 'groups.upsert':
             case 'GROUPS_UPSERT':
-                 await this.handleGroupsUpsert(instanceName, data);
+                 await this.handleGroupsUpsert(instanceIdentifier, data);
                  break;
             case 'groups.update':
             case 'GROUP_UPDATE':
             case 'group.update':
-                 await this.handleGroupUpdate(instanceName, data);
+                 await this.handleGroupUpdate(instanceIdentifier, data);
                  break;
             case 'group.participants.update':
             case 'GROUP_PARTICIPANTS_UPDATE':
-                 await this.handleGroupParticipantsUpdate(instanceName, data);
+                 await this.handleGroupParticipantsUpdate(instanceIdentifier, data);
                  break;
             case 'call':
-                await this.handleCall(instanceName, data);
+                await this.handleCall(instanceIdentifier, data);
                 break;
             case 'send.message':
             case 'SEND_MESSAGE':
-                await this.handleSendMessage(instanceName, data);
+                await this.handleSendMessage(instanceIdentifier, data);
                 break;
             case 'messages.reaction':
             case 'MESSAGES_REACTION':
-                await this.handleDirectReaction(instanceName, data);
+                await this.handleDirectReaction(instanceIdentifier, data);
                 break;
             default:
                 console.log(`- Unhandled event type in adapter: ${eventType}`);

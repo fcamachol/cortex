@@ -35,10 +35,12 @@ export const WebhookController = {
             );
 
             // 3. Create standardized event payload for our adapter
+            // Preserve original Evolution API field naming (instanceId vs instanceName)
             const standardizedEvent = {
                 event: eventType.replace('-', '.'), // Convert "messages-upsert" to "messages.upsert"
                 data: eventPayload.data || eventPayload, // Extract nested data if present
-                instanceId: instanceName,
+                instanceId: eventPayload.instanceId || instanceName, // Use original instanceId if present
+                instanceName: eventPayload.instanceName || instanceName, // Use original instanceName if present
                 reliabilityId: eventId
             };
 
