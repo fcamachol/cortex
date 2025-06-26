@@ -12,7 +12,7 @@ import {
     // Actions Schema
     actionRules, actionExecutions,
     // CRM Schema - Comprehensive Contacts Module
-    crmProjects, crmTasks, crmCompanies, crmCalendarEvents,
+    crmProjects, crmTasks, crmCompanies, crmCalendarEvents, crmNotes,
     crmContacts, crmContactPhones, crmContactEmails, crmContactAddresses, 
     crmContactAliases, crmSpecialDates, crmInterests, crmContactInterests,
     crmCompanyMembers, crmContactGroups, crmContactGroupMembers, crmContactRelationships,
@@ -2828,37 +2828,24 @@ class DatabaseStorage {
 
     async createNote(noteData: any): Promise<any> {
         try {
-            const note = {
-                title: noteData.title,
-                content: noteData.content,
-                category: 'automation',
-                priority: 'medium',
-                status: 'active',
-                createdBy: noteData.userId,
-                assignedTo: noteData.userId,
-                metadata: {
-                    instanceId: noteData.instanceId,
-                    triggeringMessageId: noteData.triggeringMessageId,
-                    relatedChatJid: noteData.relatedChatJid,
-                    autoCreated: true,
-                    spaceId: noteData.spaceId,
-                    source: 'whatsapp-reaction'
-                }
-            };
-
             // Generate title if missing - use chat ID and date format
             const finalTitle = noteData.title || `${noteData.relatedChatJid || 'Unknown'} ${new Date().toLocaleDateString()}`;
             
-            // Create note without space assignment - notes are standalone
-            const result = await db.execute(sql`
-                INSERT INTO crm.notes (title, content, created_by_user_id, instance_id, created_at, updated_at)
-                VALUES (${finalTitle}, ${noteData.content}, ${noteData.userId}, ${noteData.instanceId}, NOW(), NOW())
-                RETURNING *
-            `);
-            
-            const createdNote = result.rows?.[0] || result[0] || { title: finalTitle, content: noteData.content };
+            // Create note using Drizzle ORM
+            const [createdNote] = await db
+                .insert(crmNotes)
+                .values({
+                    title: finalTitle,
+                    content: noteData.content || 'Automatically created note',
+                    createdByUserId: noteData.userId,
+                    instanceId: noteData.instanceId,
+                    spaceId: noteData.spaceId,
+                    triggeringMessageId: noteData.triggeringMessageId,
+                    relatedChatJid: noteData.relatedChatJid,
+                })
+                .returning();
 
-            console.log('✅ Note created successfully in CRM schema:', createdNote.title || finalTitle);
+            console.log('✅ Note created successfully in CRM schema:', createdNote.title);
             return createdNote;
         } catch (error) {
             console.error('❌ Error creating note in CRM schema:', error);

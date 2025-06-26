@@ -1346,6 +1346,27 @@ export const crmCalendarEvents = crmSchema.table("calendar_events", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// CRM Notes - Standalone notes with optional entity linking
+export const crmNotes = crmSchema.table("notes", {
+  noteId: serial("note_id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  createdByUserId: uuid("created_by_user_id").notNull().references(() => appUsers.userId),
+  instanceId: varchar("instance_id", { length: 100 }),
+  spaceId: integer("space_id").references(() => appSpaces.spaceId),
+  // Optional entity linking
+  contactId: integer("contact_id").references(() => crmContacts.contactId),
+  taskId: integer("task_id").references(() => crmTasks.taskId),
+  projectId: integer("project_id").references(() => crmProjects.projectId),
+  eventId: integer("event_id").references(() => crmCalendarEvents.eventId),
+  companyId: integer("company_id").references(() => crmCompanies.companyId),
+  // WhatsApp context
+  triggeringMessageId: varchar("triggering_message_id", { length: 100 }),
+  relatedChatJid: varchar("related_chat_jid", { length: 100 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // =========================================================================
 // CRM RELATIONS - Comprehensive relationship definitions
 // =========================================================================
