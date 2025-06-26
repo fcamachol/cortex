@@ -1,0 +1,174 @@
+import { Request, Response } from 'express';
+import { storage } from './storage'; // Your database access layer
+import { SseManager } from './sse-manager'; // Your real-time notification manager
+import { ActionService } from './action-service'; // Your business logic engine
+import * as chrono from 'chrono-node'; // NLP date parsing library
+import {
+    type WhatsappMessages,
+    type WhatsappContacts,
+    type WhatsappChats,
+    type WhatsappGroups,
+    type WhatsappCallLogs,
+    type WhatsappMessageReactions,
+    type InsertCrmContactDetail
+} from '@shared/schema';
+
+// MOCK EXTERNAL API (Placeholder)
+const googleCalendarApi = {
+    async createEvent({ title, startTime, endTime, attendees }: { title: string, startTime: Date, endTime: Date, attendees: string[] }) {
+        console.log(`📅 Mock Google API: Creating event "${title}"`);
+        return { success: true, htmlLink: `https://meet.google.com/new` };
+    }
+};
+
+/**
+ * @class WebhookApiAdapter
+ * @description The "Translator" layer. It maps raw API payloads to clean internal
+ * data objects and commands the storage layer in the correct order.
+ */
+export const WebhookApiAdapter = {
+
+    /**
+     * Main entry point for all webhook events.
+     */
+    async processIncomingEvent(instanceId: string, event: any): Promise<void> {
+        const { event: eventType, data, sender } = event;
+        console.log(`📨 [${instanceId}] Translating event: ${eventType}`);
+
+        switch (eventType) {
+            case 'messages.upsert':
+                await this.handleMessageUpsert(instanceId, data, sender);
+                break;
+            case 'contacts.update':
+            case 'contacts.upsert':
+                await this.handleContactsUpsert(instanceId, data);
+                break;
+            case 'chats.update':
+            case 'chats.upsert':
+                await this.handleChatsUpsert(instanceId, data);
+                break;
+            case 'groups.update':
+            case 'groups.upsert':
+                await this.handleGroupsUpsert(instanceId, data);
+                break;
+            // ... other event handlers
+            default:
+                console.log(`- Unhandled event type in adapter: ${eventType}`);
+        }
+    },
+
+    /**
+     * Handles new messages with a robust, sequential process to prevent race conditions.
+     */
+    async handleMessageUpsert(instanceId: string, data: any, sender?: string): Promise<void> {
+        const messages = Array.isArray(data.messages) ? data.messages : [data];
+        if (!messages[0]?.key) return;
+
+        for (const rawMessage of messages) {
+            try {
+                // First, check if it's a reaction and route it to the correct handler
+                if (rawMessage.message?.reactionMessage) {
+                    await this.handleReaction(instanceId, rawMessage, sender);
+                    continue; // Stop processing this item as a regular message
+                }
+
+                const cleanMessage = await this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
+                if (!cleanMessage) continue;
+
+                // ** THIS IS THE CRITICAL FIX **
+                // Ensures the chat, sender, and group (if applicable) records
+                // exist BEFORE we attempt to save the message.
+                await this.ensureDependenciesForMessage(cleanMessage, rawMessage);
+                
+                const storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
+                console.log(`✅ [${instanceId}] Message stored: ${storedMessage.message_id}`);
+                
+                SseManager.notifyClientsOfNewMessage(storedMessage);
+                ActionService.processNewMessage(storedMessage);
+
+            } catch (error) {
+                console.error(`❌ Error processing message upsert for ${rawMessage.key?.id}:`, error);
+            }
+        }
+    },
+    
+    /**
+     * Handles chat creation/updates. This is the primary point for creating
+     * contact and group entities when a chat is first seen.
+     */
+    async handleChatsUpsert(instanceId: string, data: any): Promise<void> {
+        const chats = Array.isArray(data.chats) ? data.chats : Array.isArray(data) ? data : [data];
+        if (!chats || chats.length === 0) return;
+        
+        for (const rawChat of chats) {
+            const cleanChat = this.mapApiPayloadToWhatsappChat(rawChat, instanceId);
+            if (cleanChat) {
+                await this.ensureContactAndChatRecords(cleanChat, rawChat);
+                await storage.upsertWhatsappChat(cleanChat);
+                console.log(`✅ [${instanceId}] Chat upserted: ${cleanChat.chat_id}`);
+            }
+        }
+    },
+    
+    /**
+     * Handles group creation/updates. This is the only function trusted to
+     * set the group's real subject name.
+     */
+    async handleGroupsUpsert(instanceId: string, data: any[]): Promise<void> {
+        if (!Array.isArray(data)) return;
+        for (const rawGroup of data) {
+            const cleanGroup = this.mapApiPayloadToWhatsappGroup(rawGroup, instanceId);
+            if (cleanGroup) {
+                // First, ensure the corresponding contact and chat records exist
+                await this.ensureContactAndChatRecords({
+                    type: 'group',
+                    chat_id: cleanGroup.group_jid,
+                    instance_id: instanceId,
+                }, { name: cleanGroup.subject });
+                
+                // Now, save the authoritative group details
+                await storage.upsertWhatsappGroup(cleanGroup);
+                console.log(`✅ [${instanceId}] Group upserted with correct subject: ${cleanGroup.subject}`);
+            }
+        }
+    },
+
+    /**
+     * Guarantees all dependency records exist for a given message.
+     */
+    async ensureDependenciesForMessage(cleanMessage: WhatsappMessages, rawMessage: any): Promise<void> {
+        // 1. Ensure Sender's contact record exists
+        const senderContact = await this.mapApiPayloadToWhatsappContact({ id: cleanMessage.sender_jid, pushName: rawMessage.pushName }, cleanMessage.instance_id);
+        if (senderContact) await storage.upsertWhatsappContact(senderContact);
+
+        // 2. Ensure Chat and its associated contact/group records exist
+        await this.ensureContactAndChatRecords({
+            chat_id: cleanMessage.chat_id,
+            instance_id: cleanMessage.instance_id,
+            type: cleanMessage.chat_id.endsWith('@g.us') ? 'group' : 'individual'
+        }, rawMessage);
+    },
+
+    /**
+     * Creates all necessary records when a new chat is detected.
+     */
+    async ensureContactAndChatRecords(cleanChat: Partial<WhatsappChats>, rawChat: any): Promise<void> {
+        if (!cleanChat.chat_id || !cleanChat.instance_id) return;
+
+        // 1. Create the `whatsapp.contacts` record for the chat entity itself.
+        const chatContact = await this.mapApiPayloadToWhatsappContact({ id: cleanChat.chat_id, pushName: rawChat.name }, cleanChat.instance_id);
+        if (chatContact) await storage.upsertWhatsappContact(chatContact);
+
+        // 2. If it's a group, create a placeholder in `whatsapp.groups`.
+        if (cleanChat.type === 'group') {
+            await storage.createGroupPlaceholderIfNeeded(cleanChat.chat_id, cleanChat.instance_id);
+        }
+        // 3. If it's an individual, create the corresponding `crm.contact_details` record.
+        else {
+            const crmContact = this.mapApiPayloadToCrmContactDetail({ key: { remoteJid: cleanChat.chat_id }, pushName: rawChat.name }, cleanChat.instance_id);
+            if (crmContact) await storage.upsertCrmContactDetail(crmContact);
+        }
+    },
+
+    // ... (All other handlers and mapping functions remain the same)
+};

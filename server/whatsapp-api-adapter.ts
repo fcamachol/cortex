@@ -167,27 +167,27 @@ export const WebhookApiAdapter = {
     },
 
     /**
-     * Handles new messages with a robust, sequential process.
+     * Handles new messages with a robust, sequential process to prevent race conditions.
      */
     async handleMessageUpsert(instanceId: string, data: any, sender?: string): Promise<void> {
         const messages = Array.isArray(data.messages) ? data.messages : [data];
-        if (!messages[0]?.key) {
-            console.warn(`[${instanceId}] Invalid messages.upsert payload:`, data);
-            return;
-        }
+        if (!messages[0]?.key) return;
 
         for (const rawMessage of messages) {
             try {
+                // First, check if it's a reaction and route it to the correct handler
+                if (rawMessage.message?.reactionMessage) {
+                    await this.handleReaction(instanceId, rawMessage, sender);
+                    continue; // Stop processing this item as a regular message
+                }
+
                 const cleanMessage = await this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
                 if (!cleanMessage) continue;
 
+                // ** THIS IS THE CRITICAL FIX **
+                // Ensures the chat, sender, and group (if applicable) records
+                // exist BEFORE we attempt to save the message.
                 await this.ensureDependenciesForMessage(cleanMessage, rawMessage);
-                
-                // Proactively update group data if this is a group message
-                if (cleanMessage.chatId.endsWith('@g.us')) {
-                    const { EvolutionGroupUpdater } = await import('./evolution-group-updater');
-                    EvolutionGroupUpdater.handleGroupActivity(cleanMessage.chatId, instanceId);
-                }
                 
                 const storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
                 console.log(`✅ [${instanceId}] Message stored: ${storedMessage.messageId}`);
@@ -345,85 +345,17 @@ export const WebhookApiAdapter = {
     },
 
     /**
-     * Handles chat creation and updates, with enhanced group subject processing.
+     * Handles chat creation/updates. This is the primary point for creating
+     * contact and group entities when a chat is first seen.
      */
     async handleChatsUpsert(instanceId: string, data: any): Promise<void> {
-        // --- ULTRA LOUD CHATS.UPSERT DIAGNOSTICS ---
-        console.log('🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨');
-        console.log('🚨              CHATS.UPSERT WEBHOOK CALLED                   🚨');
-        console.log('🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨');
-        console.log('🚨 INSTANCE ID:', instanceId);
-        console.log('🚨 DATA TYPE:', typeof data);
-        console.log('🚨 IS ARRAY:', Array.isArray(data));
-        console.log('🚨 FULL RAW DATA:');
-        console.log(JSON.stringify(data, null, 4));
-        console.log('🚨');
-        console.log('🚨 DATA STRUCTURE ANALYSIS:');
-        console.log('🚨   - data.chats exists:', !!data.chats);
-        console.log('🚨   - data.chats is array:', Array.isArray(data.chats));
-        console.log('🚨   - data.chats length:', data.chats?.length);
-        console.log('🚨   - data is array:', Array.isArray(data));
-        console.log('🚨   - data length if array:', Array.isArray(data) ? data.length : 'N/A');
-        console.log('🚨');
-        console.log('🚨 ALL DATA KEYS:', Object.keys(data));
-        console.log('🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨');
-        
         const chats = Array.isArray(data.chats) ? data.chats : Array.isArray(data) ? data : [data];
+        if (!chats || chats.length === 0) return;
         
-        console.log('🎯 EXTRACTED CHATS ARRAY:');
-        console.log('🎯   - Type:', typeof chats);
-        console.log('🎯   - Is Array:', Array.isArray(chats));
-        console.log('🎯   - Length:', chats?.length);
-        console.log('🎯   - Full chats array:', JSON.stringify(chats, null, 2));
-        console.log('🎯');
-        
-        if (!chats || chats.length === 0) {
-            console.error('❌❌❌ NO CHATS TO PROCESS ❌❌❌');
-            console.error('❌ chats is null/undefined:', !chats);
-            console.error('❌ chats length is 0:', chats?.length === 0);
-            console.error('❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌');
-            return;
-        }
-        
-        console.log(`🔄 PROCESSING ${chats.length} CHATS...`);
-        
-        for (let i = 0; i < chats.length; i++) {
-            const rawChat = chats[i];
-            console.log(`📝 PROCESSING CHAT ${i + 1}/${chats.length}:`);
-            console.log(`📝   Raw chat type: ${typeof rawChat}`);
-            console.log(`📝   Raw chat keys: ${Object.keys(rawChat)}`);
-            console.log(`📝   Raw chat data:`, JSON.stringify(rawChat, null, 2));
-            
+        for (const rawChat of chats) {
             const cleanChat = await this.mapApiPayloadToWhatsappChat(rawChat, instanceId);
-            
             if (cleanChat) {
-                console.log(`✅ SUCCESSFULLY MAPPED CHAT ${i + 1}:`, JSON.stringify(cleanChat, null, 2));
-                
-                // Ensure the chat exists as a contact first with proper name resolution
-                let contactData = { id: cleanChat.chatId };
-                
-                // For individual chats, try to get existing contact information
-                if (!cleanChat.chatId.endsWith('@g.us')) {
-                    const existingContact = await storage.getWhatsappContact(cleanChat.chatId, instanceId);
-                    if (existingContact && existingContact.pushName) {
-                        contactData = {
-                            id: cleanChat.chatId,
-                            pushName: existingContact.pushName,
-                            verifiedName: existingContact.verifiedName,
-                            profilePicUrl: existingContact.profilePictureUrl
-                        };
-                    }
-                }
-                
-                const chatContact = await this.mapApiPayloadToWhatsappContact(contactData, instanceId);
-                if (chatContact) await storage.upsertWhatsappContact(chatContact);
-
-                // If it's a group, handle subject update from webhook data
-                if (cleanChat.type === 'group') {
-                    await this.handleGroupSubjectFromChat(cleanChat.chatId, rawChat, instanceId);
-                }
-
-                // Now it's safe to save the chat
+                await this.createContactAndChatRecords(cleanChat, rawChat);
                 await storage.upsertWhatsappChat(cleanChat);
                 console.log(`✅ [${instanceId}] Chat upserted: ${cleanChat.chatId}`);
                 
@@ -434,15 +366,8 @@ export const WebhookApiAdapter = {
                     name: cleanChat.name,
                     type: cleanChat.type
                 });
-            } else {
-                console.error(`❌❌❌ FAILED TO MAP CHAT ${i + 1} ❌❌❌`);
-                console.error(`❌ Original raw chat that failed mapping:`);
-                console.error(JSON.stringify(rawChat, null, 2));
-                console.error(`❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌`);
             }
         }
-        
-        console.log('🚨🚨🚨 CHATS.UPSERT PROCESSING COMPLETED 🚨🚨🚨');
     },
 
     /**
@@ -1021,7 +946,37 @@ export const WebhookApiAdapter = {
         }
     },
 
-    async ensureDependenciesForMessage(cleanMessage: WhatsappMessages, rawMessage: any): Promise<void> {
+    /**
+     * Creates all necessary records when a new chat is detected.
+     */
+    async ensureContactAndChatRecords(cleanChat: any, rawChat: any): Promise<void> {
+        if (!cleanChat.chatId || !cleanChat.instanceName) return;
+
+        // 1. Create the `whatsapp.contacts` record for the chat entity itself.
+        const chatContact = await this.mapApiPayloadToWhatsappContact({ 
+            id: cleanChat.chatId, 
+            pushName: rawChat.name 
+        }, cleanChat.instanceName);
+        if (chatContact) await storage.upsertWhatsappContact(chatContact);
+
+        // 2. If it's a group, create a placeholder in `whatsapp.groups`.
+        if (cleanChat.type === 'group') {
+            await storage.createGroupPlaceholderIfNeeded(cleanChat.chatId, cleanChat.instanceName);
+        }
+        // 3. If it's an individual, create the corresponding `crm.contact_details` record.
+        else {
+            const crmContact = await this.mapApiPayloadToCrmContactDetail({ 
+                key: { remoteJid: cleanChat.chatId }, 
+                pushName: rawChat.name 
+            }, cleanChat.instanceName);
+            if (crmContact) await storage.upsertCrmContactDetail(crmContact);
+        }
+    },
+
+    /**
+     * Guarantees all dependency records exist for a given message.
+     */
+    async ensureDependenciesForMessage(cleanMessage: any, rawMessage: any): Promise<void> {
         const isGroup = cleanMessage.chatId.endsWith('@g.us');
         
         // For individual chats, create contact for the other person (not instance owner)
