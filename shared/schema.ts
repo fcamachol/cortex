@@ -1164,7 +1164,6 @@ export const crmContacts = crmSchema.table("contacts", {
   relationship: varchar("relationship", { length: 100 }), // 'Family', 'Client', 'Friend', etc.
   profilePictureUrl: varchar("profile_picture_url", { length: 500 }),
   notes: text("notes"),
-  whatsappInstanceId: varchar("whatsapp_instance_id", { length: 100 }), // Track which WhatsApp instance this contact came from
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

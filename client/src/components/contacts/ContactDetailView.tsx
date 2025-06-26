@@ -16,7 +16,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import ContactForm from "./ContactForm";
-import ContactFormBlocks from "./ContactFormBlocks";
 import { apiRequest } from "@/lib/queryClient";
 import type { ContactWithRelations } from "@shared/schema";
 
@@ -197,9 +196,6 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
               relationship: contact.relationship || "",
               profilePictureUrl: contact.profilePictureUrl || "",
               notes: contact.notes || "",
-              phones: contact.phones || [],
-              emails: contact.emails || [],
-              addresses: contact.addresses || [],
             }}
             onSuccess={() => {
               setIsEditing(false);

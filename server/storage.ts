@@ -408,8 +408,6 @@ class DatabaseStorage {
     }
 
     async upsertWhatsappChat(chat: InsertWhatsappChat): Promise<WhatsappChat> {
-        console.log(`📥 Upserting WhatsApp chat: ${chat.chatId} (type: ${chat.type})`);
-        
         const [result] = await db.insert(whatsappChats)
             .values(chat)
             .onConflictDoUpdate({
@@ -421,7 +419,6 @@ class DatabaseStorage {
                 }
             })
             .returning();
-
         return result;
     }
     
@@ -552,102 +549,6 @@ class DatabaseStorage {
 
         await this.upsertWhatsappContact(newContact);
         console.log(`✅ Auto-created contact: ${jid} (${chatType})`);
-    }
-
-    async createCrmContactFromWhatsappChat(chatId: string, instanceId: string, chatName?: string): Promise<void> {
-        try {
-            console.log(`🏗️ Starting CRM contact creation for: ${chatId}`);
-            console.log(`🏗️ Provided chat name parameter: "${chatName}"`);
-            
-            // Extract phone number from WhatsApp JID
-            const phoneNumber = chatId.replace('@s.whatsapp.net', '');
-            console.log(`📞 Extracted phone number: ${phoneNumber}`);
-            
-            // Check if CRM contact already exists with this phone number
-            const existingContactWithPhone = await db.select()
-                .from(crmContacts)
-                .innerJoin(crmContactPhones, eq(crmContacts.contactId, crmContactPhones.contactId))
-                .where(eq(crmContactPhones.phoneNumber, phoneNumber))
-                .limit(1);
-
-            if (existingContactWithPhone.length > 0) {
-                console.log(`📱 CRM contact already exists for phone: ${phoneNumber}`);
-                return;
-            }
-
-            // Get the WhatsApp contact to get push name
-            const whatsappContact = await db.select()
-                .from(whatsappContacts)
-                .where(and(
-                    eq(whatsappContacts.jid, chatId),
-                    eq(whatsappContacts.instanceId, instanceId)
-                ))
-                .limit(1);
-
-            // Also check WhatsApp chat for name information
-            const whatsappChat = await db.select()
-                .from(whatsappChats)
-                .where(and(
-                    eq(whatsappChats.chatId, chatId),
-                    eq(whatsappChats.instanceId, instanceId)
-                ))
-                .limit(1);
-
-            // Use provided chat name, WhatsApp contact push name, or fall back to phone number
-            const pushName = whatsappContact[0]?.pushName;
-            const storedChatName = whatsappChat[0]?.name;
-            
-            let contactName = phoneNumber; // Default fallback
-            let nameSource = 'phone number';
-            
-            // Priority order: provided chatName > stored push name > stored chat name > phone number
-            if (chatName && chatName.trim() !== '' && chatName !== phoneNumber) {
-                contactName = chatName;
-                nameSource = 'provided chat name';
-            } else if (pushName && pushName.trim() !== '' && pushName !== phoneNumber) {
-                contactName = pushName;
-                nameSource = 'push name';
-            } else if (storedChatName && storedChatName.trim() !== '' && storedChatName !== phoneNumber) {
-                contactName = storedChatName;
-                nameSource = 'stored chat name';
-            }
-            
-            console.log(`👤 Using contact name: ${contactName} (from ${nameSource})`);
-            
-            // Create CRM contact using the correct schema structure
-            console.log(`📝 Creating CRM contact record...`);
-            const [newCrmContact] = await db
-                .insert(crmContacts)
-                .values({
-                    ownerUserId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42', // Default user
-                    fullName: contactName,
-                    relationship: 'WhatsApp Contact',
-                    notes: `Automatically created from WhatsApp chat: ${chatId}\nInstance: ${instanceId}\nCreated from WhatsApp label: Yes`,
-                    whatsappInstanceId: instanceId, // Store the WhatsApp instance
-                })
-                .returning();
-
-            console.log(`✅ CRM contact created with ID: ${newCrmContact.contactId}`);
-
-            // Create primary phone number for the contact
-            if (phoneNumber && phoneNumber !== chatId) {
-                console.log(`📞 Creating phone record for contact...`);
-                await db.insert(crmContactPhones).values({
-                    contactId: newCrmContact.contactId,
-                    phoneNumber: phoneNumber,
-                    label: 'WhatsApp',
-                    isWhatsappLinked: true,
-                    isPrimary: true,
-                });
-                console.log(`✅ Phone record created for: ${phoneNumber}`);
-            }
-
-            console.log(`✅ Successfully created CRM contact for WhatsApp chat: ${chatId} -> ${contactName} (ID: ${newCrmContact.contactId})`);
-        } catch (error) {
-            console.error(`❌ Error creating CRM contact from WhatsApp chat ${chatId}:`, error);
-            console.error(`❌ Error details:`, error.message);
-            console.error(`❌ Error stack:`, error.stack);
-        }
     }
 
     // =========================================================================
@@ -2661,127 +2562,6 @@ class DatabaseStorage {
             .limit(1);
         
         return contact;
-    }
-
-    // WhatsApp Contact Linking Methods
-    async linkCrmContactToWhatsapp(contactId: number, phoneNumber: string): Promise<{ whatsappContact?: any; linkedPhone?: any }> {
-        try {
-            // Look for WhatsApp contact with this phone number
-            const whatsappJid = `${phoneNumber}@s.whatsapp.net`;
-            const whatsappContact = await db.select()
-                .from(whatsappContacts)
-                .where(eq(whatsappContacts.jid, whatsappJid))
-                .limit(1);
-
-            const result: { whatsappContact?: any; linkedPhone?: any } = {};
-
-            if (whatsappContact.length > 0) {
-                result.whatsappContact = whatsappContact[0];
-                
-                // Update the CRM contact phone to mark it as WhatsApp linked
-                const [updatedPhone] = await db.update(crmContactPhones)
-                    .set({ 
-                        whatsappIntegration: true,
-                        type: 'WhatsApp'
-                    })
-                    .where(and(
-                        eq(crmContactPhones.contactId, contactId),
-                        eq(crmContactPhones.phoneNumber, phoneNumber)
-                    ))
-                    .returning();
-
-                result.linkedPhone = updatedPhone;
-                console.log(`🔗 Linked CRM contact ${contactId} to WhatsApp contact ${whatsappJid}`);
-            }
-
-            return result;
-        } catch (error) {
-            console.error(`❌ Error linking CRM contact to WhatsApp:`, error);
-            throw error;
-        }
-    }
-
-    async getWhatsappDataForCrmContact(contactId: number): Promise<{ phones: any[]; whatsappData: Record<string, any> }> {
-        try {
-            // Get all phone numbers for this contact
-            const phones = await db.select()
-                .from(crmContactPhones)
-                .where(eq(crmContactPhones.contactId, contactId));
-
-            const whatsappData: Record<string, any> = {};
-
-            // For each phone, check for WhatsApp data
-            for (const phone of phones) {
-                const whatsappJid = `${phone.phoneNumber}@s.whatsapp.net`;
-                const whatsappContact = await db.select()
-                    .from(whatsappContacts)
-                    .where(eq(whatsappContacts.jid, whatsappJid))
-                    .limit(1);
-
-                if (whatsappContact.length > 0) {
-                    whatsappData[phone.phoneNumber] = {
-                        ...whatsappContact[0],
-                        linkedPhoneId: phone.phoneId
-                    };
-                }
-            }
-
-            return { phones, whatsappData };
-        } catch (error) {
-            console.error(`❌ Error getting WhatsApp data for CRM contact:`, error);
-            throw error;
-        }
-    }
-
-    async updateWhatsappContactName(jid: string, newName: string): Promise<void> {
-        try {
-            await db.update(whatsappContacts)
-                .set({ 
-                    name: newName,
-                    pushName: newName,
-                    lastUpdatedAt: new Date()
-                })
-                .where(eq(whatsappContacts.jid, jid));
-
-            console.log(`📝 Updated WhatsApp contact name: ${jid} -> ${newName}`);
-        } catch (error) {
-            console.error(`❌ Error updating WhatsApp contact name:`, error);
-            throw error;
-        }
-    }
-
-    async autoLinkPhoneToWhatsapp(contactId: number, phoneNumber: string): Promise<{ linked: boolean; whatsappData?: any }> {
-        try {
-            const normalizedPhone = phoneNumber.replace(/[^\d+]/g, '');
-            const whatsappJid = `${normalizedPhone}@s.whatsapp.net`;
-            
-            // Check if WhatsApp contact exists
-            const whatsappContact = await db.select()
-                .from(whatsappContacts)
-                .where(eq(whatsappContacts.jid, whatsappJid))
-                .limit(1);
-
-            if (whatsappContact.length > 0) {
-                // Update phone record to mark as WhatsApp linked
-                await db.update(crmContactPhones)
-                    .set({ 
-                        whatsappIntegration: true,
-                        type: 'WhatsApp'
-                    })
-                    .where(and(
-                        eq(crmContactPhones.contactId, contactId),
-                        eq(crmContactPhones.phoneNumber, normalizedPhone)
-                    ));
-
-                console.log(`🔗 Auto-linked phone ${normalizedPhone} to WhatsApp for contact ${contactId}`);
-                return { linked: true, whatsappData: whatsappContact[0] };
-            }
-
-            return { linked: false };
-        } catch (error) {
-            console.error(`❌ Error auto-linking phone to WhatsApp:`, error);
-            throw error;
-        }
     }
 
     // Space Items Management - projects, tasks, notes, documents, events, finance
