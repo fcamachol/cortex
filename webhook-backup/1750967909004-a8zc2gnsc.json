@@ -1,0 +1,20 @@
+{
+  "id": "1750967909004-a8zc2gnsc",
+  "timestamp": "2025-06-26T19:58:29.004Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "chats.upsert",
+  "payload": {
+    "instanceName": "instance-1750433520122",
+    "event": "chats.upsert",
+    "data": {
+      "chats": [
+        {
+          "id": "cmc4yy03m10syk34qhmqvtjhn",
+          "name": "Miguel Calzada"
+        }
+      ]
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

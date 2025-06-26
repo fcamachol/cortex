@@ -1469,7 +1469,7 @@ export const WebhookApiAdapter = {
     /**
      * Extract correct JID from malformed chat data sent by Evolution API
      */
-    async extractCorrectJidFromChat(rawChat: any): Promise<string | null> {
+    async extractCorrectJidFromChat(rawChat: any, instanceName: string): Promise<string | null> {
         // First, look for proper JID patterns in various chat fields
         const possibleJids = [
             rawChat.id,
@@ -1641,7 +1641,7 @@ export const WebhookApiAdapter = {
             console.error(JSON.stringify(rawChat, null, 2));
             
             // Try to find the correct JID in the chat data
-            const correctJid = await this.extractCorrectJidFromChat(rawChat);
+            const correctJid = await this.extractCorrectJidFromChat(rawChat, instanceName);
             if (correctJid) {
                 console.log(`🔧 Found correct chat JID: "${correctJid}", replacing malformed ID`);
                 chatId = correctJid;

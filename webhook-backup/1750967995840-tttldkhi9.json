@@ -1,0 +1,20 @@
+{
+  "id": "1750967995840-tttldkhi9",
+  "timestamp": "2025-06-26T19:59:55.840Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "chats.upsert",
+  "payload": {
+    "instanceName": "instance-1750433520122",
+    "event": "chats.upsert",
+    "data": {
+      "chats": [
+        {
+          "id": "testid123",
+          "name": "Gustavo Payroll"
+        }
+      ]
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
