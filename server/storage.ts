@@ -1206,7 +1206,7 @@ class DatabaseStorage {
         await db.delete(whatsappDrafts)
             .where(and(
                 eq(whatsappDrafts.chatId, chatId),
-                eq(whatsappDrafts.instanceId, instanceId)
+                eq(whatsappDrafts.instanceName, instanceId)
             ));
         
         // Then delete the chat
@@ -1292,7 +1292,10 @@ class DatabaseStorage {
             const [draft] = await db.insert(whatsappDrafts)
                 .values({
                     messageId,
-                    ...draftData,
+                    chatId: draftData.chatId,
+                    instanceName: draftData.instanceId, // Map instanceId to instanceName for database
+                    content: draftData.content,
+                    replyToMessageId: draftData.replyToMessageId,
                     updatedAt: new Date()
                 })
                 .returning();
@@ -1304,7 +1307,7 @@ class DatabaseStorage {
         await db.delete(whatsappDrafts)
             .where(and(
                 eq(whatsappDrafts.chatId, chatId),
-                eq(whatsappDrafts.instanceId, instanceId)
+                eq(whatsappDrafts.instanceName, instanceId)
             ));
     }
 
