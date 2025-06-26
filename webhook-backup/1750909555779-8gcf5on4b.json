@@ -1,0 +1,21 @@
+{
+  "id": "1750909555779-8gcf5on4b",
+  "timestamp": "2025-06-26T03:45:55.779Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "chats.upsert",
+  "payload": {
+    "event": "chats.upsert",
+    "instance": "instance-1750433520122",
+    "data": [
+      {
+        "id": "5521666555444@s.whatsapp.net",
+        "remoteJid": "5521666555444@s.whatsapp.net",
+        "name": "Ana Silva Test",
+        "displayName": "Ana Silva Test",
+        "phoneNumber": "5521666555444"
+      }
+    ]
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

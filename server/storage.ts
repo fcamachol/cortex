@@ -567,7 +567,7 @@ class DatabaseStorage {
         console.log(`✅ Auto-created contact: ${jid} (${chatType})`);
     }
 
-    async createCrmContactFromWhatsappChat(chatId: string, instanceId: string): Promise<void> {
+    async createCrmContactFromWhatsappChat(chatId: string, instanceId: string, chatName?: string): Promise<void> {
         try {
             console.log(`🏗️ Starting CRM contact creation for: ${chatId}`);
             
@@ -596,12 +596,35 @@ class DatabaseStorage {
                 ))
                 .limit(1);
 
-            // Use push name if available, otherwise fall back to phone number
+            // Also check WhatsApp chat for name information
+            const whatsappChat = await db.select()
+                .from(whatsappChats)
+                .where(and(
+                    eq(whatsappChats.chatId, chatId),
+                    eq(whatsappChats.instanceId, instanceId)
+                ))
+                .limit(1);
+
+            // Use provided chat name, WhatsApp contact push name, or fall back to phone number
             const pushName = whatsappContact[0]?.pushName;
-            const contactName = pushName && pushName.trim() !== '' && pushName !== phoneNumber 
-                ? pushName 
-                : phoneNumber;
-            console.log(`👤 Using contact name: ${contactName} (from ${pushName ? 'push name' : 'phone number'})`);
+            const storedChatName = whatsappChat[0]?.name;
+            
+            let contactName = phoneNumber; // Default fallback
+            let nameSource = 'phone number';
+            
+            // Priority order: provided chatName > stored push name > stored chat name > phone number
+            if (chatName && chatName.trim() !== '' && chatName !== phoneNumber) {
+                contactName = chatName;
+                nameSource = 'provided chat name';
+            } else if (pushName && pushName.trim() !== '' && pushName !== phoneNumber) {
+                contactName = pushName;
+                nameSource = 'push name';
+            } else if (storedChatName && storedChatName.trim() !== '' && storedChatName !== phoneNumber) {
+                contactName = storedChatName;
+                nameSource = 'stored chat name';
+            }
+            
+            console.log(`👤 Using contact name: ${contactName} (from ${nameSource})`);
             
             // Create CRM contact using the correct schema structure
             console.log(`📝 Creating CRM contact record...`);

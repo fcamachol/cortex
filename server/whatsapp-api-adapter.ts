@@ -429,8 +429,8 @@ export const WebhookApiAdapter = {
                 
                 // Create CRM contact for individual chats automatically
                 if (cleanChat.type === 'individual' && cleanChat.chatId.endsWith('@s.whatsapp.net')) {
-                    console.log(`🏗️ Creating CRM contact for individual chat: ${cleanChat.chatId}`);
-                    await storage.createCrmContactFromWhatsappChat(cleanChat.chatId, instanceId);
+                    console.log(`🏗️ Creating CRM contact for individual chat: ${cleanChat.chatId} with name: ${cleanChat.name}`);
+                    await storage.createCrmContactFromWhatsappChat(cleanChat.chatId, instanceId, cleanChat.name);
                 } else {
                     console.log(`🚫 Skipping CRM contact creation - type: ${cleanChat.type}, chatId: ${cleanChat.chatId}`);
                 }
