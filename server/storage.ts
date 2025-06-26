@@ -2066,6 +2066,59 @@ class DatabaseStorage {
             .where(eq(crmContacts.contactId, contactId));
     }
 
+    // Find CRM contacts by phone number or WhatsApp JID
+    async getCrmContactsByPhoneOrJid(phoneNumber: string, whatsappJid: string): Promise<any[]> {
+        try {
+            // First check by WhatsApp JID
+            const contactsByJid = await db.select()
+                .from(crmContacts)
+                .where(eq(crmContacts.whatsappJid, whatsappJid));
+            
+            if (contactsByJid.length > 0) {
+                return contactsByJid;
+            }
+            
+            // Then check by phone number in contact phones
+            const contactsByPhone = await db.select({
+                contactId: crmContacts.contactId,
+                fullName: crmContacts.fullName,
+                whatsappJid: crmContacts.whatsappJid,
+                whatsappInstanceId: crmContacts.whatsappInstanceId,
+                isWhatsappLinked: crmContacts.isWhatsappLinked,
+                whatsappLinkedAt: crmContacts.whatsappLinkedAt
+            })
+            .from(crmContacts)
+            .innerJoin(crmContactPhones, eq(crmContacts.contactId, crmContactPhones.contactId))
+            .where(eq(crmContactPhones.phoneNumber, phoneNumber));
+            
+            return contactsByPhone;
+        } catch (error) {
+            console.error('Error finding CRM contacts by phone or JID:', error);
+            return [];
+        }
+    }
+
+    // Create contact phone record
+    async createCrmContactPhone(phoneData: any): Promise<any> {
+        try {
+            // If this is set as primary, unset other primary phones for this contact
+            if (phoneData.isPrimary) {
+                await db.update(crmContactPhones)
+                    .set({ isPrimary: false })
+                    .where(eq(crmContactPhones.contactId, phoneData.contactId));
+            }
+
+            const [phone] = await db.insert(crmContactPhones)
+                .values(phoneData)
+                .returning();
+            
+            return phone;
+        } catch (error) {
+            console.error('Error creating CRM contact phone:', error);
+            throw error;
+        }
+    }
+
     // Contact Phone Methods
     async getContactPhones(contactId: number): Promise<any[]> {
         try {

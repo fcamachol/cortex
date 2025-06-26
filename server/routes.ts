@@ -872,6 +872,93 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Create CRM contact from WhatsApp chat
+  app.post('/api/crm/contacts/from-whatsapp', async (req: Request, res: Response) => {
+    try {
+      const { senderJid, pushName, instanceId, relationship, notes } = req.body;
+      
+      if (!senderJid) {
+        return res.status(400).json({ error: 'Sender JID is required' });
+      }
+
+      // Extract phone number from JID
+      const phoneNumber = senderJid.replace('@s.whatsapp.net', '').replace('@g.us', '');
+      
+      // Check if contact already exists by phone number or WhatsApp JID
+      const existingContacts = await storage.getCrmContactsByPhoneOrJid(phoneNumber, senderJid);
+      
+      if (existingContacts.length > 0) {
+        // Update existing contact to link WhatsApp
+        const existingContact = existingContacts[0];
+        const updatedContact = await storage.updateCrmContact(existingContact.contactId, {
+          whatsappJid: senderJid,
+          whatsappInstanceId: instanceId,
+          isWhatsappLinked: true,
+          whatsappLinkedAt: new Date()
+        });
+        
+        return res.json({ 
+          success: true, 
+          contact: updatedContact,
+          action: 'linked_existing'
+        });
+      }
+
+      // Create new CRM contact
+      const fullName = pushName || `Contact ${phoneNumber}`;
+      const userId = req.headers['x-user-id'] || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Default user for now
+      
+      const newContact = await storage.createCrmContact({
+        ownerUserId: userId as string,
+        fullName,
+        relationship: relationship || null,
+        notes: notes || `Added from WhatsApp chat`,
+        whatsappJid: senderJid,
+        whatsappInstanceId: instanceId,
+        isWhatsappLinked: true,
+        whatsappLinkedAt: new Date()
+      });
+
+      // Add phone number record
+      await storage.createCrmContactPhone({
+        contactId: newContact.contactId,
+        phoneNumber,
+        label: 'WhatsApp',
+        isWhatsappLinked: true,
+        isPrimary: true
+      });
+
+      res.json({
+        success: true,
+        contact: newContact,
+        action: 'created_new'
+      });
+
+    } catch (error) {
+      console.error('Error creating CRM contact from WhatsApp:', error);
+      res.status(500).json({ error: 'Failed to create CRM contact' });
+    }
+  });
+
+  // Check if WhatsApp contact is linked to CRM
+  app.get('/api/crm/contacts/whatsapp-link-status/:jid', async (req: Request, res: Response) => {
+    try {
+      const { jid } = req.params;
+      const phoneNumber = jid.replace('@s.whatsapp.net', '').replace('@g.us', '');
+      
+      const linkedContacts = await storage.getCrmContactsByPhoneOrJid(phoneNumber, jid);
+      
+      res.json({
+        isLinked: linkedContacts.length > 0,
+        contacts: linkedContacts
+      });
+      
+    } catch (error) {
+      console.error('Error checking WhatsApp link status:', error);
+      res.status(500).json({ error: 'Failed to check link status' });
+    }
+  });
+
   app.post('/api/crm/tasks', async (req: Request, res: Response) => {
     try {
       const taskData = req.body;
