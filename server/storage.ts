@@ -300,11 +300,11 @@ class DatabaseStorage {
         return await db.select().from(whatsappGroups).where(eq(whatsappGroups.instanceName, instanceName));
     }
 
-    async getWhatsappChat(chatId: string, instanceId: string): Promise<WhatsappChat | null> {
+    async getWhatsappChat(chatId: string, instanceName: string): Promise<WhatsappChat | null> {
         const [chat] = await db.select().from(whatsappChats).where(
             and(
                 eq(whatsappChats.chatId, chatId),
-                eq(whatsappChats.instanceName, instanceId)
+                eq(whatsappChats.instanceName, instanceName)
             )
         );
         return chat || null;
@@ -582,16 +582,16 @@ class DatabaseStorage {
         return results.rows;
     }
 
-    async getInstanceStatus(instanceId: string): Promise<any> {
-        const instance = await this.getInstanceById(instanceId);
+    async getInstanceStatus(instanceName: string): Promise<any> {
+        const instance = await this.getInstanceByName(instanceName);
         return {
-            instanceId,
+            instanceName,
             isConnected: instance?.isConnected || false,
             status: instance?.isConnected ? 'connected' : 'disconnected'
         };
     }
 
-    async getWhatsappMessages(userId: string, instanceId: string, chatId: string, limit: number = 50): Promise<any[]> {
+    async getWhatsappMessages(userId: string, instanceName: string, chatId: string, limit: number = 50): Promise<any[]> {
         try {
             // Use raw SQL to avoid Drizzle ORM issues with complex joins
             const results = await db.execute(sql`
@@ -631,7 +631,7 @@ class DatabaseStorage {
                     m.message_id = med.message_id AND 
                     m.instance_name = med.instance_name
                 )
-                WHERE m.instance_name = ${instanceId}
+                WHERE m.instance_name = ${instanceName}
                 ${chatId ? sql`AND m.chat_id = ${chatId}` : sql``}
                 ORDER BY m.timestamp DESC
                 LIMIT ${limit}
@@ -691,11 +691,11 @@ class DatabaseStorage {
         }
     }
 
-    async getWhatsappMessageById(messageId: string, instanceId: string): Promise<WhatsappMessage | undefined> {
+    async getWhatsappMessageById(messageId: string, instanceName: string): Promise<WhatsappMessage | undefined> {
         const [result] = await db.select().from(whatsappMessages)
             .where(and(
                 eq(whatsappMessages.messageId, messageId),
-                eq(whatsappMessages.instanceName, instanceId)
+                eq(whatsappMessages.instanceName, instanceName)
             ))
             .limit(1);
         return result;
