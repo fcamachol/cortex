@@ -35,13 +35,7 @@ export function AddContactFromWhatsAppModal({
 
   const createContactMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest('/api/crm/contacts/from-whatsapp', {
-        method: 'POST',
-        body: JSON.stringify(data),
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      return await apiRequest('POST', '/api/crm/contacts/from-whatsapp', data);
     },
     onSuccess: (result) => {
       toast({
