@@ -1,0 +1,304 @@
+1. messages.upsert (Standard Text Message)
+This is the most common event, triggered when a new message is sent or received.
+
+Source Path in Payload
+
+Destination Field in Database
+
+Logic / Notes
+
+instance
+
+whatsapp.messages.instance_id
+
+
+
+data.key.id
+
+whatsapp.messages.message_id
+
+The primary key for the message.
+
+data.key.remoteJid
+
+whatsapp.messages.chat_id
+
+The JID of the chat (person or group).
+
+data.key.participant
+
+whatsapp.messages.sender_jid
+
+Crucial Logic: Use this for group messages.
+
+data.key.remoteJid
+
+whatsapp.messages.sender_jid
+
+Fallback: Use this for individual chats (when participant is null).
+
+data.key.fromMe
+
+whatsapp.messages.from_me
+
+true if you sent the message, false otherwise.
+
+data.messageType
+
+whatsapp.messages.message_type
+
+Your code translates 'conversation' to our 'text' ENUM value.
+
+data.message.conversation
+
+whatsapp.messages.content
+
+
+
+data.messageTimestamp
+
+whatsapp.messages.timestamp
+
+The Unix timestamp is converted to a SQL TIMESTAMPTZ.
+
+data.message.extendedTextMessage.contextInfo.quotedMessage.key.id
+
+whatsapp.messages.quoted_message_id
+
+Only present if the message is a reply.
+
+data.message.extendedTextMessage.contextInfo.isForwarded
+
+whatsapp.messages.is_forwarded
+
+Can be derived from forwardingScore.
+
+data.message.extendedTextMessage.contextInfo.forwardingScore
+
+whatsapp.messages.forwarding_score
+
+
+
+data.source
+
+whatsapp.messages.source_platform
+
+e.g., 'ios', 'android', 'web'.
+
+data (the whole object)
+
+whatsapp.messages.raw_api_payload
+
+Store the entire data object as JSONB for future use.
+
+2. messages.upsert (Media Message)
+This event is similar to a text message, but the data is nested inside a media-specific object.
+
+Source Path in Payload
+
+Destination Field in Database
+
+Logic / Notes
+
+data.key.id
+
+whatsapp.message_media.message_id
+
+
+
+instance
+
+whatsapp.message_media.instance_id
+
+
+
+data.message.imageMessage.mimetype
+
+whatsapp.message_media.mimetype
+
+(or videoMessage, documentMessage, etc.)
+
+data.message.imageMessage.fileLength
+
+whatsapp.message_media.file_size_bytes
+
+
+
+data.message.imageMessage.url
+
+whatsapp.message_media.file_url
+
+This is the URL your backend will use to download the file.
+
+data.message.imageMessage.caption
+
+whatsapp.message_media.caption
+
+
+
+data.message.imageMessage.jpegThumbnail
+
+whatsapp.message_media.thumbnail_url
+
+(Could also be a base64 string that you save and link to).
+
+data.message.imageMessage.height
+
+whatsapp.message_media.height
+
+
+
+data.message.imageMessage.width
+
+whatsapp.message_media.width
+
+
+
+data.message.videoMessage.seconds
+
+whatsapp.message_media.duration_seconds
+
+
+
+3. messages.upsert (Reaction)
+This event indicates a reaction was added or removed.
+
+Source Path in Payload
+
+Destination Field in Database
+
+Logic / Notes
+
+instance
+
+whatsapp.message_reactions.instance_id
+
+
+
+data.message.reactionMessage.key.id
+
+whatsapp.message_reactions.message_id
+
+The ID of the message being reacted to.
+
+data.key.participant
+
+whatsapp.message_reactions.reactor_jid
+
+Crucial Logic: Use this for reactions in a group.
+
+sender (top level)
+
+whatsapp.message_reactions.reactor_jid
+
+Fallback: Use this for reactions in an individual chat.
+
+data.message.reactionMessage.text
+
+whatsapp.message_reactions.reaction_emoji
+
+An empty string ("") means the reaction was removed.
+
+data.key.fromMe
+
+whatsapp.message_reactions.from_me
+
+
+
+data.message.reactionMessage.senderTimestampMs
+
+whatsapp.message_reactions.timestamp
+
+The millisecond timestamp is converted to a SQL TIMESTAMPTZ.
+
+4. groups.upsert / groups.update
+This is the authoritative event for group details.
+
+Source Path in Payload
+
+Destination Field in Database
+
+Logic / Notes
+
+instance
+
+whatsapp.groups.instance_id
+
+
+
+data[0].id
+
+whatsapp.groups.group_jid
+
+The payload is an array, so you loop through it.
+
+data[0].subject
+
+whatsapp.groups.subject
+
+This is the real group name. Your code should prioritize this value.
+
+data[0].desc
+
+whatsapp.groups.description
+
+
+
+data[0].owner
+
+whatsapp.groups.owner_jid
+
+
+
+data[0].creation
+
+whatsapp.groups.creation_timestamp
+
+Convert from Unix timestamp.
+
+data[0].announce
+
+whatsapp.groups.is_locked
+
+true if only admins can send messages.
+
+data[0].participants
+
+whatsapp.group_participants
+
+Loop through this array to upsert each participant.
+
+data[0].participants[0].id
+
+whatsapp.group_participants.participant_jid
+
+
+
+data[0].participants[0].admin
+
+whatsapp.group_participants.is_admin, is_super_admin
+
+Map 'admin' and 'superadmin' to true.
+
+5. group.participants.update
+This event fires when someone joins, leaves, or is promoted/demoted.
+
+Source Path in Payload
+
+Action Performed by Your Code
+
+data.action: "add"
+
+INSERT a new row into whatsapp.group_participants for each JID in the data.participants array.
+
+data.action: "remove"
+
+DELETE the row from whatsapp.group_participants where participant_jid matches.
+
+data.action: "promote"
+
+UPDATE the row in whatsapp.group_participants, setting is_admin to true.
+
+data.action: "demote"
+
+UPDATE the row in whatsapp.group_participants, setting is_admin to false.

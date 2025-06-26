@@ -633,7 +633,7 @@ class DatabaseStorage {
             const result = rawResults.map(row => {
                 const message: any = {
                     messageId: row.messageId,
-                    instanceId: row.instanceId,
+                    instanceName: row.instanceName,
                     chatId: row.chatId,
                     senderJid: row.senderJid,
                     fromMe: row.fromMe,
