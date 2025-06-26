@@ -1823,14 +1823,14 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const { instanceName, messageId } = req.params;
       
-      // Get instance credentials for Evolution API
-      const instance = await storage.getWhatsappInstanceWithCredentials(instanceName);
-      if (!instance?.apiKey) {
-        return res.status(404).json({ error: 'Instance not found or missing API key' });
+      // Verify instance exists
+      const instance = await storage.getWhatsappInstance(instanceName);
+      if (!instance) {
+        return res.status(404).json({ error: 'Instance not found' });
       }
 
       // Get the original message with raw API payload for media download
-      const message = await storage.getWhatsappMessageById(messageId, instanceId);
+      const message = await storage.getWhatsappMessageById(messageId, instanceName);
       if (!message?.rawApiPayload) {
         return res.status(404).json({ error: 'Original message data not found' });
       }
@@ -1849,7 +1849,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
       
       // First, check for Evolution API downloaded media files
-      const mediaStoragePath = path.resolve(process.cwd(), 'media_storage', instanceId);
+      const mediaStoragePath = path.resolve(process.cwd(), 'media_storage', instanceName);
       try {
         const mediaFiles = await fsPromises.readdir(mediaStoragePath);
         const mediaFile = mediaFiles.find(file => file.startsWith(messageId));
