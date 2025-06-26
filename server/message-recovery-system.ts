@@ -311,7 +311,7 @@ export class MessageRecoverySystem {
       const chat = {
         chatId: chatData.id || 'unknown',
         instanceName: instanceId, // Use instanceName field for consistency
-        type: chatData.id?.includes('@g.us') ? 'group' : 'individual',
+        type: (chatData.id?.includes('@g.us') ? 'group' : 'individual') as 'group' | 'individual',
         unreadCount: chatData.unreadCount || 0,
         isArchived: chatData.archived || false,
         isPinned: chatData.pinned || false,

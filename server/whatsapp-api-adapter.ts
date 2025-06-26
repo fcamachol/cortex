@@ -362,7 +362,7 @@ export const WebhookApiAdapter = {
                 // Notify clients of chat update to refresh conversation list
                 SseManager.notifyClientsOfChatUpdate({
                     chatId: cleanChat.chatId,
-                    instanceId: instanceId,
+                    instanceName: instanceId,
                     name: cleanChat.name,
                     type: cleanChat.type
                 });
