@@ -517,6 +517,11 @@ class DatabaseStorage {
 
         // Also ensure contact exists for the chat
         await this.ensureContactExists(chatId, instanceId, chatType);
+        
+        // Create CRM contact for individual chats only
+        if (chatType === 'individual') {
+            await this.createCrmContactFromWhatsappChat(chatId, instanceId);
+        }
     }
 
     async ensureContactExists(jid: string, instanceId: string, chatType: string): Promise<void> {
@@ -549,6 +554,62 @@ class DatabaseStorage {
 
         await this.upsertWhatsappContact(newContact);
         console.log(`✅ Auto-created contact: ${jid} (${chatType})`);
+    }
+
+    async createCrmContactFromWhatsappChat(chatId: string, instanceId: string): Promise<void> {
+        try {
+            // Extract phone number from WhatsApp JID
+            const phoneNumber = chatId.replace('@s.whatsapp.net', '');
+            
+            // Check if CRM contact already exists with this phone number
+            const existingContactWithPhone = await db.select()
+                .from(crmContacts)
+                .innerJoin(crmContactPhones, eq(crmContacts.contactId, crmContactPhones.contactId))
+                .where(eq(crmContactPhones.phoneNumber, phoneNumber))
+                .limit(1);
+
+            if (existingContactWithPhone.length > 0) {
+                console.log(`📱 CRM contact already exists for phone: ${phoneNumber}`);
+                return;
+            }
+
+            // Get the WhatsApp contact to get push name
+            const whatsappContact = await db.select()
+                .from(whatsappContacts)
+                .where(and(
+                    eq(whatsappContacts.jid, chatId),
+                    eq(whatsappContacts.instanceId, instanceId)
+                ))
+                .limit(1);
+
+            const pushName = whatsappContact[0]?.pushName || 'WhatsApp Contact';
+            
+            // Create CRM contact using the correct schema structure
+            const [newCrmContact] = await db
+                .insert(crmContacts)
+                .values({
+                    ownerUserId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42', // Default user
+                    fullName: pushName,
+                    relationship: 'WhatsApp Contact',
+                    notes: `Automatically created from WhatsApp chat: ${chatId}\nInstance: ${instanceId}\nCreated from WhatsApp label: Yes`,
+                })
+                .returning();
+
+            // Create primary phone number for the contact
+            if (phoneNumber && phoneNumber !== chatId) {
+                await db.insert(crmContactPhones).values({
+                    contactId: newCrmContact.contactId,
+                    phoneNumber: phoneNumber,
+                    label: 'WhatsApp',
+                    isWhatsappLinked: true,
+                    isPrimary: true,
+                });
+            }
+
+            console.log(`✅ Created CRM contact for WhatsApp chat: ${chatId} -> ${pushName} (ID: ${newCrmContact.contactId})`);
+        } catch (error) {
+            console.error(`❌ Error creating CRM contact from WhatsApp chat ${chatId}:`, error);
+        }
     }
 
     // =========================================================================
