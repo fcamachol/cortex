@@ -1030,7 +1030,7 @@ export const WebhookApiAdapter = {
             const senderContact = await this.mapApiPayloadToWhatsappContact({
                 id: cleanMessage.senderJid,
                 pushName: rawMessage.pushName
-            }, cleanMessage.instanceId);
+            }, cleanMessage.instanceName);
             if (senderContact) await storage.upsertWhatsappContact(senderContact);
         }
         
@@ -1045,7 +1045,7 @@ export const WebhookApiAdapter = {
             const senderContact = await this.mapApiPayloadToWhatsappContact({
                 id: cleanMessage.senderJid,
                 pushName: rawMessage.pushName
-            }, cleanMessage.instanceId);
+            }, cleanMessage.instanceName);
             if (senderContact) await storage.upsertWhatsappContact(senderContact);
         }
         
@@ -1055,21 +1055,21 @@ export const WebhookApiAdapter = {
                 id: cleanMessage.chatId,
                 // For individual chats, use pushName only if this message is FROM the other person
                 pushName: isGroup ? undefined : (!cleanMessage.fromMe ? rawMessage.pushName : undefined)
-            }, cleanMessage.instanceId);
+            }, cleanMessage.instanceName);
             if (chatContact) await storage.upsertWhatsappContact(chatContact);
         }
 
-        const chatData = await this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chatId }, cleanMessage.instanceId);
-        if (chatData && chatData.chatId && chatData.instanceId) {
+        const chatData = await this.mapApiPayloadToWhatsappChat({ id: cleanMessage.chatId }, cleanMessage.instanceName);
+        if (chatData && chatData.chatId && chatData.instanceName) {
             await storage.upsertWhatsappChat(chatData);
         } else {
-            console.warn(`Skipping chat creation due to invalid data: chatId=${chatData?.chatId}, instanceId=${chatData?.instanceId}`);
+            console.warn(`Skipping chat creation due to invalid data: chatId=${chatData?.chatId}, instanceName=${chatData?.instanceName}`);
         }
 
         if (isGroup) {
             // For groups, proactively update with latest Evolution API data
             const { GroupMetadataFetcher } = await import('./group-metadata-fetcher');
-            GroupMetadataFetcher.handleGroupActivity(cleanMessage.chatId, cleanMessage.instanceId);
+            GroupMetadataFetcher.handleGroupActivity(cleanMessage.chatId, cleanMessage.instanceName);
         }
     },
 
@@ -1628,7 +1628,7 @@ export const WebhookApiAdapter = {
         
         return {
             chatId: chatId,
-            instanceId: instanceId,
+            instanceName: instanceId,
             name: chatName,
             type: isGroup ? 'group' : 'individual',
             unreadCount: rawChat.unreadCount || 0,
@@ -1644,7 +1644,7 @@ export const WebhookApiAdapter = {
         if (!rawGroup.id) return null;
         return {
             groupJid: rawGroup.id,
-            instanceId: instanceId,
+            instanceName: instanceId,
             subject: rawGroup.subject,
             ownerJid: rawGroup.owner,
             description: rawGroup.desc,
