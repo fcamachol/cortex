@@ -1,0 +1,119 @@
+-- =============================================================================
+-- SCHEMA: finance
+-- PURPOSE: Manages all financial data, including transactions, recurring bills,
+--          and complex credit instruments.
+-- =============================================================================
+
+CREATE SCHEMA IF NOT EXISTS finance;
+
+-- =============================================================================
+-- ENUMERATED TYPES
+-- =============================================================================
+CREATE TYPE finance.transaction_type AS ENUM ('income', 'expense');
+CREATE TYPE finance.payable_status AS ENUM ('unpaid', 'partially_paid', 'paid', 'overdue');
+-- NEW ENUM for Receivables
+CREATE TYPE finance.receivable_status AS ENUM ('draft', 'sent', 'partially_paid', 'paid', 'overdue');
+CREATE TYPE finance.loan_status AS ENUM ('active', 'paid_off', 'in_arrears');
+CREATE TYPE finance.interest_period_type AS ENUM ('daily', 'weekly', 'monthly', 'annually');
+
+-- =============================================================================
+-- CORE TABLES
+-- =============================================================================
+
+CREATE TABLE finance.categories (
+    category_id SERIAL PRIMARY KEY,
+    workspace_id UUID NOT NULL REFERENCES app.workspaces(workspace_id) ON DELETE CASCADE,
+    parent_category_id INTEGER REFERENCES finance.categories(category_id) ON DELETE CASCADE,
+    category_name VARCHAR(100) NOT NULL
+);
+COMMENT ON TABLE finance.categories IS 'Hierarchical categories for income and expenses.';
+
+CREATE TABLE finance.transactions (
+    transaction_id SERIAL PRIMARY KEY,
+    space_id INTEGER NOT NULL REFERENCES app.spaces(space_id) ON DELETE CASCADE,
+    transaction_date DATE NOT NULL,
+    amount NUMERIC(12, 2) NOT NULL,
+    type finance.transaction_type NOT NULL,
+    description TEXT,
+    category_id INTEGER REFERENCES finance.categories(category_id),
+    contact_id INTEGER REFERENCES crm.contact_details(contact_detail_id),
+    created_by_user_id UUID NOT NULL REFERENCES app.users(user_id)
+);
+COMMENT ON TABLE finance.transactions IS 'The immutable ledger of all past financial movements.';
+
+CREATE TABLE finance.payables (
+    payable_id SERIAL PRIMARY KEY,
+    space_id INTEGER NOT NULL REFERENCES app.spaces(space_id) ON DELETE CASCADE,
+    description TEXT NOT NULL,
+    total_amount NUMERIC(12, 2) NOT NULL,
+    due_date DATE NOT NULL,
+    status finance.payable_status NOT NULL DEFAULT 'unpaid',
+    contact_id INTEGER REFERENCES crm.contact_details(contact_detail_id)
+);
+COMMENT ON TABLE finance.payables IS 'Represents a single, specific bill to be paid (money you owe).';
+
+-- NEW TABLE FOR RECEIVABLES
+CREATE TABLE finance.receivables (
+    receivable_id SERIAL PRIMARY KEY,
+    space_id INTEGER NOT NULL REFERENCES app.spaces(space_id) ON DELETE CASCADE,
+    description TEXT NOT NULL,
+    total_amount NUMERIC(12, 2) NOT NULL,
+    issue_date DATE NOT NULL,
+    due_date DATE,
+    status finance.receivable_status NOT NULL DEFAULT 'draft',
+    contact_id INTEGER REFERENCES crm.contact_details(contact_detail_id)
+);
+COMMENT ON TABLE finance.receivables IS 'Represents a single invoice or money owed to you.';
+
+
+CREATE TABLE finance.payable_payments (
+    payment_id INTEGER NOT NULL REFERENCES finance.transactions(transaction_id) ON DELETE CASCADE,
+    payable_id INTEGER NOT NULL REFERENCES finance.payables(payable_id) ON DELETE CASCADE,
+    PRIMARY KEY (payment_id, payable_id)
+);
+COMMENT ON TABLE finance.payable_payments IS 'Links expense transactions to the specific bills they are paying off.';
+
+-- NEW JUNCTION TABLE FOR RECEIVABLE PAYMENTS
+CREATE TABLE finance.receivable_payments (
+    payment_id INTEGER NOT NULL REFERENCES finance.transactions(transaction_id) ON DELETE CASCADE,
+    receivable_id INTEGER NOT NULL REFERENCES finance.receivables(receivable_id) ON DELETE CASCADE,
+    PRIMARY KEY (payment_id, receivable_id)
+);
+COMMENT ON TABLE finance.receivable_payments IS 'Links income transactions to the specific receivables they are settling.';
+
+
+CREATE TABLE finance.recurring_bills (
+    recurring_bill_id SERIAL PRIMARY KEY,
+    space_id INTEGER NOT NULL REFERENCES app.spaces(space_id) ON DELETE CASCADE,
+    description TEXT NOT NULL,
+    default_amount NUMERIC(12, 2),
+    recurrence_rule TEXT NOT NULL, -- iCal RRULE string
+    next_due_date DATE NOT NULL,
+    contact_id INTEGER REFERENCES crm.contact_details(contact_detail_id),
+    category_id INTEGER REFERENCES finance.categories(category_id)
+);
+COMMENT ON TABLE finance.recurring_bills IS 'Templates that generate Payables on a schedule.';
+
+CREATE TABLE finance.loans (
+    loan_id SERIAL PRIMARY KEY,
+    space_id INTEGER NOT NULL REFERENCES app.spaces(space_id) ON DELETE CASCADE,
+    principal_amount NUMERIC(12, 2) NOT NULL,
+    interest_rate NUMERIC(5, 4) NOT NULL,
+    issue_date DATE NOT NULL,
+    term_months INTEGER NOT NULL,
+    status finance.loan_status NOT NULL DEFAULT 'active',
+    lender_contact_id INTEGER REFERENCES crm.contact_details(contact_detail_id),
+    borrower_contact_id INTEGER REFERENCES crm.contact_details(contact_detail_id),
+    moratory_interest_rate NUMERIC(5, 4),
+    moratory_interest_period finance.interest_period_type
+);
+COMMENT ON COLUMN finance.loans.moratory_interest_rate IS 'The penalty interest rate applied to overdue payments.';
+COMMENT ON COLUMN finance.loans.moratory_interest_period IS 'The frequency at which moratory interest is calculated and applied.';
+
+CREATE TABLE finance.loan_payments (
+    payment_id INTEGER NOT NULL REFERENCES finance.transactions(transaction_id) ON DELETE CASCADE,
+    loan_id INTEGER NOT NULL REFERENCES finance.loans(loan_id) ON DELETE CASCADE,
+    principal_paid NUMERIC(12, 2) NOT NULL,
+    interest_paid NUMERIC(12, 2) NOT NULL,
+    PRIMARY KEY (payment_id, loan_id)
+);

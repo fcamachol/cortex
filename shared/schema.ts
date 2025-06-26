@@ -27,6 +27,7 @@ export const attendeeResponseStatusEnum = calendarSchema.enum("attendee_response
 // Enums for Finance schema
 export const transactionTypeEnum = financeSchema.enum("transaction_type", ["income", "expense"]);
 export const payableStatusEnum = financeSchema.enum("payable_status", ["unpaid", "partially_paid", "paid", "overdue"]);
+export const receivableStatusEnum = financeSchema.enum("receivable_status", ["draft", "sent", "partially_paid", "paid", "overdue"]);
 export const loanStatusEnum = financeSchema.enum("loan_status", ["active", "paid_off", "in_arrears"]);
 export const interestPeriodTypeEnum = financeSchema.enum("interest_period_type", ["daily", "weekly", "monthly", "annually"]);
 export const accountTypeEnum = financeSchema.enum("account_type", [
@@ -1837,6 +1838,22 @@ export const financePayables = financeSchema.table("payables", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Finance Receivables - Represents invoices or money owed to you
+export const financeReceivables = financeSchema.table("receivables", {
+  receivableId: serial("receivable_id").primaryKey(),
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
+  amountReceived: numeric("amount_received", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  issueDate: varchar("issue_date", { length: 10 }).notNull(), // DATE as string (YYYY-MM-DD)
+  dueDate: varchar("due_date", { length: 10 }), // DATE as string (YYYY-MM-DD) - optional
+  status: receivableStatusEnum("status").notNull().default("draft"),
+  contactId: integer("contact_id"), // References CRM contact when available
+  categoryId: integer("category_id").references(() => financeCategories.categoryId),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // Finance Payable Payments - Links transactions to the specific bills they are paying off
 export const financePayablePayments = financeSchema.table("payable_payments", {
   paymentId: integer("payment_id").notNull().references(() => financeTransactions.transactionId, { onDelete: "cascade" }),
@@ -1845,6 +1862,17 @@ export const financePayablePayments = financeSchema.table("payable_payments", {
   pk: {
     name: "payable_payments_pkey",
     columns: [table.paymentId, table.payableId]
+  }
+}));
+
+// Finance Receivable Payments - Links income transactions to the specific receivables they are settling
+export const financeReceivablePayments = financeSchema.table("receivable_payments", {
+  paymentId: integer("payment_id").notNull().references(() => financeTransactions.transactionId, { onDelete: "cascade" }),
+  receivableId: integer("receivable_id").notNull().references(() => financeReceivables.receivableId, { onDelete: "cascade" }),
+}, (table) => ({
+  pk: {
+    name: "receivable_payments_pkey",
+    columns: [table.paymentId, table.receivableId]
   }
 }));
 
@@ -1998,6 +2026,7 @@ export const financeTransactionsRelations = relations(financeTransactions, ({ on
     references: [appUsers.userId],
   }),
   payablePayments: many(financePayablePayments),
+  receivablePayments: many(financeReceivablePayments),
   loanPayments: many(financeLoanPayments),
 }));
 
@@ -2017,6 +2046,18 @@ export const financePayablesRelations = relations(financePayables, ({ one, many 
   }),
 }));
 
+export const financeReceivablesRelations = relations(financeReceivables, ({ one, many }) => ({
+  space: one(appSpaces, {
+    fields: [financeReceivables.spaceId],
+    references: [appSpaces.spaceId],
+  }),
+  category: one(financeCategories, {
+    fields: [financeReceivables.categoryId],
+    references: [financeCategories.categoryId],
+  }),
+  receivablePayments: many(financeReceivablePayments),
+}));
+
 export const financePayablePaymentsRelations = relations(financePayablePayments, ({ one }) => ({
   payment: one(financeTransactions, {
     fields: [financePayablePayments.paymentId],
@@ -2025,6 +2066,17 @@ export const financePayablePaymentsRelations = relations(financePayablePayments,
   payable: one(financePayables, {
     fields: [financePayablePayments.payableId],
     references: [financePayables.payableId],
+  }),
+}));
+
+export const financeReceivablePaymentsRelations = relations(financeReceivablePayments, ({ one }) => ({
+  payment: one(financeTransactions, {
+    fields: [financeReceivablePayments.paymentId],
+    references: [financeTransactions.transactionId],
+  }),
+  receivable: one(financeReceivables, {
+    fields: [financeReceivablePayments.receivableId],
+    references: [financeReceivables.receivableId],
   }),
 }));
 
