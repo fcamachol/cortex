@@ -949,7 +949,7 @@ export const WebhookApiAdapter = {
     /**
      * Creates all necessary records when a new chat is detected.
      */
-    async ensureContactAndChatRecords(cleanChat: any, rawChat: any): Promise<void> {
+    async createContactAndChatRecords(cleanChat: any, rawChat: any): Promise<void> {
         if (!cleanChat.chatId || !cleanChat.instanceName) return;
 
         // 1. Create the `whatsapp.contacts` record for the chat entity itself.
