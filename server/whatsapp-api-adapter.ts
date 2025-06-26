@@ -1154,7 +1154,7 @@ export const WebhookApiAdapter = {
         };
     },
     
-    async mapApiPayloadToWhatsappMessage(rawMessage: any, instanceId: string): Promise<Omit<WhatsappMessages, 'createdAt'> | null> {
+    async mapApiPayloadToWhatsappMessage(rawMessage: any, instanceName: string): Promise<Omit<WhatsappMessages, 'createdAt'> | null> {
         if (!rawMessage.key?.id || !rawMessage.key?.remoteJid) return null;
         
         // Debug and fix malformed chat IDs
@@ -1167,7 +1167,7 @@ export const WebhookApiAdapter = {
                 pushName: rawMessage.pushName,
                 chat: rawMessage.chat,
                 groupData: rawMessage.groupData,
-                instanceId: instanceId
+                instanceName: instanceName
             }, null, 2));
             
             // Try to find the correct JID in the message data
@@ -1234,16 +1234,16 @@ export const WebhookApiAdapter = {
         };
 
         // Enhanced fromMe detection logic
-        const detectFromMe = async (rawMessage: any, instanceId: string): Promise<boolean> => {
+        const detectFromMe = async (rawMessage: any, instanceName: string): Promise<boolean> => {
             // First check Evolution API flag (may be incorrect)
             const apiFromMe = rawMessage.key.fromMe || false;
             
             // Get instance owner JID for comparison
-            const instance = await storage.getWhatsappInstance(instanceId);
+            const instance = await storage.getWhatsappInstance(instanceName);
             const instanceOwnerJid = instance?.ownerJid;
             
             if (!instanceOwnerJid) {
-                console.log(`⚠️ [${instanceId}] No owner JID found for instance, using API fromMe: ${apiFromMe}`);
+                console.log(`⚠️ [${instanceName}] No owner JID found for instance, using API fromMe: ${apiFromMe}`);
                 return apiFromMe;
             }
             
@@ -1251,7 +1251,7 @@ export const WebhookApiAdapter = {
             if (rawMessage.key.participant) {
                 const isOwnerMessage = rawMessage.key.participant === instanceOwnerJid;
                 if (isOwnerMessage !== apiFromMe) {
-                    console.log(`🔧 [${instanceId}] Corrected fromMe flag: API=${apiFromMe}, Detected=${isOwnerMessage} for participant ${rawMessage.key.participant} vs owner ${instanceOwnerJid}`);
+                    console.log(`🔧 [${instanceName}] Corrected fromMe flag: API=${apiFromMe}, Detected=${isOwnerMessage} for participant ${rawMessage.key.participant} vs owner ${instanceOwnerJid}`);
                 }
                 return isOwnerMessage;
             }
@@ -1269,11 +1269,11 @@ export const WebhookApiAdapter = {
             }
             
             // Fallback to API flag with logging
-            console.log(`📤 [${instanceId}] Using API fromMe flag: ${apiFromMe} for message ${rawMessage.key.id}`);
+            console.log(`📤 [${instanceName}] Using API fromMe flag: ${apiFromMe} for message ${rawMessage.key.id}`);
             return apiFromMe;
         };
 
-        const correctedFromMe = await detectFromMe(rawMessage, instanceId);
+        const correctedFromMe = await detectFromMe(rawMessage, instanceName);
 
         const isForwarded = this.detectForwardedMessage(rawMessage);
         const forwardingScore = this.extractForwardingScore(rawMessage);
@@ -1580,7 +1580,7 @@ export const WebhookApiAdapter = {
         if (!chatId || typeof chatId !== 'string' || chatId.trim() === '' || !instanceName || typeof instanceName !== 'string' || instanceName.trim() === '') {
             console.error('❌❌❌ CRITICAL VALIDATION FAILURE ❌❌❌');
             console.error('❌ chatId:', chatId, 'Type:', typeof chatId);
-            console.error('❌ instanceId:', instanceId, 'Type:', typeof instanceId);
+            console.error('❌ instanceName:', instanceName, 'Type:', typeof instanceName);
             console.error('❌ Complete rawChat for debugging:');
             console.error(JSON.stringify(rawChat, null, 2));
             console.error('❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌');
@@ -1617,7 +1617,7 @@ export const WebhookApiAdapter = {
             chatName = rawChat.subject || rawChat.name || 'Group';
         } else {
             // For individual chats, get the actual contact name instead of using sender info
-            const existingContact = await storage.getWhatsappContact(chatId, instanceId);
+            const existingContact = await storage.getWhatsappContact(chatId, instanceName);
             if (existingContact && existingContact.pushName) {
                 chatName = existingContact.pushName;
             } else {
@@ -1628,7 +1628,7 @@ export const WebhookApiAdapter = {
         
         return {
             chatId: chatId,
-            instanceName: instanceId,
+            instanceName: instanceName,
             name: chatName,
             type: isGroup ? 'group' : 'individual',
             unreadCount: rawChat.unreadCount || 0,
@@ -1640,11 +1640,11 @@ export const WebhookApiAdapter = {
         };
     },
 
-    mapApiPayloadToWhatsappGroup(rawGroup: any, instanceId: string): Omit<WhatsappGroups, 'updatedAt'> | null {
+    mapApiPayloadToWhatsappGroup(rawGroup: any, instanceName: string): Omit<WhatsappGroups, 'updatedAt'> | null {
         if (!rawGroup.id) return null;
         return {
             groupJid: rawGroup.id,
-            instanceName: instanceId,
+            instanceName: instanceName,
             subject: rawGroup.subject,
             ownerJid: rawGroup.owner,
             description: rawGroup.desc,
@@ -1656,16 +1656,16 @@ export const WebhookApiAdapter = {
     /**
      * Ensures owner contact exists before group creation/update to prevent foreign key errors
      */
-    async ensureOwnerContactExists(ownerJid: string, instanceId: string): Promise<void> {
-        if (!ownerJid || !instanceId) return;
+    async ensureOwnerContactExists(ownerJid: string, instanceName: string): Promise<void> {
+        if (!ownerJid || !instanceName) return;
         
         try {
-            const existingContact = await storage.getWhatsappContact(ownerJid, instanceId);
+            const existingContact = await storage.getWhatsappContact(ownerJid, instanceName);
             if (!existingContact) {
                 // Create contact directly with required fields to avoid null constraint violations
                 const ownerContact = {
                     jid: ownerJid,
-                    instanceName: instanceId,
+                    instanceName: instanceName,
                     pushName: ownerJid.split('@')[0], // Use first part of JID as name
                     verifiedName: undefined,
                     profilePictureUrl: undefined,
