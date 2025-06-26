@@ -798,6 +798,13 @@ class DatabaseStorage {
         return result;
     }
 
+    async getWhatsappMessageMediaAnyInstance(messageId: string): Promise<WhatsappMessageMedia | undefined> {
+        const [result] = await db.select().from(whatsappMessageMedia)
+            .where(eq(whatsappMessageMedia.messageId, messageId))
+            .limit(1);
+        return result;
+    }
+
     async updateWhatsappMessageMediaPath(messageId: string, instanceName: string, localPath: string): Promise<void> {
         await db.update(whatsappMessageMedia)
             .set({ fileLocalPath: localPath })

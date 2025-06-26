@@ -69,26 +69,16 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
     },
   });
 
-  // Get the correct instance name for media - detect from available instances or use message's instanceName
+  // Get the correct instance name for media - backend will auto-detect if undefined
   const getInstanceNameForMessage = (message: Message) => {
     // First try to use the message's instanceName if available
     if (message.instanceName) {
       return message.instanceName;
     }
     
-    // For known media files, hardcode the correct instance
-    const knownMediaInstances: Record<string, string> = {
-      '3A2F6AD7ACECC0D5A6FB': 'live-test-1750199771', // Audio
-      '3A9A835EEEAE6D8C150F': 'live-test-1750199771', // Image
-      '3A28D90F84C266F29D87': 'live-test-1750199771', // PDF Document
-    };
-    
-    if (knownMediaInstances[message.messageId]) {
-      return knownMediaInstances[message.messageId];
-    }
-    
-    // Default to first available instance or fallback
-    return instances?.[0]?.instanceName || 'instance-1750433520122';
+    // Return 'undefined' to trigger backend auto-detection across all instances
+    // The backend media endpoint will search all instances to find the correct file
+    return 'undefined';
   };
 
   // Fetch conversations
