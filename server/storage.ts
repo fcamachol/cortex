@@ -422,14 +422,6 @@ class DatabaseStorage {
             })
             .returning();
 
-        // Create CRM contact for individual chats automatically (both new and existing)
-        if (chat.type === 'individual' && chat.chatId.endsWith('@s.whatsapp.net')) {
-            console.log(`🏗️ Creating CRM contact for individual chat: ${chat.chatId}`);
-            await this.createCrmContactFromWhatsappChat(chat.chatId, chat.instanceId);
-        } else {
-            console.log(`🚫 Skipping CRM contact creation - type: ${chat.type}, chatId: ${chat.chatId}`);
-        }
-
         return result;
     }
     
@@ -528,11 +520,6 @@ class DatabaseStorage {
 
         // Also ensure contact exists for the chat
         await this.ensureContactExists(chatId, instanceId, chatType);
-        
-        // Create CRM contact for individual chats only
-        if (chatType === 'individual') {
-            await this.createCrmContactFromWhatsappChat(chatId, instanceId);
-        }
     }
 
     async ensureContactExists(jid: string, instanceId: string, chatType: string): Promise<void> {
