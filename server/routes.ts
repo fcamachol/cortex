@@ -2751,6 +2751,74 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // WhatsApp Contact Linking Routes
+  app.get('/api/crm/contacts/:contactId/whatsapp-data', async (req: Request, res: Response) => {
+    try {
+      const contactId = parseInt(req.params.contactId);
+      const whatsappData = await storage.getWhatsappDataForCrmContact(contactId);
+      res.json(whatsappData);
+    } catch (error) {
+      console.error('Error fetching WhatsApp data for contact:', error);
+      res.status(500).json({ error: 'Failed to fetch WhatsApp data' });
+    }
+  });
+
+  app.post('/api/crm/contacts/:contactId/link-whatsapp', async (req: Request, res: Response) => {
+    try {
+      const contactId = parseInt(req.params.contactId);
+      const { phoneNumber } = req.body;
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ error: 'Phone number is required' });
+      }
+
+      const linkResult = await storage.linkCrmContactToWhatsapp(contactId, phoneNumber);
+      res.json(linkResult);
+    } catch (error) {
+      console.error('Error linking contact to WhatsApp:', error);
+      res.status(500).json({ error: 'Failed to link contact to WhatsApp' });
+    }
+  });
+
+  app.post('/api/crm/contacts/:contactId/auto-link-phone', async (req: Request, res: Response) => {
+    try {
+      const contactId = parseInt(req.params.contactId);
+      const { phoneNumber } = req.body;
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ error: 'Phone number is required' });
+      }
+
+      const linkResult = await storage.autoLinkPhoneToWhatsapp(contactId, phoneNumber);
+      res.json(linkResult);
+    } catch (error) {
+      console.error('Error auto-linking phone to WhatsApp:', error);
+      res.status(500).json({ error: 'Failed to auto-link phone to WhatsApp' });
+    }
+  });
+
+  app.put('/api/crm/contacts/:contactId/sync-whatsapp-name', async (req: Request, res: Response) => {
+    try {
+      const contactId = parseInt(req.params.contactId);
+      const { newName, whatsappJid } = req.body;
+      
+      if (!newName || !whatsappJid) {
+        return res.status(400).json({ error: 'Name and WhatsApp JID are required' });
+      }
+
+      // Update the WhatsApp contact name
+      await storage.updateWhatsappContactName(whatsappJid, newName);
+      
+      // Update the CRM contact name
+      await storage.updateCrmContact(contactId, { fullName: newName });
+      
+      res.json({ success: true, message: 'Names synchronized successfully' });
+    } catch (error) {
+      console.error('Error synchronizing WhatsApp name:', error);
+      res.status(500).json({ error: 'Failed to synchronize names' });
+    }
+  });
+
   // Company Management Routes
   app.get('/api/crm/companies', async (req: Request, res: Response) => {
     try {
