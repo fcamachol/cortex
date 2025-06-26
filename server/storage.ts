@@ -569,8 +569,11 @@ class DatabaseStorage {
 
     async createCrmContactFromWhatsappChat(chatId: string, instanceId: string): Promise<void> {
         try {
+            console.log(`🏗️ Starting CRM contact creation for: ${chatId}`);
+            
             // Extract phone number from WhatsApp JID
             const phoneNumber = chatId.replace('@s.whatsapp.net', '');
+            console.log(`📞 Extracted phone number: ${phoneNumber}`);
             
             // Check if CRM contact already exists with this phone number
             const existingContactWithPhone = await db.select()
@@ -594,8 +597,10 @@ class DatabaseStorage {
                 .limit(1);
 
             const pushName = whatsappContact[0]?.pushName || 'WhatsApp Contact';
+            console.log(`👤 Using push name: ${pushName}`);
             
             // Create CRM contact using the correct schema structure
+            console.log(`📝 Creating CRM contact record...`);
             const [newCrmContact] = await db
                 .insert(crmContacts)
                 .values({
@@ -606,8 +611,11 @@ class DatabaseStorage {
                 })
                 .returning();
 
+            console.log(`✅ CRM contact created with ID: ${newCrmContact.contactId}`);
+
             // Create primary phone number for the contact
             if (phoneNumber && phoneNumber !== chatId) {
+                console.log(`📞 Creating phone record for contact...`);
                 await db.insert(crmContactPhones).values({
                     contactId: newCrmContact.contactId,
                     phoneNumber: phoneNumber,
@@ -615,11 +623,14 @@ class DatabaseStorage {
                     isWhatsappLinked: true,
                     isPrimary: true,
                 });
+                console.log(`✅ Phone record created for: ${phoneNumber}`);
             }
 
-            console.log(`✅ Created CRM contact for WhatsApp chat: ${chatId} -> ${pushName} (ID: ${newCrmContact.contactId})`);
+            console.log(`✅ Successfully created CRM contact for WhatsApp chat: ${chatId} -> ${pushName} (ID: ${newCrmContact.contactId})`);
         } catch (error) {
             console.error(`❌ Error creating CRM contact from WhatsApp chat ${chatId}:`, error);
+            console.error(`❌ Error details:`, error.message);
+            console.error(`❌ Error stack:`, error.stack);
         }
     }
 
