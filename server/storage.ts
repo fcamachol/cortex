@@ -38,6 +38,7 @@ import {
     type FinanceAccount, type InsertFinanceAccount,
     type FinanceTransaction, type InsertFinanceTransaction,
     type FinancePayable, type InsertFinancePayable,
+    type FinanceReceivable, type InsertFinanceReceivable,
     type FinanceCategory, type InsertFinanceCategory,
     type FinanceRecurringBill, type InsertFinanceRecurringBill,
     type FinanceLoan, type InsertFinanceLoan,

@@ -2128,6 +2128,14 @@ export const insertFinancePayableSchema = createInsertSchema(financePayables).om
 
 export const insertFinancePayablePaymentSchema = createInsertSchema(financePayablePayments);
 
+export const insertFinanceReceivableSchema = createInsertSchema(financeReceivables).omit({
+  receivableId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFinanceReceivablePaymentSchema = createInsertSchema(financeReceivablePayments);
+
 export const insertFinanceRecurringBillSchema = createInsertSchema(financeRecurringBills).omit({
   recurringBillId: true,
 });
@@ -2172,6 +2180,12 @@ export type InsertFinancePayable = z.infer<typeof insertFinancePayableSchema>;
 
 export type FinancePayablePayment = typeof financePayablePayments.$inferSelect;
 export type InsertFinancePayablePayment = z.infer<typeof insertFinancePayablePaymentSchema>;
+
+export type FinanceReceivable = typeof financeReceivables.$inferSelect;
+export type InsertFinanceReceivable = z.infer<typeof insertFinanceReceivableSchema>;
+
+export type FinanceReceivablePayment = typeof financeReceivablePayments.$inferSelect;
+export type InsertFinanceReceivablePayment = z.infer<typeof insertFinanceReceivablePaymentSchema>;
 
 export type FinanceRecurringBill = typeof financeRecurringBills.$inferSelect;
 export type InsertFinanceRecurringBill = z.infer<typeof insertFinanceRecurringBillSchema>;
