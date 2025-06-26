@@ -1,0 +1,21 @@
+{
+  "id": "1750969155620-wsw6cd53d",
+  "timestamp": "2025-06-26T20:19:15.620Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "contacts-update",
+  "payload": {
+    "event": "contacts.update",
+    "instance": "instance-1750433520122",
+    "data": {
+      "remoteJid": "5215551234567@s.whatsapp.net",
+      "pushName": "Business Contact",
+      "verifiedName": "Verified Business LLC",
+      "profilePicUrl": "https://example.com/business.jpg",
+      "isBusiness": true,
+      "isMe": false,
+      "isBlocked": false
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

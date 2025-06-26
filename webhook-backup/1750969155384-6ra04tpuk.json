@@ -1,0 +1,20 @@
+{
+  "id": "1750969155384-6ra04tpuk",
+  "timestamp": "2025-06-26T20:19:15.384Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "messages-edit",
+  "payload": {
+    "event": "messages.edit",
+    "instance": "instance-1750433520122",
+    "data": {
+      "messageId": "EDIT_TEST_MESSAGE_456",
+      "editedContent": "This message has been edited",
+      "originalContent": "Original message content",
+      "editTimestamp": 1750969155,
+      "chatId": "5215579188699@s.whatsapp.net",
+      "fromMe": false
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
