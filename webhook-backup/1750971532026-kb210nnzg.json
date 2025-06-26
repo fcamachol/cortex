@@ -1,0 +1,19 @@
+{
+  "id": "1750971532026-kb210nnzg",
+  "timestamp": "2025-06-26T20:58:52.026Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "messages-delete",
+  "payload": {
+    "event": "messages.delete",
+    "instance": "instance-1750433520122",
+    "data": {
+      "messageId": "DELETE_TEST_MESSAGE_789",
+      "chatId": "5215579188699@s.whatsapp.net",
+      "deletedBy": "5215579188699@s.whatsapp.net",
+      "deletionType": "sender",
+      "deletedAt": 1750971531
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

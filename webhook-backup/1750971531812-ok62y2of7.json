@@ -1,0 +1,31 @@
+{
+  "id": "1750971531812-ok62y2of7",
+  "timestamp": "2025-06-26T20:58:51.812Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "messages-upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "instance-1750433520122",
+    "data": {
+      "key": {
+        "id": "MESSAGE_REACTION_TEST_001",
+        "remoteJid": "5215579188699@s.whatsapp.net",
+        "fromMe": false,
+        "participant": "5215579188699@s.whatsapp.net"
+      },
+      "message": {
+        "reactionMessage": {
+          "text": "👍",
+          "key": {
+            "id": "ORIGINAL_MESSAGE_ID_123",
+            "remoteJid": "5215579188699@s.whatsapp.net",
+            "fromMe": false
+          }
+        }
+      },
+      "messageTimestamp": 1750971531
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

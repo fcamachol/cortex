@@ -1,0 +1,30 @@
+{
+  "id": "1750971531697-zqo69xypy",
+  "timestamp": "2025-06-26T20:58:51.697Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "messages-upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "instance-1750433520122",
+    "data": {
+      "key": {
+        "id": "MESSAGE_MEDIA_TEST_001",
+        "remoteJid": "5215579188699@s.whatsapp.net",
+        "fromMe": false,
+        "participant": "5215579188699@s.whatsapp.net"
+      },
+      "message": {
+        "imageMessage": {
+          "caption": "Test image with caption",
+          "url": "https://example.com/image.jpg",
+          "mimetype": "image/jpeg"
+        }
+      },
+      "messageTimestamp": 1750971531,
+      "pushName": "Test User Media",
+      "status": "SENT"
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
