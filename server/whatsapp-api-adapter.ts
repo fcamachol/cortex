@@ -287,7 +287,7 @@ export const WebhookApiAdapter = {
             if (rawContact.subject && rawContact.subject !== 'Group Chat' && rawContact.subject.trim() !== '') {
                 const groupData = {
                     groupJid: groupJid,
-                    instanceId: instanceId,
+                    instanceName: instanceId,
                     subject: rawContact.subject,
                     ownerJid: rawContact.owner || (existingGroup?.ownerJid) || null,
                     description: rawContact.desc || (existingGroup?.description) || null,
@@ -330,7 +330,7 @@ export const WebhookApiAdapter = {
             if (groupSubject) {
                 const groupData = {
                     groupJid: groupJid,
-                    instanceId: instanceId,
+                    instanceName: instanceId,
                     subject: groupSubject,
                     ownerJid: rawContact.owner || (existingGroup?.ownerJid) || null,
                     description: rawContact.desc || (existingGroup?.description) || null,
@@ -407,7 +407,7 @@ export const WebhookApiAdapter = {
                     // Always update group record with latest Evolution API data
                     const groupData = {
                         groupJid: groupJid,
-                        instanceId: instanceId,
+                        instanceName: instanceId,
                         subject: groupSubject,
                         ownerJid: rawChat.owner || (existingGroup?.ownerJid) || null,
                         description: rawChat.desc || (existingGroup?.description) || null,
@@ -451,7 +451,7 @@ export const WebhookApiAdapter = {
                     if (!existingGroup || existingGroup.subject !== groupSubject) {
                         const groupData = {
                             groupJid: groupJid,
-                            instanceId: instanceId,
+                            instanceName: instanceId,
                             subject: groupSubject,
                             ownerJid: rawChat.owner || null,
                             description: rawChat.desc || null,
@@ -564,7 +564,7 @@ export const WebhookApiAdapter = {
             // Update group with authentic subject from Evolution API
             const groupData = {
                 groupJid: groupJid,
-                instanceId: instanceId,
+                instanceName: instanceId,
                 subject: groupSubject,
                 description: data.desc || null,
                 isLocked: data.restrict || false,
@@ -659,7 +659,7 @@ export const WebhookApiAdapter = {
                 // Update group record with authentic subject
                 const groupData = {
                     groupJid: groupJid,
-                    instanceId: instanceId,
+                    instanceName: instanceId,
                     subject: realSubject,
                     ownerJid: metadata?.owner || null,
                     description: metadata?.desc || null,
@@ -698,7 +698,7 @@ export const WebhookApiAdapter = {
     async createGroupWithPlaceholder(groupJid: string, instanceId: string): Promise<void> {
         const groupData = {
             groupJid: groupJid,
-            instanceId: instanceId,
+            instanceName: instanceId,
             subject: 'Group',
             ownerJid: null,
             description: null,
@@ -736,7 +736,7 @@ export const WebhookApiAdapter = {
                     // Update group record with authentic subject
                     const groupData = {
                         groupJid: group.id,
-                        instanceId: instanceId,
+                        instanceName: instanceId,
                         subject: group.subject,
                         ownerJid: group.owner || null,
                         description: group.desc || null,
@@ -826,7 +826,7 @@ export const WebhookApiAdapter = {
                 const participantData = {
                     groupJid: groupJid,
                     participantJid: participantJid,
-                    instanceId: instanceId,
+                    instanceName: instanceId,
                     isAdmin: participant.admin === 'admin' || participant.isAdmin || false,
                     isSuperAdmin: participant.admin === 'superadmin' || participant.isSuperAdmin || false
                 };
@@ -866,7 +866,7 @@ export const WebhookApiAdapter = {
                     await storage.upsertGroupParticipant({
                         groupJid: groupJid,
                         participantJid: participantJid,
-                        instanceId: instanceId,
+                        instanceName: instanceId,
                         isAdmin: false,
                         isSuperAdmin: false
                     });
@@ -924,7 +924,7 @@ export const WebhookApiAdapter = {
             const reactionData = {
                 reactionId: reactionMessageId,
                 messageId: originalMessageId,
-                instanceId: instanceId,
+                instanceName: instanceId,
                 reactorJid: reactorJid,
                 reactionEmoji: reactionText,
                 timestamp: data.messageTimestamp ? new Date(data.messageTimestamp * 1000) : new Date(),
@@ -941,7 +941,7 @@ export const WebhookApiAdapter = {
             // Process actions based on reaction
             const messageContext = {
                 messageId: originalMessageId,
-                instanceId: instanceId,
+                instanceName: instanceId,
                 chatId: reactorJid,
                 senderJid: reactorJid,
                 content: `Reaction: ${reactionText}`,
@@ -1767,7 +1767,7 @@ export const WebhookApiAdapter = {
             // Ensure group contact record exists
             const groupContact = {
                 jid: groupData.groupJid,
-                instanceId: instanceId,
+                instanceName: instanceId,
                 pushName: groupData.subject || 'Group',
                 verifiedName: groupData.subject || 'Group',
                 profilePictureUrl: undefined,
@@ -1802,7 +1802,7 @@ export const WebhookApiAdapter = {
 
         return {
             callLogId: rawCall.id,
-            instanceId: instanceId,
+            instanceName: instanceId,
             chatId: rawCall.chatId,
             fromJid: rawCall.from,
             fromMe: rawCall.fromMe || false,
@@ -2010,7 +2010,7 @@ export const WebhookApiAdapter = {
             // Update group with real API data
             const updatedGroupData = {
                 groupJid: group.groupJid,
-                instanceId: instanceId,
+                instanceName: instanceId,
                 subject: groupInfo.subject,
                 ownerJid: groupInfo.owner || group.ownerJid,
                 description: groupInfo.desc || group.description,
@@ -2023,7 +2023,7 @@ export const WebhookApiAdapter = {
             // Also update the contact record
             const contactData = {
                 jid: group.groupJid,
-                instanceId: instanceId,
+                instanceName: instanceId,
                 pushName: groupInfo.subject,
                 verifiedName: null,
                 profilePictureUrl: null,
@@ -2219,7 +2219,7 @@ export const WebhookApiAdapter = {
                     
                     const updatedGroupData = {
                         groupJid: group.id,
-                        instanceId: instanceId,
+                        instanceName: instanceId,
                         subject: group.subject, // Force authentic Evolution API name
                         ownerJid: group.owner || existingGroup?.ownerJid || null,
                         description: group.desc || existingGroup?.description || null,
@@ -2447,7 +2447,7 @@ export const WebhookApiAdapter = {
                         // Update with authentic group subject from database
                         const correctedContactData = {
                             jid: contact.jid,
-                            instanceId: instanceId,
+                            instanceName: instanceId,
                             pushName: authenticSubject,
                             verifiedName: null,
                             profilePictureUrl: contact.profilePictureUrl,
@@ -2466,7 +2466,7 @@ export const WebhookApiAdapter = {
                     if (contact.pushName && contact.pushName !== 'Unknown Group') {
                         const unknownContactData = {
                             jid: contact.jid,
-                            instanceId: instanceId,
+                            instanceName: instanceId,
                             pushName: 'Unknown Group',
                             verifiedName: null,
                             profilePictureUrl: null,
