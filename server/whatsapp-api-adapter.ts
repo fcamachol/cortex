@@ -1540,7 +1540,7 @@ export const WebhookApiAdapter = {
         
         return {
             jid: jid,
-            instanceId: instanceId,
+            instanceName: instanceId,
             pushName: contactName,
             verifiedName: rawContact.verifiedName || (jid.endsWith('@g.us') ? contactName : undefined),
             profilePictureUrl: rawContact.profilePicUrl || rawContact.profilePictureUrl,
