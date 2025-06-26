@@ -557,6 +557,7 @@ class DatabaseStorage {
     async createCrmContactFromWhatsappChat(chatId: string, instanceId: string, chatName?: string): Promise<void> {
         try {
             console.log(`🏗️ Starting CRM contact creation for: ${chatId}`);
+            console.log(`🏗️ Provided chat name parameter: "${chatName}"`);
             
             // Extract phone number from WhatsApp JID
             const phoneNumber = chatId.replace('@s.whatsapp.net', '');

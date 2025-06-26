@@ -1,0 +1,21 @@
+{
+  "id": "1750909816338-be0k9egv4",
+  "timestamp": "2025-06-26T03:50:16.338Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "chats.upsert",
+  "payload": {
+    "event": "chats.upsert",
+    "instance": "instance-1750433520122",
+    "data": [
+      {
+        "id": "5521999888777@s.whatsapp.net",
+        "remoteJid": "5521999888777@s.whatsapp.net",
+        "name": "Maria Silva Test",
+        "displayName": "Maria Silva Test",
+        "phoneNumber": "5521999888777"
+      }
+    ]
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
