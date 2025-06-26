@@ -2304,7 +2304,7 @@ export const WebhookApiAdapter = {
         let mediaData: any = null;
         let mediaInfo: Partial<WhatsappMessageMedia> = {
             messageId,
-            instanceId,
+            instanceName: instanceId, // Use instanceName field to match database schema
         };
 
         // Extract media data based on message type

@@ -1,0 +1,39 @@
+{
+  "id": "1750972396867-4rk0ow5a7",
+  "timestamp": "2025-06-26T21:13:16.867Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages.upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "live-test-1750199771",
+    "data": {
+      "key": {
+        "remoteJid": "5215579188699@s.whatsapp.net",
+        "fromMe": false,
+        "id": "TEST_CORRECTED_MEDIA_1750972396805"
+      },
+      "pushName": "Test User",
+      "status": "DELIVERY_ACK",
+      "message": {
+        "audioMessage": {
+          "url": "https://mmg.whatsapp.net/v/t62.7117-24/test_audio.enc",
+          "mimetype": "audio/ogg; codecs=opus",
+          "fileSha256": "testsha256hash",
+          "fileLength": "8192",
+          "seconds": 3,
+          "ptt": true,
+          "mediaKey": "testmediakey123",
+          "fileEncSha256": "testencsha256",
+          "directPath": "/v/t62.7117-24/test_audio.enc",
+          "mediaKeyTimestamp": "1750671200"
+        }
+      },
+      "messageType": "audioMessage",
+      "messageTimestamp": 1750671200,
+      "instanceId": "test-instance-id",
+      "source": "android"
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

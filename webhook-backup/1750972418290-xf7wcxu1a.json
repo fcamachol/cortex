@@ -1,0 +1,37 @@
+{
+  "id": "1750972418290-xf7wcxu1a",
+  "timestamp": "2025-06-26T21:13:38.290Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages.upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "live-test-1750199771",
+    "data": {
+      "key": {
+        "id": "ENHANCED_DOWNLOAD_1750972418264",
+        "fromMe": false,
+        "remoteJid": "5215579188699@s.whatsapp.net"
+      },
+      "source": "android",
+      "status": "DELIVERY_ACK",
+      "message": {
+        "audioMessage": {
+          "ptt": true,
+          "url": "https://mmg.whatsapp.net/v/t62.7117-24/enhanced_test_audio.enc",
+          "seconds": 3,
+          "mediaKey": "enhancedtestmediakey789",
+          "mimetype": "audio/ogg; codecs=opus",
+          "directPath": "/v/t62.7117-24/enhanced_test_audio.enc",
+          "fileLength": "6144",
+          "fileSha256": "enhancedtestsha256hash",
+          "fileEncSha256": "enhancedtestencsha256",
+          "mediaKeyTimestamp": "1750676500"
+        }
+      },
+      "pushName": "Enhanced Download Test",
+      "instanceId": "live-test-1750199771"
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

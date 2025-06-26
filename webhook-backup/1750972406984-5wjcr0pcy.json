@@ -1,0 +1,47 @@
+{
+  "id": "1750972406984-5wjcr0pcy",
+  "timestamp": "2025-06-26T21:13:26.984Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages.upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "live-test-1750199771",
+    "data": {
+      "key": {
+        "remoteJid": "5215579188699@s.whatsapp.net",
+        "fromMe": false,
+        "id": "COMPREHENSIVE_BASE64_AUDIO_TEST"
+      },
+      "pushName": "Base64 Audio Test",
+      "status": "DELIVERY_ACK",
+      "message": {
+        "audioMessage": {
+          "url": "https://mmg.whatsapp.net/v/t62.7117-24/fake_url_for_base64_test.enc",
+          "mimetype": "audio/ogg; codecs=opus",
+          "fileSha256": "fake_sha256_for_base64_test",
+          "fileLength": "499",
+          "seconds": 1,
+          "ptt": true,
+          "mediaKey": "fake_media_key_for_base64_test",
+          "fileEncSha256": "fake_enc_sha256_for_base64_test",
+          "directPath": "/v/fake_direct_path_for_base64_test",
+          "mediaKeyTimestamp": "1750972406",
+          "waveform": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+",
+          "base64": "T2dnUwACAAAAAAAAAADqGVCGAAAAAM7CyBYBHgF2b3JiaXMAAAAAAkSsAAAAAAAAgLsAAAAAAAC4AU9nZ1MAAAAAAAAAAAAAAAAA6hlQhgEAAAAPKfqUEz3//////////5ADdm9yYmlzLQAAAQV2b3JiaXMrQkNWAQAIAAAAMUwgxYDQkFUAABAAAGAkKQ6TZkkppZShKHccxB0IcQJEGdFW4hJEaU0ZyFGZQR0PcQEIDyNGlIhgE8mpgM+/R3R0I3w7S1VQFFINAAAAAAAAAAAABgAmFhsBNj1DVVBSTWgcHAB4+gp8CgAeCHcOgEcBZZIpJRpCqwI/MhMkIxB1CAXiKHiQhUkHMzFR4xQIFkJUcYnNHcqUiR0SQr0KLDUlPGqKKpXpyU4zj8YxCtf5uWMchJkAYAAAgBQx4Hlt1iiRAo3pDZ4H0mWM3uHaDxXjAiKJFNJHH61uLxgEAACyZQCJJNVoKEIjCCECHABUE0Ll5TZfKA="
+        }
+      },
+      "contextInfo": null,
+      "messageType": "audioMessage",
+      "messageTimestamp": 1750972406,
+      "instanceId": "test-instance-comprehensive",
+      "source": "webhook"
+    },
+    "destination": "http://localhost:5000/api/evolution/webhook/live-test-1750199771",
+    "date_time": "2025-06-26T21:13:26.972Z",
+    "sender": "15103165094@s.whatsapp.net",
+    "server_url": "https://evolution-api-test.example.com",
+    "apikey": "TEST-API-KEY-FOR-BASE64-AUDIO"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
