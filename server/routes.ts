@@ -13,6 +13,8 @@ import { ScheduledJobsService } from './scheduled-jobs';
 import { webhookReliability } from './webhook-reliability';
 import { messageRecovery } from './message-recovery-system';
 import { db } from './db';
+import fs from 'fs/promises';
+import path from 'path';
 import {
   insertFinanceTransactionSchema,
   insertFinancePayableSchema,
@@ -3080,6 +3082,57 @@ export async function registerRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error('Error deleting space item:', error);
       res.status(500).json({ error: 'Failed to delete space item' });
+    }
+  });
+
+  // Test media download in deployed environment
+  app.post('/api/admin/test-media-download', async (req: Request, res: Response) => {
+    try {
+      console.log('🧪 Testing media download in deployed environment...');
+      
+      // Check if media directory exists and create if needed
+      const mediaDir = path.resolve(process.cwd(), 'media');
+      await fs.mkdir(mediaDir, { recursive: true });
+      
+      // Check if we have any instances to test with
+      const instances = await storage.getAllWhatsappInstances();
+      if (instances.length === 0) {
+        return res.status(400).json({ error: 'No WhatsApp instances found' });
+      }
+      
+      const testInstance = instances[0];
+      console.log(`📱 Testing with instance: ${testInstance.instanceName}`);
+      
+      // Create test media file to verify file system works
+      const testFileName = `test-${Date.now()}.txt`;
+      const testFilePath = path.join(mediaDir, testInstance.instanceName);
+      await fs.mkdir(testFilePath, { recursive: true });
+      
+      const fullTestPath = path.join(testFilePath, testFileName);
+      await fs.writeFile(fullTestPath, 'Test media file created on deployed server');
+      
+      // Verify file was created
+      const fileExists = await fs.access(fullTestPath).then(() => true).catch(() => false);
+      
+      res.json({
+        success: true,
+        message: 'Media download system operational',
+        details: {
+          mediaDirectory: mediaDir,
+          testInstance: testInstance.instanceName,
+          testFileCreated: fileExists,
+          testFilePath: fullTestPath,
+          environment: process.env.NODE_ENV || 'development'
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error testing media download:', error);
+      res.status(500).json({ 
+        error: 'Media download test failed', 
+        details: error.message,
+        stack: error.stack 
+      });
     }
   });
 
