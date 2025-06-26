@@ -2137,9 +2137,21 @@ class DatabaseStorage {
 
     // Contact Phone Methods
     async getContactPhones(contactId: number): Promise<any[]> {
-        return await db.select().from(crmContactPhones)
+        const phones = await db.select().from(crmContactPhones)
             .where(eq(crmContactPhones.contactId, contactId))
             .orderBy(desc(crmContactPhones.isPrimary), desc(crmContactPhones.createdAt));
+        
+        // Check WhatsApp linking status for each phone using database join
+        return await Promise.all(phones.map(async (phone) => {
+            const whatsappJid = this.phoneToWhatsAppJid(phone.phoneNumber);
+            const whatsappContact = await this.getWhatsappContactByJid(whatsappJid);
+            
+            return {
+                ...phone,
+                isWhatsappLinked: !!whatsappContact,
+                whatsappJid: whatsappContact ? whatsappJid : null
+            };
+        }));
     }
 
     async addContactPhone(phoneData: any): Promise<any> {

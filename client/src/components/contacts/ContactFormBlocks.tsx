@@ -1230,3 +1230,5 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
     </div>
   );
 }
+
+export default ContactFormBlocks;
