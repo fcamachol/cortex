@@ -128,7 +128,7 @@ export const WebhookApiAdapter = {
             SseManager.notifyClientsOfNewMessage(storedMessage);
             SseManager.notifyClientsOfChatUpdate({
                 chatId: cleanMessage.chatId,
-                instanceId,
+                instanceId: instanceId,
                 lastMessage: {
                     content: cleanMessage.content,
                     timestamp: cleanMessage.timestamp,
