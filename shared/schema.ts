@@ -1165,6 +1165,7 @@ export const crmContacts = crmSchema.table("contacts", {
   ownerUserId: uuid("owner_user_id").notNull().references(() => appUsers.userId, { onDelete: "cascade" }),
   fullName: varchar("full_name", { length: 255 }).notNull(),
   relationship: varchar("relationship", { length: 100 }), // 'Family', 'Client', 'Friend', etc.
+  tags: jsonb("tags").default('[]'), // Array of tags: ['Client', 'Friend', 'Partner']
   profilePictureUrl: varchar("profile_picture_url", { length: 500 }),
   notes: text("notes"),
   // WhatsApp Integration - Link to WhatsApp contacts
