@@ -1,0 +1,23 @@
+{
+  "id": "1750967588387-887oj1ww8",
+  "timestamp": "2025-06-26T19:53:08.387Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "chats.upsert",
+  "payload": {
+    "instanceName": "instance-1750433520122",
+    "event": "chats.upsert",
+    "data": {
+      "chats": [
+        {
+          "id": "5215540389546@s.whatsapp.net",
+          "unreadCount": 0,
+          "archived": false,
+          "pinned": false,
+          "muted": false
+        }
+      ]
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
