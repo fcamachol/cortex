@@ -178,21 +178,20 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                                      {contact.fullName}
-                                    </h3>
-                                    {contact.isWhatsappLinked && (
-                                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 border-green-300">
-                                        <Check className="w-3 h-3 mr-1" />
-                                        WhatsApp
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {contact.relationship && (
-                                    <Badge variant="secondary" className="mt-1 text-xs">
-                                      {contact.relationship}
-                                    </Badge>
+                                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                                    {contact.fullName}
+                                  </h3>
+                                  {(contact.relationship || contact.isWhatsappLinked) && (
+                                    <div className="flex items-center gap-1 mt-1">
+                                      {contact.relationship && (
+                                        <Badge variant="secondary" className="text-xs">
+                                          {contact.relationship}
+                                        </Badge>
+                                      )}
+                                      {contact.isWhatsappLinked && (
+                                        <Check className="w-3 h-3 text-green-500" />
+                                      )}
+                                    </div>
                                   )}
                                   {contact.notes && (
                                     <p className="text-sm text-gray-600 mt-1 line-clamp-2">

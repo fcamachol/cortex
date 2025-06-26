@@ -38,7 +38,7 @@ export function ClickableContactName({
       >
         {displayName}
         {crmLinkStatus?.isLinked && (
-          <Check className={`text-green-500 ${variant === 'header' ? 'h-4 w-4' : 'h-3 w-3'}`} />
+          <Check className="h-3 w-3 text-green-500" />
         )}
       </button>
       
