@@ -233,7 +233,7 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                 <CardContent>
                   <ScrollArea className="h-[600px]">
                     <div className="space-y-3">
-                      {contactsList.filter((c: CrmContact) => c.relationship === "Family").map((contact: CrmContact) => (
+                      {(Array.isArray(contactsList) ? contactsList.filter((c: CrmContact) => c.relationship === "Family") : []).map((contact: CrmContact) => (
                         <div
                           key={contact.contactId}
                           className="flex items-center p-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
@@ -262,13 +262,13 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Briefcase className="w-5 h-5" />
-                    Clients ({contactsList.filter((c: CrmContact) => c.relationship === "Client").length})
+                    Clients ({Array.isArray(contactsList) ? contactsList.filter((c: CrmContact) => c.relationship === "Client").length : 0})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-[600px]">
                     <div className="space-y-3">
-                      {contactsList.filter((c: CrmContact) => c.relationship === "Client").map((contact: CrmContact) => (
+                      {(Array.isArray(contactsList) ? contactsList.filter((c: CrmContact) => c.relationship === "Client") : []).map((contact: CrmContact) => (
                         <div
                           key={contact.contactId}
                           className="flex items-center p-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
@@ -297,13 +297,13 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Star className="w-5 h-5" />
-                    Friends ({contactsList.filter((c: CrmContact) => c.relationship === "Friend").length})
+                    Friends ({Array.isArray(contactsList) ? contactsList.filter((c: CrmContact) => c.relationship === "Friend").length : 0})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-[600px]">
                     <div className="space-y-3">
-                      {contactsList.filter((c: CrmContact) => c.relationship === "Friend").map((contact: CrmContact) => (
+                      {(Array.isArray(contactsList) ? contactsList.filter((c: CrmContact) => c.relationship === "Friend") : []).map((contact: CrmContact) => (
                         <div
                           key={contact.contactId}
                           className="flex items-center p-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
@@ -474,19 +474,19 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Family</span>
                 <span className="font-semibold">
-                  {contactsList.filter((c: CrmContact) => c.relationship === "Family").length}
+                  {Array.isArray(contactsList) ? contactsList.filter((c: CrmContact) => c.relationship === "Family").length : 0}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Clients</span>
                 <span className="font-semibold">
-                  {contactsList.filter((c: CrmContact) => c.relationship === "Client").length}
+                  {Array.isArray(contactsList) ? contactsList.filter((c: CrmContact) => c.relationship === "Client").length : 0}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Friends</span>
                 <span className="font-semibold">
-                  {contactsList.filter((c: CrmContact) => c.relationship === "Friend").length}
+                  {Array.isArray(contactsList) ? contactsList.filter((c: CrmContact) => c.relationship === "Friend").length : 0}
                 </span>
               </div>
             </CardContent>
