@@ -967,9 +967,19 @@ export default function ChatInterface({
               })()}
             </div>
             <div>
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">
-                {conversation ? getConversationDisplayName(conversation) : 'Unknown Contact'}
-              </h2>
+              {conversation && !conversation.chatId.includes('@g.us') ? (
+                <ClickableContactName
+                  senderJid={conversation.chatId}
+                  displayName={getConversationDisplayName(conversation)}
+                  instanceId={finalInstanceId}
+                  pushName={conversation.displayName || conversation.name}
+                  variant="header"
+                />
+              ) : (
+                <h2 className="font-semibold text-gray-900 dark:text-gray-100">
+                  {conversation ? getConversationDisplayName(conversation) : 'Unknown Contact'}
+                </h2>
+              )}
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {conversation?.status || 'Online'}
               </p>

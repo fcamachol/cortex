@@ -8,13 +8,15 @@ interface ClickableContactNameProps {
   displayName: string;
   instanceId: string;
   pushName?: string;
+  variant?: 'message' | 'header';
 }
 
 export function ClickableContactName({ 
   senderJid, 
   displayName, 
   instanceId, 
-  pushName 
+  pushName,
+  variant = 'message'
 }: ClickableContactNameProps) {
   const [showModal, setShowModal] = useState(false);
   const { data: crmLinkStatus } = useWhatsAppCrmLink(senderJid);
@@ -23,15 +25,20 @@ export function ClickableContactName({
     setShowModal(true);
   };
 
+  const baseClasses = "hover:underline inline-flex items-center gap-1 cursor-pointer";
+  const variantClasses = variant === 'header' 
+    ? "font-semibold text-gray-900 dark:text-gray-100 text-base" 
+    : "text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1";
+
   return (
     <>
       <button
         onClick={handleClick}
-        className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1 hover:underline inline-flex items-center gap-1 cursor-pointer"
+        className={`${baseClasses} ${variantClasses}`}
       >
         {displayName}
         {crmLinkStatus?.isLinked && (
-          <Check className="h-3 w-3 text-green-500" />
+          <Check className={`text-green-500 ${variant === 'header' ? 'h-4 w-4' : 'h-3 w-3'}`} />
         )}
       </button>
       
