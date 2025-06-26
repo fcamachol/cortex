@@ -37,6 +37,8 @@ interface Chat {
   chatId: string;
   instanceId: string;
   displayName: string;
+  chatName: string;
+  chatType: 'individual' | 'group';
   type: 'individual' | 'group';
   unreadCount: number;
   lastMessageTimestamp: string | null;
