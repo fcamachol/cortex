@@ -224,13 +224,13 @@ class DatabaseStorage {
     // WHATSAPP SCHEMA METHODS
     // =========================================================================
 
-    async getInstanceById(instanceId: string): Promise<WhatsappInstance | null> {
-        const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceId, instanceId));
+    async getInstanceById(instanceName: string): Promise<WhatsappInstance | null> {
+        const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceName, instanceName));
         return instance || null;
     }
 
-    async getWhatsappInstance(instanceId: string): Promise<WhatsappInstance | null> {
-        const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceId, instanceId));
+    async getWhatsappInstance(instanceName: string): Promise<WhatsappInstance | null> {
+        const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceName, instanceName));
         return instance || null;
     }
     
@@ -310,11 +310,11 @@ class DatabaseStorage {
         return chat || null;
     }
 
-    async getWhatsappGroup(groupJid: string, instanceId: string): Promise<WhatsappGroup | null> {
+    async getWhatsappGroup(groupJid: string, instanceName: string): Promise<WhatsappGroup | null> {
         const [group] = await db.select().from(whatsappGroups).where(
             and(
                 eq(whatsappGroups.groupJid, groupJid),
-                eq(whatsappGroups.instanceId, instanceId)
+                eq(whatsappGroups.instanceName, instanceName)
             )
         );
         return group || null;
@@ -359,7 +359,7 @@ class DatabaseStorage {
             .where(
                 and(
                     eq(whatsappContacts.jid, contact.jid),
-                    eq(whatsappContacts.instanceId, contact.instanceId)
+                    eq(whatsappContacts.instanceName, contact.instanceName)
                 )
             )
             .limit(1);
@@ -400,7 +400,7 @@ class DatabaseStorage {
         const [result] = await db.insert(whatsappContacts)
             .values(contact)
             .onConflictDoUpdate({
-                target: [whatsappContacts.jid, whatsappContacts.instanceId],
+                target: [whatsappContacts.jid, whatsappContacts.instanceName],
                 set: updateSet
             })
             .returning();
