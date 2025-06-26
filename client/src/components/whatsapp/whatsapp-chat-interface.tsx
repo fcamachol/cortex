@@ -306,7 +306,7 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
                                   </span>
                                 </div>
                                 <a
-                                  href={`/api/whatsapp/media/${message.instanceName || instanceId}/${message.messageId}`}
+                                  href={`/api/whatsapp/media/${message.instanceName || instanceName}/${message.messageId}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-blue-500 hover:underline text-sm"
