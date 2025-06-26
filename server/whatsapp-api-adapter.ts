@@ -65,12 +65,16 @@ export const WebhookApiAdapter = {
         switch (eventType) {
             case 'messages.upsert':
             case 'MESSAGES_UPSERT':
+                console.log(`🎯 About to process messages.upsert event for instance ${instanceIdentifier}`);
                 const potentialMessage = Array.isArray(data.messages) ? data.messages[0] : data;
                 if (potentialMessage?.message?.reactionMessage) {
+                    console.log(`🎯 Routing to handleReaction for reaction message`);
                     await this.handleReaction(instanceIdentifier, potentialMessage, sender);
                 } else {
+                    console.log(`🎯 Routing to handleMessageUpsert for regular message`);
                     await this.handleMessageUpsert(instanceIdentifier, data);
                 }
+                console.log(`🎯 Finished processing messages.upsert event`);
                 break;
             case 'messages.update':
             case 'MESSAGES_UPDATE':
@@ -188,8 +192,15 @@ export const WebhookApiAdapter = {
      * Handles new messages with a robust, sequential process to prevent race conditions.
      */
     async handleMessageUpsert(instanceId: string, data: any, sender?: string): Promise<void> {
+        console.log(`🚀 [${instanceId}] handleMessageUpsert called with data type: ${typeof data}`);
+        console.log(`🚀 [${instanceId}] Data contains: ${Object.keys(data).join(', ')}`);
+        
         const messages = Array.isArray(data.messages) ? data.messages : [data];
-        if (!messages[0]?.key) return;
+        console.log(`🚀 [${instanceId}] Processing ${messages.length} messages`);
+        if (!messages[0]?.key) {
+            console.log(`🚀 [${instanceId}] No key found in first message, returning`);
+            return;
+        }
 
         for (const rawMessage of messages) {
             try {
@@ -207,6 +218,7 @@ export const WebhookApiAdapter = {
                 // exist BEFORE we attempt to save the message.
                 await this.ensureDependenciesForMessage(cleanMessage, rawMessage);
                 
+                console.log(`💾 About to store message: ${cleanMessage.messageId}`);
                 const storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
                 console.log(`✅ [${instanceId}] Message stored: ${storedMessage.messageId}`);
                 
@@ -215,6 +227,8 @@ export const WebhookApiAdapter = {
                 if (['image', 'video', 'audio', 'document', 'sticker'].includes(cleanMessage.messageType)) {
                     console.log(`📁 Calling handleMediaStorage for message ${cleanMessage.messageId} with instanceId: ${instanceId}`);
                     await this.handleMediaStorage(rawMessage, instanceId, cleanMessage.messageType);
+                } else {
+                    console.log(`📝 Message type "${cleanMessage.messageType}" does not need media processing`);
                 }
                 
                 // Handle audio message processing using Evolution API downloadMedia method
