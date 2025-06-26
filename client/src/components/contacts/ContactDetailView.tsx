@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { X, Edit, Phone, Mail, MapPin, Calendar, Building2, Users, Heart, Tag, Plus, ArrowRight, Trash2 } from "lucide-react";
+import { X, Edit, Phone, Mail, MapPin, Calendar, Building2, Users, Heart, Tag, Plus, ArrowRight, Trash2, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -305,7 +305,8 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                                 <Badge variant="secondary" className="text-xs">Primary</Badge>
                               )}
                               {phone.isWhatsappLinked && (
-                                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 border-green-300">
+                                  <Check className="w-3 h-3 mr-1" />
                                   WhatsApp
                                 </Badge>
                               )}
