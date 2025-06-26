@@ -12,6 +12,7 @@ import { Phone, Mail, MapPin, Building2, Users, Link as LinkIcon, Calendar, Tag,
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { TagInput } from "./TagInput";
 
 // Block types organized by categories for consistent order across all contacts
 const CONTACT_INFO_BLOCKS = [
@@ -62,7 +63,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
   
   // Core contact fields
   const [contactName, setContactName] = useState(initialData?.fullName || '');
-  const [relationship, setRelationship] = useState(initialData?.relationship || 'Client');
+  const [tags, setTags] = useState<string[]>([]);
   const [profession, setProfession] = useState('');
   const [company, setCompany] = useState('');
   
@@ -76,7 +77,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
       // Process blocks into contact data
       const contactData = {
         fullName: contactName,
-        relationship,
+        tags,
         ownerUserId,
         spaceId,
       };
@@ -114,7 +115,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
       queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
       if (!isEditMode) {
         setContactName('');
-        setRelationship('Client');
+        setTags([]);
         setProfession('');
         setCompany('');
         setBlocks([]);
@@ -242,6 +243,16 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
                 className="h-10 border border-gray-300 rounded-lg px-3 focus:border-gray-500 focus:ring-0"
               />
             </div>
+          </div>
+
+          {/* Tags */}
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">Tags</label>
+            <TagInput
+              tags={tags}
+              onChange={setTags}
+              placeholder="Add tags like Client, Friend, etc."
+            />
           </div>
         </div>
 
