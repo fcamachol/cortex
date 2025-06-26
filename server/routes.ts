@@ -1867,6 +1867,13 @@ export async function registerRoutes(app: Express): Promise<void> {
         res.setHeader('Referrer-Policy', 'no-referrer-when-downgrade');
         res.setHeader('Content-Length', stats.size.toString());
         
+        // For PDFs, add headers to allow inline viewing and fix cross-origin issues
+        if (mimeType === 'application/pdf') {
+          res.setHeader('Content-Disposition', 'inline; filename="document.pdf"');
+          res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+          res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; object-src 'self'; embed-src 'self';");
+        }
+        
         console.log(`✅ Serving media: ${messageId} from ${filePath}`);
         return res.sendFile(filePath);
       } catch (fileError) {
