@@ -3132,9 +3132,10 @@ class DatabaseStorage {
             // Normalize phone number for WhatsApp JID format
             const normalizedPhone = this.normalizePhoneNumber(phoneNumber);
             const possibleJids = [
-                `${normalizedPhone}@s.whatsapp.net`,
-                `${normalizedPhone.replace('+', '')}@s.whatsapp.net`
+                `${normalizedPhone}@s.whatsapp.net`
             ];
+            
+            console.log(`🔍 Searching for WhatsApp JIDs: ${possibleJids.join(', ')}`)
             
             // Search for existing WhatsApp contacts with matching JID
             for (const jid of possibleJids) {
@@ -3182,15 +3183,10 @@ class DatabaseStorage {
      * @returns Normalized phone number
      */
     private normalizePhoneNumber(phoneNumber: string): string {
-        // Remove all non-digit characters except +
-        let normalized = phoneNumber.replace(/[^\d+]/g, '');
+        // Remove all non-digit characters
+        let normalized = phoneNumber.replace(/[^\d]/g, '');
         
-        // If it doesn't start with +, assume it needs country code
-        if (!normalized.startsWith('+')) {
-            // Add default country code if needed (customize as needed)
-            normalized = '+' + normalized;
-        }
-        
+        // WhatsApp JIDs don't include the + sign, just the country code + number
         return normalized;
     }
 
