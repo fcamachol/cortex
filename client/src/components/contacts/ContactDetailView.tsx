@@ -42,28 +42,13 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
   const [editingRelationshipId, setEditingRelationshipId] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   // Fetch full contact details including phones with WhatsApp linking info
   const { data: fullContactDetails, isLoading: isLoadingDetails } = useQuery({
     queryKey: ['/api/crm/contacts/:contactId/details', contact.contactId],
     queryFn: () => apiRequest('GET', `/api/crm/contacts/${contact.contactId}/details`),
     staleTime: 30000,
   });
-
-  // Use full contact details if available, otherwise fall back to basic contact prop
-  const contactData = fullContactDetails || contact;
-
-  // Show loading state while fetching detailed contact info
-  if (isLoadingDetails) {
-    return (
-      <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <div className="flex items-center justify-center p-8">
-            <div className="text-gray-500">Loading contact details...</div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
 
   // Fetch all contacts for relationship selection
   const { data: allContacts = [] } = useQuery({
@@ -72,18 +57,12 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
     staleTime: 30000,
   });
 
-  // Ensure allContacts is always an array
-  const contactsList = Array.isArray(allContacts) ? allContacts : [];
-
   // Fetch contact relationships
   const { data: relationships = [] } = useQuery({
     queryKey: ['/api/crm/contact-relationships', contact.contactId],
     queryFn: () => apiRequest('GET', `/api/crm/contact-relationships?contactAId=${contact.contactId}`),
     staleTime: 30000,
   });
-
-  // Ensure relationships is always an array
-  const relationshipsList = Array.isArray(relationships) ? relationships : [];
 
   // Relationship form
   const relationshipForm = useForm<RelationshipFormData>({
@@ -121,8 +100,8 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/contact-relationships', contact.contactId] });
-      relationshipForm.reset();
       setIsAddingRelationship(false);
+      relationshipForm.reset();
     },
   });
 
@@ -132,7 +111,6 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
       apiRequest('PUT', `/api/crm/contact-relationships/${relationshipId}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/contact-relationships', contact.contactId] });
-      relationshipForm.reset();
       setEditingRelationshipId(null);
     },
   });
@@ -145,6 +123,24 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
       queryClient.invalidateQueries({ queryKey: ['/api/crm/contact-relationships', contact.contactId] });
     },
   });
+
+  // Process data after all hooks are called
+  const contactData = fullContactDetails || contact;
+  const contactsList = Array.isArray(allContacts) ? allContacts : [];
+  const relationshipsList = Array.isArray(relationships) ? relationships : [];
+
+  // Show loading state while fetching detailed contact info
+  if (isLoadingDetails) {
+    return (
+      <Dialog open={true} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <div className="flex items-center justify-center p-8">
+            <div className="text-gray-500">Loading contact details...</div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   // Relationship form handlers
   const handleCreateRelationship = (data: RelationshipFormData) => {
