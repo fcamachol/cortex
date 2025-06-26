@@ -743,6 +743,15 @@ class DatabaseStorage {
     }
 
     async upsertWhatsappMessageMedia(media: InsertWhatsappMessageMedia): Promise<WhatsappMessageMedia> {
+        // Debug logging to trace null instance_name issue
+        console.log(`🔍 upsertWhatsappMessageMedia called with:`, {
+            messageId: media.messageId,
+            instanceName: media.instanceName,
+            hasInstanceName: !!media.instanceName,
+            typeOfInstanceName: typeof media.instanceName,
+            allKeys: Object.keys(media)
+        });
+        
         // Check if media already exists for this message
         const [existing] = await db.select().from(whatsappMessageMedia)
             .where(and(

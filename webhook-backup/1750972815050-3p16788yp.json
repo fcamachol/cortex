@@ -1,0 +1,67 @@
+{
+  "id": "1750972815050-3p16788yp",
+  "timestamp": "2025-06-26T21:20:15.050Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages-upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "live-test-1750199771",
+    "data": {
+      "key": {
+        "remoteJid": "5215579188699@s.whatsapp.net",
+        "fromMe": false,
+        "id": "3AC289E14752EFCE1A31"
+      },
+      "pushName": "F.C.",
+      "status": "DELIVERY_ACK",
+      "message": {
+        "imageMessage": {
+          "url": "https://mmg.whatsapp.net/o1/v/t24/f2/m235/AQNw-74Odv4qUNEVA22rSQbUj7IFe1_zFupR_A6n2BcwjeLpZWgzrmoU5YuHp9DX5MOIgjx2KjcB58NFD3zBhm8B53Cspb84KG-skWAs-w?ccb=9-4&oh=01_Q5Aa1wH0aHYlMBEAn36ZsGQbXeCx1gTwb52mlG9NSQWyb3qxlg&oe=68853974&_nc_sid=e6ed6c&mms3=true",
+          "mimetype": "image/jpeg",
+          "fileSha256": "lwEMaGYV5lVtOrH3Hp7CztCK++gaDLpZJOuJ2/MVoOQ=",
+          "fileLength": "204095",
+          "height": 1600,
+          "width": 1200,
+          "mediaKey": "4VkTWvLdoQ1y/bZhmTfGPsJY2QWbRJkzb7GJuh2FTW4=",
+          "fileEncSha256": "SXcEyv6P2K5T9bs+cQvBohhSDKidRJOn+ZfGU4P+mUw=",
+          "directPath": "/o1/v/t24/f2/m235/AQNw-74Odv4qUNEVA22rSQbUj7IFe1_zFupR_A6n2BcwjeLpZWgzrmoU5YuHp9DX5MOIgjx2KjcB58NFD3zBhm8B53Cspb84KG-skWAs-w?ccb=9-4&oh=01_Q5Aa1wH0aHYlMBEAn36ZsGQbXeCx1gTwb52mlG9NSQWyb3qxlg&oe=68853974&_nc_sid=e6ed6c",
+          "mediaKeyTimestamp": "1750972565",
+          "jpegThumbnail": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wgARCABIAEgDASIAAhEBAxEB/8QAGgAAAwEBAQEAAAAAAAAAAAAAAAQFAwYBAv/EABcBAQEBAQAAAAAAAAAAAAAAAAECAAP/2gAMAwEAAhADEAAAALydGNsW+XrD4/ztHFXz5HfJKJaMHpotC+DyMdPl+XYRdXfCKTPo68urQxUnrotnoGNWDbTxCxuPPHQjCKliduiS1KNUN2Oc109V7OqCqJmzmAVLPMAjbgD4oFGAEV//xAAeEQACAwABBQAAAAAAAAAAAAAAAQIRIRASICIxQf/aAAgBAgEBPwB33WZQvFUhX8JCVjzCtOqiWPSCJKxpoik/ZLWRL0fH/8QAHBEAAgIDAQEAAAAAAAAAAAAAAAERMQIQEiFB/9oACAEDAQE/AFCLHCvUaSHZE2OPpzCG4L9OvIOZFl0ZsxygkbaoxbhLTXgtf//EACoQAAIBAwMEAQQCAwAAAAAAAAECAwAEERIhMQUTQVEiFCMyYTOBUnGh/9oACAEBAAE/ADblvyar5VjGiMbnk10/EFyCxHy2okAZPAq36m0960SqO2DjNNcRLII2cBj4rmjUyK3IzUkixIXY4AFTziYdwHIJqKTF0rMdg1XNx3IpHVvgBj/ddMPavg5GFPNdSjjkKyK3y5GKh/iTPOKeWNNmdQf2a6tcXAcfTt/Q811KJ5rN0QZYiowY41jPg4qSyYpkEajvRlkjj7B4XfI81AY2cAyMG9e6REVBNJnIqO8luJ+3AxU+c8Yq/tZVJczFyP3SXlxMBCGORx7pd0GfIq+t2W+RY1+B3q6AQMx1AgYqCDuyP88gDzTW7CUEHG+KlXTAqnfarSFWDyairZ5HqriWRiTtoro8Sy9TwfxG9SXXaT5rpNSXhkYMcbcVd3paMgnirUTAl/8ALxV1MxYRqfkDRn1WaM3OMUrCOJovLb1dLMU0xKcDk10+O4s5O+0TaSOavJjJKw/VRNkHJ4qRNU+PBNX0zQlI4zjA3qA6p8scmogZFWMgYxmooFlbLKcinijXQgUYJ3q4cadIG1fS3LyFiuFxTK8D4cYouEbV/wBq5m70hYesV036cTMbgkADbFCaIqiwb+qjVlxmj9yZR6q9cojH1SO0KMWJbNXc/fyrDAqezRbRmUEnGc0M8UQQd6SeRGUxkhhVh1KXAFwv90hiZtYIziutThftg7msgqy54o24ZwceaKAwsmPFOuidx6NWMCTONYzk8VP0tLWUyocp4B8U/b7Wc/L1TzuN1YikjlupeSx9mv/+AAMA/9k=",
+          "contextInfo": {},
+          "firstScanSidecar": "IwshffUGEawG8w==",
+          "firstScanLength": 21944,
+          "scansSidecar": "IwshffUGEawG8/LlpIxfKx9+YtuqwDXa31c7GgllLwI1z9oRxMXn4Q==",
+          "scanLengths": [
+            21944,
+            73692,
+            39507,
+            68950
+          ],
+          "midQualityFileSha256": "syXY3C/DyRYFZc0W5Otd/DXDzgUS9kEGzI2qbSYWtvQ="
+        },
+        "messageContextInfo": {
+          "deviceListMetadata": {
+            "senderKeyHash": "GIAVj458BiAN1g==",
+            "senderTimestamp": "1750433542",
+            "recipientKeyHash": "MBCozQX4V6vlWg==",
+            "recipientTimestamp": "1750669644"
+          },
+          "deviceListMetadataVersion": 2,
+          "messageSecret": "yMQ4IGht/c25zc8g4iMkQXLIiRmm1h1C5t/ZaCqDTBU="
+        }
+      },
+      "contextInfo": {},
+      "messageType": "imageMessage",
+      "messageTimestamp": 1750972814,
+      "instanceId": "c5215849-bfb9-413c-aa94-dfa911c8310a",
+      "source": "ios"
+    },
+    "destination": "https://cf94481b-abb0-462d-99ce-66c0beae05d0-00-25qqlo4pnl49g.worf.replit.dev/api/evolution/webhook/live-test-1750199771",
+    "date_time": "2025-06-26T18:20:14.861Z",
+    "sender": "15103165094@s.whatsapp.net",
+    "server_url": "https://evolution-api-evolution-api.vuswn0.easypanel.host",
+    "apikey": "119FA240-45ED-46A7-AE13-5A1B7C909D7D"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

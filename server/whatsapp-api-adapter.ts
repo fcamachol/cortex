@@ -211,7 +211,9 @@ export const WebhookApiAdapter = {
                 console.log(`✅ [${instanceId}] Message stored: ${storedMessage.messageId}`);
                 
                 // Handle media storage after message is saved to avoid foreign key constraint errors
+                console.log(`🎯 Checking if message needs media processing: type="${cleanMessage.messageType}"`);
                 if (['image', 'video', 'audio', 'document', 'sticker'].includes(cleanMessage.messageType)) {
+                    console.log(`📁 Calling handleMediaStorage for message ${cleanMessage.messageId} with instanceId: ${instanceId}`);
                     await this.handleMediaStorage(rawMessage, instanceId, cleanMessage.messageType);
                 }
                 
@@ -2345,6 +2347,16 @@ export const WebhookApiAdapter = {
             mediaInfo.isViewOnce = mediaData.viewOnce || false;
 
             try {
+                // Debug logging before database call
+                console.log(`🔍 handleMediaStorage calling upsertWhatsappMessageMedia with:`, {
+                    messageId: mediaInfo.messageId,
+                    instanceName: mediaInfo.instanceName,
+                    hasInstanceName: !!mediaInfo.instanceName,
+                    instanceNameType: typeof mediaInfo.instanceName,
+                    originalInstanceId: instanceId,
+                    mediaInfoKeys: Object.keys(mediaInfo)
+                });
+                
                 // Store media metadata in database
                 await storage.upsertWhatsappMessageMedia(mediaInfo as InsertWhatsappMessageMedia);
                 

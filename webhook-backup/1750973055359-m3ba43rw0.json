@@ -1,0 +1,39 @@
+{
+  "id": "1750973055359-m3ba43rw0",
+  "timestamp": "2025-06-26T21:24:15.359Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages.upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "live-test-1750199771",
+    "data": {
+      "key": {
+        "remoteJid": "5215579188699@s.whatsapp.net",
+        "fromMe": false,
+        "id": "DEBUG_MEDIA_INSTANCE_1750973055199"
+      },
+      "pushName": "Debug User",
+      "status": "DELIVERY_ACK",
+      "message": {
+        "imageMessage": {
+          "url": "https://mmg.whatsapp.net/v/t62.7117-24/debug_image.enc",
+          "mimetype": "image/jpeg",
+          "fileSha256": "debugsha256hash",
+          "fileLength": "12345",
+          "width": 800,
+          "height": 600,
+          "mediaKey": "debugmediakey123",
+          "fileEncSha256": "debugencsha256",
+          "directPath": "/v/t62.7117-24/debug_image.enc",
+          "mediaKeyTimestamp": "1750673000"
+        }
+      },
+      "messageType": "imageMessage",
+      "messageTimestamp": 1750673000,
+      "instanceId": "debug-instance-id",
+      "source": "android"
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
