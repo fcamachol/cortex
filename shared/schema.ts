@@ -85,7 +85,7 @@ export const whatsappContacts = whatsappSchema.table("contacts", {
 
 export const whatsappChats = whatsappSchema.table("chats", {
   chatId: varchar("chat_id", { length: 100 }).notNull(),
-  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  instanceName: varchar("instance_name", { length: 100 }).notNull(),
   type: chatTypeEnum("type").notNull(),
   unreadCount: integer("unread_count").default(0).notNull(),
   isArchived: boolean("is_archived").default(false).notNull(),
@@ -98,13 +98,13 @@ export const whatsappChats = whatsappSchema.table("chats", {
 }, (table) => ({
   pk: {
     name: "chats_pkey",
-    columns: [table.chatId, table.instanceId]
+    columns: [table.chatId, table.instanceName]
   }
 }));
 
 export const whatsappMessages = whatsappSchema.table("messages", {
   messageId: varchar("message_id", { length: 255 }).notNull(),
-  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  instanceName: varchar("instance_name", { length: 100 }).notNull(),
   chatId: varchar("chat_id", { length: 100 }).notNull(),
   senderJid: varchar("sender_jid", { length: 100 }).notNull(),
   fromMe: boolean("from_me").notNull(),
@@ -123,14 +123,14 @@ export const whatsappMessages = whatsappSchema.table("messages", {
 }, (table) => ({
   pk: {
     name: "messages_pkey",
-    columns: [table.messageId, table.instanceId]
+    columns: [table.messageId, table.instanceName]
   }
 }));
 
 export const whatsappMessageEditHistory = whatsappSchema.table("message_edit_history", {
   editId: serial("edit_id").primaryKey(),
   messageId: varchar("message_id", { length: 255 }).notNull(),
-  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  instanceName: varchar("instance_name", { length: 100 }).notNull(),
   oldContent: text("old_content"),
   editTimestamp: timestamp("edit_timestamp", { withTimezone: true }).notNull(),
 });
@@ -138,7 +138,7 @@ export const whatsappMessageEditHistory = whatsappSchema.table("message_edit_his
 export const whatsappMessageMedia = whatsappSchema.table("message_media", {
   mediaId: serial("media_id").primaryKey(),
   messageId: varchar("message_id", { length: 255 }).notNull(),
-  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  instanceName: varchar("instance_name", { length: 100 }).notNull(),
   mimetype: varchar("mimetype", { length: 100 }).notNull(),
   fileSizeBytes: bigint("file_size_bytes", { mode: "number" }),
   fileUrl: varchar("file_url", { length: 512 }),
@@ -155,7 +155,7 @@ export const whatsappMessageMedia = whatsappSchema.table("message_media", {
 export const whatsappMessageReactions = whatsappSchema.table("message_reactions", {
   reactionId: serial("reaction_id").primaryKey(),
   messageId: varchar("message_id", { length: 255 }).notNull(),
-  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  instanceName: varchar("instance_name", { length: 100 }).notNull(),
   reactorJid: varchar("reactor_jid", { length: 100 }).notNull(),
   reactionEmoji: varchar("reaction_emoji", { length: 10 }),
   fromMe: boolean("from_me").notNull().default(false),
@@ -165,14 +165,14 @@ export const whatsappMessageReactions = whatsappSchema.table("message_reactions"
 export const whatsappMessageUpdates = whatsappSchema.table("message_updates", {
   updateId: serial("update_id").primaryKey(),
   messageId: varchar("message_id", { length: 255 }).notNull(),
-  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  instanceName: varchar("instance_name", { length: 100 }).notNull(),
   status: messageStatusEnum("status").notNull(),
   timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
 });
 
 export const whatsappGroups = whatsappSchema.table("groups", {
   groupJid: varchar("group_jid", { length: 100 }).notNull(),
-  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  instanceName: varchar("instance_name", { length: 100 }).notNull(),
   subject: varchar("subject", { length: 255 }).notNull(),
   description: text("description"),
   ownerJid: varchar("owner_jid", { length: 100 }),
@@ -182,33 +182,33 @@ export const whatsappGroups = whatsappSchema.table("groups", {
 }, (table) => ({
   pk: {
     name: "groups_pkey",
-    columns: [table.groupJid, table.instanceId]
+    columns: [table.groupJid, table.instanceName]
   }
 }));
 
 export const whatsappGroupParticipants = whatsappSchema.table("group_participants", {
   groupJid: varchar("group_jid", { length: 100 }).notNull(),
   participantJid: varchar("participant_jid", { length: 100 }).notNull(),
-  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  instanceName: varchar("instance_name", { length: 100 }).notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
   isSuperAdmin: boolean("is_super_admin").default(false).notNull(),
 }, (table) => ({
   pk: {
     name: "group_participants_pkey",
-    columns: [table.groupJid, table.participantJid, table.instanceId]
+    columns: [table.groupJid, table.participantJid, table.instanceName]
   }
 }));
 
 export const whatsappLabels = whatsappSchema.table("labels", {
   labelId: varchar("label_id", { length: 100 }).notNull(),
-  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  instanceName: varchar("instance_name", { length: 100 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   colorIndex: integer("color_index"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   pk: {
     name: "labels_pkey",
-    columns: [table.labelId, table.instanceId]
+    columns: [table.labelId, table.instanceName]
   }
 }));
 
