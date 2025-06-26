@@ -412,7 +412,7 @@ class DatabaseStorage {
         const [result] = await db.insert(whatsappChats)
             .values(chat)
             .onConflictDoUpdate({
-                target: [whatsappChats.chatId, whatsappChats.instanceId],
+                target: [whatsappChats.chatId, whatsappChats.instanceName],
                 set: {
                     unreadCount: chat.unreadCount,
                     lastMessageTimestamp: chat.lastMessageTimestamp,
@@ -427,7 +427,7 @@ class DatabaseStorage {
         const [result] = await db.insert(whatsappGroups)
             .values(group)
             .onConflictDoUpdate({
-                target: [whatsappGroups.groupJid, whatsappGroups.instanceId],
+                target: [whatsappGroups.groupJid, whatsappGroups.instanceName],
                 set: {
                     subject: group.subject,
                     description: group.description,
@@ -456,7 +456,7 @@ class DatabaseStorage {
         const [result] = await db.insert(whatsappMessages)
             .values(message)
             .onConflictDoUpdate({
-                target: [whatsappMessages.messageId, whatsappMessages.instanceId],
+                target: [whatsappMessages.messageId, whatsappMessages.instanceName],
                 set: {
                     content: message.content,
                     isEdited: message.isEdited,
@@ -474,7 +474,7 @@ class DatabaseStorage {
                     last_message_timestamp = ${message.timestamp},
                     updated_at = NOW()
                 WHERE chat_id = ${message.chatId} 
-                AND instance_id = ${message.instanceId}
+                AND instance_name = ${message.instanceName}
                 AND (last_message_timestamp IS NULL OR last_message_timestamp < ${message.timestamp})
             `);
         }
@@ -482,15 +482,15 @@ class DatabaseStorage {
         return result;
     }
 
-    async ensureChatExists(chatId: string, instanceId: string): Promise<void> {
+    async ensureChatExists(chatId: string, instanceName: string): Promise<void> {
         console.log(`🔊 LOUD DEBUG - ensureChatExists called with:`);
         console.log(`🔊   chatId: "${chatId}" (length: ${chatId?.length}, type: ${typeof chatId})`);
-        console.log(`🔊   instanceId: "${instanceId}" (length: ${instanceId?.length}, type: ${typeof instanceId})`);
+        console.log(`🔊   instanceName: "${instanceName}" (length: ${instanceName?.length}, type: ${typeof instanceName})`);
         console.log(`🔊   chatId ends with @g.us: ${chatId?.endsWith('@g.us')}`);
         console.log(`🔊   chatId ends with @s.whatsapp.net: ${chatId?.endsWith('@s.whatsapp.net')}`);
         
         // Check if chat already exists
-        const existingChat = await this.getWhatsappChat(chatId, instanceId);
+        const existingChat = await this.getWhatsappChat(chatId, instanceName);
         if (existingChat) {
             console.log(`🔊 LOUD DEBUG - Chat already exists: ${chatId}`);
             return; // Chat already exists
@@ -503,7 +503,7 @@ class DatabaseStorage {
         // Create the chat record
         const newChat: InsertWhatsappChat = {
             chatId,
-            instanceId,
+            instanceName,
             type: chatType,
             unreadCount: 0,
             isArchived: false,
@@ -517,16 +517,16 @@ class DatabaseStorage {
         console.log(`✅ Auto-created chat: ${chatId} (${chatType})`);
 
         // Also ensure contact exists for the chat
-        await this.ensureContactExists(chatId, instanceId, chatType);
+        await this.ensureContactExists(chatId, instanceName, chatType);
     }
 
-    async ensureContactExists(jid: string, instanceId: string, chatType: string): Promise<void> {
+    async ensureContactExists(jid: string, instanceName: string, chatType: string): Promise<void> {
         // Check if contact already exists
         const existingContact = await db.select()
             .from(whatsappContacts)
             .where(and(
                 eq(whatsappContacts.jid, jid),
-                eq(whatsappContacts.instanceId, instanceId)
+                eq(whatsappContacts.instanceName, instanceName)
             ))
             .limit(1);
 
@@ -539,7 +539,7 @@ class DatabaseStorage {
         
         const newContact = {
             jid,
-            instanceId,
+            instanceName,
             pushName: contactName,
             profilePictureUrl: null,
             verifiedName: null,
