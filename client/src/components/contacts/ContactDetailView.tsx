@@ -214,6 +214,7 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
             initialData={{
               fullName: contact.fullName,
               relationship: contact.relationship || "",
+              tags: contact.tags || [],
               profilePictureUrl: contact.profilePictureUrl || "",
               notes: contact.notes || "",
             }}

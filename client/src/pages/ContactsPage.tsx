@@ -51,6 +51,7 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
   };
 
   const getFilteredContacts = () => {
+    if (!Array.isArray(contactsList)) return [];
     if (!searchTerm) return contactsList;
     return contactsList.filter((contact: CrmContact) =>
       contact.fullName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -226,7 +227,7 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Heart className="w-5 h-5" />
-                    Family ({contactsList.filter((c: CrmContact) => c.relationship === "Family").length})
+                    Family ({Array.isArray(contactsList) ? contactsList.filter((c: CrmContact) => c.relationship === "Family").length : 0})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>

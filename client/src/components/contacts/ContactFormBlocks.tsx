@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,6 +73,75 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+
+  // Fetch existing contact details in edit mode
+  useEffect(() => {
+    if (isEditMode && contactId) {
+      const fetchContactDetails = async () => {
+        try {
+          const response = await apiRequest('GET', `/api/crm/contacts/${contactId}/details`);
+          
+          // Populate blocks from existing contact data
+          const newBlocks: Block[] = [];
+          
+          // Add phone blocks
+          if (response.phones) {
+            response.phones.forEach((phone: any, index: number) => {
+              newBlocks.push({
+                id: `phone-${index}`,
+                type: 'phone',
+                data: {
+                  number: phone.phoneNumber,
+                  type: phone.label || 'Mobile',
+                  isPrimary: phone.isPrimary,
+                  hasWhatsApp: phone.isWhatsappLinked
+                }
+              });
+            });
+          }
+          
+          // Add email blocks
+          if (response.emails) {
+            response.emails.forEach((email: any, index: number) => {
+              newBlocks.push({
+                id: `email-${index}`,
+                type: 'email',
+                data: {
+                  address: email.emailAddress,
+                  type: email.label || 'Personal',
+                  isPrimary: email.isPrimary
+                }
+              });
+            });
+          }
+          
+          // Add address blocks
+          if (response.addresses) {
+            response.addresses.forEach((address: any, index: number) => {
+              newBlocks.push({
+                id: `address-${index}`,
+                type: 'address',
+                data: {
+                  street: address.streetAddress,
+                  city: address.city,
+                  state: address.state,
+                  zipCode: address.postalCode,
+                  country: address.country,
+                  type: address.label || 'Home'
+                }
+              });
+            });
+          }
+          
+          setBlocks(newBlocks);
+        } catch (error) {
+          console.error('Error fetching contact details:', error);
+        }
+      };
+      
+      fetchContactDetails();
+    }
+  }, [isEditMode, contactId]);
 
   const createContactMutation = useMutation({
     mutationFn: async () => {
