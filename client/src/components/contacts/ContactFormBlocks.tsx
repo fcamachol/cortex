@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Phone, Mail, MapPin, Building2, Users, Link as LinkIcon, Calendar, Tag, MessageSquare, Plus, MoreHorizontal, X, User, ChevronDown, ChevronUp, Check } from "lucide-react";
@@ -52,6 +53,7 @@ interface ContactFormBlocksProps {
   initialData?: {
     fullName?: string;
     relationship?: string;
+    tags?: string[];
     profilePictureUrl?: string;
     notes?: string;
   };
@@ -63,7 +65,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
   
   // Core contact fields
   const [contactName, setContactName] = useState(initialData?.fullName || '');
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>(initialData?.tags || []);
   const [profession, setProfession] = useState('');
   const [company, setCompany] = useState('');
   
@@ -258,7 +260,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
 
         {/* Dynamic Blocks - Edit Mode vs View Mode */}
         {isPreviewMode ? (
-          <ContactViewMode blocks={blocks} contactName={contactName} profession={profession} company={company} />
+          <ContactViewMode blocks={blocks} contactName={contactName} profession={profession} company={company} tags={tags} />
         ) : (
           <div className="space-y-4">
             {/* Contact Info Section */}
@@ -927,9 +929,10 @@ interface ContactViewModeProps {
   contactName: string;
   profession: string;
   company: string;
+  tags: string[];
 }
 
-function ContactViewMode({ blocks, contactName, profession, company }: ContactViewModeProps) {
+function ContactViewMode({ blocks, contactName, profession, company, tags }: ContactViewModeProps) {
   const phoneBlocks = blocks.filter(b => b.type === 'phone');
   const emailBlocks = blocks.filter(b => b.type === 'email');
   const companyBlocks = blocks.filter(b => b.type === 'company');
@@ -941,6 +944,21 @@ function ContactViewMode({ blocks, contactName, profession, company }: ContactVi
 
   return (
     <div className="space-y-6">
+      {/* Tags */}
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {tags.map((tag, index) => (
+            <Badge 
+              key={index} 
+              variant="secondary" 
+              className="text-xs"
+            >
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      )}
+
       {/* Contact Info Block */}
       {(phoneBlocks.length > 0 || emailBlocks.length > 0) && (
         <Card className="border-2 border-dashed border-gray-300 dark:border-gray-600 p-4">
