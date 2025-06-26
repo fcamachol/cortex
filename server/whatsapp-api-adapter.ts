@@ -146,16 +146,16 @@ export const WebhookApiAdapter = {
     /**
      * NEW: Dedicated handler for reaction events.
      */
-    async handleReaction(instanceId: string, rawReaction: any, sender?: string): Promise<void> {
+    async handleReaction(instanceName: string, rawReaction: any, sender?: string): Promise<void> {
         try {
-            const cleanReaction = this.mapApiPayloadToWhatsappReaction(rawReaction, instanceId, sender);
+            const cleanReaction = this.mapApiPayloadToWhatsappReaction(rawReaction, instanceName, sender);
             if (!cleanReaction) {
-                console.warn(`[${instanceId}] Could not process invalid reaction payload.`);
+                console.warn(`[${instanceName}] Could not process invalid reaction payload.`);
                 return;
             }
 
             await storage.upsertWhatsappMessageReaction(cleanReaction);
-            console.log(`✅ [${instanceId}] Reaction stored: ${cleanReaction.reactionEmoji} on ${cleanReaction.messageId}`);
+            console.log(`✅ [${instanceName}] Reaction stored: ${cleanReaction.reactionEmoji} on ${cleanReaction.messageId}`);
             
             SseManager.notifyClientsOfNewReaction(cleanReaction);
             
