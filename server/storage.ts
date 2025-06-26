@@ -17,8 +17,8 @@ import {
     crmContactAliases, crmSpecialDates, crmInterests, crmContactInterests,
     crmCompanyMembers, crmContactGroups, crmContactGroupMembers, crmContactRelationships,
     // Finance Schema
-    financeAccounts, financeTransactions, financePayables, financeCategories,
-    financeRecurringBills, financeLoans, financeLoanPayments, financePayablePayments,
+    financeAccounts, financeTransactions, financePayables, financeReceivables, financeCategories,
+    financeRecurringBills, financeLoans, financeLoanPayments, financePayablePayments, financeReceivablePayments,
     creditCardDetails, statements,
     // Type Imports
     type AppUser, type InsertAppUser,
@@ -1619,6 +1619,75 @@ class DatabaseStorage {
             return result.rows[0];
         } catch (error) {
             console.error('Error creating payable:', error);
+            throw error;
+        }
+    }
+
+    // Receivables Management - Money owed to you
+    async getReceivables(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT 
+                    r.receivable_id as "receivableId",
+                    r.description,
+                    r.total_amount as "totalAmount",
+                    r.amount_received as "amountReceived",
+                    r.issue_date as "issueDate",
+                    r.due_date as "dueDate",
+                    r.status,
+                    r.category_id as "categoryId",
+                    r.contact_id as "contactId",
+                    r.created_at as "createdAt"
+                FROM finance.receivables r
+                ORDER BY r.due_date ASC, r.created_at DESC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error getting receivables:', error);
+            return [];
+        }
+    }
+
+    async createReceivable(data: InsertFinanceReceivable): Promise<FinanceReceivable> {
+        try {
+            const [receivable] = await db
+                .insert(financeReceivables)
+                .values({
+                    ...data,
+                    updatedAt: new Date(),
+                })
+                .returning();
+            return receivable;
+        } catch (error) {
+            console.error('Error creating receivable:', error);
+            throw error;
+        }
+    }
+
+    async updateReceivable(receivableId: number, data: Partial<InsertFinanceReceivable>): Promise<FinanceReceivable> {
+        try {
+            const [receivable] = await db
+                .update(financeReceivables)
+                .set({
+                    ...data,
+                    updatedAt: new Date(),
+                })
+                .where(eq(financeReceivables.receivableId, receivableId))
+                .returning();
+            return receivable;
+        } catch (error) {
+            console.error('Error updating receivable:', error);
+            throw error;
+        }
+    }
+
+    async deleteReceivable(receivableId: number): Promise<void> {
+        try {
+            await db
+                .delete(financeReceivables)
+                .where(eq(financeReceivables.receivableId, receivableId));
+        } catch (error) {
+            console.error('Error deleting receivable:', error);
             throw error;
         }
     }

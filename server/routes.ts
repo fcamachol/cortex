@@ -16,6 +16,7 @@ import { db } from './db';
 import {
   insertFinanceTransactionSchema,
   insertFinancePayableSchema,
+  insertFinanceReceivableSchema,
   insertFinanceRecurringBillSchema,
   insertFinanceLoanSchema,
   insertFinanceAccountSchema,
@@ -2203,6 +2204,57 @@ export async function registerRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error('Error updating payable:', error);
       res.status(500).json({ error: 'Failed to update payable' });
+    }
+  });
+
+  // =============================================================================
+  // RECEIVABLES API ROUTES - Money owed to you
+  // =============================================================================
+
+  // Get receivables
+  app.get('/api/finance/receivables', async (req: Request, res: Response) => {
+    try {
+      const receivables = await storage.getReceivables();
+      res.json(receivables || []);
+    } catch (error) {
+      console.error('Error fetching receivables:', error);
+      res.status(500).json({ error: 'Failed to fetch receivables' });
+    }
+  });
+
+  // Create receivable
+  app.post('/api/finance/receivables', async (req: Request, res: Response) => {
+    try {
+      const receivableData = insertFinanceReceivableSchema.parse(req.body);
+      const receivable = await storage.createReceivable(receivableData);
+      res.json(receivable);
+    } catch (error) {
+      console.error('Error creating receivable:', error);
+      res.status(500).json({ error: 'Failed to create receivable' });
+    }
+  });
+
+  // Update receivable
+  app.put('/api/finance/receivables/:receivableId', async (req: Request, res: Response) => {
+    try {
+      const receivableId = parseInt(req.params.receivableId);
+      const receivable = await storage.updateReceivable(receivableId, req.body);
+      res.json(receivable);
+    } catch (error) {
+      console.error('Error updating receivable:', error);
+      res.status(500).json({ error: 'Failed to update receivable' });
+    }
+  });
+
+  // Delete receivable
+  app.delete('/api/finance/receivables/:receivableId', async (req: Request, res: Response) => {
+    try {
+      const receivableId = parseInt(req.params.receivableId);
+      await storage.deleteReceivable(receivableId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting receivable:', error);
+      res.status(500).json({ error: 'Failed to delete receivable' });
     }
   });
 
