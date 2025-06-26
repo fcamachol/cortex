@@ -1164,6 +1164,11 @@ export const crmContacts = crmSchema.table("contacts", {
   relationship: varchar("relationship", { length: 100 }), // 'Family', 'Client', 'Friend', etc.
   profilePictureUrl: varchar("profile_picture_url", { length: 500 }),
   notes: text("notes"),
+  // WhatsApp Integration - Link to WhatsApp contacts
+  whatsappJid: varchar("whatsapp_jid", { length: 100 }), // Links to whatsapp.contacts.contactJid
+  whatsappInstanceId: varchar("whatsapp_instance_id", { length: 100 }), // Track which WhatsApp instance
+  isWhatsappLinked: boolean("is_whatsapp_linked").default(false).notNull(),
+  whatsappLinkedAt: timestamp("whatsapp_linked_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
