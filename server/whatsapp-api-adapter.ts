@@ -1136,7 +1136,7 @@ export const WebhookApiAdapter = {
 
         return {
             messageId: sentData.key.id,
-            instanceId: instanceId,
+            instanceName: instanceId,
             chatId: sentData.key.remoteJid,
             senderJid: sentData.key.remoteJid, // For sent messages, sender is the chat itself
             fromMe: true, // Always true for sent messages
@@ -1293,7 +1293,7 @@ export const WebhookApiAdapter = {
 
         return {
             messageId: rawMessage.key.id,
-            instanceId: instanceId,
+            instanceName: instanceId,
             chatId: rawMessage.key.remoteJid,
             senderJid: rawMessage.key.participant || rawMessage.key.remoteJid,
             fromMe: correctedFromMe,
@@ -1512,17 +1512,17 @@ export const WebhookApiAdapter = {
         return null;
     },
 
-    async mapApiPayloadToWhatsappContact(rawContact: any, instanceId: string): Promise<Omit<WhatsappContacts, 'firstSeenAt' | 'lastUpdatedAt'> | null> {
+    async mapApiPayloadToWhatsappContact(rawContact: any, instanceName: string): Promise<Omit<WhatsappContacts, 'firstSeenAt' | 'lastUpdatedAt'> | null> {
         const jid = rawContact.id || rawContact.remoteJid;
-        if (!jid || !instanceId) return null;
+        if (!jid || !instanceName) return null;
 
-        const instance = await storage.getInstanceById(instanceId);
+        const instance = await storage.getInstanceById(instanceName);
         
         // For groups, ensure we use the authentic group subject from database
         let contactName = rawContact.name || rawContact.pushName || rawContact.notify;
         if (jid.endsWith('@g.us')) {
             // Check if we have the authentic group subject in database
-            const existingGroup = await storage.getWhatsappGroup(jid, instanceId);
+            const existingGroup = await storage.getWhatsappGroup(jid, instanceName);
             if (existingGroup?.subject && existingGroup.subject !== 'Group') {
                 contactName = existingGroup.subject;
             } else if (rawContact.subject && rawContact.subject !== 'Group Chat') {
@@ -1540,7 +1540,7 @@ export const WebhookApiAdapter = {
         
         return {
             jid: jid,
-            instanceName: instanceId,
+            instanceName: instanceName,
             pushName: contactName,
             verifiedName: rawContact.verifiedName || (jid.endsWith('@g.us') ? contactName : undefined),
             profilePictureUrl: rawContact.profilePicUrl || rawContact.profilePictureUrl,
@@ -1550,12 +1550,12 @@ export const WebhookApiAdapter = {
         };
     },
     
-    async mapApiPayloadToWhatsappChat(rawChat: any, instanceId: string): Promise<Omit<WhatsappChats, 'createdAt' | 'updatedAt'> | null> {
+    async mapApiPayloadToWhatsappChat(rawChat: any, instanceName: string): Promise<Omit<WhatsappChats, 'createdAt' | 'updatedAt'> | null> {
         // --- LOUD CHAT MAPPING DIAGNOSTICS ---
         console.log('🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍');
         console.log('🔍                    CHAT MAPPING ANALYSIS                     🔍');
         console.log('🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍');
-        console.log('🔍 INSTANCE ID:', instanceId);
+        console.log('🔍 INSTANCE NAME:', instanceName);
         console.log('🔍 RAW CHAT TYPE:', typeof rawChat);
         console.log('🔍 FULL RAW CHAT PAYLOAD:');
         console.log(JSON.stringify(rawChat, null, 4));
@@ -1574,10 +1574,10 @@ export const WebhookApiAdapter = {
         
         console.log('🎯 EXTRACTED CHAT ID:', chatId);
         console.log('🎯 CHAT ID TYPE:', typeof chatId);
-        console.log('🎯 INSTANCE ID:', instanceId);
-        console.log('🎯 INSTANCE ID TYPE:', typeof instanceId);
+        console.log('🎯 INSTANCE NAME:', instanceName);
+        console.log('🎯 INSTANCE NAME TYPE:', typeof instanceName);
         
-        if (!chatId || typeof chatId !== 'string' || chatId.trim() === '' || !instanceId || typeof instanceId !== 'string' || instanceId.trim() === '') {
+        if (!chatId || typeof chatId !== 'string' || chatId.trim() === '' || !instanceName || typeof instanceName !== 'string' || instanceName.trim() === '') {
             console.error('❌❌❌ CRITICAL VALIDATION FAILURE ❌❌❌');
             console.error('❌ chatId:', chatId, 'Type:', typeof chatId);
             console.error('❌ instanceId:', instanceId, 'Type:', typeof instanceId);
@@ -1665,7 +1665,7 @@ export const WebhookApiAdapter = {
                 // Create contact directly with required fields to avoid null constraint violations
                 const ownerContact = {
                     jid: ownerJid,
-                    instanceId: instanceId,
+                    instanceName: instanceId,
                     pushName: ownerJid.split('@')[0], // Use first part of JID as name
                     verifiedName: undefined,
                     profilePictureUrl: undefined,
