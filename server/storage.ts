@@ -567,7 +567,7 @@ class DatabaseStorage {
                 display_name as "displayName",
                 owner_jid as "ownerJid",
                 client_id as "clientId",
-                api_key as "apiKey",
+                instance_id as "apiKey",
                 webhook_url as "webhookUrl",
                 is_connected as "isConnected",
                 last_connection_at as "lastConnectionAt",
