@@ -1843,8 +1843,19 @@ export async function registerRoutes(app: Express): Promise<void> {
         }
       }
       
-      if (!mediaInfo || !mediaInfo.fileLocalPath) {
+      if (!mediaInfo || (!mediaInfo.fileLocalPath && !mediaInfo.fileUrl)) {
         return res.status(404).json({ error: 'Media file not found in database' });
+      }
+
+      // If cloud URL is available, redirect to it for better performance
+      if (mediaInfo.fileUrl && process.env.ENABLE_GCS_STORAGE === 'true') {
+        console.log(`☁️ Redirecting to cloud storage: ${mediaInfo.fileUrl}`);
+        return res.redirect(302, mediaInfo.fileUrl);
+      }
+
+      // Fallback to local file serving
+      if (!mediaInfo.fileLocalPath) {
+        return res.status(404).json({ error: 'No local file path available' });
       }
 
       // Check if the file exists at the stored path
@@ -3069,6 +3080,65 @@ export async function registerRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error('Error deleting space item:', error);
       res.status(500).json({ error: 'Failed to delete space item' });
+    }
+  });
+
+  // Google Cloud Storage management endpoints
+  app.post('/api/admin/gcs/initialize', async (req: Request, res: Response) => {
+    try {
+      const { gcsMediaStorage } = await import('./gcs-media-storage');
+      await gcsMediaStorage.initializeBucket();
+      res.json({ success: true, message: 'GCS bucket initialized successfully' });
+    } catch (error) {
+      console.error('Error initializing GCS bucket:', error);
+      res.status(500).json({ error: 'Failed to initialize GCS bucket', details: error.message });
+    }
+  });
+
+  app.post('/api/admin/gcs/migrate', async (req: Request, res: Response) => {
+    try {
+      const { gcsMediaStorage } = await import('./gcs-media-storage');
+      const { localMediaDir } = req.body;
+      
+      const mediaDir = localMediaDir || path.resolve(process.cwd(), 'media');
+      console.log(`🔄 Starting migration from ${mediaDir} to Google Cloud Storage...`);
+      
+      const results = await gcsMediaStorage.migrateLocalFilesToGCS(mediaDir);
+      
+      const successCount = results.filter(r => r.success).length;
+      const totalCount = results.length;
+      
+      res.json({ 
+        success: true, 
+        message: `Migration completed: ${successCount}/${totalCount} files uploaded`,
+        results: results.slice(0, 10), // Show first 10 results
+        summary: {
+          total: totalCount,
+          successful: successCount,
+          failed: totalCount - successCount
+        }
+      });
+    } catch (error) {
+      console.error('Error during GCS migration:', error);
+      res.status(500).json({ error: 'Migration failed', details: error.message });
+    }
+  });
+
+  app.get('/api/admin/gcs/status', async (req: Request, res: Response) => {
+    try {
+      const enabled = process.env.ENABLE_GCS_STORAGE === 'true';
+      const hasCredentials = !!(process.env.GCP_PROJECT_ID && (process.env.GCP_SERVICE_ACCOUNT_KEY_PATH || process.env.GCP_SERVICE_ACCOUNT_KEY));
+      const bucketName = process.env.GCS_BUCKET_NAME || 'whatsapp-media-storage';
+      
+      res.json({
+        enabled,
+        hasCredentials,
+        bucketName,
+        projectId: process.env.GCP_PROJECT_ID || 'Not configured'
+      });
+    } catch (error) {
+      console.error('Error checking GCS status:', error);
+      res.status(500).json({ error: 'Failed to check GCS status' });
     }
   });
 

@@ -1,5 +1,6 @@
 import { getEvolutionApi } from './evolution-api';
 import { storage } from './storage';
+import { gcsMediaStorage } from './gcs-media-storage';
 import fs from 'fs/promises';
 import path from 'path';
 import { lookup } from 'mime-types';
@@ -33,24 +34,60 @@ export async function handleMediaDownload(instanceId: string, instanceApiKey: st
 
         // Step 3: Decode and store the media file
         if (mediaData.base64) {
-            const fileBuffer = Buffer.from(mediaData.base64, 'base64');
             const fileExtension = getFileExtension(mediaData.mimetype);
             const fileName = `${messageId}.${fileExtension}`;
+            
+            // Option 1: Upload directly to Google Cloud Storage
+            let cloudUrl: string | null = null;
+            if (process.env.ENABLE_GCS_STORAGE === 'true') {
+                try {
+                    cloudUrl = await gcsMediaStorage.uploadBase64ToGCS(
+                        mediaData.base64,
+                        messageId,
+                        instanceId,
+                        fileExtension,
+                        mediaData.mimetype
+                    );
+                    console.log(`☁️ [${instanceId}] Media uploaded to cloud: ${cloudUrl}`);
+                } catch (gcsError) {
+                    console.warn(`⚠️ [${instanceId}] Cloud upload failed, falling back to local storage:`, gcsError);
+                }
+            }
+            
+            // Option 2: Save locally (either as primary or fallback)
+            const fileBuffer = Buffer.from(mediaData.base64, 'base64');
             const instanceDir = path.join(MEDIA_STORAGE_PATH, instanceId);
             const filePath = path.join(instanceDir, fileName);
             
             // Ensure the storage directory exists
             await fs.mkdir(instanceDir, { recursive: true });
             
-            // Save the file
+            // Save the file locally
             await fs.writeFile(filePath, fileBuffer);
-
-            console.log(`✅ [${instanceId}] Media saved successfully: ${filePath}`);
+            console.log(`💾 [${instanceId}] Media saved locally: ${filePath}`);
             
-            // Update database with local file path
+            // Update database with both local and cloud paths
+            const mediaUpdate = {
+                fileLocalPath: filePath,
+                ...(cloudUrl && { fileUrl: cloudUrl })
+            };
+            
             await storage.updateWhatsappMessageMediaPath(messageId, instanceId, filePath);
+            
+            // If we have cloud URL, update that too
+            if (cloudUrl) {
+                // Update the media record with cloud URL
+                const mediaRecord = await storage.getWhatsappMessageMedia(messageId, instanceId);
+                if (mediaRecord) {
+                    await storage.upsertWhatsappMessageMedia({
+                        ...mediaRecord,
+                        fileUrl: cloudUrl,
+                        fileLocalPath: filePath
+                    });
+                }
+            }
 
-            return filePath;
+            return cloudUrl || filePath;
         } else {
             throw new Error("No Base64 data found in the API response");
         }
