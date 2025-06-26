@@ -2469,7 +2469,7 @@ export const WhatsAppAPIAdapter = {
                 `/message/sendText/${instanceId}`,
                 'POST',
                 payload,
-                instance.apiKey
+                instance.instanceId
             );
 
             if (response) {
