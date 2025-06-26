@@ -1823,16 +1823,26 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const { instanceName, messageId } = req.params;
       
-      // Verify instance exists
-      const instance = await storage.getWhatsappInstance(instanceName);
-      if (!instance) {
-        return res.status(404).json({ error: 'Instance not found' });
-      }
-
       console.log(`📥 Fetching media from database for message: ${messageId}`);
       
-      // Get media info from database
-      const mediaInfo = await storage.getWhatsappMessageMedia(messageId, instanceName);
+      let mediaInfo = null;
+      
+      // If instanceName is 'undefined', search across all instances
+      if (instanceName === 'undefined') {
+        console.log(`🔍 Searching for media file across all instances for message: ${messageId}`);
+        mediaInfo = await storage.getWhatsappMessageMediaAnyInstance(messageId);
+      } else {
+        // Verify instance exists first
+        const instance = await storage.getWhatsappInstance(instanceName);
+        if (!instance) {
+          console.log(`❌ Instance not found: ${instanceName}, searching across all instances`);
+          mediaInfo = await storage.getWhatsappMessageMediaAnyInstance(messageId);
+        } else {
+          // Get media info from database for specific instance
+          mediaInfo = await storage.getWhatsappMessageMedia(messageId, instanceName);
+        }
+      }
+      
       if (!mediaInfo || !mediaInfo.fileLocalPath) {
         return res.status(404).json({ error: 'Media file not found in database' });
       }
