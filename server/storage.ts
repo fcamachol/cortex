@@ -2975,29 +2975,22 @@ class DatabaseStorage {
         try {
             console.log('📅 Creating calendar event in CRM schema:', eventData.title);
             
-            const result = await db.execute(sql`
-                INSERT INTO crm.calendar_events (
-                    created_by_user_id, title, description, start_time, end_time, 
-                    is_all_day, location, instance_id, created_at, updated_at
-                )
-                VALUES (
-                    ${eventData.ownerUserId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'}, 
-                    ${eventData.title}, 
-                    ${eventData.description}, 
-                    ${eventData.startTime}, 
-                    ${eventData.endTime}, 
-                    ${eventData.isAllDay || false}, 
-                    ${eventData.location}, 
-                    ${eventData.instanceId}, 
-                    NOW(), 
-                    NOW()
-                )
-                RETURNING *
-            `);
+            const [event] = await db
+                .insert(crmCalendarEvents)
+                .values({
+                    createdByUserId: eventData.ownerUserId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42',
+                    title: eventData.title,
+                    description: eventData.description || null,
+                    startTime: eventData.startTime || new Date(),
+                    endTime: eventData.endTime || null,
+                    isAllDay: eventData.isAllDay || false,
+                    location: eventData.location || null,
+                    instanceId: eventData.instanceId || null,
+                })
+                .returning();
             
-            const createdEvent = result.rows?.[0] || result[0];
-            console.log('✅ CRM calendar event created successfully:', createdEvent?.title || eventData.title);
-            return createdEvent;
+            console.log('✅ CRM calendar event created successfully:', event?.title || eventData.title);
+            return event;
         } catch (error) {
             console.error('❌ Error creating CRM calendar event:', error);
             throw error;

@@ -1,0 +1,80 @@
+📅 Creating calendar event in CRM schema: 5215579188699@s.whatsapp.net x 5215579188699@s.whatsapp.net
+❌ Error creating CRM calendar event: error: syntax error at or near ","
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.createCalendarEvent (/home/runner/workspace/server/storage.ts:2978:28)
+    at async Object.createCalendarEventAction (/home/runner/workspace/server/action-service.ts:252:9)
+    at async Object.executeAction (/home/runner/workspace/server/action-service.ts:132:30)
+    at async Object.triggerAction (/home/runner/workspace/server/action-service.ts:101:17)
+    at async Object.processReaction (/home/runner/workspace/server/action-service.ts:58:13) {
+  length: 91,
+  severity: 'ERROR',
+  code: '42601',
+  detail: undefined,
+  hint: undefined,
+  position: '426',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'scan.l',
+  line: '1244',
+  routine: 'scanner_yyerror'
+}
+❌ Error executing action create_calendar_event: error: syntax error at or near ","
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.createCalendarEvent (/home/runner/workspace/server/storage.ts:2978:28)
+    at async Object.createCalendarEventAction (/home/runner/workspace/server/action-service.ts:252:9)
+    at async Object.executeAction (/home/runner/workspace/server/action-service.ts:132:30)
+    at async Object.triggerAction (/home/runner/workspace/server/action-service.ts:101:17)
+    at async Object.processReaction (/home/runner/workspace/server/action-service.ts:58:13) {
+  length: 91,
+  severity: 'ERROR',
+  code: '42601',
+  detail: undefined,
+  hint: undefined,
+  position: '426',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'scan.l',
+  line: '1244',
+  routine: 'scanner_yyerror'
+}
+📊 Action execution logged: c121dc10-6f0a-42df-9ebd-591e67457808 (failed)
+❌ Error in triggerAction: error: syntax error at or near ","
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.createCalendarEvent (/home/runner/workspace/server/storage.ts:2978:28)
+    at async Object.createCalendarEventAction (/home/runner/workspace/server/action-service.ts:252:9)
+    at async Object.executeAction (/home/runner/workspace/server/action-service.ts:132:30)
+    at async Object.triggerAction (/home/runner/workspace/server/action-service.ts:101:17)
+    at async Object.processReaction (/home/runner/workspace/server/action-service.ts:58:13) {
+  length: 91,
+  severity: 'ERROR',
+  code: '42601',
+  detail: undefined,
+  hint: undefined,
+  position: '426',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'scan.l',
+  line: '1244',
+  routine: 'scanner_yyerror'
+}
