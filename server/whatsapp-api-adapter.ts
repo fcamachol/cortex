@@ -1075,7 +1075,7 @@ export const WebhookApiAdapter = {
 
     // --- Data Mapping Functions ---
 
-    mapApiPayloadToWhatsappReaction(rawReaction: any, instanceId: string, sender?: string): Omit<WhatsappMessageReactions, 'reactionId'> | null {
+    mapApiPayloadToWhatsappReaction(rawReaction: any, instanceName: string, sender?: string): Omit<WhatsappMessageReactions, 'reactionId'> | null {
         const reactionMsg = rawReaction.message?.reactionMessage;
         if (!reactionMsg?.key?.id) return null;
         
@@ -1120,7 +1120,7 @@ export const WebhookApiAdapter = {
         
         return {
             messageId: reactionMsg.key.id,
-            instanceId: instanceId,
+            instanceName: instanceName,
             reactorJid: reactorJid,
             reactionEmoji: reactionMsg.text || '',
             fromMe: rawReaction.key.fromMe || false,
@@ -1128,7 +1128,7 @@ export const WebhookApiAdapter = {
         };
     },
 
-    async mapSentMessageToWhatsappMessage(sentData: any, instanceId: string): Promise<Omit<WhatsappMessages, 'createdAt'> | null> {
+    async mapSentMessageToWhatsappMessage(sentData: any, instanceName: string): Promise<Omit<WhatsappMessages, 'createdAt'> | null> {
         if (!sentData.key?.id || !sentData.key?.remoteJid) return null;
         
         const timestamp = sentData.messageTimestamp;
