@@ -197,6 +197,8 @@ export const WebhookApiAdapter = {
         
         const messages = Array.isArray(data.messages) ? data.messages : [data];
         console.log(`🚀 [${instanceId}] Processing ${messages.length} messages`);
+        console.log(`🚀 [${instanceId}] First message structure:`, JSON.stringify(messages[0], null, 2));
+        console.log(`🚀 [${instanceId}] First message has key: ${!!messages[0]?.key}`);
         if (!messages[0]?.key) {
             console.log(`🚀 [${instanceId}] No key found in first message, returning`);
             return;
@@ -204,14 +206,26 @@ export const WebhookApiAdapter = {
 
         for (const rawMessage of messages) {
             try {
+                console.log(`🔄 [${instanceId}] Processing message ${rawMessage.key?.id || 'NO_ID'}`);
+                console.log(`🔄 [${instanceId}] Message has reaction: ${!!rawMessage.message?.reactionMessage}`);
+                
                 // First, check if it's a reaction and route it to the correct handler
                 if (rawMessage.message?.reactionMessage) {
+                    console.log(`🔄 [${instanceId}] Routing to reaction handler`);
                     await this.handleReaction(instanceId, rawMessage, sender);
                     continue; // Stop processing this item as a regular message
                 }
+                
+                console.log(`🔄 [${instanceId}] Continuing with regular message processing`);
 
+                console.log(`🔧 [${instanceId}] About to map raw message to clean message`);
                 const cleanMessage = await this.mapApiPayloadToWhatsappMessage(rawMessage, instanceId);
-                if (!cleanMessage) continue;
+                if (!cleanMessage) {
+                    console.log(`❌ [${instanceId}] mapApiPayloadToWhatsappMessage returned null, skipping message`);
+                    continue;
+                }
+                console.log(`✅ [${instanceId}] Message mapped successfully: ${cleanMessage.messageId}`);
+                console.log(`✅ [${instanceId}] Message type: ${cleanMessage.messageType}, instanceName: ${cleanMessage.instanceName}`);
 
                 // ** THIS IS THE CRITICAL FIX **
                 // Ensures the chat, sender, and group (if applicable) records
@@ -251,7 +265,9 @@ export const WebhookApiAdapter = {
                 ActionService.processNewMessage(storedMessage);
 
             } catch (error) {
-                console.error(`❌ Error processing message upsert for ${rawMessage.key?.id}:`, error);
+                console.error(`❌ CRITICAL ERROR in handleMessageUpsert for ${rawMessage.key?.id}:`, error);
+                console.error(`❌ Error stack:`, error.stack);
+                console.error(`❌ Error details:`, JSON.stringify(error, null, 2));
             }
         }
     },
