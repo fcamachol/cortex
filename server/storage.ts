@@ -88,13 +88,18 @@ class DatabaseStorage {
             ))
             .orderBy(appSpaces.displayOrder, appSpaces.createdAt);
 
+            console.log('Raw spaces from database:', spaces.map(s => ({ name: s.spaceName, category: s.category })));
+
             // Build hierarchical structure with unlimited nesting
             const spacesMap = new Map();
             const rootSpaces: any[] = [];
 
             // Apply category inheritance: subspaces inherit parent's category
             const applyInheritedCategory = (space: any, parentCategory?: string) => {
-                const inheritedCategory = parentCategory || space.category || 'work';
+                // Only inherit from parent if current space has no category AND parent has one
+                const inheritedCategory = parentCategory && !space.category 
+                    ? parentCategory 
+                    : space.category || 'work';
                 return { ...space, category: inheritedCategory, childSpaces: [], items: [] };
             };
 
