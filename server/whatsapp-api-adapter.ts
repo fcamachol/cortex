@@ -1136,7 +1136,7 @@ export const WebhookApiAdapter = {
 
         return {
             messageId: sentData.key.id,
-            instanceName: instanceId,
+            instanceName: instanceName,
             chatId: sentData.key.remoteJid,
             senderJid: sentData.key.remoteJid, // For sent messages, sender is the chat itself
             fromMe: true, // Always true for sent messages

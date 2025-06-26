@@ -440,16 +440,6 @@ class DatabaseStorage {
     }
 
     async upsertWhatsappMessage(message: InsertWhatsappMessage): Promise<WhatsappMessage> {
-        console.log(`🔊 LOUD DEBUG - upsertWhatsappMessage called with:`);
-        console.log(`🔊   messageId: "${message.messageId}"`);
-        console.log(`🔊   chatId: "${message.chatId}" (length: ${message.chatId?.length})`);
-        console.log(`🔊   instanceId: "${message.instanceId}"`);
-        console.log(`🔊   senderJid: "${message.senderJid}"`);
-        console.log(`🔊   content: "${message.content?.substring(0, 50)}..."`);
-        console.log(`🔊   fromMe: ${message.fromMe}`);
-        console.log(`🔊   messageType: "${message.messageType}"`);
-        console.log(`🔊   Full message object:`, JSON.stringify(message, null, 2));
-        
         // Ensure the chat exists before inserting the message
         await this.ensureChatExists(message.chatId, message.instanceName);
 
