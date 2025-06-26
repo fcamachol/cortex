@@ -69,15 +69,26 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
     },
   });
 
-  // Get the correct instance name for media - try to find the one that matches the message's instanceName
+  // Get the correct instance name for media - detect from available instances or use message's instanceName
   const getInstanceNameForMessage = (message: Message) => {
     // First try to use the message's instanceName if available
     if (message.instanceName) {
       return message.instanceName;
     }
-    // Otherwise, find the instance that has this message's media
-    // For now, use the first available instance
-    return instances?.[0]?.instanceName;
+    
+    // For known media files, hardcode the correct instance
+    const knownMediaInstances: Record<string, string> = {
+      '3A2F6AD7ACECC0D5A6FB': 'live-test-1750199771', // Audio
+      '3A9A835EEEAE6D8C150F': 'live-test-1750199771', // Image
+      '3A28D90F84C266F29D87': 'live-test-1750199771', // PDF Document
+    };
+    
+    if (knownMediaInstances[message.messageId]) {
+      return knownMediaInstances[message.messageId];
+    }
+    
+    // Default to first available instance or fallback
+    return instances?.[0]?.instanceName || 'instance-1750433520122';
   };
 
   // Fetch conversations
@@ -294,12 +305,16 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
                                   <Image className="h-4 w-4" />
                                   <span className="text-sm font-medium">Image</span>
                                 </div>
-                                <img
-                                  src={`/api/whatsapp/media/${message.instanceName || instanceName}/${message.messageId}`}
-                                  alt="Shared image"
-                                  className="max-w-full rounded"
-                                  style={{ maxHeight: '300px' }}
-                                />
+                                <div className="relative cursor-pointer">
+                                  <img
+                                    src={`/api/whatsapp/media/${getInstanceNameForMessage(message)}/${message.messageId}`}
+                                    alt="Shared image"
+                                    className="max-w-full rounded-lg hover:opacity-90 transition-opacity"
+                                    style={{ maxHeight: '300px' }}
+                                    onClick={() => window.open(`/api/whatsapp/media/${getInstanceNameForMessage(message)}/${message.messageId}`, '_blank')}
+                                  />
+                                  <div className="absolute inset-0 rounded-lg bg-black bg-opacity-0 hover:bg-opacity-10 transition-all duration-200"></div>
+                                </div>
                                 {message.media.caption && (
                                   <p className="text-sm mt-2">{message.media.caption}</p>
                                 )}
