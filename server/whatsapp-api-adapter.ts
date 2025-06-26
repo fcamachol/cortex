@@ -952,24 +952,23 @@ export const WebhookApiAdapter = {
     async createContactAndChatRecords(cleanChat: any, rawChat: any): Promise<void> {
         if (!cleanChat.chatId || !cleanChat.instanceName) return;
 
-        // 1. Create the `whatsapp.contacts` record for the chat entity itself.
-        const chatContact = await this.mapApiPayloadToWhatsappContact({ 
-            id: cleanChat.chatId, 
-            pushName: rawChat.name 
-        }, cleanChat.instanceName);
-        if (chatContact) await storage.upsertWhatsappContact(chatContact);
-
-        // 2. If it's a group, create a placeholder in `whatsapp.groups`.
-        if (cleanChat.type === 'group') {
-            await storage.createGroupPlaceholderIfNeeded(cleanChat.chatId, cleanChat.instanceName);
-        }
-        // 3. If it's an individual, create the corresponding `crm.contact_details` record.
-        else {
-            const crmContact = await this.mapApiPayloadToCrmContactDetail({ 
-                key: { remoteJid: cleanChat.chatId }, 
+        try {
+            // 1. Create the `whatsapp.contacts` record for the chat entity itself.
+            const chatContact = await this.mapApiPayloadToWhatsappContact({ 
+                id: cleanChat.chatId, 
                 pushName: rawChat.name 
             }, cleanChat.instanceName);
-            if (crmContact) await storage.upsertCrmContactDetail(crmContact);
+            if (chatContact) await storage.upsertWhatsappContact(chatContact);
+
+            // 2. If it's a group, create group metadata if needed
+            if (cleanChat.type === 'group') {
+                // Use existing group handling logic
+                await this.handleGroupSubjectFromChat(cleanChat.chatId, rawChat, cleanChat.instanceName);
+            }
+
+            console.log(`✅ Created contact and chat records for ${cleanChat.chatId}`);
+        } catch (error) {
+            console.error(`❌ Failed to create contact and chat records for ${cleanChat.chatId}:`, error);
         }
     },
 

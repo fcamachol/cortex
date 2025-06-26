@@ -144,11 +144,20 @@ export class MessageRecoverySystem {
 
       // Attempt to process the message through the normal pipeline
       switch (failedMessage.eventType) {
+        case 'messages.upsert':
         case 'messages-upsert':
+        case 'messages.update':
+        case 'messages-update':
           return await this.recoverMessage(sanitizedPayload, failedMessage.instanceId);
+        case 'contacts.upsert':
         case 'contacts-upsert':
+        case 'contacts.update':
+        case 'contacts-update':
           return await this.recoverContact(sanitizedPayload, failedMessage.instanceId);
+        case 'chats.upsert':
         case 'chats-upsert':
+        case 'chats.update':
+        case 'chats-update':
           return await this.recoverChat(sanitizedPayload, failedMessage.instanceId);
         default:
           console.log(`❌ Unknown event type for recovery: ${failedMessage.eventType}`);
@@ -239,7 +248,7 @@ export class MessageRecoverySystem {
       // Create message record
       const message = {
         messageId: messageData.key?.id || `recovered-${Date.now()}`,
-        instanceId,
+        instanceName: instanceId, // Use instanceName field for consistency
         chatId: messageData.key?.remoteJid || 'unknown',
         senderJid: messageData.key?.fromMe ? `system@${instanceId}` : messageData.key?.remoteJid || 'unknown',
         fromMe: messageData.key?.fromMe || false,
@@ -274,7 +283,7 @@ export class MessageRecoverySystem {
       
       const contact = {
         jid: contactData.id || 'unknown',
-        instanceId,
+        instanceName: instanceId, // Use instanceName field for consistency
         pushName: contactData.name || contactData.pushName || 'Unknown',
         verifiedName: contactData.verifiedName || null,
         profilePictureUrl: contactData.profilePictureUrl || null,
@@ -301,7 +310,7 @@ export class MessageRecoverySystem {
       
       const chat = {
         chatId: chatData.id || 'unknown',
-        instanceId,
+        instanceName: instanceId, // Use instanceName field for consistency
         type: chatData.id?.includes('@g.us') ? 'group' : 'individual',
         unreadCount: chatData.unreadCount || 0,
         isArchived: chatData.archived || false,
