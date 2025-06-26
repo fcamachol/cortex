@@ -655,6 +655,9 @@ export const appSpaces = appSchema.table("spaces", {
   isFavorite: boolean("is_favorite").notNull().default(false),
   settings: jsonb("settings").default({}), // Custom space settings
   templateId: integer("template_id").references(() => appSpaceTemplates.templateId),
+  category: varchar("category", { length: 50 }), // Space category (work, personal, etc.)
+  level: integer("level").default(0), // Hierarchical level for unlimited nesting
+  path: text("path"), // Hierarchical path for efficient queries
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

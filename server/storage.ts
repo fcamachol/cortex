@@ -88,7 +88,7 @@ class DatabaseStorage {
             ))
             .orderBy(appSpaces.displayOrder, appSpaces.createdAt);
 
-            console.log('Raw spaces from database:', spaces.map(s => ({ name: s.spaceName, category: s.category })));
+
 
             // Build hierarchical structure with unlimited nesting
             const spacesMap = new Map();
