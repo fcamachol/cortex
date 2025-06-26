@@ -284,13 +284,29 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                     </div>
                   )}
                   
-                  {contact.notes && (
-                    <p className="text-gray-600 dark:text-gray-400 mt-2">
-                      {contact.notes}
-                    </p>
-                  )}
+                  {/* Quick Contact Info with WhatsApp Badge */}
+                  <div className="space-y-2 mt-3">
+                    {(fullContactDetails?.phones || contact.phones) && (fullContactDetails?.phones || contact.phones).length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-gray-500" />
+                        <span className="text-sm">{(fullContactDetails?.phones || contact.phones)[0].phoneNumber}</span>
+                        {(fullContactDetails?.phones || contact.phones)[0].isWhatsappLinked && (
+                          <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 border-green-300">
+                            <Check className="w-3 h-3 mr-1" />
+                            WhatsApp
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                    {(fullContactDetails?.emails || contact.emails) && (fullContactDetails?.emails || contact.emails).length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-gray-500" />
+                        <span className="text-sm">{(fullContactDetails?.emails || contact.emails)[0].emailAddress}</span>
+                      </div>
+                    )}
+                  </div>
                   
-                  <p className="text-sm text-gray-500 mt-2">
+                  <p className="text-sm text-gray-500 mt-3">
                     Added {formatDate(contact.createdAt)}
                   </p>
                 </div>

@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Search, Users, Heart, Star, Building2, Briefcase } from "lucide-react";
+import { Plus, Search, Users, Heart, Star, Building2, Briefcase, Check, Phone, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -178,9 +178,17 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
-                                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                                    {contact.fullName}
-                                  </h3>
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                                      {contact.fullName}
+                                    </h3>
+                                    {contact.isWhatsappLinked && (
+                                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 border-green-300">
+                                        <Check className="w-3 h-3 mr-1" />
+                                        WhatsApp
+                                      </Badge>
+                                    )}
+                                  </div>
                                   {contact.relationship && (
                                     <Badge variant="secondary" className="mt-1 text-xs">
                                       {contact.relationship}
