@@ -371,7 +371,7 @@ export const ActionService = {
                 .replace(/\{\{message_id\}\}/g, context.messageId || 'No ID')
                 .replace(/\{\{chatId\}\}/g, context.chatId || 'Unknown chat')
                 .replace(/\{\{messageId\}\}/g, context.messageId || 'Unknown message')
-                .replace(/\{\{instanceId\}\}/g, triggerContext.instanceId || 'Unknown instance')
+                .replace(/\{\{instanceId\}\}/g, triggerContext.instanceName || 'Unknown instance')
                 .replace(/\{\{reaction\}\}/g, triggerContext.triggerValue || 'Unknown reaction')
                 .replace(/\{\{triggerType\}\}/g, triggerContext.triggerType || 'Unknown trigger');
                 
