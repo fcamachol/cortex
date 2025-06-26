@@ -230,11 +230,23 @@ export const WebhookApiAdapter = {
                 // ** THIS IS THE CRITICAL FIX **
                 // Ensures the chat, sender, and group (if applicable) records
                 // exist BEFORE we attempt to save the message.
-                await this.ensureDependenciesForMessage(cleanMessage, rawMessage);
+                console.log(`🔧 [${instanceId}] About to ensure dependencies for message ${cleanMessage.messageId}`);
+                try {
+                    await this.ensureDependenciesForMessage(cleanMessage, rawMessage);
+                    console.log(`✅ [${instanceId}] Dependencies ensured successfully`);
+                } catch (depError) {
+                    console.error(`❌ [${instanceId}] Error ensuring dependencies:`, depError);
+                    throw depError;
+                }
                 
                 console.log(`💾 About to store message: ${cleanMessage.messageId}`);
-                const storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
-                console.log(`✅ [${instanceId}] Message stored: ${storedMessage.messageId}`);
+                try {
+                    const storedMessage = await storage.upsertWhatsappMessage(cleanMessage);
+                    console.log(`✅ [${instanceId}] Message stored: ${storedMessage.messageId}`);
+                } catch (storageError) {
+                    console.error(`❌ [${instanceId}] Error storing message:`, storageError);
+                    throw storageError;
+                }
                 
                 // Handle media storage after message is saved to avoid foreign key constraint errors
                 console.log(`🎯 Checking if message needs media processing: type="${cleanMessage.messageType}"`);
