@@ -391,21 +391,47 @@ export default function ConversationList({
 
   // Helper function to get display name for conversation
   const getConversationDisplayName = (conv: any) => {
-    // Use displayName from API response (already contains contact name or group subject)
-    if (conv.displayName && conv.displayName !== conv.chatId) {
-      return conv.displayName;
-    }
-    
-    // Fallback to formatted phone number for individuals
-    if (conv.chatId && !conv.chatId.includes('@g.us')) {
-      const phoneNumber = conv.chatId.replace('@s.whatsapp.net', '');
-      return formatPhoneNumber(phoneNumber);
-    }
-    
-    // Fallback for groups without names
     if (conv.chatId && conv.chatId.includes('@g.us')) {
+      // For groups, prioritize the conversation's own name/title first
+      if (conv.name && conv.name !== conv.chatId && conv.name !== 'Group') {
+        return conv.name;
+      }
+      if (conv.title && conv.title !== conv.chatId && conv.title !== 'Group') {
+        return conv.title;
+      }
+      if (conv.displayName && conv.displayName !== conv.chatId && conv.displayName !== 'Group') {
+        return conv.displayName;
+      }
+      
+      // Try to find group contact with proper name
+      const contact = contacts.find((c: any) => c.jid === conv.chatId);
+      if (contact && contact.pushName && contact.pushName !== 'Group') {
+        return contact.pushName;
+      }
+      if (contact && contact.verifiedName && contact.verifiedName !== 'Group') {
+        return contact.verifiedName;
+      }
+      
+      // Fallback for groups without names
       const groupId = conv.chatId.replace('@g.us', '').split('-')[0];
       return `Group ${formatPhoneNumber(groupId)}`;
+    } else {
+      // For individuals, use displayName from API response if available
+      if (conv.displayName && conv.displayName !== conv.chatId) {
+        return conv.displayName;
+      }
+      
+      // Try contact name
+      const contact = contacts.find((c: any) => c.jid === conv.chatId);
+      if (contact && (contact.pushName || contact.verifiedName)) {
+        return contact.pushName || contact.verifiedName;
+      }
+      
+      // Fallback to formatted phone number for individuals
+      if (conv.chatId && !conv.chatId.includes('@g.us')) {
+        const phoneNumber = conv.chatId.replace('@s.whatsapp.net', '');
+        return formatPhoneNumber(phoneNumber);
+      }
     }
     
     return conv.chatId || 'Unknown';

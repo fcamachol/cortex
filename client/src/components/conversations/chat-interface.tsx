@@ -140,19 +140,33 @@ export default function ChatInterface({
 
   // Helper function to get display name for conversation
   const getConversationDisplayName = (conv: any) => {
-    // Try to find contact name for both groups and individuals
-    const contact = contacts.find((c: any) => c.jid === conv.chatId);
-    
     if (conv.chatId.includes('@g.us')) {
-      // For groups, use group name from contacts
-      if (contact && (contact.pushName || contact.verifiedName)) {
-        return contact.pushName || contact.verifiedName;
+      // For groups, prioritize the conversation's own name/title first
+      if (conv.name && conv.name !== conv.chatId && conv.name !== 'Group') {
+        return conv.name;
       }
-      // Fallback to group identifier if no name found
+      if (conv.title && conv.title !== conv.chatId && conv.title !== 'Group') {
+        return conv.title;
+      }
+      if (conv.displayName && conv.displayName !== conv.chatId && conv.displayName !== 'Group') {
+        return conv.displayName;
+      }
+      
+      // Try to find group contact with proper name
+      const contact = contacts.find((c: any) => c.jid === conv.chatId);
+      if (contact && contact.pushName && contact.pushName !== 'Group') {
+        return contact.pushName;
+      }
+      if (contact && contact.verifiedName && contact.verifiedName !== 'Group') {
+        return contact.verifiedName;
+      }
+      
+      // Fallback to group identifier
       const groupId = conv.chatId.replace('@g.us', '').split('-')[0];
       return `Group ${formatPhoneNumber(groupId)}`;
     } else {
       // For individuals, use contact name if available
+      const contact = contacts.find((c: any) => c.jid === conv.chatId);
       if (contact && (contact.pushName || contact.verifiedName)) {
         return contact.pushName || contact.verifiedName;
       }
