@@ -275,14 +275,20 @@ export class EvolutionApi {
             }
         }
 
-        // Method 3: Try Evolution API /chat/getBase64 endpoint
+        // Method 3: Try Evolution API /chat/getBase64 endpoint with media_key authentication
         try {
             const downloadEndpoint = `/chat/getBase64/${instanceName}`;
             const downloadBody = {
                 message: messageData
             };
             
-            console.log(`🚀 Method 3: Using Evolution API getBase64 endpoint`);
+            // Add media_key to request if provided for authentication
+            if (messageData.mediaKey) {
+                downloadBody.message.mediaKey = messageData.mediaKey;
+                console.log(`🔑 Method 3: Using Evolution API getBase64 endpoint with media_key authentication`);
+            } else {
+                console.log(`🚀 Method 3: Using Evolution API getBase64 endpoint`);
+            }
             
             const downloadResponse = await this.makeRequest<any>(
                 downloadEndpoint,
@@ -313,7 +319,7 @@ export class EvolutionApi {
             console.log(`⚠️ Method 3 failed: ${error.message}`);
         }
 
-        // Method 4: Try alternative Evolution API endpoint structure
+        // Method 4: Try alternative Evolution API endpoint structure with media_key
         try {
             const downloadEndpoint = `/chat/getBase64/${instanceName}`;
             const downloadBody = {
@@ -322,7 +328,13 @@ export class EvolutionApi {
                 }
             };
             
-            console.log(`🚀 Method 4: Using Evolution API with key-only structure`);
+            // Add media_key to message structure if available
+            if (messageData.mediaKey) {
+                downloadBody.message.mediaKey = messageData.mediaKey;
+                console.log(`🔑 Method 4: Using Evolution API with key-only structure and media_key authentication`);
+            } else {
+                console.log(`🚀 Method 4: Using Evolution API with key-only structure`);
+            }
             
             const downloadResponse = await this.makeRequest<any>(
                 downloadEndpoint,

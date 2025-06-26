@@ -2424,13 +2424,23 @@ export const WebhookApiAdapter = {
                         return;
                     }
                     
-                    // Step 2: Make API call to download media using the webhook message data
+                    // Get the stored media_key from database for authentication
+                    const storedMedia = await storage.getWhatsappMessageMedia(messageId, instanceId);
+                    if (!storedMedia?.mediaKey) {
+                        console.error(`❌ [${instanceId}] No media_key found in database for message: ${messageId}`);
+                        return;
+                    }
+                    
+                    console.log(`🔑 [${instanceId}] Using stored media_key for download: ${messageId} (key: ${storedMedia.mediaKey.substring(0, 10)}...)`);
+                    
+                    // Step 2: Make API call to download media using the stored media_key for authentication
                     const downloadResponse = await evolutionApi.downloadMedia(
                         instanceId,
                         instance.apiKey,
                         {
                             key: rawMessage.key,
-                            message: rawMessage.message
+                            message: rawMessage.message,
+                            mediaKey: storedMedia.mediaKey  // Use the stored media_key for Evolution API authentication
                         }
                     );
                     
