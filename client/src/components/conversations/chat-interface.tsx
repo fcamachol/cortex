@@ -51,7 +51,7 @@ export default function ChatInterface({
   
   // Draft storage per conversation (now database-backed)
   const [replyStates, setReplyStates] = useState<{[chatId: string]: any}>({});
-  const [isDeletingDraft, setIsDeletingDraft] = useState(false);
+  // Draft functionality removed for system optimization
   
   // Waiting reply state
   const [waitingReplyMessages, setWaitingReplyMessages] = useState<Set<string>>(new Set());
@@ -707,8 +707,7 @@ export default function ChatInterface({
     }
   };
 
-  // Disable draft loading completely to prevent infinite loops
-  const currentDraft = null;
+  // Draft functionality removed for system optimization
 
   // Draft functionality removed for system optimization
 
@@ -754,17 +753,7 @@ export default function ChatInterface({
     setMessageInput("");
     setReplyToMessage(null);
     
-    // Load draft if available
-    const conversationKey = `${conversationId}-${finalInstanceId}`;
-    if (currentDraft && currentDraft.chatId === chatId && currentDraft.instanceId === finalInstanceId && !loadedDrafts.current.has(conversationKey)) {
-      if (currentDraft.content) {
-        setMessageInput(currentDraft.content);
-      }
-      if (currentDraft.replyToMessageId) {
-        setReplyToMessage({ messageId: currentDraft.replyToMessageId });
-      }
-      loadedDrafts.current.add(conversationKey);
-    }
+    // Draft functionality removed for system optimization
   }, [conversationId]); // Only depend on conversationId
 
   // Update message input ref when user types
@@ -774,22 +763,7 @@ export default function ChatInterface({
 
   // Draft functionality removed for system optimization
 
-  // Draft deletion mutation
-  const deleteDraftMutation = useMutation({
-    mutationFn: async ({ instanceId, chatId }: { instanceId: string, chatId: string }) => {
-      const response = await fetch(`/api/whatsapp/drafts/${instanceId}/${chatId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to delete draft');
-      return response.json();
-    },
-    onSuccess: () => {
-      // SSE will handle real-time updates to conversation list
-    }
-  });
+  // Draft functionality removed for system optimization
 
   // Waiting reply mutations
   const markWaitingReplyMutation = useMutation({
@@ -1405,19 +1379,7 @@ export default function ChatInterface({
                 // Auto-resize textarea using ref function
                 resizeTextarea();
                 
-                // If message is manually cleared (empty), delete any existing draft
-                // Only delete if we're not already in the process of deleting to prevent loops
-                if (newValue.trim() === '' && currentDraft && !isDeletingDraft) {
-                  setIsDeletingDraft(true);
-                  deleteDraftMutation.mutate({
-                    instanceId: finalInstanceId!,
-                    chatId: chatId!
-                  }, {
-                    onSettled: () => {
-                      setIsDeletingDraft(false);
-                    }
-                  });
-                }
+                // Draft functionality removed for system optimization
               }}
               onKeyDown={(e) => {
                 // Send message on Enter (without Shift)
