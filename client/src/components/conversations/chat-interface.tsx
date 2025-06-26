@@ -730,14 +730,14 @@ export default function ChatInterface({
   }, [conversationId, finalInstanceId]);
 
   // Track loaded drafts to prevent infinite loops
-  const loadedDrafts = useRef<Set<string>>(new Set());
+  // Draft functionality removed for system optimization
   const lastLoadedConversation = useRef<string | null>(null);
   
   useEffect(() => {
     if (!conversationId) {
       setMessageInput("");
       setReplyToMessage(null);
-      loadedDrafts.current.clear();
+      // Draft functionality removed for system optimization
       lastLoadedConversation.current = null;
       return;
     }
