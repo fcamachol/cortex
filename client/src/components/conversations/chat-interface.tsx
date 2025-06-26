@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Paperclip, Smile, Send, CheckSquare, Plus, MoreVertical, ChevronDown, Reply, Copy, Forward, Pin, Star, Trash2, X, Check, Clock } from "lucide-react";
+import { ClickableContactName } from "./ClickableContactName";
 import { ContactTasksAndEvents } from "@/components/contacts/ContactTasksAndEvents";
 import { MessageReactions } from "@/components/conversations/MessageReactions";
 import { MessageHoverActions } from "@/components/conversations/MessageHoverActions";
@@ -1055,10 +1056,13 @@ export default function ChatInterface({
                 >
 
                   {/* Sender name for group chats */}
-                  {(conversation?.type === 'group' || conversation?.chatId?.includes('@g.us')) && !message.isFromMe && (
-                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
-                      {message.senderJid ? getSenderDisplayName(message.senderJid) : 'Unknown'}
-                    </p>
+                  {(conversation?.type === 'group' || conversation?.chatId?.includes('@g.us')) && !message.isFromMe && message.senderJid && (
+                    <ClickableContactName
+                      senderJid={message.senderJid}
+                      displayName={getSenderDisplayName(message.senderJid)}
+                      instanceId={finalInstanceId}
+                      pushName={message.pushName}
+                    />
                   )}
 
                   {/* Forwarded message indicator */}
