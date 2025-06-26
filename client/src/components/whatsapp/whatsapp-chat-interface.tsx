@@ -255,7 +255,7 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
                                   </span>
                                 </div>
                                 <AudioPlayer
-                                  src={`/api/whatsapp/media/${message.instanceId}/${message.messageId}`}
+                                  src={`/api/whatsapp/media/${message.instanceName}/${message.messageId}`}
                                   duration={message.media.durationSeconds}
                                   className="bg-transparent"
                                 />
@@ -270,7 +270,7 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
                                   <span className="text-sm font-medium">Image</span>
                                 </div>
                                 <img
-                                  src={`/api/whatsapp/media/${message.instanceId}/${message.messageId}`}
+                                  src={`/api/whatsapp/media/${message.instanceName}/${message.messageId}`}
                                   alt="Shared image"
                                   className="max-w-full rounded"
                                   style={{ maxHeight: '300px' }}
@@ -289,7 +289,7 @@ export function WhatsAppChatInterface({ instanceId, userId }: WhatsAppChatInterf
                                   </span>
                                 </div>
                                 <a
-                                  href={`/api/whatsapp/media/${message.instanceId}/${message.messageId}`}
+                                  href={`/api/whatsapp/media/${message.instanceName}/${message.messageId}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-blue-500 hover:underline text-sm"
