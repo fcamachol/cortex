@@ -51,7 +51,7 @@ export const callOutcomeEnum = whatsappSchema.enum("call_outcome", [
 
 // WhatsApp Schema Tables
 export const whatsappInstances = whatsappSchema.table("instances", {
-  instanceId: varchar("instance_id", { length: 100 }).primaryKey(),
+  instanceName: varchar("instance_name", { length: 100 }).primaryKey(),
   displayName: varchar("display_name", { length: 255 }).notNull(),
   ownerJid: varchar("owner_jid", { length: 100 }).unique(),
   clientId: uuid("client_id").notNull(), // FK to users table
@@ -67,7 +67,7 @@ export const whatsappInstances = whatsappSchema.table("instances", {
 
 export const whatsappContacts = whatsappSchema.table("contacts", {
   jid: varchar("jid", { length: 100 }).notNull(),
-  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  instanceName: varchar("instance_name", { length: 100 }).notNull(),
   pushName: varchar("push_name", { length: 255 }),
   verifiedName: varchar("verified_name", { length: 255 }),
   profilePictureUrl: varchar("profile_picture_url", { length: 512 }),
@@ -79,13 +79,13 @@ export const whatsappContacts = whatsappSchema.table("contacts", {
 }, (table) => ({
   pk: {
     name: "contacts_pkey",
-    columns: [table.jid, table.instanceId]
+    columns: [table.jid, table.instanceName]
   }
 }));
 
 export const whatsappChats = whatsappSchema.table("chats", {
   chatId: varchar("chat_id", { length: 100 }).notNull(),
-  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  instanceName: varchar("instance_name", { length: 100 }).notNull(),
   type: chatTypeEnum("type").notNull(),
   unreadCount: integer("unread_count").default(0).notNull(),
   isArchived: boolean("is_archived").default(false).notNull(),
