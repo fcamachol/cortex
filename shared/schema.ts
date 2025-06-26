@@ -215,17 +215,17 @@ export const whatsappLabels = whatsappSchema.table("labels", {
 export const whatsappChatLabels = whatsappSchema.table("chat_labels", {
   chatId: varchar("chat_id", { length: 100 }).notNull(),
   labelId: varchar("label_id", { length: 100 }).notNull(),
-  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  instanceName: varchar("instance_name", { length: 100 }).notNull(),
 }, (table) => ({
   pk: {
     name: "chat_labels_pkey",
-    columns: [table.chatId, table.labelId, table.instanceId]
+    columns: [table.chatId, table.labelId, table.instanceName]
   }
 }));
 
 export const whatsappCallLogs = whatsappSchema.table("call_logs", {
   callLogId: varchar("call_log_id", { length: 255 }).notNull(),
-  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  instanceName: varchar("instance_name", { length: 100 }).notNull(),
   chatId: varchar("chat_id", { length: 100 }).notNull(),
   fromJid: varchar("from_jid", { length: 100 }).notNull(),
   fromMe: boolean("from_me").notNull(),
@@ -236,14 +236,14 @@ export const whatsappCallLogs = whatsappSchema.table("call_logs", {
 }, (table) => ({
   pk: {
     name: "call_logs_pkey",
-    columns: [table.callLogId, table.instanceId]
+    columns: [table.callLogId, table.instanceName]
   }
 }));
 
 export const whatsappMessageDeletions = whatsappSchema.table("message_deletions", {
   deletionId: varchar("deletion_id", { length: 255 }).primaryKey(),
   messageId: varchar("message_id", { length: 255 }).notNull(),
-  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  instanceName: varchar("instance_name", { length: 100 }).notNull(),
   chatId: varchar("chat_id", { length: 100 }).notNull(),
   deletedBy: varchar("deleted_by", { length: 100 }).notNull(), // JID of who deleted the message
   deletionType: varchar("deletion_type", { length: 50 }).notNull(), // 'sender', 'admin', 'everyone'
@@ -252,21 +252,21 @@ export const whatsappMessageDeletions = whatsappSchema.table("message_deletions"
   deletedAt: timestamp("deleted_at", { withTimezone: true }).defaultNow().notNull(),
   rawApiPayload: jsonb("raw_api_payload"), // Full webhook payload for debugging
 }, (table) => ({
-  messageIndex: index("message_deletions_message_idx").on(table.messageId, table.instanceId),
-  chatIndex: index("message_deletions_chat_idx").on(table.chatId, table.instanceId),
+  messageIndex: index("message_deletions_message_idx").on(table.messageId, table.instanceName),
+  chatIndex: index("message_deletions_chat_idx").on(table.chatId, table.instanceName),
   deletedAtIndex: index("message_deletions_deleted_at_idx").on(table.deletedAt),
 }));
 
 export const whatsappDrafts = whatsappSchema.table("drafts", {
   messageId: varchar("message_id", { length: 255 }).primaryKey(), // DRAFT000001 format
   chatId: varchar("chat_id", { length: 100 }).notNull(),
-  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  instanceName: varchar("instance_name", { length: 100 }).notNull(),
   content: text("content").notNull(),
   replyToMessageId: varchar("reply_to_message_id", { length: 255 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
-  chatInstanceIdx: index("drafts_chat_instance_idx").on(table.chatId, table.instanceId),
+  chatInstanceIdx: index("drafts_chat_instance_idx").on(table.chatId, table.instanceName),
   updatedAtIndex: index("drafts_updated_at_idx").on(table.updatedAt),
 }));
 
