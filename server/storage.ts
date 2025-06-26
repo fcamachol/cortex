@@ -553,7 +553,7 @@ class DatabaseStorage {
     async getWhatsappInstances(userId: string): Promise<any[]> {
         const results = await db.execute(sql`
             SELECT 
-                instance_name as "instanceId",
+                instance_name as "instanceName",
                 display_name as "displayName",
                 owner_jid as "ownerJid",
                 client_id as "clientId",
@@ -587,7 +587,7 @@ class DatabaseStorage {
             const results = await db.execute(sql`
                 SELECT 
                     m.message_id as "messageId",
-                    m.instance_name as "instanceId", 
+                    m.instance_name as "instanceName", 
                     m.chat_id as "chatId",
                     m.sender_jid as "senderJid",
                     m.from_me as "fromMe",

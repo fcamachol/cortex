@@ -21,7 +21,7 @@ export const ActionService = {
             
             // Process business logic with the stored message
             if (storedMessage.quotedMessageId) {
-                this.handleReplyToContextMessage(storedMessage.instanceId, storedMessage);
+                this.handleReplyToContextMessage(storedMessage.instanceName, storedMessage);
             }
 
             if (storedMessage.content) {
@@ -40,7 +40,7 @@ export const ActionService = {
         try {
             // Store reaction asynchronously without blocking
             storage.upsertWhatsappMessageReaction(cleanReaction).then((storedReaction) => {
-                console.log(`✅ [${cleanReaction.instanceId}] Reaction stored: ${cleanReaction.reactionEmoji} on ${cleanReaction.messageId}`);
+                console.log(`✅ [${cleanReaction.instanceName}] Reaction stored: ${cleanReaction.reactionEmoji} on ${cleanReaction.messageId}`);
                 // Notify clients of new reaction via SSE
                 SseManager.notifyClientsOfNewReaction(storedReaction);
             }).catch(error => {
@@ -269,7 +269,7 @@ export const ActionService = {
         console.log(`🔍 Processing keyword triggers for: "${storedMessage.content}"`);
         
         // Get all active keyword-based action rules
-        const keywordRules = await storage.getActionRulesByTrigger('keyword', storedMessage.content, storedMessage.instanceId);
+        const keywordRules = await storage.getActionRulesByTrigger('keyword', storedMessage.content, storedMessage.instanceName);
         
         console.log(`🎯 Found ${keywordRules.length} keyword rules for message`);
         
@@ -277,7 +277,7 @@ export const ActionService = {
             console.log(`⚡ Executing keyword action: ${rule.ruleName} (${rule.actionType})`);
             
             await this.executeAction(rule.actionType, rule.actionConfig, {
-                instanceId: storedMessage.instanceId,
+                instanceName: storedMessage.instanceName,
                 triggerType: 'keyword',
                 triggerValue: storedMessage.content,
                 context: {
@@ -438,7 +438,7 @@ export const ActionService = {
                     content: triggerContext.context.content,
                     senderJid: triggerContext.context.senderJid,
                     reactorJid: triggerContext.context.reactorJid,
-                    instanceId: triggerContext.instanceId
+                    instanceId: triggerContext.instanceName
                 },
                 status,
                 result,
@@ -458,7 +458,7 @@ export const ActionService = {
         const hashtags = this.extractHashtags(message.content || '');
         
         for (const hashtag of hashtags) {
-            await this.triggerAction(message.instanceId, 'hashtag', hashtag, {
+            await this.triggerAction(message.instanceName, 'hashtag', hashtag, {
                 messageId: message.messageId,
                 chatId: message.chatId,
                 senderJid: message.senderJid,
@@ -505,9 +505,9 @@ export const ActionService = {
         }
     },
 
-    async getChatIdFromMessage(messageId: string, instanceId: string): Promise<string | null> {
+    async getChatIdFromMessage(messageId: string, instanceName: string): Promise<string | null> {
         try {
-            const message = await storage.getWhatsappMessage(messageId, instanceId);
+            const message = await storage.getWhatsappMessage(messageId, instanceName);
             return message?.chatId || null;
         } catch (error) {
             console.error('Error getting chat ID from message:', error);
