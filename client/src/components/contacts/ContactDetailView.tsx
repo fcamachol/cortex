@@ -16,6 +16,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import ContactForm from "./ContactForm";
+import ContactFormBlocks from "./ContactFormBlocks";
 import { apiRequest } from "@/lib/queryClient";
 import type { ContactWithRelations } from "@shared/schema";
 
@@ -40,6 +41,29 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
   const [isAddingRelationship, setIsAddingRelationship] = useState(false);
   const [editingRelationshipId, setEditingRelationshipId] = useState<number | null>(null);
   const queryClient = useQueryClient();
+
+  // Fetch full contact details including phones with WhatsApp linking info
+  const { data: fullContactDetails, isLoading: isLoadingDetails } = useQuery({
+    queryKey: ['/api/crm/contacts/:contactId/details', contact.contactId],
+    queryFn: () => apiRequest('GET', `/api/crm/contacts/${contact.contactId}/details`),
+    staleTime: 30000,
+  });
+
+  // Use full contact details if available, otherwise fall back to basic contact prop
+  const contactData = fullContactDetails || contact;
+
+  // Show loading state while fetching detailed contact info
+  if (isLoadingDetails) {
+    return (
+      <Dialog open={true} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <div className="flex items-center justify-center p-8">
+            <div className="text-gray-500">Loading contact details...</div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   // Fetch all contacts for relationship selection
   const { data: allContacts = [] } = useQuery({

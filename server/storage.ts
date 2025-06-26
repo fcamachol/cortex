@@ -2150,14 +2150,45 @@ class DatabaseStorage {
                 .where(eq(crmContactPhones.contactId, phoneData.contactId));
         }
 
+        // Create WhatsApp JID from phone number and check if it exists in WhatsApp contacts
+        const whatsappJid = this.phoneToWhatsAppJid(phoneData.phoneNumber);
+        const whatsappContact = await this.getWhatsappContactByJid(whatsappJid);
+        
         const [phone] = await db.insert(crmContactPhones)
-            .values(phoneData)
+            .values({
+                ...phoneData,
+                isWhatsappLinked: !!whatsappContact,
+                whatsappJid: whatsappContact ? whatsappJid : null
+            })
             .returning();
         
-        // Automatically check for WhatsApp contact linking when phone is added
-        await this.linkContactToWhatsApp(phoneData.contactId, phoneData.phoneNumber);
-        
         return phone;
+    }
+
+    // Helper method to convert phone number to WhatsApp JID
+    private phoneToWhatsAppJid(phoneNumber: string): string {
+        // Remove all non-digit characters and convert to international format
+        const digits = phoneNumber.replace(/\D/g, '');
+        
+        // If it starts with +, remove it
+        const cleanNumber = digits.startsWith('1') ? digits : digits.replace(/^0+/, '');
+        
+        // Return WhatsApp JID format
+        return `${cleanNumber}@s.whatsapp.net`;
+    }
+
+    // Helper method to check if WhatsApp contact exists
+    private async getWhatsappContactByJid(jid: string): Promise<any | null> {
+        try {
+            const [contact] = await db.select()
+                .from(whatsappContacts)
+                .where(eq(whatsappContacts.jid, jid))
+                .limit(1);
+            return contact || null;
+        } catch (error) {
+            console.error('Error checking WhatsApp contact:', error);
+            return null;
+        }
     }
 
     async updateContactPhone(phoneId: number, updates: any): Promise<any> {
