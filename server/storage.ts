@@ -12,7 +12,7 @@ import {
     // Actions Schema
     actionRules, actionExecutions,
     // CRM Schema - Comprehensive Contacts Module
-    crmProjects, crmTasks, crmCompanies, crmCalendarEvents, crmNotes,
+    crmProjects, crmTasks, crmCompanies, crmCalendarEvents, crmEventAttendees, crmNotes,
     crmContacts, crmContactPhones, crmContactEmails, crmContactAddresses, 
     crmContactAliases, crmSpecialDates, crmInterests, crmContactInterests,
     crmCompanyMembers, crmContactGroups, crmContactGroupMembers, crmContactRelationships,
@@ -847,8 +847,25 @@ class DatabaseStorage {
                     isAllDay: eventData.isAllDay || false,
                     location: eventData.location || null,
                     instanceId: eventData.instanceId || null,
+                    triggeringMessageId: eventData.triggeringMessageId || null,
+                    projectId: eventData.projectId || null,
+                    taskId: eventData.taskId || null,
+                    relatedChatJid: eventData.relatedChatJid || null,
+                    spaceId: eventData.spaceId || null,
                 })
                 .returning();
+
+            // Handle attendees if provided
+            if (eventData.attendees && Array.isArray(eventData.attendees)) {
+                const attendeeInserts = eventData.attendees.map((attendeeId: string) => ({
+                    eventId: createdEvent.eventId,
+                    attendeeUserId: attendeeId,
+                    status: 'pending'
+                }));
+                
+                await db.insert(crmEventAttendees).values(attendeeInserts);
+                console.log(`✅ Added ${attendeeInserts.length} attendees to calendar event`);
+            }
             
             console.log('✅ CRM calendar event created successfully:', createdEvent.title);
             return createdEvent;

@@ -1368,6 +1368,15 @@ export const crmNotes = crmSchema.table("notes", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// CRM Event Attendees - Many-to-many relationship between events and users
+export const crmEventAttendees = crmSchema.table("event_attendees", {
+  eventId: integer("event_id").notNull().references(() => crmCalendarEvents.eventId, { onDelete: "cascade" }),
+  attendeeUserId: uuid("attendee_user_id").notNull().references(() => appUsers.userId, { onDelete: "cascade" }),
+  status: varchar("status", { length: 50 }).default("pending"), // pending, accepted, declined, tentative
+}, (table) => ({
+  pk: primaryKey({ columns: [table.eventId, table.attendeeUserId] }),
+}));
+
 // =========================================================================
 // CRM RELATIONS - Comprehensive relationship definitions
 // =========================================================================
