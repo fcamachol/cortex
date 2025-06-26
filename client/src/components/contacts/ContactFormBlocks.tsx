@@ -975,15 +975,30 @@ function BlockContent({ block, onUpdate, ownerUserId }: {
               />
             </div>
           </div>
+          {/* WhatsApp Integration Status */}
+          {whatsappData && whatsappData[block.data.number] && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-sm font-medium text-green-800">WhatsApp Connected</span>
+              </div>
+              <div className="text-xs text-green-700">
+                <p>Push Name: {whatsappData[block.data.number].pushName || whatsappData[block.data.number].name || 'No name'}</p>
+                <p>JID: {block.data.number}@s.whatsapp.net</p>
+              </div>
+            </div>
+          )}
+          
           <div className="flex items-center gap-4">
             <div className="flex items-center space-x-2">
               <Checkbox
                 id={`whatsapp-${block.id}`}
-                checked={block.data.hasWhatsApp}
+                checked={block.data.hasWhatsApp || (whatsappData && !!whatsappData[block.data.number])}
                 onCheckedChange={(checked) => onUpdate(block.id, 'hasWhatsApp', checked)}
+                disabled={whatsappData && !!whatsappData[block.data.number]} // Auto-detected WhatsApp
               />
               <label htmlFor={`whatsapp-${block.id}`} className="text-sm text-gray-600">
-                This number has WhatsApp
+                {whatsappData && whatsappData[block.data.number] ? 'WhatsApp (auto-detected)' : 'This number has WhatsApp'}
               </label>
             </div>
             <div className="flex items-center space-x-2">
@@ -1125,10 +1140,15 @@ function ContactViewMode({ blocks, contactName, profession, company }: ContactVi
                   <div key={block.id} className="ml-6 flex items-center gap-2">
                     <span className="text-sm">{block.data.type}{block.data.isPrimary ? ' (Primary)' : ''}:</span>
                     <span className="text-sm font-mono">{block.data.number}</span>
-                    {block.data.hasWhatsApp && (
-                      <span className="inline-flex items-center justify-center w-4 h-4 bg-green-100 text-green-600 rounded text-xs font-medium">
-                        W
-                      </span>
+                    {(block.data.hasWhatsApp || block.data.whatsappName) && (
+                      <div className="flex items-center gap-1">
+                        <span className="inline-flex items-center justify-center w-4 h-4 bg-green-100 text-green-600 rounded text-xs font-medium">
+                          W
+                        </span>
+                        {block.data.whatsappName && (
+                          <span className="text-xs text-green-600 italic">({block.data.whatsappName})</span>
+                        )}
+                      </div>
                     )}
                   </div>
                 ))}
