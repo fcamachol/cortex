@@ -258,104 +258,165 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
             </CardContent>
           </Card>
 
-          {/* All Contact Information - Flat Display */}
+          {/* Contact Details - Only Additional Information Not in Header */}
           <Card>
-            <CardContent className="p-6">
-              <div className="space-y-3">
-                {/* Phone Numbers */}
-                {fullContactDetails?.phones && fullContactDetails.phones.map((phone, index) => (
-                  <div key={index} className="text-sm">
-                    <span className="text-gray-900">{phone.phoneNumber}</span>
-                    {phone.label && <span className="text-gray-500 ml-2">({phone.label})</span>}
-                    {phone.isPrimary && <span className="text-green-600 ml-2">Primary</span>}
-                    {phone.isWhatsappLinked && <span className="text-green-600 ml-2">✓ WhatsApp</span>}
+            <CardContent className="p-6 space-y-4">
+              {/* Phone Numbers */}
+              {fullContactDetails?.phones && fullContactDetails.phones.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
+                    <Phone className="w-4 h-4" />
+                    Phone Numbers
+                  </h4>
+                  <div className="space-y-1">
+                    {fullContactDetails.phones.map((phone, index) => (
+                      <div key={index} className="text-sm">
+                        <span className="text-gray-900 dark:text-gray-100">{phone.phoneNumber}</span>
+                        {phone.label && <span className="text-gray-500 ml-2">({phone.label})</span>}
+                        {phone.isPrimary && <span className="text-green-600 ml-2">Primary</span>}
+                        {phone.isWhatsappLinked && <span className="text-green-600 ml-2">✓ WhatsApp</span>}
+                      </div>
+                    ))}
                   </div>
-                ))}
-
-                {/* Email Addresses */}
-                {fullContactDetails?.emails && fullContactDetails.emails.map((email, index) => (
-                  <div key={index} className="text-sm">
-                    <span className="text-gray-900">{email.emailAddress}</span>
-                    {email.label && <span className="text-gray-500 ml-2">({email.label})</span>}
-                    {email.isPrimary && <span className="text-green-600 ml-2">Primary</span>}
-                  </div>
-                ))}
-
-                {/* Addresses */}
-                {fullContactDetails?.addresses && fullContactDetails.addresses.map((address, index) => (
-                  <div key={index} className="text-sm">
-                    <span className="text-gray-900">{address.street}, {address.city}</span>
-                    {address.label && <span className="text-gray-500 ml-2">({address.label})</span>}
-                    {address.isPrimary && <span className="text-green-600 ml-2">Primary</span>}
-                  </div>
-                ))}
-
-                {/* Relationship */}
-                {contact.relationship && (
-                  <div className="text-sm">
-                    <span className="text-gray-900">Relationship: {contact.relationship}</span>
-                  </div>
-                )}
-
-                {/* Tags */}
-                {contact.tags && contact.tags.length > 0 && (
-                  <div className="text-sm">
-                    <span className="text-gray-900">Tags: {contact.tags.join(', ')}</span>
-                  </div>
-                )}
-
-                {/* Groups */}
-                {fullContactDetails?.groups && fullContactDetails.groups.length > 0 && (
-                  <div className="text-sm">
-                    <span className="text-gray-900">Groups: {fullContactDetails.groups.map(g => g.name).join(', ')}</span>
-                  </div>
-                )}
-
-                {/* Related Relationships */}
-                {fullContactDetails?.relationships && fullContactDetails.relationships.length > 0 && (
-                  <div className="text-sm">
-                    <span className="text-gray-900">Relationships: {fullContactDetails.relationships.map(r => 
-                      `${r.relatedContact?.fullName} (${r.relationshipType})`
-                    ).join(', ')}</span>
-                  </div>
-                )}
-
-                {/* Companies */}
-                {fullContactDetails?.companies && fullContactDetails.companies.length > 0 && (
-                  <div className="text-sm">
-                    <span className="text-gray-900">Companies: {fullContactDetails.companies.map(c => 
-                      `${c.company.name}${c.position ? ` - ${c.position}` : ''}`
-                    ).join(', ')}</span>
-                  </div>
-                )}
-
-                {/* Special Dates */}
-                {fullContactDetails?.specialDates && fullContactDetails.specialDates.length > 0 && (
-                  <div className="text-sm">
-                    <span className="text-gray-900">Special Dates: {fullContactDetails.specialDates.map(d => 
-                      `${d.label}: ${formatDate(d.date)}`
-                    ).join(', ')}</span>
-                  </div>
-                )}
-
-                {/* Interests */}
-                {fullContactDetails?.interests && fullContactDetails.interests.length > 0 && (
-                  <div className="text-sm">
-                    <span className="text-gray-900">Interests: {fullContactDetails.interests.map(i => i.interest).join(', ')}</span>
-                  </div>
-                )}
-
-                {/* Creation Date */}
-                <div className="text-sm">
-                  <span className="text-gray-900">Created: {formatDate(contact.createdAt)}</span>
                 </div>
+              )}
 
-                {/* Notes */}
-                {contact.notes && (
-                  <div className="text-sm">
-                    <span className="text-gray-900">Notes: {contact.notes.trim()}</span>
+              {/* Email Addresses */}
+              {fullContactDetails?.emails && fullContactDetails.emails.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
+                    <Mail className="w-4 h-4" />
+                    Email Addresses
+                  </h4>
+                  <div className="space-y-1">
+                    {fullContactDetails.emails.map((email, index) => (
+                      <div key={index} className="text-sm">
+                        <span className="text-gray-900 dark:text-gray-100">{email.emailAddress}</span>
+                        {email.label && <span className="text-gray-500 ml-2">({email.label})</span>}
+                        {email.isPrimary && <span className="text-green-600 ml-2">Primary</span>}
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
+
+              {/* Addresses */}
+              {fullContactDetails?.addresses && fullContactDetails.addresses.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    Addresses
+                  </h4>
+                  <div className="space-y-1">
+                    {fullContactDetails.addresses.map((address, index) => (
+                      <div key={index} className="text-sm">
+                        <span className="text-gray-900 dark:text-gray-100">
+                          {address.streetAddress}
+                          {address.city && `, ${address.city}`}
+                          {address.state && `, ${address.state}`}
+                          {address.postalCode && ` ${address.postalCode}`}
+                        </span>
+                        {address.label && <span className="text-gray-500 ml-2">({address.label})</span>}
+                        {address.isPrimary && <span className="text-green-600 ml-2">Primary</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Companies */}
+              {fullContactDetails?.companies && fullContactDetails.companies.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
+                    <Building2 className="w-4 h-4" />
+                    Companies
+                  </h4>
+                  <div className="space-y-1">
+                    {fullContactDetails.companies.map((company, index) => (
+                      <div key={index} className="text-sm">
+                        <span className="text-gray-900 dark:text-gray-100">{company.company.name}</span>
+                        {company.position && <span className="text-gray-500 ml-2">- {company.position}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Special Dates */}
+              {fullContactDetails?.specialDates && fullContactDetails.specialDates.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Special Dates
+                  </h4>
+                  <div className="space-y-1">
+                    {fullContactDetails.specialDates.map((date, index) => (
+                      <div key={index} className="text-sm">
+                        <span className="text-gray-900 dark:text-gray-100">{date.label}: {formatDate(date.date)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Interests */}
+              {fullContactDetails?.interests && fullContactDetails.interests.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
+                    <Heart className="w-4 h-4" />
+                    Interests
+                  </h4>
+                  <div className="flex flex-wrap gap-1">
+                    {fullContactDetails.interests.map((interest, index) => (
+                      <span key={index} className="text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-700 dark:text-gray-300">
+                        {interest.interest}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Contact Relationships */}
+              {fullContactDetails?.relationships && fullContactDetails.relationships.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Relationships
+                  </h4>
+                  <div className="space-y-1">
+                    {fullContactDetails.relationships.map((relationship, index) => (
+                      <div key={index} className="text-sm">
+                        <span className="text-gray-900 dark:text-gray-100">
+                          {relationship.relatedContact?.fullName} ({relationship.relationshipType})
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Groups */}
+              {fullContactDetails?.groups && fullContactDetails.groups.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Groups
+                  </h4>
+                  <div className="flex flex-wrap gap-1">
+                    {fullContactDetails.groups.map((group, index) => (
+                      <span key={index} className="text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-700 dark:text-gray-300">
+                        {group.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Creation Date */}
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-sm text-gray-500">
+                  Created: {formatDate(contact.createdAt)}
+                </div>
               </div>
             </CardContent>
           </Card>
