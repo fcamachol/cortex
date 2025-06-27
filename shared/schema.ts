@@ -782,6 +782,12 @@ export const insertAppSpaceSchema = createInsertSchema(appSpaces).omit({
   updatedAt: true,
 });
 
+export const insertAppSpaceItemSchema = createInsertSchema(appSpaceItems).omit({
+  itemId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertAppChannelSchema = createInsertSchema(appChannels).omit({
   channelId: true,
   createdAt: true,
@@ -801,6 +807,8 @@ export type AppWorkspace = typeof appWorkspaces.$inferSelect;
 export type InsertAppWorkspace = z.infer<typeof insertAppWorkspaceSchema>;
 export type AppSpace = typeof appSpaces.$inferSelect;
 export type InsertAppSpace = z.infer<typeof insertAppSpaceSchema>;
+export type AppSpaceItem = typeof appSpaceItems.$inferSelect;
+export type InsertAppSpaceItem = z.infer<typeof insertAppSpaceItemSchema>;
 export type AppChannel = typeof appChannels.$inferSelect;
 export type InsertAppChannel = z.infer<typeof insertAppChannelSchema>;
 export type AppWorkspaceMember = typeof appWorkspaceMembers.$inferSelect;
@@ -849,6 +857,7 @@ export const appSpacesRelations = relations(appSpaces, ({ one, many }) => ({
     references: [appSpaceTemplates.templateId],
   }),
   members: many(appSpaceMembers),
+  items: many(appSpaceItems),
   views: many(appSpaceViews),
   tasks: many(crmTasks),
   projects: many(crmProjects),
@@ -860,6 +869,13 @@ export const appSpaceTemplatesRelations = relations(appSpaceTemplates, ({ one, m
     references: [appUsers.userId],
   }),
   spaces: many(appSpaces),
+}));
+
+export const appSpaceItemsRelations = relations(appSpaceItems, ({ one }) => ({
+  space: one(appSpaces, {
+    fields: [appSpaceItems.spaceId],
+    references: [appSpaces.spaceId],
+  }),
 }));
 
 export const appSpaceViewsRelations = relations(appSpaceViews, ({ one }) => ({

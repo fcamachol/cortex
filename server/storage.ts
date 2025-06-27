@@ -3711,11 +3711,11 @@ class DatabaseStorage {
         }
     }
 
-    async getDriveSpace(spaceId: string): Promise<DriveSpace | undefined> {
+    async getDriveSpace(spaceId: number): Promise<DriveSpace | undefined> {
         try {
             const [space] = await db.select()
                 .from(driveSpaces)
-                .where(eq(driveSpaces.id, spaceId));
+                .where(eq(driveSpaces.spaceId, spaceId));
             return space;
         } catch (error) {
             console.error('Error fetching drive space:', error);
@@ -3723,11 +3723,11 @@ class DatabaseStorage {
         }
     }
 
-    async updateDriveSpace(spaceId: string, updates: Partial<InsertDriveSpace>): Promise<DriveSpace | undefined> {
+    async updateDriveSpace(spaceId: number, updates: Partial<InsertDriveSpace>): Promise<DriveSpace | undefined> {
         try {
             const [space] = await db.update(driveSpaces)
                 .set(updates)
-                .where(eq(driveSpaces.id, spaceId))
+                .where(eq(driveSpaces.spaceId, spaceId))
                 .returning();
             return space;
         } catch (error) {
@@ -3736,9 +3736,9 @@ class DatabaseStorage {
         }
     }
 
-    async deleteDriveSpace(spaceId: string): Promise<void> {
+    async deleteDriveSpace(spaceId: number): Promise<void> {
         try {
-            await db.delete(driveSpaces).where(eq(driveSpaces.id, spaceId));
+            await db.delete(driveSpaces).where(eq(driveSpaces.spaceId, spaceId));
         } catch (error) {
             console.error('Error deleting drive space:', error);
             throw error;
@@ -3746,15 +3746,14 @@ class DatabaseStorage {
     }
 
     // Drive Space Items Methods
-    async getDriveSpaceItems(spaceId: string): Promise<DriveSpaceItem[]> {
+    async getDriveSpaceItems(spaceId: number): Promise<DriveSpaceItem[]> {
         try {
             return await db.select()
                 .from(driveSpaceItems)
                 .where(eq(driveSpaceItems.spaceId, spaceId))
                 .orderBy(
-                    desc(driveSpaceItems.isPinned),
-                    asc(driveSpaceItems.sortOrder),
-                    asc(driveSpaceItems.name)
+                    asc(driveSpaceItems.displayOrder),
+                    asc(driveSpaceItems.title)
                 );
         } catch (error) {
             console.error('Error fetching drive space items:', error);
@@ -3769,11 +3768,11 @@ class DatabaseStorage {
             // Log activity
             await this.logDriveSpaceActivity({
                 spaceId: item.spaceId,
-                actorId: item.addedBy,
+                actorId: item.assignedTo || 'system',
                 actionType: 'created',
                 targetType: 'item',
-                targetId: item.itemId,
-                details: { itemType: item.itemType, itemName: item.name }
+                targetId: item.itemId?.toString() || '',
+                details: { itemType: item.itemType, itemName: item.title }
             });
             
             return item;
