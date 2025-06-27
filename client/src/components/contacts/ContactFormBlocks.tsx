@@ -208,6 +208,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
       const addressBlocks = blocks.filter(b => b.type === 'address');
       const companyBlocks = blocks.filter(b => b.type === 'company');
       const noteBlocks = blocks.filter(b => b.type === 'note');
+      const linkBlocks = blocks.filter(b => b.type === 'link');
 
       // Set primary contact methods
       const primaryPhone = phoneBlocks.find(b => b.data.isPrimary)?.data.number || phoneBlocks[0]?.data.number || '';
@@ -241,6 +242,11 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
           country: block.data.country,
           label: block.data.type,
           isPrimary: block.data.isPrimary
+        })),
+        relationships: linkBlocks.map(block => ({
+          relatedContactId: block.data.contactId,
+          relationshipType: block.data.relationshipType,
+          notes: block.data.notes
         }))
       };
 

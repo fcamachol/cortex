@@ -2142,7 +2142,7 @@ class DatabaseStorage {
     async updateCompleteContact(contactId: number, contactData: any): Promise<any> {
         try {
             // Extract block data
-            const { phones = [], emails = [], addresses = [], ...mainContactData } = contactData;
+            const { phones = [], emails = [], addresses = [], relationships = [], ...mainContactData } = contactData;
             
             // Update the main contact first
             const contact = await this.updateCrmContact(contactId, mainContactData);
@@ -2150,10 +2150,11 @@ class DatabaseStorage {
             // Clear existing data and recreate with new block data
             // This is a simple approach - delete all existing and recreate
             
-            // Delete existing phones, emails, addresses
+            // Delete existing phones, emails, addresses, relationships
             await db.delete(crmContactPhones).where(eq(crmContactPhones.contactId, contactId));
             await db.delete(crmContactEmails).where(eq(crmContactEmails.contactId, contactId));
             await db.delete(crmContactAddresses).where(eq(crmContactAddresses.contactId, contactId));
+            await db.delete(crmContactRelationships).where(eq(crmContactRelationships.contactId, contactId));
             
             // Add new phones (ensure Mobile label instead of WhatsApp)
             for (const phone of phones) {
