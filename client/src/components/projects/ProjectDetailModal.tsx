@@ -221,7 +221,7 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
                 </TabsContent>
 
                 <TabsContent value="tasks" className="space-y-4 p-1">
-                  {project.tasks.length === 0 ? (
+                  {!project.tasks || project.tasks.length === 0 ? (
                     <Card>
                       <CardContent className="pt-6">
                         <div className="text-center text-muted-foreground">
@@ -233,7 +233,7 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
                     </Card>
                   ) : (
                     <div className="space-y-3">
-                      {project.tasks.map((task) => (
+                      {(project.tasks || []).map((task) => (
                         <Card key={task.id}>
                           <CardContent className="pt-4">
                             <div className="flex items-center justify-between">
