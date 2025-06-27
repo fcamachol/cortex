@@ -56,7 +56,20 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
 
   const { data: companiesList = [], isLoading: companiesLoading } = useQuery({
     queryKey: ['/api/crm/companies', userId],
-    queryFn: () => fetch(`/api/crm/companies?spaceId=1`).then(res => res.json()),
+    queryFn: async () => {
+      try {
+        const res = await fetch(`/api/crm/companies?spaceId=1`);
+        if (!res.ok) {
+          console.warn('Companies API failed, returning empty array');
+          return [];
+        }
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.warn('Companies API error, returning empty array:', error);
+        return [];
+      }
+    },
     enabled: !!userId,
   });
 
