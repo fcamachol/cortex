@@ -2154,7 +2154,12 @@ class DatabaseStorage {
             await db.delete(crmContactPhones).where(eq(crmContactPhones.contactId, contactId));
             await db.delete(crmContactEmails).where(eq(crmContactEmails.contactId, contactId));
             await db.delete(crmContactAddresses).where(eq(crmContactAddresses.contactId, contactId));
-            await db.delete(crmContactRelationships).where(eq(crmContactRelationships.contactId, contactId));
+            await db.delete(crmContactRelationships).where(
+                or(
+                    eq(crmContactRelationships.contactAId, contactId),
+                    eq(crmContactRelationships.contactBId, contactId)
+                )
+            );
             
             // Add new phones (ensure Mobile label instead of WhatsApp)
             for (const phone of phones) {

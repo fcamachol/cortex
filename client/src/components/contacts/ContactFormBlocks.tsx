@@ -1387,6 +1387,9 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
 }) {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedContactName, setSelectedContactName] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const { data: contactsList = [] } = useQuery({
     queryKey: ['/api/crm/contacts', ownerUserId],
@@ -1395,6 +1398,44 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
   });
 
   const selectedContact = contactsList.find((c: any) => c.contactId === block.data.contactId);
+  
+  // Filter contacts based on search term
+  const filteredContacts = contactsList.filter((contact: any) => 
+    contact.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Handle contact selection
+  const handleContactSelect = (contact: any) => {
+    onUpdate(block.id, 'contactId', contact.contactId);
+    setSelectedContactName(contact.fullName);
+    setSearchTerm(contact.fullName);
+    setShowSuggestions(false);
+  };
+
+  // Initialize search term when modal opens
+  React.useEffect(() => {
+    if (isLinkModalOpen && selectedContact) {
+      setSearchTerm(selectedContact.fullName);
+      setSelectedContactName(selectedContact.fullName);
+    } else if (isLinkModalOpen) {
+      setSearchTerm('');
+      setSelectedContactName('');
+    }
+  }, [isLinkModalOpen, selectedContact]);
+
+  // Close suggestions when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showSuggestions) {
+        setShowSuggestions(false);
+      }
+    };
+
+    if (showSuggestions) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showSuggestions]);
 
   return (
     <div className="space-y-3">
@@ -1477,29 +1518,46 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
           </DialogHeader>
           
           <div className="space-y-4 py-4">
-            <div>
+            <div className="relative">
               <Label htmlFor="contact-select" className="text-sm font-medium">Select Contact</Label>
-              <Select
-                value={block.data.contactId?.toString() || ''}
-                onValueChange={(value) => onUpdate(block.id, 'contactId', parseInt(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a contact..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {contactsList.map((contact: any) => (
-                    <SelectItem key={contact.contactId} value={contact.contactId.toString()}>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        <span>{contact.fullName}</span>
+              <div className="relative">
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  placeholder="Choose a contact..."
+                  className="w-full border-gray-300 rounded-lg"
+                />
+                
+                {/* Dropdown Suggestions */}
+                {showSuggestions && searchTerm && filteredContacts.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {filteredContacts.slice(0, 5).map((contact: any) => (
+                      <div
+                        key={contact.contactId}
+                        onClick={() => handleContactSelect(contact)}
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                      >
+                        <User className="h-4 w-4 text-gray-500" />
+                        <span className="font-medium">{contact.fullName}</span>
                         {contact.relationship && (
                           <span className="text-xs text-gray-500">({contact.relationship})</span>
                         )}
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    ))}
+                  </div>
+                )}
+                
+                {/* No results message */}
+                {showSuggestions && searchTerm && filteredContacts.length === 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg px-3 py-2 text-gray-500 text-sm">
+                    No contacts found
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
