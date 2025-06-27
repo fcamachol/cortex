@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { Users, Plus, Check, Building2, FolderOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
@@ -37,6 +39,8 @@ export function AddGroupFromWhatsAppModal({
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [newSpaceName, setNewSpaceName] = useState('');
   const [newProjectName, setNewProjectName] = useState('');
+  const [spaceDropdownOpen, setSpaceDropdownOpen] = useState(false);
+  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -296,18 +300,45 @@ export function AddGroupFromWhatsAppModal({
               <div className="space-y-2">
                 {!showCreateSpace ? (
                   <div className="flex gap-2">
-                    <Select value={selectedSpaceId} onValueChange={setSelectedSpaceId}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select a space" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.isArray(spaces) && spaces.map((space: any) => (
-                          <SelectItem key={space.spaceId} value={space.spaceId}>
-                            {space.spaceName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={spaceDropdownOpen} onOpenChange={setSpaceDropdownOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={spaceDropdownOpen}
+                          className="flex-1 justify-between"
+                        >
+                          {selectedSpaceId
+                            ? spaces?.find((space: any) => space.spaceId === selectedSpaceId)?.spaceName
+                            : "Select a space..."}
+                          <FolderOpen className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0">
+                        <Command>
+                          <CommandInput placeholder="Search spaces..." />
+                          <CommandEmpty>No space found.</CommandEmpty>
+                          <CommandGroup>
+                            {Array.isArray(spaces) && spaces.map((space: any) => (
+                              <CommandItem
+                                key={space.spaceId}
+                                onSelect={() => {
+                                  setSelectedSpaceId(space.spaceId);
+                                  setSpaceDropdownOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${
+                                    selectedSpaceId === space.spaceId ? "opacity-100" : "opacity-0"
+                                  }`}
+                                />
+                                {space.spaceName}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <Button
                       type="button"
                       variant="outline"
@@ -354,18 +385,45 @@ export function AddGroupFromWhatsAppModal({
               <div className="space-y-2">
                 {!showCreateProject ? (
                   <div className="flex gap-2">
-                    <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select a project" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.isArray(projects) && projects.map((project: any) => (
-                          <SelectItem key={project.projectId} value={project.projectId}>
-                            {project.projectName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={projectDropdownOpen} onOpenChange={setProjectDropdownOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={projectDropdownOpen}
+                          className="flex-1 justify-between"
+                        >
+                          {selectedProjectId
+                            ? projects?.find((project: any) => project.projectId === selectedProjectId)?.projectName
+                            : "Select a project..."}
+                          <Building2 className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0">
+                        <Command>
+                          <CommandInput placeholder="Search projects..." />
+                          <CommandEmpty>No project found.</CommandEmpty>
+                          <CommandGroup>
+                            {Array.isArray(projects) && projects.map((project: any) => (
+                              <CommandItem
+                                key={project.projectId}
+                                onSelect={() => {
+                                  setSelectedProjectId(project.projectId);
+                                  setProjectDropdownOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${
+                                    selectedProjectId === project.projectId ? "opacity-100" : "opacity-0"
+                                  }`}
+                                />
+                                {project.projectName}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <Button
                       type="button"
                       variant="outline"
