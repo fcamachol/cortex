@@ -1308,7 +1308,11 @@ class DatabaseStorage {
                 console.log('Space link created successfully');
             }
             
-            return project;
+            // Map database fields to frontend-expected fields
+            return {
+                ...project,
+                name: project.project_name // Map project_name from database to name for frontend
+            };
         } catch (error) {
             console.error('Error in createProject:', error);
             throw error;
