@@ -2264,9 +2264,15 @@ class DatabaseStorage {
             // Add new special dates
             for (const dateBlock of specialDates) {
                 if (dateBlock.day && dateBlock.month) {
+                    // Determine category based on type
+                    let category = 'other';
+                    if (dateBlock.type === 'birthday') category = 'birthday';
+                    else if (dateBlock.type === 'anniversary' || dateBlock.type === 'wedding') category = 'anniversary';
+                    
                     await this.addContactSpecialDate({
                         contactId: contactId,
                         eventName: dateBlock.title || dateBlock.type || 'Special Date',
+                        category: category,
                         eventDay: dateBlock.day,
                         eventMonth: dateBlock.month,
                         originalYear: dateBlock.year || null,

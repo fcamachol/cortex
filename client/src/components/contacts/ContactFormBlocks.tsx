@@ -250,6 +250,14 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
           label: block.data.type,
           isPrimary: block.data.isPrimary
         })),
+        specialDates: dateBlocks.map(block => ({
+          eventName: block.data.title || block.data.type || 'Special Date',
+          type: block.data.type,
+          day: block.data.day,
+          month: block.data.month,
+          year: block.data.year,
+          reminderDays: block.data.reminderDays || 7
+        })),
         relationships: linkBlocks.map(block => ({
           relatedContactId: block.data.contactId,
           relationshipType: block.data.relationshipType,
