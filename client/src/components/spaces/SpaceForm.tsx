@@ -28,7 +28,7 @@ interface Space {
 }
 
 interface SpaceFormProps {
-  space?: Space | null;
+  space?: Partial<Space> | null;
   spaces?: Space[];
   onSubmit: (spaceId: number | undefined, data: any) => void;
   onClose: () => void;
@@ -89,6 +89,10 @@ export function SpaceForm({ space, spaces = [], onSubmit, onClose, isLoading, is
     s.spaceType !== 'archive' &&
     !s.isArchived
   );
+
+  // Check if parent is pre-determined (creating subspace from specific parent)
+  const isParentPredetermined = space?.parentSpaceId && !space.spaceId;
+  const parentSpace = isParentPredetermined ? spaces.find(s => s.spaceId === space.parentSpaceId) : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -254,38 +258,54 @@ export function SpaceForm({ space, spaces = [], onSubmit, onClose, isLoading, is
             </div>
 
             {/* Parent Space */}
-            {availableParentSpaces.length > 0 && (
-              <FormField
-                control={form.control}
-                name="parentSpaceId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Parent Space (Optional)</FormLabel>
-                    <Select 
-                      onValueChange={(value) => field.onChange(value === 'none' ? undefined : parseInt(value))} 
-                      defaultValue={field.value?.toString() || 'none'}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select parent space" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">No parent (root level)</SelectItem>
-                        {availableParentSpaces.map((parentSpace) => (
-                          <SelectItem key={parentSpace.spaceId} value={parentSpace.spaceId.toString()}>
-                            <div className="flex items-center space-x-2">
-                              <span>{parentSpace.icon || '📁'}</span>
-                              <span>{parentSpace.spaceName}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            {isParentPredetermined ? (
+              // Show read-only parent when creating subspace from specific parent
+              <div className="space-y-2">
+                <FormLabel>Parent Space</FormLabel>
+                <div className="flex items-center space-x-3 p-3 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                  <span>{parentSpace?.icon || '📁'}</span>
+                  <span className="font-medium">{parentSpace?.spaceName}</span>
+                  <Badge variant="secondary" className="text-xs">Automatic</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  This subspace will be created within "{parentSpace?.spaceName}"
+                </p>
+              </div>
+            ) : (
+              // Show dropdown for regular space creation
+              availableParentSpaces.length > 0 && (
+                <FormField
+                  control={form.control}
+                  name="parentSpaceId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Parent Space (Optional)</FormLabel>
+                      <Select 
+                        onValueChange={(value) => field.onChange(value === 'none' ? undefined : parseInt(value))} 
+                        defaultValue={field.value?.toString() || 'none'}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select parent space" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">No parent (root level)</SelectItem>
+                          {availableParentSpaces.map((parentSpace) => (
+                            <SelectItem key={parentSpace.spaceId} value={parentSpace.spaceId.toString()}>
+                              <div className="flex items-center space-x-2">
+                                <span>{parentSpace.icon || '📁'}</span>
+                                <span>{parentSpace.spaceName}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )
             )}
 
             {/* Cover Image */}

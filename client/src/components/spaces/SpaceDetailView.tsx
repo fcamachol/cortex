@@ -694,23 +694,25 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
       )}
 
       {/* Subspace Form Modal */}
-      {showSubspaceForm && allSpaces && (
+      {showSubspaceForm && allSpaces && space && (
         <SpaceForm
           isOpen={showSubspaceForm}
           onClose={() => setShowSubspaceForm(false)}
           spaces={Array.isArray(allSpaces) ? allSpaces : []}
+          space={{
+            parentSpaceId: spaceId // Pre-set the parent to current space
+          }}
           onSubmit={(editingSpaceId, subspaceData) => {
             // Handle subspace creation with parent assignment
             const subspaceWithParent = {
               ...subspaceData,
-              parentSpaceId: spaceId,
-              category: space?.category || 'work'
+              parentSpaceId: spaceId // Ensure parent is always set to current space
             };
             
             apiRequest('POST', '/api/spaces', subspaceWithParent).then(() => {
               toast({
                 title: "Subspace Created",
-                description: `Subspace created within "${space?.spaceName}".`,
+                description: `Subspace created within "${space.spaceName}".`,
               });
               setShowSubspaceForm(false);
               queryClient.invalidateQueries({ queryKey: ['/api/spaces'] });
