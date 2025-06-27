@@ -327,7 +327,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
       case 'link':
         return { contactId: '', relationship: '' };
       case 'date':
-        return { title: '', date: '', type: 'birthday' };
+        return { title: '', date: '', type: 'birthday', reminderDays: 7 };
       case 'interest':
         return { name: '' };
       case 'alias':
@@ -1202,6 +1202,101 @@ function BlockContent({ block, onUpdate, ownerUserId, isMainContact }: {
         </div>
       );
 
+    case 'date':
+      return (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Event Type</label>
+              <Select
+                value={block.data.type || 'birthday'}
+                onValueChange={(value) => onUpdate(block.id, 'type', value)}
+              >
+                <SelectTrigger className="h-10 border-gray-300 rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="birthday">Birthday</SelectItem>
+                  <SelectItem value="anniversary">Anniversary</SelectItem>
+                  <SelectItem value="wedding">Wedding</SelectItem>
+                  <SelectItem value="graduation">Graduation</SelectItem>
+                  <SelectItem value="work_anniversary">Work Anniversary</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Event Name</label>
+              <Input
+                placeholder="e.g., Birthday, Wedding Anniversary"
+                value={block.data.title || ''}
+                onChange={(e) => onUpdate(block.id, 'title', e.target.value)}
+                className="h-10 border-gray-300 rounded-lg"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Date</label>
+              <Input
+                type="date"
+                value={block.data.date || ''}
+                onChange={(e) => onUpdate(block.id, 'date', e.target.value)}
+                className="h-10 border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Reminder (days before)</label>
+              <Select
+                value={String(block.data.reminderDays || 7)}
+                onValueChange={(value) => onUpdate(block.id, 'reminderDays', parseInt(value))}
+              >
+                <SelectTrigger className="h-10 border-gray-300 rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 day</SelectItem>
+                  <SelectItem value="3">3 days</SelectItem>
+                  <SelectItem value="7">7 days</SelectItem>
+                  <SelectItem value="14">14 days</SelectItem>
+                  <SelectItem value="30">30 days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      );
+
+    case 'interest':
+      return (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Interest/Hobby</label>
+            <Input
+              placeholder="e.g., Marathon Running, Classical Music, Medical Research"
+              value={block.data.name || ''}
+              onChange={(e) => onUpdate(block.id, 'name', e.target.value)}
+              className="h-10 border-gray-300 rounded-lg"
+            />
+          </div>
+        </div>
+      );
+
+    case 'alias':
+      return (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Alias/Nickname</label>
+            <Input
+              placeholder="e.g., Doc, Izzy, Coach"
+              value={block.data.name || ''}
+              onChange={(e) => onUpdate(block.id, 'name', e.target.value)}
+              className="h-10 border-gray-300 rounded-lg"
+            />
+          </div>
+        </div>
+      );
+
     case 'group':
       return (
         <div className="text-sm text-gray-500 py-4 text-center">
@@ -1359,7 +1454,10 @@ function ContactViewMode({ blocks, contactName, profession, company, tags, descr
                 </div>
                 {dateBlocks.map((block) => (
                   <div key={block.id} className="ml-6">
-                    <span className="text-sm">Birthday: November 12 (Reminder: 7 days prior)</span>
+                    <span className="text-sm">
+                      {block.data.title || block.data.type}: {block.data.date ? new Date(block.data.date).toLocaleDateString() : 'No date set'} 
+                      (Reminder: {block.data.reminderDays || 7} days prior)
+                    </span>
                   </div>
                 ))}
               </div>
@@ -1372,8 +1470,12 @@ function ContactViewMode({ blocks, contactName, profession, company, tags, descr
                   <Tag className="h-4 w-4 text-orange-500" />
                   <span className="text-sm font-medium">Interests</span>
                 </div>
-                <div className="ml-6">
-                  <span className="text-sm">[Medical Research] [Classical Music] [Marathon Running]</span>
+                <div className="ml-6 flex flex-wrap gap-2">
+                  {interestBlocks.map((block) => (
+                    <Badge key={block.id} variant="outline" className="text-xs">
+                      {block.data.name}
+                    </Badge>
+                  ))}
                 </div>
               </div>
             )}
