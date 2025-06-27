@@ -1302,6 +1302,29 @@ export const crmContactRelationships = crmSchema.table("contact_relationships", 
   pk: primaryKey({ columns: [table.contactAId, table.contactBId] }),
 }));
 
+// CRM Objects - Physical items, assets, products, or any trackable entity
+export const crmObjects = crmSchema.table("objects", {
+  objectId: varchar("object_id", { length: 50 }).primaryKey(), // co_ prefixed UUID
+  ownerUserId: uuid("owner_user_id").notNull().references(() => appUsers.userId),
+  spaceId: integer("space_id").references(() => appSpaces.spaceId),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }), // 'Asset', 'Product', 'Equipment', 'Vehicle', etc.
+  brand: varchar("brand", { length: 100 }),
+  model: varchar("model", { length: 100 }),
+  serialNumber: varchar("serial_number", { length: 100 }),
+  purchaseDate: varchar("purchase_date", { length: 10 }), // DATE as string
+  purchasePrice: numeric("purchase_price", { precision: 12, scale: 2 }),
+  currentValue: numeric("current_value", { precision: 12, scale: 2 }),
+  condition: varchar("condition", { length: 50 }), // 'New', 'Good', 'Fair', 'Poor'
+  location: varchar("location", { length: 255 }),
+  status: varchar("status", { length: 50 }).notNull().default("active"), // 'active', 'sold', 'lost', 'damaged'
+  tags: text("tags").array(),
+  imageUrls: text("image_urls").array(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // CRM Projects - Project management table
 export const crmProjects = crmSchema.table("projects", {
   projectId: serial("project_id").primaryKey(),
@@ -1639,6 +1662,11 @@ export const insertCrmCompanySchema = createInsertSchema(crmCompanies).omit({
   updatedAt: true,
 });
 
+export const insertCrmObjectSchema = createInsertSchema(crmObjects).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertCrmContactGroupSchema = createInsertSchema(crmContactGroups).omit({
   groupId: true,
   createdAt: true,
@@ -1688,6 +1716,8 @@ export type CrmTask = typeof crmTasks.$inferSelect;
 export type InsertCrmTask = z.infer<typeof insertCrmTaskSchema>;
 export type CrmCompany = typeof crmCompanies.$inferSelect;
 export type InsertCrmCompany = z.infer<typeof insertCrmCompanySchema>;
+export type CrmObject = typeof crmObjects.$inferSelect;
+export type InsertCrmObject = z.infer<typeof insertCrmObjectSchema>;
 export type CrmContactGroup = typeof crmContactGroups.$inferSelect;
 export type InsertCrmContactGroup = z.infer<typeof insertCrmContactGroupSchema>;
 export type CrmContactGroupMember = typeof crmContactGroupMembers.$inferSelect;
