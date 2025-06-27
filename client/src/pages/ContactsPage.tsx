@@ -536,27 +536,57 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
         </div>
       </div>
 
-      {/* Contact Modal */}
+      {/* Contact Detail Modal */}
       {selectedContact && !editingContact && (
-        <ContactModal
+        <ContactDetailView
           contact={selectedContact}
-          isOpen={showContactModal}
+          interests={[]} 
           onClose={() => {
             setShowContactModal(false);
             setSelectedContact(null);
           }}
-          onEdit={handleEditContact}
+          onUpdate={() => {
+            queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
+          }}
+          onEdit={(contact) => {
+            setSelectedContact(null);
+            setShowContactModal(false);
+            setEditingContact(contact);
+          }}
         />
       )}
 
       {/* Contact Edit Modal */}
       {editingContact && (
-        <ContactDetailView
-          contact={editingContact}
-          interests={[]} 
-          onClose={handleCloseEdit}
-          onUpdate={handleUpdateContact}
-        />
+        <Dialog open={true} onOpenChange={() => setEditingContact(null)}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Contact</DialogTitle>
+            </DialogHeader>
+            <ContactFormBlocks
+              ownerUserId={editingContact.ownerUserId}
+              spaceId={1}
+              isEditMode={true}
+              contactId={editingContact.contactId}
+              initialData={{
+                fullName: editingContact.fullName,
+                relationship: editingContact.relationship || "",
+                tags: editingContact.tags || [],
+                profilePictureUrl: editingContact.profilePictureUrl || "",
+                notes: editingContact.notes || "",
+              }}
+              onSuccess={() => {
+                setEditingContact(null);
+                queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
+              }}
+              onDelete={() => {
+                if (editingContact.contactId) {
+                  deleteContactMutation.mutate(editingContact.contactId);
+                }
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

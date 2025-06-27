@@ -36,9 +36,10 @@ interface ContactDetailViewProps {
   interests: any[];
   onClose: () => void;
   onUpdate: () => void;
+  onEdit?: (contact: ContactWithRelations) => void;
 }
 
-export default function ContactDetailView({ contact, interests, onClose, onUpdate }: ContactDetailViewProps) {
+export default function ContactDetailView({ contact, interests, onClose, onUpdate, onEdit }: ContactDetailViewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingRelationship, setIsAddingRelationship] = useState(false);
   const [editingRelationshipId, setEditingRelationshipId] = useState<number | null>(null);
@@ -181,46 +182,15 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
   };
 
   const handleEdit = () => {
-    setIsEditing(true);
-  };
-
-  const handleUpdate = (data: any) => {
-    updateContactMutation.mutate(data);
+    onClose();
+    if (onEdit) {
+      onEdit(contact);
+    }
   };
 
   const handleDeleteContact = () => {
     deleteContactMutation.mutate(contact.contactId);
   };
-
-  if (isEditing) {
-    return (
-      <Dialog open={true} onOpenChange={() => setIsEditing(false)}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Contact</DialogTitle>
-          </DialogHeader>
-          <ContactFormBlocks
-            ownerUserId={contact.ownerUserId}
-            spaceId={1}
-            initialData={{
-              fullName: contact.fullName,
-              relationship: contact.relationship || "",
-              tags: contact.tags || [],
-              profilePictureUrl: contact.profilePictureUrl || "",
-              notes: contact.notes || "",
-            }}
-            onSuccess={() => {
-              setIsEditing(false);
-              onUpdate();
-            }}
-            onDelete={handleDeleteContact}
-            isEditMode={true}
-            contactId={contact.contactId}
-          />
-        </DialogContent>
-      </Dialog>
-    );
-  }
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
@@ -306,30 +276,6 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
             </CardContent>
           </Card>
 
-          {/* Contact Information Collapsible Section */}
-          <Collapsible open={isContactInfoOpen} onOpenChange={setIsContactInfoOpen}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-4 h-auto">
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  <span className="font-medium">CONTACT INFO</span>
-                </div>
-                {isContactInfoOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-4 px-4 pb-4">
-              <div className="text-sm text-gray-600">
-                Primary phone: {contact.notes?.includes('+') ? contact.notes.split('\n')[0]?.replace('Primary phone: ', '') : 'Not specified'}
-              </div>
-              <div className="text-sm text-gray-600">
-                Primary email: {contact.notes?.includes('@') ? contact.notes.split('\n')[1]?.replace('Primary email: ', '') : 'Not specified'}
-              </div>
-              <div className="text-sm text-gray-500">
-                Detailed contact information will be displayed here once the full contact schema is integrated.
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-
           {/* Relationships & Groups Collapsible Section */}
           <Collapsible open={isRelationshipsOpen} onOpenChange={setIsRelationshipsOpen}>
             <CollapsibleTrigger asChild>
@@ -341,19 +287,14 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                 {isRelationshipsOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-4 px-4 pb-4">
-              {contact.relationship && (
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm">Relationship</span>
-                  <Badge className={getRelationshipColor(contact.relationship)}>
-                    {contact.relationship}
-                  </Badge>
+            <CollapsibleContent className="space-y-2 px-4 pb-4">
+              {contact.relationship ? (
+                <div className="text-sm text-gray-600">
+                  Relationship: {contact.relationship}
                 </div>
+              ) : (
+                <div className="text-sm text-gray-500">No relationship specified</div>
               )}
-              <div className="text-sm text-gray-500">
-                Company affiliations and group memberships will be displayed here.
-              </div>
             </CollapsibleContent>
           </Collapsible>
 
@@ -368,15 +309,15 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                 {isPersonalDetailsOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-4 px-4 pb-4">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-purple-500" />
-                <span className="text-sm">Created</span>
-                <span className="text-sm text-gray-600">{formatDate(contact.createdAt)}</span>
+            <CollapsibleContent className="space-y-2 px-4 pb-4">
+              <div className="text-sm text-gray-600">
+                Created: {formatDate(contact.createdAt)}
               </div>
-              <div className="text-sm text-gray-500">
-                Special dates, interests, and other personal details will be displayed here.
-              </div>
+              {contact.notes && (
+                <div className="text-sm text-gray-600">
+                  Notes: {contact.notes.trim()}
+                </div>
+              )}
             </CollapsibleContent>
           </Collapsible>
 
