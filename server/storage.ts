@@ -1620,11 +1620,12 @@ class DatabaseStorage {
                     p.category_id as "categoryId",
                     p.contact_id as "contactId",
                     p.created_at as "createdAt",
-                    t.task_id as "linkedTaskId",
+                    t.id as "linkedTaskId",
                     t.title as "linkedTaskTitle",
                     t.status as "linkedTaskStatus"
                 FROM finance.payables p
-                LEFT JOIN crm.tasks t ON t.linked_payable_id = p.payable_id
+                LEFT JOIN crm.task_entities te ON te.entity_id = CONCAT('fp_', p.payable_id) AND te.relationship_type = 'linked_to_payable'
+                LEFT JOIN crm.tasks t ON t.id = te.task_id
                 ORDER BY p.due_date ASC, p.created_at DESC
             `);
             return result.rows;

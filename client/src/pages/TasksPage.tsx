@@ -361,9 +361,9 @@ export function TasksPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Projects</SelectItem>
-                {(projects || []).map((project: Project) => (
-                  <SelectItem key={project.project_id} value={project.project_id.toString()}>
-                    {project.project_name}
+                {(projects || []).map((project: any) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name || project.description || 'Unnamed Project'}
                   </SelectItem>
                 ))}
               </SelectContent>
