@@ -1325,6 +1325,16 @@ export const crmObjects = crmSchema.table("objects", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// CRM Entity Activities - Junction table linking entities to their related activities
+export const crmEntityActivities = crmSchema.table("entity_activities", {
+  entityId: varchar("entity_id", { length: 50 }).notNull(), // cp_, cg_, cc_, co_ prefixed UUID
+  activityType: varchar("activity_type", { length: 20 }).notNull(), // 'task', 'event', 'note', 'payable', 'receivable', 'loan'
+  activityId: integer("activity_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.entityId, table.activityType, table.activityId] }),
+}));
+
 // CRM Projects - Project management table
 export const crmProjects = crmSchema.table("projects", {
   projectId: serial("project_id").primaryKey(),
@@ -1363,6 +1373,7 @@ export const crmTasks = crmSchema.table("tasks", {
   originalMessageContent: text("original_message_content"),
   createdByUserId: uuid("created_by_user_id"),
   linkedPayableId: integer("linked_payable_id").references(() => financePayables.payableId), // Link to bill/payable
+  entityId: varchar("entity_id", { length: 50 }), // Unified entity ID (cp_, cg_, cc_, co_)
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   spaceId: integer("space_id"),
@@ -1383,6 +1394,7 @@ export const crmCalendarEvents = crmSchema.table("calendar_events", {
   projectId: integer("project_id"),
   taskId: integer("task_id"),
   relatedChatJid: varchar("related_chat_jid", { length: 100 }),
+  entityId: varchar("entity_id", { length: 50 }), // Unified entity ID (cp_, cg_, cc_, co_)
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   spaceId: integer("space_id"),
@@ -1402,6 +1414,7 @@ export const crmNotes = crmSchema.table("notes", {
   projectId: integer("project_id").references(() => crmProjects.projectId),
   eventId: integer("event_id").references(() => crmCalendarEvents.eventId),
   companyId: integer("company_id").references(() => crmCompanies.companyId),
+  entityId: varchar("entity_id", { length: 50 }), // Unified entity ID (cp_, cg_, cc_, co_)
   // WhatsApp context
   triggeringMessageId: varchar("triggering_message_id", { length: 100 }),
   relatedChatJid: varchar("related_chat_jid", { length: 100 }),
@@ -1919,6 +1932,7 @@ export const financePayables = financeSchema.table("payables", {
   contactId: integer("contact_id"), // References CRM contact when available
   categoryId: integer("category_id").references(() => financeCategories.categoryId),
   moratoryRate: numeric("moratory_rate", { precision: 5, scale: 4 }).default("0.0000"), // Daily moratory interest rate
+  entityId: varchar("entity_id", { length: 50 }), // Unified entity ID (cp_, cg_, cc_, co_)
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -1935,6 +1949,7 @@ export const financeReceivables = financeSchema.table("receivables", {
   status: receivableStatusEnum("status").notNull().default("draft"),
   contactId: integer("contact_id"), // References CRM contact when available
   categoryId: integer("category_id").references(() => financeCategories.categoryId),
+  entityId: varchar("entity_id", { length: 50 }), // Unified entity ID (cp_, cg_, cc_, co_)
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
