@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from 
 import type { CrmContact } from "@shared/schema";
 import { ContactFormBlocks } from "@/components/contacts/ContactFormBlocks";
 import { ContactModal } from "@/components/contacts/ContactModal";
+import ContactDetailView from "@/components/contacts/ContactDetailView";
 import { CompanyForm } from "@/components/contacts/CompanyForm";
 
 interface ContactsPageProps {
@@ -85,7 +86,8 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
 
   const handleContactClick = (contact: CrmContact) => {
     console.log('Contact clicked:', contact);
-    setEditingContact(contact);
+    setSelectedContact(contact);
+    setShowContactModal(true);
   };
 
   const handleEditContact = (contact: CrmContact) => {
@@ -549,35 +551,12 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
 
       {/* Contact Edit Modal */}
       {editingContact && (
-        <Dialog open={true} onOpenChange={() => setEditingContact(null)}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Edit Contact</DialogTitle>
-            </DialogHeader>
-            <ContactFormBlocks
-              ownerUserId={editingContact.ownerUserId}
-              spaceId={1}
-              isEditMode={true}
-              contactId={editingContact.contactId}
-              initialData={{
-                fullName: editingContact.fullName,
-                relationship: editingContact.relationship || "",
-                tags: editingContact.tags || [],
-                profilePictureUrl: editingContact.profilePictureUrl || "",
-                notes: editingContact.notes || "",
-              }}
-              onSuccess={() => {
-                setEditingContact(null);
-                queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
-              }}
-              onDelete={() => {
-                if (editingContact.contactId) {
-                  deleteContactMutation.mutate(editingContact.contactId);
-                }
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        <ContactDetailView
+          contact={editingContact}
+          interests={[]} 
+          onClose={handleCloseEdit}
+          onUpdate={handleUpdateContact}
+        />
       )}
     </div>
   );

@@ -230,6 +230,7 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
               setIsEditing(false);
               onUpdate();
             }}
+            onDelete={handleDeleteContact}
             isEditMode={true}
             contactId={contact.contactId}
           />
