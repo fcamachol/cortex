@@ -29,6 +29,7 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
   const [selectedContact, setSelectedContact] = React.useState<CrmContact | null>(null);
   const [showContactModal, setShowContactModal] = React.useState(false);
   const [editingContact, setEditingContact] = React.useState<CrmContact | null>(null);
+  const [isCreatingMainContact, setIsCreatingMainContact] = React.useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -71,6 +72,64 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
       });
     },
   });
+
+  // Create main contact mutation
+  const createMainContactMutation = useMutation({
+    mutationFn: async (mainContactData: any) => {
+      return apiRequest('POST', '/api/crm/contacts/complete', mainContactData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
+      setIsCreatingMainContact(false);
+      toast({
+        title: "Success",
+        description: "Main contact created successfully! You can now link other contacts to yourself.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create main contact",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateMainContact = () => {
+    const mainContactData = {
+      ownerUserId: userId,
+      fullName: "Your Name", // User will edit this
+      relationship: "Self",
+      tags: ["Main", "Self"],
+      notes: "This is my main contact record - the central hub for my CRM system.",
+      profession: "",
+      company: "",
+      phones: [
+        {
+          phoneNumber: "",
+          label: "Mobile",
+          isPrimary: true,
+          hasWhatsApp: false
+        }
+      ],
+      emails: [
+        {
+          emailAddress: "",
+          label: "Personal",
+          isPrimary: true
+        }
+      ],
+      addresses: [],
+      aliases: [],
+      specialDates: [],
+      interests: [],
+      companies: [],
+      groups: [],
+      relationships: []
+    };
+    
+    createMainContactMutation.mutate(mainContactData);
+  };
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -120,6 +179,17 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
           </p>
         </div>
         <div className="flex items-center space-x-2">
+          {/* Show Create Main Contact button if no main contact exists */}
+          {!contactsList.some((contact: any) => contact.relationship === "Self" || contact.tags?.includes("Main")) && (
+            <Button 
+              variant="outline"
+              onClick={handleCreateMainContact}
+              disabled={createMainContactMutation.isPending}
+            >
+              <Users className="w-4 h-4 mr-2" />
+              {createMainContactMutation.isPending ? "Creating..." : "Create Main Contact"}
+            </Button>
+          )}
           <Dialog open={isAddContactOpen} onOpenChange={setIsAddContactOpen}>
             <DialogTrigger asChild>
               <Button>
