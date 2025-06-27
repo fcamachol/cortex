@@ -47,7 +47,7 @@ export function EnhancedLoanForm({ spaceId, onSuccess, onCancel, editingLoan }: 
   // Lender selection state
   const [lenderSearchTerm, setLenderSearchTerm] = useState("");
   const [selectedLender, setSelectedLender] = useState<{
-    id: string; // Unified entity UUID
+    id: string; // Will convert from integer during transition
     name: string;
     type: "contact" | "company";
   } | null>(null);
@@ -55,7 +55,7 @@ export function EnhancedLoanForm({ spaceId, onSuccess, onCancel, editingLoan }: 
   // Borrower selection state
   const [borrowerSearchTerm, setBorrowerSearchTerm] = useState("");
   const [selectedBorrower, setSelectedBorrower] = useState<{
-    id: string; // Unified entity UUID
+    id: string; // Will convert from integer during transition
     name: string;
     type: "contact" | "company";
   } | null>(null);
@@ -169,13 +169,13 @@ export function EnhancedLoanForm({ spaceId, onSuccess, onCancel, editingLoan }: 
 
     return [
       ...filteredContacts.map((contact: any) => ({
-        id: contact.contactId,
+        id: String(contact.contactId), // Convert to string for compatibility
         name: `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || contact.email || 'Unnamed Contact',
         type: 'contact' as const,
         email: contact.email,
       })),
       ...filteredCompanies.map((company: any) => ({
-        id: company.companyId,
+        id: String(company.companyId), // Convert to string for compatibility
         name: company.companyName || 'Unnamed Company',
         type: 'company' as const,
         email: company.email,
