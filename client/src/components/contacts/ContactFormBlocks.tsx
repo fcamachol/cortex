@@ -399,7 +399,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
 
         {/* Dynamic Blocks - Edit Mode vs View Mode */}
         {isPreviewMode ? (
-          <ContactViewMode blocks={blocks} contactName={contactName} profession={profession} company={company} tags={tags} />
+          <ContactViewMode blocks={blocks} contactName={contactName} profession={profession} company={company} tags={tags} description={description} />
         ) : (
           <div className="space-y-4">
             {/* Contact Info Section */}
