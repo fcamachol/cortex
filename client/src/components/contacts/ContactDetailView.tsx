@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { X, Edit, Phone, Mail, MapPin, Calendar, Building2, Users, Heart, Tag, Plus, ArrowRight, Trash2, Check } from "lucide-react";
+import { X, Edit, Phone, Mail, MapPin, Calendar, Building2, Users, Heart, Tag, Plus, ArrowRight, Trash2, Check, ChevronDown, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -42,6 +43,9 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
   const [isAddingRelationship, setIsAddingRelationship] = useState(false);
   const [editingRelationshipId, setEditingRelationshipId] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isContactInfoOpen, setIsContactInfoOpen] = useState(true);
+  const [isRelationshipsOpen, setIsRelationshipsOpen] = useState(true);
+  const [isPersonalDetailsOpen, setIsPersonalDetailsOpen] = useState(true);
   const queryClient = useQueryClient();
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
@@ -323,17 +327,18 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
             </CardContent>
           </Card>
 
-          <Tabs defaultValue="contact" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="contact">Contact Info</TabsTrigger>
-              <TabsTrigger value="personal">Personal</TabsTrigger>
-              <TabsTrigger value="companies">Companies</TabsTrigger>
-              <TabsTrigger value="groups">Groups</TabsTrigger>
-              <TabsTrigger value="relationships">Relationships</TabsTrigger>
-            </TabsList>
-
-            {/* Contact Information Tab */}
-            <TabsContent value="contact" className="space-y-4">
+          {/* Contact Information Collapsible Section */}
+          <Collapsible open={isContactInfoOpen} onOpenChange={setIsContactInfoOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between p-4 h-auto">
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4" />
+                  <span className="font-medium">CONTACT INFO</span>
+                </div>
+                {isContactInfoOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-4 px-4 pb-4">
               {/* Phone Numbers */}
               {(fullContactDetails?.phones || contact.phones) && (fullContactDetails?.phones || contact.phones).length > 0 && (
                 <Card>
@@ -438,10 +443,21 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                   </CardContent>
                 </Card>
               )}
-            </TabsContent>
+            </CollapsibleContent>
+          </Collapsible>
 
-            {/* Personal Information Tab */}
-            <TabsContent value="personal" className="space-y-4">
+          {/* Relationships & Groups Collapsible Section */}
+          <Collapsible open={isRelationshipsOpen} onOpenChange={setIsRelationshipsOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between p-4 h-auto">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  <span className="font-medium">RELATIONSHIPS & GROUPS</span>
+                </div>
+                {isRelationshipsOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-4 px-4 pb-4">
               {/* Special Dates */}
               {contact.specialDates && contact.specialDates.length > 0 && (
                 <Card>
@@ -495,10 +511,21 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                   </CardContent>
                 </Card>
               )}
-            </TabsContent>
+            </CollapsibleContent>
+          </Collapsible>
 
-            {/* Companies Tab */}
-            <TabsContent value="companies" className="space-y-4">
+          {/* Personal Details Collapsible Section */}
+          <Collapsible open={isPersonalDetailsOpen} onOpenChange={setIsPersonalDetailsOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between p-4 h-auto">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  <span className="font-medium">PERSONAL DETAILS</span>
+                </div>
+                {isPersonalDetailsOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-4 px-4 pb-4">
               {contact.companyMemberships && contact.companyMemberships.length > 0 ? (
                 <Card>
                   <CardHeader>
@@ -539,10 +566,19 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                   </CardContent>
                 </Card>
               )}
-            </TabsContent>
+            </CollapsibleContent>
+          </Collapsible>
 
-            {/* Groups Tab */}
-            <TabsContent value="groups" className="space-y-4">
+          {/* Activity Section */}
+          <Tabs defaultValue="tasks" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="tasks">Tasks</TabsTrigger>
+              <TabsTrigger value="events">Events</TabsTrigger>
+              <TabsTrigger value="finance">Finance</TabsTrigger>
+              <TabsTrigger value="notes">Notes & Docs</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="tasks" className="space-y-4">
               {contact.groupMemberships && contact.groupMemberships.length > 0 ? (
                 <Card>
                   <CardHeader>
