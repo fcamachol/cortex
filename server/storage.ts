@@ -1749,13 +1749,15 @@ class DatabaseStorage {
     // CRM COMPANIES METHODS - For polymorphic creditor relationships
     // =========================================================================
 
-    async getCrmCompanies(spaceId: number): Promise<CrmCompany[]> {
+    async getCrmCompanies(spaceId: number | null = null): Promise<CrmCompany[]> {
         try {
-            return await db
-                .select()
-                .from(crmCompanies)
-                .where(eq(crmCompanies.spaceId, spaceId))
-                .orderBy(crmCompanies.companyName);
+            let query = db.select().from(crmCompanies);
+            
+            if (spaceId !== null) {
+                query = query.where(eq(crmCompanies.spaceId, spaceId));
+            }
+            
+            return await query.orderBy(crmCompanies.companyName);
         } catch (error) {
             console.error('Error fetching CRM companies:', error);
             throw error;

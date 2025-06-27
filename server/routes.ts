@@ -2431,11 +2431,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Get companies
   app.get('/api/crm/companies', async (req: Request, res: Response) => {
     try {
-      const spaceId = parseInt(req.query.spaceId as string);
-      if (!spaceId) {
-        return res.status(400).json({ error: 'spaceId is required' });
-      }
-
+      const spaceId = req.query.spaceId ? parseInt(req.query.spaceId as string) : null;
       const companies = await storage.getCrmCompanies(spaceId);
       res.json(companies);
     } catch (error) {

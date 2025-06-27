@@ -834,8 +834,8 @@ function CompanyBlock({ block, onUpdate }: {
 
   // Fetch companies for dropdown
   const { data: companies = [] } = useQuery({
-    queryKey: ['/api/crm/companies', 1],
-    queryFn: () => fetch('/api/crm/companies?spaceId=1').then(res => res.json()).catch(() => []),
+    queryKey: ['/api/crm/companies'],
+    queryFn: () => fetch('/api/crm/companies').then(res => res.json()).catch(() => []),
   });
 
   // Create company mutation
@@ -843,7 +843,7 @@ function CompanyBlock({ block, onUpdate }: {
     mutationFn: async (companyData: any) => {
       const response = await apiRequest('POST', '/api/crm/companies', {
         ...companyData,
-        spaceId: 1 // Add default spaceId
+        spaceId: null // Companies don't need to be linked to spaces
       });
       return await response.json();
     },
