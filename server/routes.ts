@@ -3595,6 +3595,75 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // CRM Groups Routes for Unified Entity System
+  app.get('/api/crm/groups', async (req: Request, res: Response) => {
+    try {
+      const groups = await storage.getCrmGroups();
+      res.json(groups);
+    } catch (error) {
+      console.error('Error fetching CRM groups:', error);
+      res.status(500).json({ error: 'Failed to fetch CRM groups' });
+    }
+  });
+
+  app.post('/api/crm/groups', async (req: Request, res: Response) => {
+    try {
+      const group = await storage.createCrmGroup(req.body);
+      res.status(201).json(group);
+    } catch (error) {
+      console.error('Error creating CRM group:', error);
+      res.status(500).json({ error: 'Failed to create CRM group' });
+    }
+  });
+
+  app.get('/api/crm/groups/:groupId', async (req: Request, res: Response) => {
+    try {
+      const group = await storage.getCrmGroupByWhatsappJid(req.params.groupId);
+      if (!group) {
+        return res.status(404).json({ error: 'CRM group not found' });
+      }
+      res.json(group);
+    } catch (error) {
+      console.error('Error fetching CRM group:', error);
+      res.status(500).json({ error: 'Failed to fetch CRM group' });
+    }
+  });
+
+  app.put('/api/crm/groups/:groupId', async (req: Request, res: Response) => {
+    try {
+      const group = await storage.updateCrmGroup(req.params.groupId, req.body);
+      res.json(group);
+    } catch (error) {
+      console.error('Error updating CRM group:', error);
+      res.status(500).json({ error: 'Failed to update CRM group' });
+    }
+  });
+
+  app.delete('/api/crm/groups/:groupId', async (req: Request, res: Response) => {
+    try {
+      await storage.deleteCrmGroup(req.params.groupId);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting CRM group:', error);
+      res.status(500).json({ error: 'Failed to delete CRM group' });
+    }
+  });
+
+  // Check WhatsApp group link status
+  app.get('/api/crm/groups/whatsapp-link-status/:groupJid', async (req: Request, res: Response) => {
+    try {
+      const { groupJid } = req.params;
+      const group = await storage.getCrmGroupByWhatsappJid(groupJid);
+      res.json({ 
+        isLinked: !!group,
+        crmGroup: group || null
+      });
+    } catch (error) {
+      console.error('Error checking WhatsApp group link status:', error);
+      res.status(500).json({ error: 'Failed to check link status' });
+    }
+  });
+
   // Error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     console.error('Unhandled error:', err);

@@ -4015,6 +4015,173 @@ class DatabaseStorage {
         }
     }
 
+    // CRM Groups methods for unified entity system
+    async getCrmGroups(userId?: string): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT 
+                    id,
+                    name,
+                    type,
+                    description,
+                    color,
+                    tags,
+                    parent_group_id as "parentGroupId",
+                    status,
+                    space_id as "spaceId",
+                    whatsapp_jid as "whatsappJid",
+                    whatsapp_instance_id as "whatsappInstanceId",
+                    whatsapp_linked_at as "whatsappLinkedAt",
+                    is_whatsapp_linked as "isWhatsappLinked",
+                    created_at as "createdAt",
+                    updated_at as "updatedAt"
+                FROM crm.groups
+                ORDER BY name ASC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching CRM groups:', error);
+            return [];
+        }
+    }
+
+    async createCrmGroup(groupData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO crm.groups (
+                    id,
+                    name,
+                    type,
+                    description,
+                    color,
+                    tags,
+                    parent_group_id,
+                    status,
+                    space_id,
+                    whatsapp_jid,
+                    whatsapp_instance_id,
+                    whatsapp_linked_at,
+                    is_whatsapp_linked
+                ) VALUES (
+                    ${groupData.id},
+                    ${groupData.name},
+                    ${groupData.type || 'team'},
+                    ${groupData.description || null},
+                    ${groupData.color || '#3B82F6'},
+                    ${JSON.stringify(groupData.tags || [])},
+                    ${groupData.parentGroupId || null},
+                    ${groupData.status || 'active'},
+                    ${groupData.spaceId || null},
+                    ${groupData.whatsappJid || null},
+                    ${groupData.whatsappInstanceId || null},
+                    ${groupData.whatsappLinkedAt || null},
+                    ${groupData.whatsappJid ? true : false}
+                ) RETURNING *
+            `);
+            
+            // Return the first row with proper field mapping
+            const group = result.rows[0];
+            if (group) {
+                return {
+                    ...group,
+                    parentGroupId: group.parent_group_id,
+                    spaceId: group.space_id,
+                    whatsappJid: group.whatsapp_jid,
+                    whatsappInstanceId: group.whatsapp_instance_id,
+                    whatsappLinkedAt: group.whatsapp_linked_at,
+                    isWhatsappLinked: group.is_whatsapp_linked,
+                    createdAt: group.created_at,
+                    updatedAt: group.updated_at
+                };
+            }
+            return group;
+        } catch (error) {
+            console.error('Error creating CRM group:', error);
+            throw error;
+        }
+    }
+
+    async getCrmGroupByWhatsappJid(whatsappJid: string): Promise<any | null> {
+        try {
+            const result = await db.execute(sql`
+                SELECT 
+                    id,
+                    name,
+                    type,
+                    description,
+                    color,
+                    tags,
+                    parent_group_id as "parentGroupId",
+                    status,
+                    space_id as "spaceId",
+                    whatsapp_jid as "whatsappJid",
+                    whatsapp_instance_id as "whatsappInstanceId",
+                    whatsapp_linked_at as "whatsappLinkedAt",
+                    is_whatsapp_linked as "isWhatsappLinked",
+                    created_at as "createdAt",
+                    updated_at as "updatedAt"
+                FROM crm.groups
+                WHERE whatsapp_jid = ${whatsappJid}
+                LIMIT 1
+            `);
+            return result.rows[0] || null;
+        } catch (error) {
+            console.error('Error fetching CRM group by WhatsApp JID:', error);
+            return null;
+        }
+    }
+
+    async updateCrmGroup(groupId: string, updateData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                UPDATE crm.groups 
+                SET 
+                    name = ${updateData.name},
+                    type = ${updateData.type},
+                    description = ${updateData.description},
+                    color = ${updateData.color},
+                    tags = ${JSON.stringify(updateData.tags || [])},
+                    parent_group_id = ${updateData.parentGroupId},
+                    status = ${updateData.status},
+                    space_id = ${updateData.spaceId},
+                    updated_at = NOW()
+                WHERE id = ${groupId}
+                RETURNING *
+            `);
+            
+            const group = result.rows[0];
+            if (group) {
+                return {
+                    ...group,
+                    parentGroupId: group.parent_group_id,
+                    spaceId: group.space_id,
+                    whatsappJid: group.whatsapp_jid,
+                    whatsappInstanceId: group.whatsapp_instance_id,
+                    whatsappLinkedAt: group.whatsapp_linked_at,
+                    isWhatsappLinked: group.is_whatsapp_linked,
+                    createdAt: group.created_at,
+                    updatedAt: group.updated_at
+                };
+            }
+            return group;
+        } catch (error) {
+            console.error('Error updating CRM group:', error);
+            throw error;
+        }
+    }
+
+    async deleteCrmGroup(groupId: string): Promise<void> {
+        try {
+            await db.execute(sql`
+                DELETE FROM crm.groups 
+                WHERE id = ${groupId}
+            `);
+        } catch (error) {
+            console.error('Error deleting CRM group:', error);
+            throw error;
+        }
+    }
+
 
 }
 
