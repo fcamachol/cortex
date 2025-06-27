@@ -115,7 +115,7 @@ export function TasksPage() {
 
   // Helper function to transform raw task data into hierarchical structure
   const transformTasksData = (data: Task[]) => {
-    const taskMap = new Map<number, Task>();
+    const taskMap = new Map<string, Task>(); // Changed to string for UUID support
     const rootTasks: Task[] = [];
     
     // First pass: create task map with existing subtasks preserved
@@ -193,7 +193,7 @@ export function TasksPage() {
 
   // Update task mutation
   const updateTaskMutation = useMutation({
-    mutationFn: ({ taskId, updates }: { taskId: number; updates: any }) => 
+    mutationFn: ({ taskId, updates }: { taskId: string; updates: any }) => // Changed to string
       apiRequest('PATCH', `/api/crm/tasks/${taskId}`, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
@@ -206,7 +206,7 @@ export function TasksPage() {
 
   // Delete task mutation
   const deleteTaskMutation = useMutation({
-    mutationFn: (taskId: number) => apiRequest('DELETE', `/api/crm/tasks/${taskId}`),
+    mutationFn: (taskId: string) => apiRequest('DELETE', `/api/crm/tasks/${taskId}`), // Changed to string
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
       toast({ title: 'Task deleted successfully' });
@@ -297,11 +297,11 @@ export function TasksPage() {
     createTaskMutation.mutate(taskData);
   };
 
-  const handleTaskUpdate = (taskId: number, updates: Partial<Task>) => {
+  const handleTaskUpdate = (taskId: string, updates: Partial<Task>) => { // Changed to string
     updateTaskMutation.mutate({ taskId, updates });
   };
 
-  const handleTaskDelete = (taskId: number) => {
+  const handleTaskDelete = (taskId: string) => { // Changed to string
     deleteTaskMutation.mutate(taskId);
   };
 
