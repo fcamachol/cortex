@@ -244,7 +244,7 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
   const [showTaskForm, setShowTaskForm] = useState(false);
   
   const { data: project, isLoading } = useQuery<ProjectDetail>({
-    queryKey: ['/api/crm/projects', projectId, 'detail'],
+    queryKey: [`/api/crm/projects/${projectId}/detail`],
     enabled: !!projectId,
   });
 
