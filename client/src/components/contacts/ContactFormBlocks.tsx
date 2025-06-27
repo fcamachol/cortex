@@ -28,6 +28,7 @@ const RELATIONSHIP_BLOCKS = [
   { id: 'company', label: 'Company / Workplace', icon: Building2 },
   { id: 'group', label: 'Group Membership', icon: Users },
   { id: 'link', label: 'Link to Another Contact', icon: LinkIcon },
+  { id: 'whatsapp', label: 'Link WhatsApp Instance', icon: MessageSquare },
 ];
 
 const PERSONAL_DETAILS_BLOCKS = [
@@ -326,6 +327,8 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
         return { name: '' };
       case 'link':
         return { contactId: '', relationship: '' };
+      case 'whatsapp':
+        return { instanceName: '', phoneNumber: '' };
       case 'date':
         return { title: '', date: '', type: 'birthday' };
       case 'interest':
@@ -453,7 +456,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
 
             {/* Relationships & Groups Section */}
             <RelationshipSection 
-              blocks={blocks.filter(b => ['company', 'group', 'link'].includes(b.type))}
+              blocks={blocks.filter(b => ['company', 'group', 'link', 'whatsapp'].includes(b.type))}
               onUpdate={updateBlock}
               onRemove={removeBlock}
               onAddSubBlock={addBlock}
@@ -1212,6 +1215,9 @@ function BlockContent({ block, onUpdate, ownerUserId, isMainContact }: {
     case 'link':
       return <LinkBlock block={block} onUpdate={onUpdate} ownerUserId={ownerUserId} />;
 
+    case 'whatsapp':
+      return <WhatsAppInstanceBlock block={block} onUpdate={onUpdate} ownerUserId={ownerUserId} />;
+
     default:
       return (
         <div className="text-sm text-gray-500 py-4 text-center">
@@ -1219,6 +1225,114 @@ function BlockContent({ block, onUpdate, ownerUserId, isMainContact }: {
         </div>
       );
   }
+}
+
+// WhatsApp Instance Link Block Component
+function WhatsAppInstanceBlock({ block, onUpdate, ownerUserId }: {
+  block: Block;
+  onUpdate: (blockId: string, field: string, value: any) => void;
+  ownerUserId: string;
+}) {
+  const { toast } = useToast();
+  
+  // Fetch available WhatsApp instances (both private and shared)
+  const { data: whatsappInstances = [], isLoading } = useQuery({
+    queryKey: ['/api/whatsapp/instances/available', ownerUserId],
+    queryFn: async () => {
+      const response = await fetch(`/api/whatsapp/instances/available/${ownerUserId}`);
+      if (!response.ok) throw new Error('Failed to fetch instances');
+      return response.json();
+    },
+  });
+
+  // Link instance mutation that creates phone and WhatsApp link
+  const linkInstanceMutation = useMutation({
+    mutationFn: async (instanceName: string) => {
+      const response = await apiRequest('POST', '/api/crm/contacts/link-whatsapp-instance', {
+        instanceName,
+        contactId: block.data.contactId // This will be set when contact is created
+      });
+      return response;
+    },
+    onSuccess: (data) => {
+      onUpdate(block.id, 'phoneNumber', data.phoneNumber);
+      onUpdate(block.id, 'linkedAt', new Date().toISOString());
+      toast({
+        title: "WhatsApp Instance Linked",
+        description: `Successfully linked ${data.phoneNumber} to contact`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Link Instance",
+        description: error.message || "Could not link WhatsApp instance",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleInstanceSelect = (instanceName: string) => {
+    onUpdate(block.id, 'instanceName', instanceName);
+    // If contact already exists, immediately link the instance
+    if (block.data.contactId) {
+      linkInstanceMutation.mutate(instanceName);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="block text-sm font-medium text-gray-600 mb-1">
+          WhatsApp Instance
+        </label>
+        {isLoading ? (
+          <div className="text-sm text-gray-500">Loading instances...</div>
+        ) : (
+          <Select
+            value={block.data.instanceName || ''}
+            onValueChange={handleInstanceSelect}
+          >
+            <SelectTrigger className="h-10 border-gray-300 rounded-lg">
+              <SelectValue placeholder="Select WhatsApp instance to link" />
+            </SelectTrigger>
+            <SelectContent>
+              {whatsappInstances.map((instance: any) => (
+                <SelectItem key={instance.instanceName} value={instance.instanceName}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600">
+                      {instance.visibility}
+                    </span>
+                    <span>{instance.displayName}</span>
+                    <span className="text-gray-500">({instance.ownerJid || 'No number'})</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+      
+      {block.data.phoneNumber && (
+        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Check className="h-4 w-4 text-green-600" />
+            <span className="text-sm font-medium text-green-800">
+              Linked Phone: {block.data.phoneNumber}
+            </span>
+          </div>
+          {block.data.linkedAt && (
+            <div className="text-xs text-green-600 mt-1">
+              Linked on {new Date(block.data.linkedAt).toLocaleDateString()}
+            </div>
+          )}
+        </div>
+      )}
+      
+      {linkInstanceMutation.isPending && (
+        <div className="text-sm text-blue-600">Linking instance...</div>
+      )}
+    </div>
+  );
 }
 
 // Contact View Mode Component
