@@ -607,7 +607,12 @@ function ContactInfoSection({ blocks, onUpdate, onRemove, onAddSubBlock, ownerUs
                     key={blockType.id}
                     variant="ghost"
                     className="w-full justify-start text-sm"
-                    onClick={() => onAddSubBlock(blockType.id)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Adding block type:', blockType.id);
+                      onAddSubBlock(blockType.id);
+                    }}
                   >
                     <blockType.icon className="h-4 w-4 mr-2" />
                     {blockType.label}
@@ -676,7 +681,12 @@ function RelationshipSection({ blocks, onUpdate, onRemove, onAddSubBlock, ownerU
                     key={blockType.id}
                     variant="ghost"
                     className="w-full justify-start text-sm"
-                    onClick={() => onAddSubBlock(blockType.id)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Adding relationship block type:', blockType.id);
+                      onAddSubBlock(blockType.id);
+                    }}
                   >
                     <blockType.icon className="h-4 w-4 mr-2" />
                     {blockType.label}
@@ -744,7 +754,12 @@ function PersonalDetailsSection({ blocks, onUpdate, onRemove, onAddSubBlock, own
                     key={blockType.id}
                     variant="ghost"
                     className="w-full justify-start text-sm"
-                    onClick={() => onAddSubBlock(blockType.id)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Adding personal details block type:', blockType.id);
+                      onAddSubBlock(blockType.id);
+                    }}
                   >
                     <blockType.icon className="h-4 w-4 mr-2" />
                     {blockType.label}
