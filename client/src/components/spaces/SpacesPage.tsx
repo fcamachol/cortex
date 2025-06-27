@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 
 import { Plus, Search, Filter, Star, Archive, Grid3X3, List, MoreHorizontal, Users, Settings, Folder, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -76,6 +77,7 @@ export function SpacesPage({ selectedSpaceId, parentSpaceId }: SpacesPageProps) 
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   // Fetch spaces
   const { data: spaces, isLoading: spacesLoading } = useQuery({
