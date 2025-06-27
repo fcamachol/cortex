@@ -206,7 +206,7 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
                                   {/* Name with Checkmark */}
-                                  <div className="flex items-center gap-2 mb-2">
+                                  <div className="flex items-center gap-2 mb-1">
                                     <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
                                       {contact.fullName}
                                     </h3>
@@ -214,6 +214,23 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                                       <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
                                     )}
                                   </div>
+
+                                  {/* Profession and Company */}
+                                  {contact.companies && contact.companies.length > 0 && (
+                                    <div className="mb-2">
+                                      {contact.companies.map((company: any, index: number) => (
+                                        <p key={index} className="text-xs text-gray-700 dark:text-gray-300 font-medium">
+                                          {company.position && company.company?.name ? (
+                                            `${company.position} en ${company.company.name}`
+                                          ) : company.position ? (
+                                            company.position
+                                          ) : company.company?.name ? (
+                                            company.company.name
+                                          ) : null}
+                                        </p>
+                                      ))}
+                                    </div>
+                                  )}
 
                                   {/* Description/Notes */}
                                   {contact.notes && (

@@ -227,7 +227,7 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                 
                 <div className="flex-1">
                   {/* Name with Checkmark */}
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-2">
                     <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                       {contact.fullName}
                     </h2>
@@ -235,6 +235,23 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                       <Check className="w-5 h-5 text-green-600" />
                     )}
                   </div>
+
+                  {/* Profession and Company */}
+                  {fullContactDetails?.companies && fullContactDetails.companies.length > 0 && (
+                    <div className="mb-3">
+                      {fullContactDetails.companies.map((company, index) => (
+                        <p key={index} className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                          {company.position && company.company.name ? (
+                            `${company.position} en ${company.company.name}`
+                          ) : company.position ? (
+                            company.position
+                          ) : company.company.name ? (
+                            company.company.name
+                          ) : null}
+                        </p>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Description/Notes */}
                   {contact.notes && (
