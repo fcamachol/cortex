@@ -1310,11 +1310,8 @@ class DatabaseStorage {
                 console.log('Space link created successfully');
             }
             
-            // Map database fields to frontend-expected fields
-            return {
-                ...project,
-                name: project.project_name // Map project_name from database to name for frontend
-            };
+            // Return the project with clean unified entity architecture
+            return project;
         } catch (error) {
             console.error('Error in createProject:', error);
             throw error;
@@ -1331,16 +1328,16 @@ class DatabaseStorage {
         return project || null;
     }
 
-    async updateProject(projectId: number, updates: any): Promise<CrmProject> {
+    async updateProject(projectId: string, updates: any): Promise<CrmProject> {
         const [project] = await db.update(crmProjects)
             .set({ ...updates, updatedAt: new Date() })
-            .where(eq(crmProjects.projectId, projectId))
+            .where(eq(crmProjects.id, projectId))
             .returning();
         return project;
     }
 
-    async deleteProject(projectId: number): Promise<void> {
-        await db.delete(crmProjects).where(eq(crmProjects.projectId, projectId));
+    async deleteProject(projectId: string): Promise<void> {
+        await db.delete(crmProjects).where(eq(crmProjects.id, projectId));
     }
 
     // =========================================================================
