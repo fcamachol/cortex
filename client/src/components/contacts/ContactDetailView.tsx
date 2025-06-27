@@ -226,28 +226,32 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                 </Avatar>
                 
                 <div className="flex-1">
-                  {/* Name */}
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                    {contact.fullName}
-                  </h2>
-                  
-                  {/* Relationship Tag with Checkmark */}
-                  {contact.relationship && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-sm text-gray-700 bg-gray-100 px-2 py-1 rounded dark:bg-gray-700 dark:text-gray-300">
-                        {contact.relationship}
-                      </span>
-                      {contact.isWhatsappLinked && (
-                        <Check className="w-4 h-4 text-green-600" />
-                      )}
-                    </div>
-                  )}
+                  {/* Name with Checkmark */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                      {contact.fullName}
+                    </h2>
+                    {contact.isWhatsappLinked && (
+                      <Check className="w-5 h-5 text-green-600" />
+                    )}
+                  </div>
 
                   {/* Description/Notes */}
                   {contact.notes && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-3">
                       {contact.notes.trim()}
                     </p>
+                  )}
+
+                  {/* Tags below description */}
+                  {contact.tags && contact.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {contact.tags.map((tag, index) => (
+                        <span key={index} className="text-sm text-gray-700 bg-gray-100 px-2 py-1 rounded dark:bg-gray-700 dark:text-gray-300">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
