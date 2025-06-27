@@ -125,10 +125,22 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
   });
 
   // Fetch space items
-  const { data: spaceItems = [] } = useQuery({
+  const { data: spaceItems = [], isLoading: spaceItemsLoading, error: spaceItemsError } = useQuery({
     queryKey: ['/api/spaces', spaceId, 'items'],
     enabled: !!spaceId,
+    onSuccess: (data) => {
+      console.log(`Space ${spaceId} items fetched:`, data);
+    },
+    onError: (error) => {
+      console.error(`Error fetching space ${spaceId} items:`, error);
+    }
   });
+
+  // Debug logging
+  console.log('SpaceDetailView - spaceId:', spaceId);
+  console.log('SpaceDetailView - spaceItems:', spaceItems);
+  console.log('SpaceDetailView - spaceItemsLoading:', spaceItemsLoading);
+  console.log('SpaceDetailView - spaceItemsError:', spaceItemsError);
 
   // Flatten all spaces including nested children
   const flattenSpaces = (spaces: Space[]): Space[] => {
