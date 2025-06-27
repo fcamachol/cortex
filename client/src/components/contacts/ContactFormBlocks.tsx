@@ -1385,29 +1385,23 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
   onUpdate: (blockId: string, field: string, value: any) => void;
   ownerUserId: string;
 }) {
-  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
-  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedContactName, setSelectedContactName] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
 
+  // Fetch contacts for dropdown
   const { data: contactsList = [] } = useQuery({
     queryKey: ['/api/crm/contacts', ownerUserId],
     queryFn: async () => {
-      console.log('Fetching contacts with ownerUserId:', ownerUserId);
       if (!ownerUserId) {
         throw new Error('Owner user ID is required');
       }
       const response = await fetch(`/api/crm/contacts?ownerUserId=${ownerUserId}`);
       if (!response.ok) {
-        console.error(`Contacts fetch failed: ${response.status} ${response.statusText}`);
         throw new Error(`Failed to fetch contacts: ${response.status}`);
       }
-      const contacts = await response.json();
-      console.log('Contacts fetched successfully:', contacts.length, 'contacts');
-      return contacts;
+      return response.json();
     },
-    enabled: !!ownerUserId && isLinkModalOpen,
+    enabled: !!ownerUserId,
     staleTime: 30000,
   });
 
@@ -1415,32 +1409,23 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
   
   // Filter contacts based on search term
   const filteredContacts = contactsList.filter((contact: any) => 
-    contact.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+    contact.fullName.toLowerCase().includes(searchTerm.toLowerCase()) &&
+    contact.contactId !== block.data.contactId // Don't show currently selected contact
   );
 
   // Handle contact selection
-  const handleContactSelect = (contact: any, event?: React.MouseEvent) => {
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-    console.log('Selecting contact:', contact);
+  const handleContactSelect = (contact: any) => {
     onUpdate(block.id, 'contactId', contact.contactId);
-    setSelectedContactName(contact.fullName);
-    setSearchTerm(contact.fullName);
+    setSearchTerm('');
     setShowSuggestions(false);
   };
 
-  // Initialize search term when modal opens
+  // Initialize search term with selected contact name
   React.useEffect(() => {
-    if (isLinkModalOpen && selectedContact) {
+    if (selectedContact && !showSuggestions) {
       setSearchTerm(selectedContact.fullName);
-      setSelectedContactName(selectedContact.fullName);
-    } else if (isLinkModalOpen) {
-      setSearchTerm('');
-      setSelectedContactName('');
     }
-  }, [isLinkModalOpen, selectedContact]);
+  }, [selectedContact, showSuggestions]);
 
   // Close suggestions when clicking outside
   React.useEffect(() => {
@@ -1462,37 +1447,49 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-1">Linked Contact</label>
-          {selectedContact ? (
-            <div className="flex items-center gap-2 p-2 border border-gray-200 rounded-lg bg-gray-50">
-              <User className="h-4 w-4 text-blue-500" />
-              <span className="text-sm font-medium">{selectedContact.fullName}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  console.log('Opening link modal (change) with ownerUserId:', ownerUserId);
-                  setIsLinkModalOpen(true);
-                }}
-                className="text-xs text-blue-600 hover:text-blue-700 p-1 h-auto ml-auto"
-              >
-                Change
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              onClick={() => {
-                console.log('Opening link modal with ownerUserId:', ownerUserId);
-                setIsLinkModalOpen(true);
+          <div className="relative">
+            <Input
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setShowSuggestions(true);
               }}
-              className="w-full justify-start text-sm text-gray-500"
-            >
-              <LinkIcon className="h-4 w-4 mr-2" />
-              Select contact to link...
-            </Button>
-          )}
+              onFocus={() => setShowSuggestions(true)}
+              placeholder="Search and select contact..."
+              className="border-gray-300 rounded-lg"
+            />
+            
+            {/* Dropdown Suggestions */}
+            {showSuggestions && searchTerm && filteredContacts.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {filteredContacts.slice(0, 5).map((contact: any) => (
+                  <button
+                    key={contact.contactId}
+                    type="button"
+                    onClick={() => handleContactSelect(contact)}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                  >
+                    <User className="h-4 w-4 text-gray-500" />
+                    <div>
+                      <div className="font-medium">{contact.fullName}</div>
+                      {contact.relationship && (
+                        <div className="text-xs text-gray-500">{contact.relationship}</div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            {/* No results message */}
+            {showSuggestions && searchTerm && filteredContacts.length === 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg px-3 py-2 text-gray-500 text-sm">
+                No contacts found
+              </div>
+            )}
+          </div>
         </div>
-
+        
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-1">Relationship Type</label>
           <Select
@@ -1531,101 +1528,6 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
           className="border-gray-300 rounded-lg"
         />
       </div>
-
-      {/* Link to Contact Modal */}
-      <Dialog open={isLinkModalOpen} onOpenChange={setIsLinkModalOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <LinkIcon className="h-5 w-5" />
-              Link to Another Contact
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="relative">
-              <Label htmlFor="contact-select" className="text-sm font-medium">Select Contact</Label>
-              <div className="relative">
-                <Input
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setShowSuggestions(true);
-                  }}
-                  onFocus={() => setShowSuggestions(true)}
-                  placeholder="Choose a contact..."
-                  className="w-full border-gray-300 rounded-lg"
-                />
-                
-                {/* Dropdown Suggestions */}
-                {showSuggestions && searchTerm && filteredContacts.length > 0 && (
-                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                    {filteredContacts.slice(0, 5).map((contact: any) => (
-                      <div
-                        key={contact.contactId}
-                        onClick={(e) => handleContactSelect(contact, e)}
-                        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                      >
-                        <User className="h-4 w-4 text-gray-500" />
-                        <span className="font-medium">{contact.fullName}</span>
-                        {contact.relationship && (
-                          <span className="text-xs text-gray-500">({contact.relationship})</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                {/* No results message */}
-                {showSuggestions && searchTerm && filteredContacts.length === 0 && (
-                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg px-3 py-2 text-gray-500 text-sm">
-                    No contacts found
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setIsLinkModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={() => setIsLinkModalOpen(false)}
-              disabled={!block.data.contactId}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              Link Contact
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Alert */}
-      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Contact</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this contact? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (onDelete) {
-                  onDelete();
-                }
-                setShowDeleteAlert(false);
-              }}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
