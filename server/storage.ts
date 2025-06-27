@@ -1270,23 +1270,23 @@ class DatabaseStorage {
     // =========================================================================
 
     async createProject(projectData: any): Promise<any> {
-        // Generate UUID with cj_ prefix for CRM projects 
+        // Generate UUID with cj_ prefix for CRM projects (unified entity system)
         const projectId = `cj_${crypto.randomUUID()}`;
         
-        // Use raw SQL to insert into the actual database structure
+        // Use raw SQL to insert with unified entity ID and user_id linkage
         const result = await db.execute(sql`
-            INSERT INTO crm.projects (instance_id, project_name, description, status, start_date, end_date, space_id)
-            VALUES (${projectData.instanceId || 'instance-1750433520122'}, ${projectData.name}, ${projectData.description}, ${projectData.status || 'active'}, ${projectData.startDate}, ${projectData.endDate}, ${projectData.spaceId})
-            RETURNING project_id, project_name, description, status, start_date, end_date, space_id, created_at, updated_at
+            INSERT INTO crm.projects (id, instance_id, project_name, description, status, start_date, end_date, space_id, user_id)
+            VALUES (${projectId}, ${'instance-1750433520122'}, ${projectData.name}, ${projectData.description}, ${projectData.status || 'active'}, ${projectData.startDate}, ${projectData.endDate}, ${projectData.spaceId}, ${projectData.userId})
+            RETURNING id, project_id, project_name, description, status, start_date, end_date, space_id, user_id, created_at, updated_at
         `);
         
         return result.rows[0];
     }
 
     async getProjects(): Promise<any[]> {
-        // Use raw SQL to work with the actual database structure
+        // Use raw SQL to get both unified entity ID and legacy fields
         const result = await db.execute(sql`
-            SELECT project_id, project_name, description, status, start_date, end_date, space_id, created_at, updated_at
+            SELECT id, project_id, project_name, description, status, start_date, end_date, space_id, user_id, created_at, updated_at
             FROM crm.projects
             ORDER BY created_at DESC
         `);

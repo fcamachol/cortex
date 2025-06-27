@@ -780,22 +780,31 @@ export async function registerRoutes(app: Express): Promise<void> {
       const projectData = req.body;
       console.log('Creating project with data:', projectData);
       
-      const project = await storage.createProject(projectData);
+      // Get userId from authenticated session (or use first user for now)
+      const users = await storage.getUsers();
+      const userId = users.length > 0 ? users[0].user_id : null;
+      if (!userId) {
+        return res.status(400).json({ error: 'No user found' });
+      }
       
-      // Transform response for frontend
+      // Add userId to project data
+      const projectDataWithUser = { ...projectData, userId };
+      
+      const project = await storage.createProject(projectDataWithUser);
+      
+      // Transform response for frontend (map database fields to API format)
       const transformedProject = {
-        projectId: project.projectId,
-        projectName: project.projectName,
+        id: project.id, // Unified entity ID (cj_ prefixed)
+        projectId: project.project_id, // Legacy integer ID
+        name: project.project_name, // Map project_name to name
         description: project.description,
         status: project.status,
-        priority: project.priority,
-        startDate: project.startDate,
-        dueDate: project.dueDate,
-        assignedToUserId: project.assignedToUserId,
-        createdByUserId: project.createdByUserId,
-        spaceId: project.spaceId,
-        createdAt: project.createdAt,
-        updatedAt: project.updatedAt
+        startDate: project.start_date,
+        endDate: project.end_date,
+        spaceId: project.space_id,
+        userId: project.user_id,
+        createdAt: project.created_at,
+        updatedAt: project.updated_at
       };
       
       res.json(transformedProject);
