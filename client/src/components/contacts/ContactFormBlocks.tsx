@@ -1171,8 +1171,7 @@ function BlockContent({ block, onUpdate, ownerUserId }: {
       );
 
     case 'link':
-      console.log('Rendering LinkBlock with ownerUserId:', ownerUserId);
-      return <LinkBlock block={block} onUpdate={onUpdate} ownerUserId={ownerUserId || ''} />;
+      return <LinkBlock block={block} onUpdate={onUpdate} ownerUserId={ownerUserId} />;
 
     default:
       return (
@@ -1393,31 +1392,18 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
   const { data: contactsList = [], error, isLoading: isContactsLoading } = useQuery({
     queryKey: ['/api/crm/contacts', ownerUserId],
     queryFn: async () => {
-      console.log('Fetching contacts for LinkBlock with ownerUserId:', ownerUserId);
       if (!ownerUserId) {
         throw new Error('Owner user ID is required');
       }
       const response = await fetch(`/api/crm/contacts?ownerUserId=${ownerUserId}`);
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Failed to fetch contacts:', response.status, errorText);
-        throw new Error(`Failed to fetch contacts: ${response.status} - ${errorText}`);
+        throw new Error(`Failed to fetch contacts: ${response.status}`);
       }
-      const contacts = await response.json();
-      console.log('Contacts fetched for LinkBlock:', contacts.length, 'contacts');
-      return contacts;
+      return response.json();
     },
     enabled: !!ownerUserId,
     staleTime: 30000,
   });
-
-  // Log any errors
-  if (error) {
-    console.error('LinkBlock contacts query error:', error);
-  }
-
-  // Debug ownerUserId
-  console.log('LinkBlock ownerUserId:', ownerUserId);
 
   const selectedContact = contactsList.find((c: any) => c.contactId === block.data.contactId);
   
