@@ -1304,6 +1304,7 @@ class DatabaseStorage {
                     title: projectData.name,
                     description: projectData.description,
                     content: { projectId: projectId }, // Store the cj_ UUID in content metadata
+                    referenceId: projectId, // Store the cj_ UUID as referenceId for direct access
                     status: 'active'
                 });
                 console.log('Space link created successfully');

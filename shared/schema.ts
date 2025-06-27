@@ -692,6 +692,7 @@ export const appSpaceItems = appSchema.table("space_items", {
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   content: jsonb("content").default({}),
+  referenceId: varchar("reference_id", { length: 255 }), // For linking to external entities (e.g., cj_ prefixed UUIDs for projects)
   status: varchar("status", { length: 50 }).default("active"),
   priority: varchar("priority", { length: 50 }).default("medium"),
   dueDate: timestamp("due_date", { withTimezone: true }),
