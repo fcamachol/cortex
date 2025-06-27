@@ -586,60 +586,6 @@ class DatabaseStorage {
         return results.rows;
     }
 
-    async getAvailableWhatsappInstances(userId: string): Promise<any[]> {
-        const results = await db.execute(sql`
-            SELECT 
-                instance_name as "instanceName",
-                display_name as "displayName",
-                owner_jid as "ownerJid",
-                client_id as "clientId",
-                visibility,
-                is_connected as "isConnected",
-                custom_color as "customColor",
-                custom_letter as "customLetter"
-            FROM whatsapp.instances 
-            WHERE client_id = ${userId} OR visibility = 'shared'
-            ORDER BY created_at DESC
-        `);
-        
-        return results.rows;
-    }
-
-    async getWhatsappInstanceByName(instanceName: string): Promise<any | null> {
-        const results = await db.execute(sql`
-            SELECT 
-                instance_name as "instanceName",
-                display_name as "displayName",
-                owner_jid as "ownerJid",
-                client_id as "clientId",
-                visibility,
-                is_connected as "isConnected"
-            FROM whatsapp.instances 
-            WHERE instance_name = ${instanceName}
-            LIMIT 1
-        `);
-        
-        return results.rows[0] || null;
-    }
-
-    async updateContactWhatsAppLink(contactId: number, linkData: {
-        whatsappJid: string | null;
-        whatsappInstanceId: string | null;
-        isWhatsappLinked: boolean;
-        whatsappLinkedAt: Date | null;
-    }): Promise<void> {
-        await db.execute(sql`
-            UPDATE crm.contacts 
-            SET 
-                whatsapp_jid = ${linkData.whatsappJid},
-                whatsapp_instance_id = ${linkData.whatsappInstanceId},
-                is_whatsapp_linked = ${linkData.isWhatsappLinked},
-                whatsapp_linked_at = ${linkData.whatsappLinkedAt},
-                updated_at = NOW()
-            WHERE contact_id = ${contactId}
-        `);
-    }
-
     async getInstanceStatus(instanceName: string): Promise<any> {
         const instance = await this.getInstanceByName(instanceName);
         return {
