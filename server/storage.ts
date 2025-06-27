@@ -4066,7 +4066,7 @@ class DatabaseStorage {
                     ${groupData.type || 'team'},
                     ${groupData.description || null},
                     ${groupData.color || '#3B82F6'},
-                    ${JSON.stringify(groupData.tags || [])},
+                    ${groupData.tags || []},
                     ${groupData.parentGroupId || null},
                     ${groupData.status || 'active'},
                     ${groupData.whatsappJid || null},
@@ -4135,7 +4135,7 @@ class DatabaseStorage {
                     type = ${updateData.type},
                     description = ${updateData.description},
                     color = ${updateData.color},
-                    tags = ${JSON.stringify(updateData.tags || [])},
+                    tags = ${updateData.tags || []},
                     parent_group_id = ${updateData.parentGroupId},
                     status = ${updateData.status},
 
