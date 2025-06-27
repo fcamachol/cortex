@@ -142,6 +142,10 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
                 // We need to communicate the selected space to Dashboard
                 window.dispatchEvent(new CustomEvent('spaceSelected', { detail: space }));
               }}
+              onNavigateToSpaces={() => {
+                // Navigate to all spaces view within Dashboard
+                onSetActiveModule("spaces");
+              }}
             />
           </div>
         )}

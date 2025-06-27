@@ -38,9 +38,10 @@ interface SpaceItem {
 interface SpacesSidebarProps {
   onSpaceSelect?: (space: Space) => void;
   selectedSpaceId?: number;
+  onNavigateToSpaces?: () => void;
 }
 
-export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarProps) {
+export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpaces }: SpacesSidebarProps) {
   const [expandedSpaces, setExpandedSpaces] = useState<Set<number>>(new Set());
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['work', 'personal']));
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -766,8 +767,10 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
             <h3 
               className="text-base font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer"
               onClick={() => {
-                // Navigate to all spaces view
-                setLocation('/spaces');
+                // Navigate to all spaces view within Dashboard
+                if (onNavigateToSpaces) {
+                  onNavigateToSpaces();
+                }
               }}
             >
               Spaces
