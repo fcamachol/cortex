@@ -1061,6 +1061,12 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const { taskId, entityId, relationshipType } = req.body;
       
+      console.log('Creating task-entity link with values:', {
+        taskId: taskId + ' (length: ' + taskId?.length + ')',
+        entityId: entityId + ' (length: ' + entityId?.length + ')',
+        relationshipType: relationshipType + ' (length: ' + relationshipType?.length + ')'
+      });
+      
       const link = await storage.createTaskEntityLink({
         taskId,
         entityId,
