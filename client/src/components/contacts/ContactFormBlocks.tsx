@@ -215,6 +215,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
       const companyBlocks = blocks.filter(b => b.type === 'company');
       const noteBlocks = blocks.filter(b => b.type === 'note');
       const linkBlocks = blocks.filter(b => b.type === 'link');
+      const dateBlocks = blocks.filter(b => b.type === 'date');
 
       // Set primary contact methods
       const primaryPhone = phoneBlocks.find(b => b.data.isPrimary)?.data.number || phoneBlocks[0]?.data.number || '';

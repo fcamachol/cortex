@@ -1,4 +1,4 @@
-import { pgTable, pgSchema, text, boolean, timestamp, uuid, integer, jsonb, bigint, varchar, serial, numeric, index, primaryKey, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, pgSchema, text, boolean, timestamp, uuid, integer, jsonb, bigint, varchar, serial, numeric, index, primaryKey, uniqueIndex, pgEnum } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -1223,11 +1223,15 @@ export const crmContactAliases = crmSchema.table("contact_aliases", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Special Date Categories
+export const specialDateCategoryEnum = crmSchema.enum("special_date_category", ["birthday", "anniversary", "other"]);
+
 // Special Dates - Important dates for contacts (birthdays, anniversaries, etc.)
 export const crmSpecialDates = crmSchema.table("special_dates", {
   specialDateId: serial("special_date_id").primaryKey(),
   contactId: integer("contact_id").notNull().references(() => crmContacts.contactId, { onDelete: "cascade" }),
   eventName: varchar("event_name", { length: 100 }).notNull(), // 'Birthday', 'Anniversary', etc.
+  category: specialDateCategoryEnum("category").notNull().default("other"), // Category for specific logic
   eventDay: integer("event_day").notNull(), // Day of month (1-31)
   eventMonth: integer("event_month").notNull(), // Month (1-12)
   originalYear: integer("original_year"), // Optional: for reference (birth year, wedding year, etc.)
