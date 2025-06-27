@@ -13,8 +13,8 @@ import { apiRequest } from '@/lib/queryClient';
 
 import { ProjectForm } from '../tasks/ProjectForm';
 import { TaskForm } from '../tasks/TaskForm';
-import { SpaceForm } from './SpaceForm';
 import { ProjectDetailModal } from '../projects/ProjectDetailModal';
+import { SpaceForm } from './SpaceForm';
 import { 
   Plus, 
   MoreHorizontal, 
@@ -67,6 +67,7 @@ interface SpaceItem {
   title: string;
   description?: string;
   metadata?: any;
+  referenceId?: string; // For projects: cj_ prefixed UUID, for tasks: regular UUID
   createdAt?: string;
   updatedAt?: string;
 }
@@ -111,6 +112,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
   const [showSubspaceForm, setShowSubspaceForm] = useState(false);
   const [showFileForm, setShowFileForm] = useState(false);
   const [showEventForm, setShowEventForm] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [location, navigate] = useLocation();
@@ -246,7 +248,15 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredItems.map((item: SpaceItem) => (
-            <Card key={item.itemId} className="hover:shadow-md transition-all cursor-pointer group">
+            <Card 
+              key={item.itemId} 
+              className="hover:shadow-md transition-all cursor-pointer group"
+              onClick={() => {
+                if (type === 'projects' && item.referenceId) {
+                  setSelectedProjectId(item.referenceId);
+                }
+              }}
+            >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -301,7 +311,15 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
     return (
       <div className="space-y-2">
         {filteredItems.map((item: SpaceItem) => (
-          <Card key={item.itemId} className="hover:shadow-sm transition-all cursor-pointer">
+          <Card 
+            key={item.itemId} 
+            className="hover:shadow-sm transition-all cursor-pointer"
+            onClick={() => {
+              if (type === 'projects' && item.referenceId) {
+                setSelectedProjectId(item.referenceId);
+              }
+            }}
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1">
@@ -771,6 +789,12 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
           </div>
         </div>
       )}
+
+      {/* Project Detail Modal */}
+      <ProjectDetailModal 
+        projectId={selectedProjectId} 
+        onClose={() => setSelectedProjectId(null)} 
+      />
     </div>
   );
 }
