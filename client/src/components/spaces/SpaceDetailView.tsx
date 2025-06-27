@@ -126,14 +126,8 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
 
   // Fetch space items
   const { data: spaceItems = [], isLoading: spaceItemsLoading, error: spaceItemsError } = useQuery({
-    queryKey: ['/api/spaces', spaceId, 'items'],
+    queryKey: [`/api/spaces/${spaceId}/items`],
     enabled: !!spaceId,
-    onSuccess: (data) => {
-      console.log(`Space ${spaceId} items fetched:`, data);
-    },
-    onError: (error) => {
-      console.error(`Error fetching space ${spaceId} items:`, error);
-    }
   });
 
   // Debug logging
@@ -141,6 +135,14 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
   console.log('SpaceDetailView - spaceItems:', spaceItems);
   console.log('SpaceDetailView - spaceItemsLoading:', spaceItemsLoading);
   console.log('SpaceDetailView - spaceItemsError:', spaceItemsError);
+  
+  // Manual cache clear for testing - remove this after debugging
+  React.useEffect(() => {
+    if (spaceId) {
+      console.log(`Clearing cache and refetching for space ${spaceId}`);
+      queryClient.removeQueries({ queryKey: [`/api/spaces/${spaceId}/items`] });
+    }
+  }, [spaceId, queryClient]);
 
   // Flatten all spaces including nested children
   const flattenSpaces = (spaces: Space[]): Space[] => {
@@ -658,7 +660,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                 description: `Project created and assigned to "${space?.spaceName}" space.`,
               });
               setShowProjectForm(false);
-              queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'items'] });
+              queryClient.invalidateQueries({ queryKey: [`/api/spaces/${spaceId}/items`] });
               queryClient.invalidateQueries({ queryKey: ['/api/crm/projects'] });
             }).catch((error) => {
               toast({
@@ -691,7 +693,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                 description: `Task created and assigned to "${space?.spaceName}" space.`,
               });
               setShowTaskForm(false);
-              queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'items'] });
+              queryClient.invalidateQueries({ queryKey: [`/api/spaces/${spaceId}/items`] });
               queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
             }).catch((error) => {
               toast({
@@ -727,7 +729,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
               });
               setShowSubspaceForm(false);
               queryClient.invalidateQueries({ queryKey: ['/api/spaces'] });
-              queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'items'] });
+              queryClient.invalidateQueries({ queryKey: [`/api/spaces/${spaceId}/items`] });
             }).catch((error) => {
               toast({
                 title: "Error",
