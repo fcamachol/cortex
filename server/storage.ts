@@ -1288,7 +1288,7 @@ class DatabaseStorage {
     }
 
     async getProjects(): Promise<any[]> {
-        return await db.select().from(crmProjects).orderBy(desc(crmProjects.createdAt));
+        return await db.select().from(crmProjects).orderBy(desc(crmProjects.projectId));
     }
 
     async getProjectById(projectId: number): Promise<CrmProject | null> {
