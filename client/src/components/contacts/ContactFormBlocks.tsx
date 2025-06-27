@@ -105,7 +105,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
                 type: 'phone',
                 data: {
                   number: phone.phoneNumber,
-                  type: phone.label || 'Mobile',
+                  type: phone.label === 'WhatsApp' ? 'Mobile' : (phone.label || 'Mobile'),
                   isPrimary: phone.isPrimary,
                   hasWhatsApp: phone.isWhatsappLinked
                 }

@@ -923,7 +923,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       await storage.createCrmContactPhone({
         contactId: newContact.contactId,
         phoneNumber,
-        label: 'WhatsApp',
+        label: 'Mobile',
         isWhatsappLinked: true,
         isPrimary: true
       });
