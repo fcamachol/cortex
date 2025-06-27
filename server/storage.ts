@@ -1284,8 +1284,8 @@ class DatabaseStorage {
             
             // Use raw SQL to insert with correct field mapping for existing database structure
             const result = await db.execute(sql`
-                INSERT INTO crm.projects (id, project_name, description, status, user_id)
-                VALUES (${projectId}, ${projectData.name}, ${projectData.description}, ${projectData.status || 'planning'}, ${projectData.userId})
+                INSERT INTO crm.projects (id, project_name, description, status, user_id, instance_id)
+                VALUES (${projectId}, ${projectData.name}, ${projectData.description}, ${projectData.status || 'planning'}, ${projectData.userId}, 'instance-1750433520122')
                 RETURNING id, project_name, description, status, user_id, created_at, updated_at
             `);
             
