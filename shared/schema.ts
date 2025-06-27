@@ -1375,6 +1375,7 @@ export const crmGroups = crmSchema.table("groups", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// UNIFIED SYSTEM - CRM Objects with prefixed UUIDs
 export const crmObjects = crmSchema.table("objects", {
   id: varchar("id", { length: 50 }).primaryKey(), // co_ prefixed UUID
   name: varchar("name", { length: 200 }).notNull(),
@@ -1597,6 +1598,17 @@ export const entityTags = crmSchema.table("entity_tags", {
   pk: primaryKey({ columns: [table.entityId, table.tagId] })
 }));
 
+// Entity Activities - Junction table for linking entities to activities
+export const entityActivities = crmSchema.table("entity_activities", {
+  entityId: varchar("entity_id", { length: 50 }).notNull(), // cp_, cc_, cg_, co_, ca_, cv_, cj_, ce_ prefixed
+  activityType: varchar("activity_type", { length: 20 }).notNull(), // task, event, note, payable, receivable, loan
+  activityId: varchar("activity_id", { length: 36 }).notNull(), // Standard UUID for activity
+  relationship: varchar("relationship", { length: 50 }), // owner, assignee, participant, etc.
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.entityId, table.activityType, table.activityId] })
+}));
+
 // CRM Tasks - Legacy main task management table (replaced by unified system)
 export const crmTasksLegacy = crmSchema.table("tasks_legacy", {
   taskId: serial("task_id").primaryKey(),
@@ -1643,8 +1655,8 @@ export const crmCalendarEvents = crmSchema.table("calendar_events", {
   spaceId: integer("space_id"),
 });
 
-// CRM Notes - Standalone notes with optional entity linking
-export const crmNotes = crmSchema.table("notes", {
+// CRM Notes - Standalone notes with optional entity linking (LEGACY - replaced by unified system)
+export const crmNotesLegacy = crmSchema.table("notes_legacy", {
   noteId: serial("note_id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   content: text("content").notNull(),
@@ -1653,10 +1665,10 @@ export const crmNotes = crmSchema.table("notes", {
   spaceId: integer("space_id").references(() => appSpaces.spaceId),
   // Optional entity linking
   contactId: integer("contact_id").references(() => crmContacts.contactId),
-  taskId: integer("task_id").references(() => crmTasks.taskId),
-  projectId: integer("project_id").references(() => crmProjects.projectId),
+  taskId: integer("task_id").references(() => crmTasksLegacy.taskId),
+  projectId: integer("project_id"),
   eventId: integer("event_id").references(() => crmCalendarEvents.eventId),
-  companyId: integer("company_id").references(() => crmCompanies.companyId),
+  companyId: integer("company_id").references(() => crmCompaniesLegacy.companyId),
   entityId: varchar("entity_id", { length: 50 }), // Unified entity ID (cp_, cg_, cc_, co_)
   // WhatsApp context
   triggeringMessageId: varchar("triggering_message_id", { length: 100 }),
@@ -2542,8 +2554,5 @@ export type InsertCreditCardDetails = z.infer<typeof insertCreditCardDetailsSche
 
 export type Statement = typeof statements.$inferSelect;
 
-// CRM Entity Activities - Junction table for linking entities to activities
-export const insertCrmEntityActivitySchema = createInsertSchema(crmEntityActivities);
-export type CrmEntityActivity = typeof crmEntityActivities.$inferSelect;
-export type InsertCrmEntityActivity = z.infer<typeof insertCrmEntityActivitySchema>;
+// CRM Entity Activities - Junction table for linking entities to activities (defined in unified system below)
 export type InsertStatement = z.infer<typeof insertStatementSchema>;
