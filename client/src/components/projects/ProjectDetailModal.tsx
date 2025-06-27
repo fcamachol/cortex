@@ -20,7 +20,19 @@ import {
   Circle,
   Users,
   BarChart3,
+  Plus,
+  X,
 } from 'lucide-react';
+import { queryClient, apiRequest } from '@/lib/queryClient';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useMutation } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProjectDetailModalProps {
   projectId: string | null;
@@ -70,7 +82,165 @@ const priorityColors = {
   urgent: 'bg-red-100 text-red-600',
 };
 
+const taskFormSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  description: z.string().optional(),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+  status: z.enum(['todo', 'in_progress', 'done', 'cancelled']).default('todo'),
+  dueDate: z.string().optional(),
+});
+
+type TaskFormData = z.infer<typeof taskFormSchema>;
+
+interface TaskCreationFormProps {
+  projectId: string;
+  onTaskCreated: (task: any) => void;
+}
+
+function TaskCreationForm({ projectId, onTaskCreated }: TaskCreationFormProps) {
+  const { toast } = useToast();
+  
+  const form = useForm<TaskFormData>({
+    resolver: zodResolver(taskFormSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      priority: 'medium',
+      status: 'todo',
+      dueDate: '',
+    },
+  });
+
+  const createTaskMutation = useMutation({
+    mutationFn: async (data: TaskFormData) => {
+      // Create the task
+      const taskResponse = await apiRequest('/api/crm/tasks', 'POST', {
+        title: data.title,
+        description: data.description,
+        priority: data.priority,
+        status: data.status,
+        dueDate: data.dueDate || null,
+      });
+
+      // Link the task to the project using the unified entity system
+      await apiRequest('/api/crm/task-entities', 'POST', {
+        taskId: taskResponse.id,
+        entityId: projectId,
+        relationshipType: 'assigned_to_project',
+      });
+
+      return taskResponse;
+    },
+    onSuccess: (task) => {
+      toast({
+        title: 'Task created',
+        description: 'Task has been successfully created and linked to the project.',
+      });
+      onTaskCreated(task);
+      form.reset();
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to create task. Please try again.',
+        variant: 'destructive',
+      });
+      console.error('Task creation error:', error);
+    },
+  });
+
+  const onSubmit = (data: TaskFormData) => {
+    createTaskMutation.mutate(data);
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="title"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Task Title</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter task title..." {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description (Optional)</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Enter task description..." {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="priority"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Priority</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="dueDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Due Date (Optional)</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <Button
+            type="submit"
+            disabled={createTaskMutation.isPending}
+            className="gap-2"
+          >
+            {createTaskMutation.isPending ? 'Creating...' : 'Create Task'}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
 export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalProps) {
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  
   const { data: project, isLoading } = useQuery<ProjectDetail>({
     queryKey: ['/api/crm/projects', projectId, 'detail'],
     enabled: !!projectId,
@@ -221,13 +391,52 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
                 </TabsContent>
 
                 <TabsContent value="tasks" className="space-y-4 p-1">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold">Project Tasks</h3>
+                    <Button
+                      onClick={() => setShowTaskForm(true)}
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Task
+                    </Button>
+                  </div>
+
+                  {showTaskForm && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          Create New Task
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowTaskForm(false)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <TaskCreationForm 
+                          projectId={projectId}
+                          onTaskCreated={(newTask) => {
+                            setShowTaskForm(false);
+                            // Invalidate project query to refresh tasks
+                            queryClient.invalidateQueries({ queryKey: ['/api/crm/projects'] });
+                          }}
+                        />
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {!project.tasks || project.tasks.length === 0 ? (
                     <Card>
                       <CardContent className="pt-6">
                         <div className="text-center text-muted-foreground">
                           <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
                           <h3 className="text-lg font-medium mb-2">No tasks yet</h3>
-                          <p className="text-sm">Tasks will appear here when they're linked to this project.</p>
+                          <p className="text-sm">Create tasks to track project progress.</p>
                         </div>
                       </CardContent>
                     </Card>
