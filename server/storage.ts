@@ -1375,8 +1375,8 @@ class DatabaseStorage {
         return link;
     }
 
-    async getTasks(instanceId?: string): Promise<any[]> {
-        const result = await db.select({
+    async getTasks(userId?: string): Promise<any[]> {
+        let query = db.select({
             taskId: crmTasks.id, // Map id to taskId for frontend compatibility
             id: crmTasks.id,
             title: crmTasks.title,
@@ -1392,8 +1392,14 @@ class DatabaseStorage {
             userId: crmTasks.userId,
             createdAt: crmTasks.createdAt,
             updatedAt: crmTasks.updatedAt
-        }).from(crmTasks).orderBy(desc(crmTasks.createdAt));
+        }).from(crmTasks);
         
+        // Filter by userId if provided (unified entity architecture)
+        if (userId) {
+            query = query.where(eq(crmTasks.userId, userId));
+        }
+        
+        const result = await query.orderBy(desc(crmTasks.createdAt));
         return result;
     }
 

@@ -1619,6 +1619,12 @@ export const crmTasks = crmSchema.table("tasks", {
   parentTaskId: varchar("parent_task_id", { length: 50 }), // hierarchical tasks using ct_ prefix
   tags: jsonb("tags").$type<string[]>(),
   userId: uuid("user_id").notNull().references(() => appUsers.userId), // Link to authenticated users
+  // WhatsApp message linking fields
+  triggeringMessageId: varchar("triggering_message_id", { length: 255 }), // WhatsApp message that created this task
+  triggeringInstanceName: varchar("triggering_instance_name", { length: 100 }), // WhatsApp instance
+  triggeringSenderJid: varchar("triggering_sender_jid", { length: 255 }), // Who triggered the task creation
+  triggeringChatJid: varchar("triggering_chat_jid", { length: 255 }), // Chat where task was triggered
+  triggerType: varchar("trigger_type", { length: 50 }), // reaction, keyword, hashtag, etc.
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

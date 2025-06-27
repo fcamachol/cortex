@@ -705,8 +705,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         'Expires': '0'
       });
       
-      const { instanceId } = req.query;
-      const tasks = await storage.getTasks(instanceId as string);
+      // Use userId instead of instanceId for unified entity architecture
+      const { userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42' } = req.query;
+      const tasks = await storage.getTasks(userId as string);
       
       // Tasks now come with correct field mapping from storage
       const transformedTasks = tasks.map(task => ({
@@ -2053,40 +2054,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // CRM Tasks API
-  app.get('/api/crm/tasks', async (req: Request, res: Response) => {
-    try {
-      const { instanceId } = req.query;
-      const tasks = await storage.getTasks(instanceId as string);
-      
-      // Transform snake_case field names to camelCase for frontend compatibility
-      const transformedTasks = tasks.map(task => ({
-        taskId: task.task_id,
-        title: task.title,
-        description: task.description,
-        status: task.status,
-        priority: task.priority,
-        dueDate: task.due_date,
-        projectId: task.project_id,
-        parentTaskId: task.parent_task_id,
-        assignedToUserId: task.assigned_to_user_id,
-        relatedChatJid: task.related_chat_jid,
-        createdAt: task.created_at,
-        updatedAt: task.updated_at,
-        subtasks: task.subtasks || [],
-        checklistItems: task.checklist_items || [],
-        triggeringMessageId: task.triggering_message_id,
-        instanceId: task.instance_id,
-        senderJid: task.sender_jid,
-        taskType: task.task_type
-      }));
-      
-      res.json(transformedTasks);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-      res.status(500).json({ error: 'Failed to fetch tasks' });
-    }
-  });
+
 
   app.get('/api/crm/tasks/:taskId', async (req: Request, res: Response) => {
     try {
