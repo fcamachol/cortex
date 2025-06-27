@@ -3490,20 +3490,28 @@ class DatabaseStorage {
                 ...contact.emails?.map(e => e.emailAddress) || []  // Email addresses
             ].filter(Boolean);
 
+            // Build individual conditions
+            const conditions = [
+                // WhatsApp JID match in related chat
+                eq(crmTasks.relatedChatJid, contact.whatsappJid || ''),
+                // Contact ID in metadata or description
+                sql`${crmTasks.description} ILIKE ${`%${contactId}%`}`,
+                sql`${crmTasks.title} ILIKE ${`%${contactId}%`}`,
+                // Full name matches
+                sql`${crmTasks.description} ILIKE ${`%${contact.fullName}%`}`,
+                sql`${crmTasks.title} ILIKE ${`%${contact.fullName}%`}`
+            ];
+
+            // Add phone and email conditions
+            identifiers.forEach(id => {
+                conditions.push(sql`${crmTasks.description} ILIKE ${`%${id}%`}`);
+                conditions.push(sql`${crmTasks.title} ILIKE ${`%${id}%`}`);
+            });
+
             // Search tasks that mention any of these identifiers
             const tasks = await db.select()
                 .from(crmTasks)
-                .where(
-                    or(
-                        // Direct contact assignment
-                        sql`${crmTasks.description} ILIKE ANY(${identifiers.map(id => `%${id}%`)})`,
-                        sql`${crmTasks.title} ILIKE ANY(${identifiers.map(id => `%${id}%`)})`,
-                        // WhatsApp JID match in related chat
-                        eq(crmTasks.relatedChatJid, contact.whatsappJid || ''),
-                        // Contact ID in metadata or description
-                        sql`${crmTasks.description} ILIKE ${'%' + contactId + '%'}`
-                    )
-                )
+                .where(or(...conditions))
                 .orderBy(desc(crmTasks.createdAt))
                 .limit(20);
 
@@ -3529,19 +3537,27 @@ class DatabaseStorage {
                 ...contact.emails?.map(e => e.emailAddress) || []
             ].filter(Boolean);
 
+            // Build individual conditions for events
+            const eventConditions = [
+                // Contact ID in event
+                sql`${crmCalendarEvents.title} ILIKE ${`%${contactId}%`}`,
+                sql`${crmCalendarEvents.description} ILIKE ${`%${contactId}%`}`,
+                sql`${crmCalendarEvents.location} ILIKE ${`%${contactId}%`}`,
+                // Full name matches
+                sql`${crmCalendarEvents.title} ILIKE ${`%${contact.fullName}%`}`,
+                sql`${crmCalendarEvents.description} ILIKE ${`%${contact.fullName}%`}`
+            ];
+
+            // Add phone and email conditions
+            identifiers.forEach(id => {
+                eventConditions.push(sql`${crmCalendarEvents.title} ILIKE ${`%${id}%`}`);
+                eventConditions.push(sql`${crmCalendarEvents.description} ILIKE ${`%${id}%`}`);
+            });
+
             // Search CRM calendar events that mention the contact
             const events = await db.select()
                 .from(crmCalendarEvents)
-                .where(
-                    or(
-                        // Event title or description mentions contact
-                        sql`${crmCalendarEvents.title} ILIKE ANY(${identifiers.map(id => `%${id}%`)})`,
-                        sql`${crmCalendarEvents.description} ILIKE ANY(${identifiers.map(id => `%${id}%`)})`,
-                        // Contact mentioned in attendees or location
-                        sql`${crmCalendarEvents.location} ILIKE ANY(${identifiers.map(id => `%${id}%`)})`,
-                        sql`${crmCalendarEvents.attendees} ILIKE ANY(${identifiers.map(id => `%${id}%`)})`
-                    )
-                )
+                .where(or(...eventConditions))
                 .orderBy(desc(crmCalendarEvents.startTime))
                 .limit(20);
 
@@ -3612,20 +3628,25 @@ class DatabaseStorage {
                 ...contact.emails?.map(e => e.emailAddress) || []
             ].filter(Boolean);
 
+            // Build individual conditions for notes
+            const noteConditions = [
+                // Content mentions contact identifiers
+                sql`${crmNotes.title} ILIKE ${`%${contactId}%`}`,
+                sql`${crmNotes.content} ILIKE ${`%${contactId}%`}`,
+                sql`${crmNotes.title} ILIKE ${`%${contact.fullName}%`}`,
+                sql`${crmNotes.content} ILIKE ${`%${contact.fullName}%`}`
+            ];
+
+            // Add phone and email conditions
+            identifiers.forEach(id => {
+                noteConditions.push(sql`${crmNotes.title} ILIKE ${`%${id}%`}`);
+                noteConditions.push(sql`${crmNotes.content} ILIKE ${`%${id}%`}`);
+            });
+
             // Search CRM notes that mention the contact
             const notes = await db.select()
                 .from(crmNotes)
-                .where(
-                    or(
-                        // Direct contact linking
-                        eq(crmNotes.contactId, contactId),
-                        // Content mentions contact identifiers
-                        sql`${crmNotes.title} ILIKE ANY(${identifiers.map(id => `%${id}%`)})`,
-                        sql`${crmNotes.content} ILIKE ANY(${identifiers.map(id => `%${id}%`)})`,
-                        // Tags mention contact
-                        sql`${crmNotes.tags} && ARRAY[${identifiers.map(id => `'${id}'`).join(',')}]`
-                    )
-                )
+                .where(or(...noteConditions))
                 .orderBy(desc(crmNotes.createdAt))
                 .limit(20);
 
