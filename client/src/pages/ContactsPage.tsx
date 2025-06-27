@@ -40,6 +40,20 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
     enabled: !!userId,
   });
 
+  // Check if main contact exists and create if needed
+  React.useEffect(() => {
+    if (contactsList && contactsList.length >= 0 && userId && !contactsLoading) {
+      const hasMainContact = contactsList.some((contact: any) => 
+        contact.relationship === "Self" || contact.tags?.includes("Main")
+      );
+      
+      if (!hasMainContact && !createMainContactMutation.isPending) {
+        // Auto-create main contact
+        handleCreateMainContact();
+      }
+    }
+  }, [contactsList, userId, contactsLoading]);
+
   const { data: companiesList = [], isLoading: companiesLoading } = useQuery({
     queryKey: ['/api/crm/companies', userId],
     queryFn: () => fetch(`/api/crm/companies?spaceId=1`).then(res => res.json()),
@@ -98,10 +112,10 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
   const handleCreateMainContact = () => {
     const mainContactData = {
       ownerUserId: userId,
-      fullName: "Your Name", // User will edit this
+      fullName: "Me (Main Contact)", // Clear indication this is the main contact
       relationship: "Self",
       tags: ["Main", "Self"],
-      notes: "This is my main contact record - the central hub for my CRM system.",
+      notes: "This is my main contact record - the central hub for linking all my CRM relationships and personal information.",
       profession: "",
       company: "",
       phones: [
@@ -179,17 +193,6 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          {/* Show Create Main Contact button if no main contact exists */}
-          {!contactsList.some((contact: any) => contact.relationship === "Self" || contact.tags?.includes("Main")) && (
-            <Button 
-              variant="outline"
-              onClick={handleCreateMainContact}
-              disabled={createMainContactMutation.isPending}
-            >
-              <Users className="w-4 h-4 mr-2" />
-              {createMainContactMutation.isPending ? "Creating..." : "Create Main Contact"}
-            </Button>
-          )}
           <Dialog open={isAddContactOpen} onOpenChange={setIsAddContactOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -264,26 +267,43 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                   ) : (
                     <ScrollArea className="h-[600px]">
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {getFilteredContacts().map((contact: CrmContact) => (
-                          <Card key={contact.contactId} className="cursor-pointer hover:shadow-md transition-shadow"
-                                onClick={() => handleContactClick(contact)}>
-                            <CardContent className="p-4">
-                              <div className="flex items-start gap-3">
-                                <Avatar className="w-12 h-12">
-                                  <AvatarFallback className="bg-blue-100 text-blue-600">
-                                    {getInitials(contact.fullName)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 min-w-0">
-                                  {/* Name with Checkmark */}
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                                      {contact.fullName}
-                                    </h3>
-                                    {contact.isWhatsappLinked && (
-                                      <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                    )}
-                                  </div>
+                        {getFilteredContacts().map((contact: CrmContact) => {
+                          const isMainContact = contact.relationship === "Self" || contact.tags?.includes("Main");
+                          return (
+                            <Card 
+                              key={contact.contactId} 
+                              className={`cursor-pointer hover:shadow-md transition-shadow ${
+                                isMainContact ? 'border-2 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20' : ''
+                              }`}
+                              onClick={() => handleContactClick(contact)}
+                            >
+                              <CardContent className="p-4">
+                                <div className="flex items-start gap-3">
+                                  <Avatar className="w-12 h-12">
+                                    <AvatarFallback className={`${
+                                      isMainContact 
+                                        ? 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300' 
+                                        : 'bg-blue-100 text-blue-600'
+                                    }`}>
+                                      {getInitials(contact.fullName)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 min-w-0">
+                                    {/* Name with Checkmark and Main badge */}
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                                        {contact.fullName}
+                                      </h3>
+                                      {isMainContact && (
+                                        <Badge variant="secondary" className="bg-yellow-200 text-yellow-800 text-xs border-yellow-300">
+                                          <Star className="w-3 h-3 mr-1" />
+                                          Main
+                                        </Badge>
+                                      )}
+                                      {contact.isWhatsappLinked && (
+                                        <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                      )}
+                                    </div>
 
                                   {/* Profession and Company */}
                                   {(contact.profession || contact.company) && (
@@ -331,7 +351,8 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                               </div>
                             </CardContent>
                           </Card>
-                        ))}
+                          );
+                        })}
                       </div>
                     </ScrollArea>
                   )}
