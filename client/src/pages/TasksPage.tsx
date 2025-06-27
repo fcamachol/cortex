@@ -18,22 +18,28 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
 export interface Task {
-  taskId: number;
+  taskId: string; // Changed to string for UUID support
+  id: string; // Added id field
   title: string;
   description?: string;
   status: string;
   priority?: string;
   dueDate?: string;
   projectId?: number;
-  parentTaskId?: number;
+  parentTaskId?: string; // Changed to string for UUID support
   assignedToUserId?: string;
   relatedChatJid?: string;
   createdAt: string;
   updatedAt: string;
   subtasks?: Task[];
-  checklist_items?: ChecklistItem[];
+  checklistItems?: ChecklistItem[]; // Fixed field name
   triggeringMessageId?: string;
   instanceId?: string;
+  userId?: string; // Added userId field
+  completedAt?: string; // Added completedAt field
+  estimatedHours?: string; // Added estimatedHours field
+  actualHours?: string; // Added actualHours field
+  tags?: string[]; // Added tags field
 }
 
 interface Project {

@@ -9,20 +9,26 @@ import { Calendar, MessageSquare, User, MoreHorizontal, Plus, ChevronDown, Chevr
 
 
 interface Task {
-  taskId: number;
+  taskId: string; // Changed to string for UUID support
+  id: string; // Added id field
   title: string;
   description?: string;
   status: string;
   priority?: string;
   dueDate?: string;
   projectId?: number;
-  parentTaskId?: number;
+  parentTaskId?: string; // Changed to string for UUID support
   assignedToUserId?: string;
   relatedChatJid?: string;
   createdAt: string;
   updatedAt: string;
   subtasks?: Task[];
-  checklist_items?: ChecklistItem[];
+  checklistItems?: ChecklistItem[]; // Fixed field name
+  userId?: string; // Added userId field
+  completedAt?: string; // Added completedAt field
+  estimatedHours?: string; // Added estimatedHours field
+  actualHours?: string; // Added actualHours field
+  tags?: string[]; // Added tags field
 }
 
 interface ChecklistItem {
@@ -34,10 +40,10 @@ interface ChecklistItem {
 
 interface TaskBoardProps {
   tasks: Task[];
-  onStatusChange: (taskId: number, newStatus: string) => void;
-  onPriorityChange: (taskId: number, newPriority: string) => void;
+  onStatusChange: (taskId: string, newStatus: string) => void; // Changed to string
+  onPriorityChange: (taskId: string, newPriority: string) => void; // Changed to string
   onEditTask: (task: Task) => void;
-  onCreateSubtask: (parentTaskId: number, subtaskData: Partial<Task>) => void;
+  onCreateSubtask: (parentTaskId: string, subtaskData: Partial<Task>) => void; // Changed to string
   onTaskClick: (task: Task) => void;
 }
 
@@ -49,7 +55,7 @@ interface StatusColumn {
 }
 
 const statusColumns: StatusColumn[] = [
-  { id: 'to_do', title: 'To Do', color: 'bg-slate-100', includeStatuses: ['to_do', 'pending'] },
+  { id: 'to_do', title: 'To Do', color: 'bg-slate-100', includeStatuses: ['to_do', 'todo', 'pending'] },
   { id: 'in_progress', title: 'In Progress', color: 'bg-blue-100', includeStatuses: ['in_progress', 'review'] },
   { id: 'done', title: 'Done', color: 'bg-green-100', includeStatuses: ['done', 'completed'] }
 ];
@@ -62,9 +68,9 @@ export function TaskBoard({
   onCreateSubtask,
   onTaskClick 
 }: TaskBoardProps) {
-  const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
 
-  const toggleTaskExpansion = (taskId: number) => {
+  const toggleTaskExpansion = (taskId: string) => {
     const newExpanded = new Set(expandedTasks);
     if (newExpanded.has(taskId)) {
       newExpanded.delete(taskId);
@@ -98,7 +104,7 @@ export function TaskBoard({
     if (!result.destination) return;
 
     const { draggableId, destination } = result;
-    const taskId = parseInt(draggableId.split('-')[0]); // Extract task ID from composite key
+    const taskId = draggableId.split('-')[0]; // Extract task ID from composite key (now string UUID)
     const newStatus = destination.droppableId;
 
     onStatusChange(taskId, newStatus);
