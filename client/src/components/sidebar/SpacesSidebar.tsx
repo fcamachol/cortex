@@ -327,7 +327,9 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
                       paddingLeft: `${4 + level * 6}px`
                     }}
                     onClick={() => {
-                      setLocation(`/spaces/${space.spaceId}`);
+                      if (onSpaceSelect) {
+                        onSpaceSelect(space);
+                      }
                     }}
                   >
               {/* Drag Handle */}
