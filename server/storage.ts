@@ -586,60 +586,6 @@ class DatabaseStorage {
         return results.rows;
     }
 
-    async getAvailableWhatsappInstances(userId: string): Promise<any[]> {
-        const results = await db.execute(sql`
-            SELECT 
-                instance_name as "instanceName",
-                display_name as "displayName",
-                owner_jid as "ownerJid",
-                client_id as "clientId",
-                visibility,
-                is_connected as "isConnected",
-                custom_color as "customColor",
-                custom_letter as "customLetter"
-            FROM whatsapp.instances 
-            WHERE client_id = ${userId} OR visibility = 'shared'
-            ORDER BY created_at DESC
-        `);
-        
-        return results.rows;
-    }
-
-    async getWhatsappInstanceByName(instanceName: string): Promise<any | null> {
-        const results = await db.execute(sql`
-            SELECT 
-                instance_name as "instanceName",
-                display_name as "displayName",
-                owner_jid as "ownerJid",
-                client_id as "clientId",
-                visibility,
-                is_connected as "isConnected"
-            FROM whatsapp.instances 
-            WHERE instance_name = ${instanceName}
-            LIMIT 1
-        `);
-        
-        return results.rows[0] || null;
-    }
-
-    async updateContactWhatsAppLink(contactId: number, linkData: {
-        whatsappJid: string | null;
-        whatsappInstanceId: string | null;
-        isWhatsappLinked: boolean;
-        whatsappLinkedAt: Date | null;
-    }): Promise<void> {
-        await db.execute(sql`
-            UPDATE crm.contacts 
-            SET 
-                whatsapp_jid = ${linkData.whatsappJid},
-                whatsapp_instance_id = ${linkData.whatsappInstanceId},
-                is_whatsapp_linked = ${linkData.isWhatsappLinked},
-                whatsapp_linked_at = ${linkData.whatsappLinkedAt},
-                updated_at = NOW()
-            WHERE contact_id = ${contactId}
-        `);
-    }
-
     async getInstanceStatus(instanceName: string): Promise<any> {
         const instance = await this.getInstanceByName(instanceName);
         return {
@@ -2112,12 +2058,6 @@ class DatabaseStorage {
             .set({ ...updates, updatedAt: new Date() })
             .where(eq(crmContacts.contactId, contactId))
             .returning();
-        
-        // If the relationship was changed to 'Self', trigger WhatsApp instance linking
-        if (updates.relationship === 'Self' || updates.relationship === 'self') {
-            await this.linkMainContactToInstances(contactId);
-        }
-        
         return contact;
     }
 
@@ -2168,13 +2108,17 @@ class DatabaseStorage {
             const contact = await this.createCrmContact(mainContactData);
             
             // Process phones (ensure Mobile label instead of WhatsApp)
-            // The addContactPhone method will automatically handle instance linking for main contacts
             for (const phone of phones) {
                 await this.addContactPhone({
                     ...phone,
                     label: phone.label === 'WhatsApp' ? 'Mobile' : phone.label,
                     contactId: contact.contactId
                 });
+                
+                // If phone is marked as having WhatsApp, attempt to link
+                if (phone.isWhatsappLinked) {
+                    await this.linkContactToWhatsApp(contact.contactId, phone.phoneNumber);
+                }
             }
             
             // Process emails
@@ -2229,6 +2173,11 @@ class DatabaseStorage {
                     label: phone.label === 'WhatsApp' ? 'Mobile' : phone.label,
                     contactId: contactId
                 });
+                
+                // If phone is marked as having WhatsApp, attempt to link
+                if (phone.isWhatsappLinked) {
+                    await this.linkContactToWhatsApp(contactId, phone.phoneNumber);
+                }
             }
             
             // Add new emails
@@ -2325,50 +2274,15 @@ class DatabaseStorage {
                 .where(eq(crmContactPhones.contactId, phoneData.contactId));
         }
 
-        // Get contact details to check if it's a main contact
-        const contact = await this.getCrmContactById(phoneData.contactId);
-        
-        let isWhatsappLinked = false;
-        let whatsappJid = null;
-        let whatsappInstanceName = null;
-        
-        if (contact) {
-            // Create WhatsApp JID from phone number
-            const potentialJid = this.phoneToWhatsAppJid(phoneData.phoneNumber);
-            
-            if (contact.relationship === 'Self' || contact.relationship === 'self') {
-                // For main contacts, check WhatsApp instances (they own these instances)
-                const instance = await this.getWhatsappInstanceByOwnerJid(potentialJid);
-                if (instance) {
-                    isWhatsappLinked = true;
-                    whatsappJid = instance.ownerJid;
-                    whatsappInstanceName = instance.instanceName;
-                    
-                    // Also update the main contact with WhatsApp linking info
-                    await this.updateCrmContact(contact.contactId, {
-                        whatsappJid: instance.ownerJid,
-                        whatsappInstanceId: instance.instanceName,
-                        isWhatsappLinked: true,
-                        whatsappLinkedAt: new Date()
-                    });
-                    
-                    console.log(`🔗 Main contact ${contact.fullName} linked to WhatsApp instance: ${instance.instanceName}`);
-                }
-            } else {
-                // For regular contacts, check regular WhatsApp contacts
-                const whatsappContact = await this.getWhatsappContactByJid(potentialJid);
-                if (whatsappContact) {
-                    isWhatsappLinked = true;
-                    whatsappJid = potentialJid;
-                }
-            }
-        }
+        // Create WhatsApp JID from phone number and check if it exists in WhatsApp contacts
+        const whatsappJid = this.phoneToWhatsAppJid(phoneData.phoneNumber);
+        const whatsappContact = await this.getWhatsappContactByJid(whatsappJid);
         
         const [phone] = await db.insert(crmContactPhones)
             .values({
                 ...phoneData,
-                isWhatsappLinked,
-                whatsappJid
+                isWhatsappLinked: !!whatsappContact,
+                whatsappJid: whatsappContact ? whatsappJid : null
             })
             .returning();
         
@@ -2377,36 +2291,14 @@ class DatabaseStorage {
 
     // Helper method to convert phone number to WhatsApp JID
     private phoneToWhatsAppJid(phoneNumber: string): string {
-        // Remove all non-digit characters
-        let digits = phoneNumber.replace(/\D/g, '');
+        // Remove all non-digit characters and convert to international format
+        const digits = phoneNumber.replace(/\D/g, '');
         
-        // Remove leading zeros
-        digits = digits.replace(/^0+/, '');
+        // If it starts with +, remove it
+        const cleanNumber = digits.startsWith('1') ? digits : digits.replace(/^0+/, '');
         
-        // Handle different phone number formats
-        if (digits.startsWith('521') && digits.length >= 13) {
-            // Mexican mobile with proper country code (521)
-            return `${digits}@s.whatsapp.net`;
-        } else if (digits.startsWith('52') && digits.length === 12) {
-            // Mexican number with country code but missing mobile prefix
-            // Convert 525579188699 to 5215579188699 
-            return `521${digits.substring(2)}@s.whatsapp.net`;
-        } else if (digits.startsWith('1') && digits.length === 11) {
-            // US/Canada number
-            return `${digits}@s.whatsapp.net`;
-        } else if (digits.length === 10) {
-            // 10-digit number, could be US without country code or Mexican without country code
-            if (digits.startsWith('55') || digits.startsWith('56') || digits.startsWith('81') || digits.startsWith('33')) {
-                // Common Mexican area codes, add Mexican mobile prefix
-                return `521${digits}@s.whatsapp.net`;
-            } else {
-                // Could be US number without country code, add US country code
-                return `1${digits}@s.whatsapp.net`;
-            }
-        }
-        
-        // Default: use as provided
-        return `${digits}@s.whatsapp.net`;
+        // Return WhatsApp JID format
+        return `${cleanNumber}@s.whatsapp.net`;
     }
 
     // Helper method to check if WhatsApp contact exists
@@ -2420,77 +2312,6 @@ class DatabaseStorage {
         } catch (error) {
             console.error('Error checking WhatsApp contact:', error);
             return null;
-        }
-    }
-
-    private async getWhatsappInstanceByOwnerJid(ownerJid: string): Promise<any | null> {
-        try {
-            const [instance] = await db.select()
-                .from(whatsappInstances)
-                .where(eq(whatsappInstances.ownerJid, ownerJid))
-                .limit(1);
-            return instance || null;
-        } catch (error) {
-            console.error('Error checking WhatsApp instance by owner JID:', error);
-            return null;
-        }
-    }
-
-    // Method to link main contact to WhatsApp instances when relationship changes to "Self"
-    private async linkMainContactToInstances(contactId: number): Promise<void> {
-        try {
-            console.log(`🔗 Checking WhatsApp instance linking for main contact ${contactId}`);
-            
-            // Get all phone numbers for this contact
-            const phones = await db.select()
-                .from(crmContactPhones)
-                .where(eq(crmContactPhones.contactId, contactId));
-            
-            let linkedToInstance = false;
-            let linkedInstanceName = null;
-            let linkedOwnerJid = null;
-            
-            // Check each phone number for matching WhatsApp instances
-            for (const phone of phones) {
-                const potentialJid = this.phoneToWhatsAppJid(phone.phoneNumber);
-                const instance = await this.getWhatsappInstanceByOwnerJid(potentialJid);
-                
-                if (instance) {
-                    // Update phone record to reflect WhatsApp instance linking
-                    await db.update(crmContactPhones)
-                        .set({
-                            isWhatsappLinked: true,
-                            whatsappJid: instance.ownerJid
-                        })
-                        .where(eq(crmContactPhones.phoneId, phone.phoneId));
-                    
-                    linkedToInstance = true;
-                    linkedInstanceName = instance.instanceName;
-                    linkedOwnerJid = instance.ownerJid;
-                    
-                    console.log(`✅ Phone ${phone.phoneNumber} linked to WhatsApp instance: ${instance.instanceName}`);
-                    break; // Use first matching instance
-                }
-            }
-            
-            // If we found a matching instance, update the main contact
-            if (linkedToInstance) {
-                await db.update(crmContacts)
-                    .set({
-                        whatsappJid: linkedOwnerJid,
-                        whatsappInstanceId: linkedInstanceName,
-                        isWhatsappLinked: true,
-                        whatsappLinkedAt: new Date(),
-                        updatedAt: new Date()
-                    })
-                    .where(eq(crmContacts.contactId, contactId));
-                
-                console.log(`🎉 Main contact ${contactId} successfully linked to WhatsApp instance: ${linkedInstanceName}`);
-            } else {
-                console.log(`📱 No matching WhatsApp instances found for contact ${contactId}`);
-            }
-        } catch (error) {
-            console.error('Error linking main contact to instances:', error);
         }
     }
 
@@ -3501,7 +3322,7 @@ class DatabaseStorage {
                     await db.update(crmContacts)
                         .set({
                             whatsappJid: contact.jid,
-                            whatsappInstanceId: contact.instanceId,
+                            whatsappInstanceId: contact.instanceName,
                             isWhatsappLinked: true,
                             whatsappLinkedAt: new Date(),
                             updatedAt: new Date()
