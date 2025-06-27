@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Paperclip, Smile, Send, CheckSquare, Plus, MoreVertical, ChevronDown, Reply, Copy, Forward, Pin, Star, Trash2, X, Check, Clock } from "lucide-react";
 import { ClickableContactName } from "./ClickableContactName";
+import { ClickableGroupName } from "./ClickableGroupName";
 import { ContactTasksAndEvents } from "@/components/contacts/ContactTasksAndEvents";
 import { MessageReactions } from "@/components/conversations/MessageReactions";
 import { MessageHoverActions } from "@/components/conversations/MessageHoverActions";
@@ -967,7 +968,15 @@ export default function ChatInterface({
               })()}
             </div>
             <div>
-              {conversation && !conversation.chatId.includes('@g.us') ? (
+              {conversation && conversation.chatId.includes('@g.us') ? (
+                <ClickableGroupName
+                  groupJid={conversation.chatId}
+                  displayName={getConversationDisplayName(conversation)}
+                  instanceId={finalInstanceId}
+                  subject={conversation.displayName || conversation.name || conversation.title}
+                  variant="header"
+                />
+              ) : conversation && !conversation.chatId.includes('@g.us') ? (
                 <ClickableContactName
                   senderJid={conversation.chatId}
                   displayName={getConversationDisplayName(conversation)}
