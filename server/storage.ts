@@ -3602,12 +3602,16 @@ class DatabaseStorage {
                         ilike(financeLoans.purpose, `%${contact.fullName}%`)
                     )
                 )
-                .orderBy(desc(financeLoans.createdAt))
+                .orderBy(desc(financeLoans.loanId))
                 .limit(10);
 
             records.push(...loans.map(l => ({ ...l, type: 'loan' })));
 
-            return records.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            return records.sort((a, b) => {
+                const aDate = a.createdAt || a.startDate || new Date().toISOString();
+                const bDate = b.createdAt || b.startDate || new Date().toISOString();
+                return new Date(bDate).getTime() - new Date(aDate).getTime();
+            });
         } catch (error) {
             console.error('Error fetching related finance records for contact:', error);
             return [];
@@ -3631,17 +3635,19 @@ class DatabaseStorage {
 
             // Build individual conditions for notes
             const noteConditions = [
+                // Direct contact link
+                eq(crmNotes.contactId, contactId),
                 // Content mentions contact identifiers
-                sql`${crmNotes.title} ILIKE ${`%${contactId}%`}`,
-                sql`${crmNotes.content} ILIKE ${`%${contactId}%`}`,
-                sql`${crmNotes.title} ILIKE ${`%${contact.fullName}%`}`,
-                sql`${crmNotes.content} ILIKE ${`%${contact.fullName}%`}`
+                ilike(crmNotes.title, `%${contactId}%`),
+                ilike(crmNotes.content, `%${contactId}%`),
+                ilike(crmNotes.title, `%${contact.fullName}%`),
+                ilike(crmNotes.content, `%${contact.fullName}%`)
             ];
 
             // Add phone and email conditions
             identifiers.forEach(id => {
-                noteConditions.push(sql`${crmNotes.title} ILIKE ${`%${id}%`}`);
-                noteConditions.push(sql`${crmNotes.content} ILIKE ${`%${id}%`}`);
+                noteConditions.push(ilike(crmNotes.title, `%${id}%`));
+                noteConditions.push(ilike(crmNotes.content, `%${id}%`));
             });
 
             // Search CRM notes that mention the contact
