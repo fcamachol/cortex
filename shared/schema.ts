@@ -1473,6 +1473,8 @@ export const crmEvents = crmSchema.table("events", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+
+
 // Content Entities (Standard UUIDs for high-volume data)
 export const crmTasks = crmSchema.table("tasks", {
   id: varchar("id", { length: 36 }).primaryKey(), // standard UUID
@@ -2554,5 +2556,92 @@ export type InsertCreditCardDetails = z.infer<typeof insertCreditCardDetailsSche
 
 export type Statement = typeof statements.$inferSelect;
 
-// CRM Entity Activities - Junction table for linking entities to activities (defined in unified system below)
+// Unified Entity System Insert Schemas
+export const insertCrmGroupSchema = createInsertSchema(crmGroups).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrmEventSchema = createInsertSchema(crmEvents).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrmAccountSchema = createInsertSchema(crmAccounts).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrmVendorSchema = createInsertSchema(crmVendors).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrmNoteSchema = createInsertSchema(crmNotes).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrmDocumentSchema = createInsertSchema(crmDocuments).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Unified Entity System Type Definitions
+export type CrmContact = typeof crmContacts.$inferSelect;
+export type InsertCrmContact = z.infer<typeof insertCrmContactSchema>;
+
+export type CrmGroup = typeof crmGroups.$inferSelect;
+export type InsertCrmGroup = z.infer<typeof insertCrmGroupSchema>;
+
+export type CrmCompany = typeof crmCompanies.$inferSelect;
+export type InsertCrmCompany = z.infer<typeof insertCrmCompanySchema>;
+
+export type CrmObject = typeof crmObjects.$inferSelect;
+export type InsertCrmObject = z.infer<typeof insertCrmObjectSchema>;
+
+export type CrmProject = typeof crmProjects.$inferSelect;
+export type InsertCrmProject = z.infer<typeof insertCrmProjectSchema>;
+
+export type CrmEvent = typeof crmEvents.$inferSelect;
+export type InsertCrmEvent = z.infer<typeof insertCrmEventSchema>;
+
+export type CrmAccount = typeof crmAccounts.$inferSelect;
+export type InsertCrmAccount = z.infer<typeof insertCrmAccountSchema>;
+
+export type CrmVendor = typeof crmVendors.$inferSelect;
+export type InsertCrmVendor = z.infer<typeof insertCrmVendorSchema>;
+
+// Content Entity Types (Standard UUIDs)
+export type CrmTask = typeof crmTasks.$inferSelect;
+export type InsertCrmTask = z.infer<typeof insertCrmTaskSchema>;
+
+export type CrmNote = typeof crmNotes.$inferSelect;
+export type InsertCrmNote = z.infer<typeof insertCrmNoteSchema>;
+
+export type CrmDocument = typeof crmDocuments.$inferSelect;
+export type InsertCrmDocument = z.infer<typeof insertCrmDocumentSchema>;
+
+// Junction Tables
+export type EntityActivity = typeof entityActivities.$inferSelect;
+export type InsertEntityActivity = z.infer<typeof insertEntityActivitySchema>;
+
+export type EntityTag = typeof entityTags.$inferSelect;
+export type InsertEntityTag = z.infer<typeof insertEntityTagSchema>;
+
+// Unified Entity ID Type Union
+export type EntityId = 
+  | `cp_${string}` // Contacts (Persons)
+  | `cc_${string}` // Companies
+  | `cg_${string}` // Groups
+  | `co_${string}` // Objects
+  | `ca_${string}` // Financial Accounts
+  | `cv_${string}` // Vendors
+  | `cj_${string}` // Projects
+  | `ce_${string}`; // Events
+
+// Entity Activity Linking System
+export const insertEntityActivitySchema = createInsertSchema(entityActivities);
+export const insertEntityTagSchema = createInsertSchema(entityTags);
+
 export type InsertStatement = z.infer<typeof insertStatementSchema>;
