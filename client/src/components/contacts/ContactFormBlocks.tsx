@@ -533,9 +533,10 @@ interface BlockComponentProps {
   onUpdate: (blockId: string, field: string, value: any) => void;
   onRemove: (blockId: string) => void;
   ownerUserId: string;
+  isMainContact?: boolean;
 }
 
-function BlockComponent({ block, onUpdate, onRemove, ownerUserId }: BlockComponentProps) {
+function BlockComponent({ block, onUpdate, onRemove, ownerUserId, isMainContact }: BlockComponentProps) {
   const blockType = BLOCK_TYPES.find(t => t.id === block.type);
   if (!blockType) return null;
 
@@ -574,19 +575,20 @@ function BlockComponent({ block, onUpdate, onRemove, ownerUserId }: BlockCompone
         </div>
 
         {/* Block Content */}
-        <BlockContent block={block} onUpdate={onUpdate} ownerUserId={ownerUserId} />
+        <BlockContent block={block} onUpdate={onUpdate} ownerUserId={ownerUserId} isMainContact={isMainContact} />
       </div>
     </div>
   );
 }
 
 // Section Components for organized blocks
-function ContactInfoSection({ blocks, onUpdate, onRemove, onAddSubBlock, ownerUserId }: {
+function ContactInfoSection({ blocks, onUpdate, onRemove, onAddSubBlock, ownerUserId, isMainContact }: {
   blocks: Block[];
   onUpdate: (blockId: string, field: string, value: any) => void;
   onRemove: (blockId: string) => void;
   onAddSubBlock: (type: string) => void;
   ownerUserId: string;
+  isMainContact?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(true);
 
