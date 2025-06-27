@@ -75,6 +75,30 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
     staleTime: 30000,
   });
 
+  // Fetch related tasks for this contact
+  const { data: relatedTasks } = useQuery({
+    queryKey: [`/api/crm/contacts/${contact.contactId}/tasks`],
+    staleTime: 30000,
+  });
+
+  // Fetch related events for this contact
+  const { data: relatedEvents } = useQuery({
+    queryKey: [`/api/crm/contacts/${contact.contactId}/events`],
+    staleTime: 30000,
+  });
+
+  // Fetch related finance records for this contact
+  const { data: relatedFinance } = useQuery({
+    queryKey: [`/api/crm/contacts/${contact.contactId}/finance`],
+    staleTime: 30000,
+  });
+
+  // Fetch related notes for this contact
+  const { data: relatedNotes } = useQuery({
+    queryKey: [`/api/crm/contacts/${contact.contactId}/notes`],
+    staleTime: 30000,
+  });
+
   // Delete contact mutation
   const deleteContactMutation = useMutation({
     mutationFn: (contactId: number) => apiRequest('DELETE', `/api/crm/contacts/${contactId}`),
@@ -457,9 +481,34 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
             <TabsContent value="tasks" className="space-y-4">
               <Card>
                 <CardContent className="pt-6">
-                  <div className="text-center text-gray-500">
-                    No tasks linked to this contact yet
-                  </div>
+                  {relatedTasks && relatedTasks.length > 0 ? (
+                    <div className="space-y-3">
+                      {relatedTasks.map((task: any) => (
+                        <div key={task.taskId} className="border rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium text-gray-900 dark:text-gray-100">{task.title}</h4>
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              task.status === 'done' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                              task.status === 'in_progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                              'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                            }`}>
+                              {task.status?.replace('_', ' ')}
+                            </span>
+                          </div>
+                          {task.description && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{task.description}</p>
+                          )}
+                          {task.dueDate && (
+                            <p className="text-xs text-gray-500">Due: {formatDate(task.dueDate)}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500">
+                      No tasks linked to this contact yet
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -467,9 +516,35 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
             <TabsContent value="events" className="space-y-4">
               <Card>
                 <CardContent className="pt-6">
-                  <div className="text-center text-gray-500">
-                    No events scheduled with this contact
-                  </div>
+                  {relatedEvents && relatedEvents.length > 0 ? (
+                    <div className="space-y-3">
+                      {relatedEvents.map((event: any) => (
+                        <div key={event.eventId} className="border rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium text-gray-900 dark:text-gray-100">{event.title}</h4>
+                            <span className="text-xs text-gray-500">
+                              {event.isAllDay ? 'All Day' : formatDate(event.startTime)}
+                            </span>
+                          </div>
+                          {event.description && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{event.description}</p>
+                          )}
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            {event.location && (
+                              <span>📍 {event.location}</span>
+                            )}
+                            {event.attendees && event.attendees.length > 0 && (
+                              <span>👥 {event.attendees.length} attendees</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500">
+                      No events scheduled with this contact
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -477,9 +552,36 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
             <TabsContent value="finance" className="space-y-4">
               <Card>
                 <CardContent className="pt-6">
-                  <div className="text-center text-gray-500">
-                    No financial records for this contact
-                  </div>
+                  {relatedFinance && relatedFinance.length > 0 ? (
+                    <div className="space-y-3">
+                      {relatedFinance.map((record: any) => (
+                        <div key={record.id} className="border rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium text-gray-900 dark:text-gray-100">
+                              {record.type === 'payable' ? '💳' : record.type === 'loan' ? '🏦' : '💰'} {record.description || record.title}
+                            </h4>
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              record.status === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                              record.status === 'overdue' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                              'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                            }`}>
+                              {record.status}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                            <span>Amount: ${record.amount}</span>
+                            {record.dueDate && (
+                              <span>Due: {formatDate(record.dueDate)}</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500">
+                      No financial records for this contact
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -487,9 +589,40 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
             <TabsContent value="notes" className="space-y-4">
               <Card>
                 <CardContent className="pt-6">
-                  <div className="text-center text-gray-500">
-                    No notes or documents for this contact yet
-                  </div>
+                  {relatedNotes && relatedNotes.length > 0 ? (
+                    <div className="space-y-3">
+                      {relatedNotes.map((note: any) => (
+                        <div key={note.noteId} className="border rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium text-gray-900 dark:text-gray-100">
+                              📝 {note.title || 'Untitled Note'}
+                            </h4>
+                            <span className="text-xs text-gray-500">
+                              {formatDate(note.createdAt)}
+                            </span>
+                          </div>
+                          {note.content && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-3">
+                              {note.content.substring(0, 150)}...
+                            </p>
+                          )}
+                          {note.tags && note.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {note.tags.map((tag: string, index: number) => (
+                                <span key={index} className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-700 dark:text-gray-300">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500">
+                      No notes or documents for this contact yet
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
