@@ -36,6 +36,7 @@ export const accountTypeEnum = financeSchema.enum("account_type", [
 ]);
 
 // Enums for WhatsApp schema
+export const instanceVisibilityEnum = whatsappSchema.enum("instance_visibility", ["private", "shared"]);
 export const chatTypeEnum = whatsappSchema.enum("chat_type", ["individual", "group"]);
 export const messageTypeEnum = whatsappSchema.enum("message_type", [
   "text", "image", "video", "audio", "document", "sticker", "location",
