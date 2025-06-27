@@ -3633,8 +3633,6 @@ class DatabaseStorage {
 
             // Build individual conditions for notes
             const noteConditions = [
-                // Direct contact link
-                eq(crmNotes.contactId, contactId),
                 // Content mentions contact identifiers
                 ilike(crmNotes.title, `%${contactId}%`),
                 ilike(crmNotes.content, `%${contactId}%`),

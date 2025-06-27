@@ -841,10 +841,11 @@ function CompanyBlock({ block, onUpdate }: {
   // Create company mutation
   const createCompanyMutation = useMutation({
     mutationFn: async (companyData: any) => {
-      return await apiRequest('/api/crm/companies', 'POST', {
+      const response = await apiRequest('POST', '/api/crm/companies', {
         ...companyData,
         spaceId: 1 // Add default spaceId
       });
+      return await response.json();
     },
     onSuccess: (newCompany: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/companies'] });
