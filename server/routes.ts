@@ -765,7 +765,6 @@ export async function registerRoutes(app: Express): Promise<void> {
         startDate: project.start_date,
         endDate: project.end_date,
         userId: project.user_id, // Link to authenticated users instead of spaces
-        userId: project.user_id,
         createdAt: project.created_at,
         updatedAt: project.updated_at
       }));
@@ -1039,7 +1038,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         priority: task.priority,
         dueDate: task.dueDate,
         parentTaskId: task.parentTaskId,
-        spaceId: task.spaceId,
+        userId: task.userId, // Link to authenticated users
         tags: task.tags,
         createdAt: task.createdAt,
         updatedAt: task.updatedAt
@@ -2265,7 +2264,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       try {
         await BillToTaskService.createTaskForBill(payable.payableId, {
           instanceId: req.body.instanceId || 'default-instance',
-          spaceId: payable.spaceId,
+          userId: payable.userId, // Use user_id instead of space_id
           createdByUserId: req.body.createdByUserId,
         });
       } catch (taskError) {
@@ -2406,12 +2405,10 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Get accounts
   app.get('/api/finance/accounts', async (req: Request, res: Response) => {
     try {
-      const spaceId = parseInt(req.query.spaceId as string);
-      if (!spaceId) {
-        return res.status(400).json({ error: 'Space ID is required' });
-      }
+      // TODO: Add proper user authentication middleware
+      const userId = 'default-user-id'; // Temporary for development
       
-      const accounts = await storage.getFinanceAccounts(spaceId);
+      const accounts = await storage.getFinanceAccounts(userId);
       res.json(accounts || []);
     } catch (error) {
       console.error('Error fetching accounts:', error);
@@ -2511,8 +2508,9 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Get companies
   app.get('/api/crm/companies', async (req: Request, res: Response) => {
     try {
-      const spaceId = req.query.spaceId ? parseInt(req.query.spaceId as string) : null;
-      const companies = await storage.getCrmCompanies(spaceId);
+      // TODO: Add proper user authentication middleware
+      const userId = 'default-user-id'; // Temporary for development
+      const companies = await storage.getCrmCompanies(userId);
       res.json(companies);
     } catch (error) {
       console.error('Error fetching companies:', error);
@@ -2564,12 +2562,10 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Get contact groups for a space
   app.get('/api/crm/contact-groups', async (req: Request, res: Response) => {
     try {
-      const spaceId = parseInt(req.query.spaceId as string);
-      if (!spaceId) {
-        return res.status(400).json({ error: 'spaceId is required' });
-      }
+      // TODO: Add proper user authentication middleware
+      const userId = 'default-user-id'; // Temporary for development
 
-      const groups = await storage.getContactGroups(spaceId);
+      const groups = await storage.getContactGroups(userId);
       res.json(groups);
     } catch (error) {
       console.error('Error fetching contact groups:', error);
