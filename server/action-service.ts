@@ -215,8 +215,8 @@ export const ActionService = {
         const nlpAnalysis = this.analyzeContentWithNLP(triggerContext.context.content || '');
         
         // TODO: Get actual userId from authentication context
-        // For now, using development placeholder
-        const userId = 'default-user-id';
+        // For now, using development placeholder with proper UUID format
+        const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
         
         // Create task with processed data using unified entity schema
         const taskData = {

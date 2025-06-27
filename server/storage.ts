@@ -1351,13 +1351,13 @@ class DatabaseStorage {
         const [task] = await db.insert(crmTasks)
             .values({
                 id: taskId,
+                userId: taskData.userId, // Include userId field for unified entity architecture
                 title: taskData.title,
                 description: taskData.description,
                 status: taskData.status || 'todo',
                 priority: taskData.priority || 'medium',
                 dueDate: taskData.dueDate || null,
                 parentTaskId: taskData.parentTaskId || null,
-                spaceId: taskData.spaceId || null,
                 tags: taskData.tags || []
             })
             .returning();
