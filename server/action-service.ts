@@ -55,7 +55,7 @@ export const ActionService = {
             console.log(`🔍 Retrieved message for reaction: ${cleanReaction.messageId}`, originalMessage?.content?.substring(0, 50));
             
             // Trigger action logic based on reaction
-            await this.triggerAction(cleanReaction.instanceName, 'reaction', cleanReaction.reactionEmoji, {
+            await this.triggerAction(cleanReaction.instanceName, 'reaction', cleanReaction.reactionEmoji || '', {
                 messageId: cleanReaction.messageId,
                 reactorJid: cleanReaction.reactorJid,
                 chatId: originalMessage?.chatId || await this.getChatIdFromMessage(cleanReaction.messageId, cleanReaction.instanceName),
