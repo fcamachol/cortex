@@ -77,15 +77,23 @@ export function AddGroupFromWhatsAppModal({
       });
     },
     onSuccess: (newSpace) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/spaces'] });
       setSelectedSpaceId(newSpace.spaceId);
       setShowCreateSpace(false);
       setNewSpaceName('');
-      queryClient.invalidateQueries({ queryKey: ['/api/spaces'] });
       toast({
-        title: "Success",
-        description: "Space created successfully",
+        title: "Space created",
+        description: `"${newSpace.spaceName}" has been created successfully.`,
       });
-    }
+    },
+    onError: (error) => {
+      console.error('Error creating space:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create space. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Create project mutation
@@ -94,58 +102,51 @@ export function AddGroupFromWhatsAppModal({
       return apiRequest('POST', '/api/crm/projects', { 
         projectName,
         spaceId: selectedSpaceId || null,
-        userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'
+        userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42' 
       });
     },
     onSuccess: (newProject) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/projects'] });
       setSelectedProjectId(newProject.projectId);
       setShowCreateProject(false);
       setNewProjectName('');
-      queryClient.invalidateQueries({ queryKey: ['/api/crm/projects'] });
       toast({
-        title: "Success",
-        description: "Project created successfully",
+        title: "Project created",
+        description: `"${newProject.projectName}" has been created successfully.`,
       });
-    }
-  });
-
-  const createGroupMutation = useMutation({
-    mutationFn: async (groupData: any) => {
-      return apiRequest('POST', '/api/crm/groups', groupData);
     },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "CRM group created successfully and linked to WhatsApp group",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/crm/groups'] });
-      queryClient.invalidateQueries({ queryKey: [`/api/crm/groups/whatsapp-link-status/${groupJid}`] });
-      onClose();
-      resetForm();
-    },
-    onError: (error: any) => {
+    onError: (error) => {
+      console.error('Error creating project:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create CRM group",
+        description: "Failed to create project. Please try again.",
         variant: "destructive",
       });
     },
   });
 
-  const resetForm = () => {
-    setName(groupName || '');
-    setType('team');
-    setDescription('');
-    setColor('#3B82F6');
-    setTags('');
-    setLinkType('none');
-    setSelectedSpaceId('');
-    setSelectedProjectId('');
-    setShowCreateSpace(false);
-    setShowCreateProject(false);
-    setNewSpaceName('');
-    setNewProjectName('');
-  };
+  // Create group mutation
+  const createGroupMutation = useMutation({
+    mutationFn: async (groupData: any) => {
+      return apiRequest('POST', '/api/crm/groups', groupData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/groups'] });
+      toast({
+        title: "Success",
+        description: "WhatsApp group has been added to CRM successfully.",
+      });
+      handleClose();
+    },
+    onError: (error) => {
+      console.error('Error creating group:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create CRM group. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,75 +154,60 @@ export function AddGroupFromWhatsAppModal({
     if (!name.trim()) {
       toast({
         title: "Error",
-        description: "Group name is required",
+        description: "Group name is required.",
         variant: "destructive",
       });
       return;
     }
 
     const groupData = {
-      id: generateGroupId(),
+      groupId: generateGroupId(),
       name: name.trim(),
       type,
       description: description.trim() || null,
       color,
-      tags: tags.split(',').map(t => t.trim()).filter(Boolean),
-      status: 'active',
-      // Link to WhatsApp group
+      tags: tags.trim() ? tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
       whatsappJid: groupJid,
       whatsappInstanceId: instanceId,
-      whatsappLinkedAt: new Date().toISOString(),
-      // Optional space/project linking
-      linkedSpaceId: linkType === 'space' ? selectedSpaceId : null,
-      linkedProjectId: linkType === 'project' ? selectedProjectId : null,
+      isWhatsappLinked: true,
+      whatsappLinkedAt: new Date(),
+      userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'
     };
 
     createGroupMutation.mutate(groupData);
   };
 
   const handleClose = () => {
-    resetForm();
+    setName(groupName || '');
+    setType('team');
+    setDescription('');
+    setColor('#3B82F6');
+    setTags('');
+    setSelectedSpaceId('');
+    setSelectedProjectId('');
+    setShowCreateSpace(false);
+    setShowCreateProject(false);
+    setNewSpaceName('');
+    setNewProjectName('');
     onClose();
   };
 
-  const groupTypes = [
-    { value: 'team', label: 'Team' },
-    { value: 'family', label: 'Family' },
-    { value: 'project', label: 'Project' },
-    { value: 'community', label: 'Community' },
-    { value: 'business', label: 'Business' },
-    { value: 'social', label: 'Social' },
-    { value: 'study', label: 'Study' },
-    { value: 'other', label: 'Other' },
-  ];
-
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-blue-600" />
+            <Users className="h-5 w-5" />
             Add WhatsApp Group to CRM
           </DialogTitle>
         </DialogHeader>
-
+        
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* WhatsApp Group Info */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
-              <Users className="h-4 w-4" />
-              <span className="font-medium">WhatsApp Group:</span>
-            </div>
-            <p className="text-sm text-blue-600 dark:text-blue-400 mt-1 truncate">
-              {groupJid}
-            </p>
-          </div>
-
           {/* Group Name */}
           <div className="space-y-2">
-            <Label htmlFor="group-name">Group Name</Label>
+            <Label htmlFor="name">Group Name *</Label>
             <Input
-              id="group-name"
+              id="name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -232,17 +218,18 @@ export function AddGroupFromWhatsAppModal({
 
           {/* Group Type */}
           <div className="space-y-2">
-            <Label htmlFor="group-type">Type</Label>
+            <Label htmlFor="type">Group Type</Label>
             <Select value={type} onValueChange={setType}>
               <SelectTrigger>
                 <SelectValue placeholder="Select group type" />
               </SelectTrigger>
               <SelectContent>
-                {groupTypes.map((groupType) => (
-                  <SelectItem key={groupType.value} value={groupType.value}>
-                    {groupType.label}
-                  </SelectItem>
-                ))}
+                <SelectItem value="team">Team</SelectItem>
+                <SelectItem value="project">Project</SelectItem>
+                <SelectItem value="department">Department</SelectItem>
+                <SelectItem value="client">Client</SelectItem>
+                <SelectItem value="vendor">Vendor</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -435,195 +422,18 @@ export function AddGroupFromWhatsAppModal({
             </div>
           </div>
 
-            {/* Space Selection */}
-            {linkType === 'space' && (
-              <div className="space-y-2">
-                {!showCreateSpace ? (
-                  <div className="flex gap-2">
-                    <Popover open={spaceDropdownOpen} onOpenChange={setSpaceDropdownOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={spaceDropdownOpen}
-                          className="flex-1 justify-between"
-                        >
-                          {selectedSpaceId
-                            ? spaces?.find((space: any) => space.spaceId === selectedSpaceId)?.spaceName
-                            : "Select a space..."}
-                          <FolderOpen className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-full p-0">
-                        <Command>
-                          <CommandInput placeholder="Search spaces..." />
-                          <CommandEmpty>No space found.</CommandEmpty>
-                          <CommandGroup>
-                            {Array.isArray(spaces) && spaces.map((space: any) => (
-                              <CommandItem
-                                key={space.spaceId}
-                                onSelect={() => {
-                                  setSelectedSpaceId(space.spaceId);
-                                  setSpaceDropdownOpen(false);
-                                }}
-                              >
-                                <Check
-                                  className={`mr-2 h-4 w-4 ${
-                                    selectedSpaceId === space.spaceId ? "opacity-100" : "opacity-0"
-                                  }`}
-                                />
-                                {space.spaceName}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowCreateSpace(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="New space name"
-                      value={newSpaceName}
-                      onChange={(e) => setNewSpaceName(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => createSpaceMutation.mutate(newSpaceName)}
-                      disabled={!newSpaceName.trim() || createSpaceMutation.isPending}
-                    >
-                      <Check className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setShowCreateSpace(false);
-                        setNewSpaceName('');
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Project Selection */}
-            {linkType === 'project' && (
-              <div className="space-y-2">
-                {!showCreateProject ? (
-                  <div className="flex gap-2">
-                    <Popover open={projectDropdownOpen} onOpenChange={setProjectDropdownOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={projectDropdownOpen}
-                          className="flex-1 justify-between"
-                        >
-                          {selectedProjectId
-                            ? projects?.find((project: any) => project.projectId === selectedProjectId)?.projectName
-                            : "Select a project..."}
-                          <Building2 className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-full p-0">
-                        <Command>
-                          <CommandInput placeholder="Search projects..." />
-                          <CommandEmpty>No project found.</CommandEmpty>
-                          <CommandGroup>
-                            {Array.isArray(projects) && projects.map((project: any) => (
-                              <CommandItem
-                                key={project.projectId}
-                                onSelect={() => {
-                                  setSelectedProjectId(project.projectId);
-                                  setProjectDropdownOpen(false);
-                                }}
-                              >
-                                <Check
-                                  className={`mr-2 h-4 w-4 ${
-                                    selectedProjectId === project.projectId ? "opacity-100" : "opacity-0"
-                                  }`}
-                                />
-                                {project.projectName}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowCreateProject(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="New project name"
-                      value={newProjectName}
-                      onChange={(e) => setNewProjectName(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => createProjectMutation.mutate(newProjectName)}
-                      disabled={!newProjectName.trim() || createProjectMutation.isPending}
-                    >
-                      <Check className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setShowCreateProject(false);
-                        setNewProjectName('');
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
           {/* Color */}
           <div className="space-y-2">
             <Label htmlFor="color">Color</Label>
-            <div className="flex items-center gap-2">
-              <input
+            <div className="flex gap-2 items-center">
+              <Input
                 id="color"
                 type="color"
                 value={color}
                 onChange={(e) => setColor(e.target.value)}
-                className="w-12 h-10 rounded border border-gray-300 cursor-pointer"
+                className="w-16 h-10 p-1 border border-gray-300 rounded"
               />
-              <Input
-                type="text"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                placeholder="#3B82F6"
-                className="flex-1"
-              />
+              <span className="text-sm text-gray-600">{color}</span>
             </div>
           </div>
 
