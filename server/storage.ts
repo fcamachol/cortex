@@ -3583,8 +3583,8 @@ class DatabaseStorage {
                 .from(financePayables)
                 .where(
                     or(
-                        sql`${financePayables.description} ILIKE ${'%' + contact.fullName + '%'}`,
-                        sql`${financePayables.vendorName} ILIKE ${'%' + contact.fullName + '%'}`
+                        ilike(financePayables.description, `%${contact.fullName}%`),
+                        eq(financePayables.contactId, contactId)
                     )
                 )
                 .orderBy(desc(financePayables.createdAt))
@@ -3592,13 +3592,14 @@ class DatabaseStorage {
 
             records.push(...payables.map(p => ({ ...p, type: 'payable' })));
 
-            // Search loans that involve this contact as creditor
+            // Search loans that involve this contact as creditor or borrower
             const loans = await db.select()
                 .from(financeLoans)
                 .where(
                     or(
-                        eq(financeLoans.creditorType, 'contact'),
-                        sql`${financeLoans.purpose} ILIKE ${'%' + contact.fullName + '%'}`
+                        and(eq(financeLoans.lenderContactId, contactId), eq(financeLoans.lenderType, 'contact')),
+                        and(eq(financeLoans.borrowerContactId, contactId), eq(financeLoans.borrowerType, 'contact')),
+                        ilike(financeLoans.purpose, `%${contact.fullName}%`)
                     )
                 )
                 .orderBy(desc(financeLoans.createdAt))
