@@ -18,6 +18,8 @@ import {
     crmContacts, crmContactPhones, crmContactEmails, crmContactAddresses, 
     crmContactAliases, crmSpecialDates, crmInterests, crmContactInterests,
     crmCompanyMembers, crmContactGroups, crmContactGroupMembers, crmContactRelationships, crmGroups,
+    // Unified Entity System
+    entityActivities,
     // Finance Schema
     financeAccounts, financeTransactions, financePayables, financeReceivables, financeCategories,
     financeRecurringBills, financeLoans, financeLoanPayments, financePayablePayments, financeReceivablePayments,
@@ -1389,6 +1391,36 @@ class DatabaseStorage {
     async getTaskById(taskId: number): Promise<any | null> {
         const [task] = await db.select().from(crmTasks).where(eq(crmTasks.taskId, taskId));
         return task || null;
+    }
+
+    async getTasksByProjectId(projectId: string): Promise<any[]> {
+        // Get tasks linked to project through entity_activities junction table
+        const tasks = await db
+            .select({
+                id: crmTasks.id,
+                title: crmTasks.title,
+                description: crmTasks.description,
+                status: crmTasks.status,
+                priority: crmTasks.priority,
+                dueDate: crmTasks.dueDate,
+                completedAt: crmTasks.completedAt,
+                estimatedHours: crmTasks.estimatedHours,
+                actualHours: crmTasks.actualHours,
+                parentTaskId: crmTasks.parentTaskId,
+                tags: crmTasks.tags,
+                spaceId: crmTasks.spaceId,
+                createdAt: crmTasks.createdAt,
+                updatedAt: crmTasks.updatedAt
+            })
+            .from(crmTasks)
+            .innerJoin(entityActivities, eq(entityActivities.activityId, crmTasks.id))
+            .where(and(
+                eq(entityActivities.entityId, projectId),
+                eq(entityActivities.activityType, 'task')
+            ))
+            .orderBy(desc(crmTasks.createdAt));
+
+        return tasks;
     }
 
     // =========================================================================

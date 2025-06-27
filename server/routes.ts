@@ -847,6 +847,60 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Get project detail with associated content
+  app.get('/api/crm/projects/:projectId/detail', async (req: Request, res: Response) => {
+    try {
+      const { projectId } = req.params;
+      
+      // Get project by unified entity ID (cj_ prefixed)
+      const project = await storage.getProjectById(projectId);
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      // Get associated tasks
+      const tasks = await storage.getTasksByProjectId(projectId);
+      
+      // Get project files from space items if available
+      let projectFiles = [];
+      if (project.spaceId) {
+        const spaceItems = await storage.getSpaceItems(project.spaceId, 'file');
+        projectFiles = spaceItems || [];
+      }
+
+      // Transform project data
+      const projectDetail = {
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        status: project.status,
+        priority: project.priority,
+        startDate: project.startDate,
+        endDate: project.endDate,
+        budget: project.budget,
+        spentAmount: project.spentAmount,
+        progress: project.progress,
+        tags: project.tags,
+        color: project.color,
+        parentProjectId: project.parentProjectId,
+        spaceId: project.spaceId,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
+        // Associated content
+        tasks: tasks || [],
+        files: projectFiles,
+        taskCount: tasks?.length || 0,
+        completedTasks: tasks?.filter(task => task.status === 'done').length || 0,
+        taskProgress: tasks?.length > 0 ? Math.round((tasks.filter(task => task.status === 'done').length / tasks.length) * 100) : 0
+      };
+
+      res.json(projectDetail);
+    } catch (error) {
+      console.error('Error fetching project detail:', error);
+      res.status(500).json({ error: 'Failed to fetch project detail' });
+    }
+  });
+
   // WhatsApp-CRM Contact Linking endpoints
   app.post('/api/contacts/:contactId/link-whatsapp', async (req: Request, res: Response) => {
     try {
