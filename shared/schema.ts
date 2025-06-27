@@ -2386,12 +2386,9 @@ export const financeLoans = financeSchema.table("loans", {
   purpose: varchar("purpose", { length: 100 }), // loan purpose
   collateral: text("collateral"), // collateral description
   status: loanStatusEnum("status").notNull().default("active"),
-  // Polymorphic lender relationship - can be a contact or company
-  lenderContactId: integer("lender_contact_id"), // ID of the contact or company (lender)
-  lenderType: varchar("lender_type", { length: 20 }), // 'contact' or 'company'
-  // Polymorphic borrower relationship - can be a contact or company
-  borrowerContactId: integer("borrower_contact_id"), // ID of the contact or company (borrower)
-  borrowerType: varchar("borrower_type", { length: 20 }), // 'contact' or 'company'
+  // Unified entity relationships using UUIDs - can link to contacts (cp_) or companies (cc_)
+  lenderEntityId: varchar("lender_entity_id", { length: 50 }), // Unified entity UUID (cp_ or cc_ prefixed)
+  borrowerEntityId: varchar("borrower_entity_id", { length: 50 }), // Unified entity UUID (cp_ or cc_ prefixed)
   moratoryInterestRate: numeric("moratory_interest_rate", { precision: 5, scale: 4 }),
   moratoryInterestPeriod: interestPeriodTypeEnum("moratory_interest_period"),
 });

@@ -3707,13 +3707,14 @@ class DatabaseStorage {
 
             records.push(...payables.map(p => ({ ...p, type: 'payable' })));
 
-            // Search loans that involve this contact as creditor or borrower
+            // Search loans that involve this contact as creditor or borrower using unified entity ID
+            const contactEntityId = contact.id; // Use the unified entity ID (cp_ prefixed UUID)
             const loans = await db.select()
                 .from(financeLoans)
                 .where(
                     or(
-                        and(eq(financeLoans.lenderContactId, contactId), eq(financeLoans.lenderType, 'contact')),
-                        and(eq(financeLoans.borrowerContactId, contactId), eq(financeLoans.borrowerType, 'contact')),
+                        eq(financeLoans.lenderEntityId, contactEntityId),
+                        eq(financeLoans.borrowerEntityId, contactEntityId),
                         ilike(financeLoans.purpose, `%${contact.fullName}%`)
                     )
                 )
