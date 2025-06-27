@@ -2925,10 +2925,23 @@ class DatabaseStorage {
 
     async getSpaceItems(spaceId: number, itemType?: string): Promise<any[]> {
         try {
-            // Return empty array for now since space items are managed through specific tables
-            const items: any[] = [];
+            console.log(`Fetching space items for spaceId: ${spaceId}, itemType: ${itemType || 'all'}`);
+            
+            // Build query to fetch space items from app.space_items table
+            let query = db.select().from(appSpaceItems).where(eq(appSpaceItems.spaceId, spaceId));
+            
+            if (itemType) {
+                query = query.where(eq(appSpaceItems.itemType, itemType));
+            }
+            
+            const items = await query;
+            
+            console.log(`Found ${items.length} space items for space ${spaceId}`);
+            items.forEach(item => {
+                console.log(`  - ${item.itemType}: ${item.title} (${item.itemId})`);
+            });
 
-            // Build hierarchical structure for tasks/subtasks
+            // Build hierarchical structure for tasks/subtasks if needed
             const itemsMap = new Map();
             const rootItems: any[] = [];
 
@@ -2947,7 +2960,7 @@ class DatabaseStorage {
                 }
             });
 
-            return rootItems;
+            return rootItems.length > 0 ? rootItems : items;
         } catch (error) {
             console.error('Error fetching space items:', error);
             throw error;
