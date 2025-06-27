@@ -3490,22 +3490,20 @@ class DatabaseStorage {
                 ...contact.emails?.map(e => e.emailAddress) || []  // Email addresses
             ].filter(Boolean);
 
-            // Build individual conditions
+            // Build individual conditions using proper SQL syntax
             const conditions = [
-                // WhatsApp JID match in related chat
-                eq(crmTasks.relatedChatJid, contact.whatsappJid || ''),
                 // Contact ID in metadata or description
-                sql`${crmTasks.description} ILIKE ${`%${contactId}%`}`,
-                sql`${crmTasks.title} ILIKE ${`%${contactId}%`}`,
+                ilike(crmTasks.description, `%${contactId}%`),
+                ilike(crmTasks.title, `%${contactId}%`),
                 // Full name matches
-                sql`${crmTasks.description} ILIKE ${`%${contact.fullName}%`}`,
-                sql`${crmTasks.title} ILIKE ${`%${contact.fullName}%`}`
+                ilike(crmTasks.description, `%${contact.fullName}%`),
+                ilike(crmTasks.title, `%${contact.fullName}%`)
             ];
 
             // Add phone and email conditions
             identifiers.forEach(id => {
-                conditions.push(sql`${crmTasks.description} ILIKE ${`%${id}%`}`);
-                conditions.push(sql`${crmTasks.title} ILIKE ${`%${id}%`}`);
+                conditions.push(ilike(crmTasks.description, `%${id}%`));
+                conditions.push(ilike(crmTasks.title, `%${id}%`));
             });
 
             // Search tasks that mention any of these identifiers

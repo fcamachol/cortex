@@ -834,13 +834,17 @@ function CompanyBlock({ block, onUpdate }: {
 
   // Fetch companies for dropdown
   const { data: companies = [] } = useQuery({
-    queryKey: ['/api/crm/companies'],
+    queryKey: ['/api/crm/companies', 1],
+    queryFn: () => fetch('/api/crm/companies?spaceId=1').then(res => res.json()).catch(() => []),
   });
 
   // Create company mutation
   const createCompanyMutation = useMutation({
     mutationFn: async (companyData: any) => {
-      return await apiRequest('/api/crm/companies', 'POST', companyData);
+      return await apiRequest('/api/crm/companies', 'POST', {
+        ...companyData,
+        spaceId: 1 // Add default spaceId
+      });
     },
     onSuccess: (newCompany: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/companies'] });
