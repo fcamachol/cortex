@@ -274,7 +274,7 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
           </Card>
 
           {/* Contact Details - Additional Information */}
-          {!isLoadingDetails && fullContactDetails && (
+          {fullContactDetails && (
             <Card>
               <CardContent className="p-6 space-y-4">
                 {/* Phone Numbers */}
