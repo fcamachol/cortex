@@ -68,9 +68,10 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
   
   // Core contact fields
   const [contactName, setContactName] = useState(initialData?.fullName || '');
-  const [tags, setTags] = useState<string[]>(initialData?.tags || []);
   const [profession, setProfession] = useState('');
   const [company, setCompany] = useState('');
+  const [tags, setTags] = useState<string[]>(initialData?.tags || []);
+  const [description, setDescription] = useState(initialData?.notes || '');
   
   // Dynamic blocks system
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -212,7 +213,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
         primaryEmail,
         profession: profession || companyBlocks[0]?.data.role || '',
         company: company || companyBlocks[0]?.data.name || '',
-        notes: noteBlocks.map(b => b.data.content).join('\n') || initialData?.notes || '',
+        notes: description || noteBlocks.map(b => b.data.content).join('\n') || initialData?.notes || '',
       };
 
       if (isEditMode && contactId) {
@@ -371,6 +372,18 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
                 className="h-10 border border-gray-300 rounded-lg px-3 focus:border-gray-500 focus:ring-0"
               />
             </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">Description</label>
+            <Textarea
+              placeholder="Es un abogado que trabajo conmigo en Excel. Se dedica al outsourcing."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="min-h-[80px] border border-gray-300 rounded-lg px-3 py-2 focus:border-gray-500 focus:ring-0 resize-none"
+              rows={3}
+            />
           </div>
 
           {/* Tags */}
@@ -1056,9 +1069,10 @@ interface ContactViewModeProps {
   profession: string;
   company: string;
   tags: string[];
+  description: string;
 }
 
-function ContactViewMode({ blocks, contactName, profession, company, tags }: ContactViewModeProps) {
+function ContactViewMode({ blocks, contactName, profession, company, tags, description }: ContactViewModeProps) {
   const phoneBlocks = blocks.filter(b => b.type === 'phone');
   const emailBlocks = blocks.filter(b => b.type === 'email');
   const companyBlocks = blocks.filter(b => b.type === 'company');
