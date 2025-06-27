@@ -1348,7 +1348,7 @@ export const crmPersons = crmSchema.table("persons", {
 
 export const crmCompanies = crmSchema.table("companies", {
   companyId: serial("company_id").primaryKey(),
-  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
+  spaceId: integer("space_id").references(() => appSpaces.spaceId, { onDelete: "cascade" }),
   companyName: varchar("company_name", { length: 255 }).notNull(),
   businessType: varchar("business_type", { length: 100 }),
   taxId: varchar("tax_id", { length: 100 }),
