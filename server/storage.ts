@@ -2,7 +2,7 @@ import { db } from "./db"; // Your Drizzle ORM instance
 import { sql, eq, desc, asc, and, or, ilike } from "drizzle-orm";
 import {
     // App Schema
-    appUsers, appWorkspaces, appSpaces, appWorkspaceMembers,
+    appUsers, appWorkspaces, appSpaces, appWorkspaceMembers, appSpaceItems,
     // Google Drive-like Spaces
     driveSpaces, driveSpaceMembers, driveSpaceItems, driveSpaceShareLinks, driveSpaceActivity,
     // WhatsApp Schema
@@ -1285,7 +1285,7 @@ class DatabaseStorage {
         // Handle space linking through unified entity system if spaceId provided
         if (projectData.spaceId) {
             // Create space linking through app.space_items table using correct field names
-            await db.insert(appSpaceItems).values({
+            await db.insert(driveSpaceItems).values({
                 spaceId: projectData.spaceId,
                 itemType: 'project',
                 title: projectData.name,
