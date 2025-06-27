@@ -19,7 +19,7 @@ interface Project {
   status: string;
   startDate?: string;
   endDate?: string;
-  spaceId?: number;
+  spaceId?: number | null;
   createdAt: string;
 }
 
@@ -29,7 +29,7 @@ interface ProjectFormProps {
   onClose: () => void;
   isLoading?: boolean;
   isOpen?: boolean;
-  spaceId?: number;
+  spaceId?: number | null;
 }
 
 const projectFormSchema = z.object({
@@ -59,7 +59,7 @@ export function ProjectForm({ project, onSubmit, onClose, isLoading, isOpen = tr
       ...data,
       startDate: data.startDate?.toISOString().split('T')[0], // YYYY-MM-DD format
       endDate: data.endDate?.toISOString().split('T')[0], // YYYY-MM-DD format
-      spaceId: spaceId || null,
+      spaceId: spaceId,
     };
     onSubmit(formattedData);
   };
@@ -176,7 +176,7 @@ export function ProjectForm({ project, onSubmit, onClose, isLoading, isOpen = tr
 
               <FormField
                 control={form.control}
-                name="end_date"
+                name="endDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>End Date</FormLabel>
