@@ -109,40 +109,107 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
     },
   });
 
-  const handleCreateMainContact = () => {
-    const mainContactData = {
-      ownerUserId: userId,
-      fullName: "Me (Main Contact)", // Clear indication this is the main contact
-      relationship: "Self",
-      tags: ["Main", "Self"],
-      notes: "This is my main contact record - the central hub for linking all my CRM relationships and personal information.",
-      profession: "",
-      company: "",
-      phones: [
-        {
-          phoneNumber: "",
-          label: "Mobile",
-          isPrimary: true,
-          hasWhatsApp: false
+  const handleCreateMainContact = async () => {
+    try {
+      // First, get the user's WhatsApp instances to find the owner JID
+      const instancesResponse = await fetch(`/api/whatsapp/instances/${userId}`);
+      const instances = await instancesResponse.json();
+      
+      // Find the primary instance (first one) and extract owner JID
+      let ownerJid = null;
+      let instanceName = null;
+      let ownerPhoneNumber = null;
+      
+      if (instances && instances.length > 0) {
+        const primaryInstance = instances[0];
+        ownerJid = primaryInstance.ownerJid;
+        instanceName = primaryInstance.instanceName;
+        
+        // Extract phone number from owner JID (format: 5215585333840@s.whatsapp.net)
+        if (ownerJid && ownerJid.includes('@')) {
+          ownerPhoneNumber = ownerJid.split('@')[0];
         }
-      ],
-      emails: [
-        {
-          emailAddress: "",
-          label: "Personal",
-          isPrimary: true
-        }
-      ],
-      addresses: [],
-      aliases: [],
-      specialDates: [],
-      interests: [],
-      companies: [],
-      groups: [],
-      relationships: []
-    };
-    
-    createMainContactMutation.mutate(mainContactData);
+      }
+      
+      const mainContactData = {
+        ownerUserId: userId,
+        fullName: "Me (Main Contact)", // Clear indication this is the main contact
+        relationship: "Self",
+        tags: ["Main", "Self"],
+        notes: "This is my main contact record - the central hub for linking all my CRM relationships and personal information.",
+        profession: "",
+        company: "",
+        phones: ownerPhoneNumber ? [
+          {
+            phoneNumber: ownerPhoneNumber,
+            label: "Mobile",
+            isPrimary: true,
+            hasWhatsApp: true,
+            whatsappJid: ownerJid,
+            whatsappInstanceName: instanceName
+          }
+        ] : [
+          {
+            phoneNumber: "",
+            label: "Mobile",
+            isPrimary: true,
+            hasWhatsApp: false
+          }
+        ],
+        emails: [
+          {
+            emailAddress: "",
+            label: "Personal",
+            isPrimary: true
+          }
+        ],
+        addresses: [],
+        aliases: [],
+        specialDates: [],
+        interests: [],
+        companies: [],
+        groups: [],
+        relationships: []
+      };
+      
+      createMainContactMutation.mutate(mainContactData);
+    } catch (error) {
+      console.error('Error fetching WhatsApp instances for main contact:', error);
+      // Fallback to creating main contact without WhatsApp linking
+      const fallbackMainContactData = {
+        ownerUserId: userId,
+        fullName: "Me (Main Contact)",
+        relationship: "Self",
+        tags: ["Main", "Self"],
+        notes: "This is my main contact record - the central hub for linking all my CRM relationships and personal information.",
+        profession: "",
+        company: "",
+        phones: [
+          {
+            phoneNumber: "",
+            label: "Mobile",
+            isPrimary: true,
+            hasWhatsApp: false
+          }
+        ],
+        emails: [
+          {
+            emailAddress: "",
+            label: "Personal",
+            isPrimary: true
+          }
+        ],
+        addresses: [],
+        aliases: [],
+        specialDates: [],
+        interests: [],
+        companies: [],
+        groups: [],
+        relationships: []
+      };
+      
+      createMainContactMutation.mutate(fallbackMainContactData);
+    }
   };
 
   const getInitials = (name: string) => {
