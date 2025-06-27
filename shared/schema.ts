@@ -1187,8 +1187,11 @@ export const crmContactPhones = crmSchema.table("contact_phones", {
   phoneNumber: varchar("phone_number", { length: 50 }).notNull(),
   label: varchar("label", { length: 50 }), // 'Work', 'Mobile', 'Home', etc.
   isWhatsappLinked: boolean("is_whatsapp_linked").default(false).notNull(),
+  whatsappJid: varchar("whatsapp_jid", { length: 100 }), // Links to WhatsApp contact JID
+  whatsappInstanceName: varchar("whatsapp_instance_name", { length: 100 }), // Which instance this belongs to
   isPrimary: boolean("is_primary").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
 // Contact Email Addresses - Multiple emails per contact
