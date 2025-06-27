@@ -2632,7 +2632,9 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/api/crm/contacts/:contactId/details', async (req: Request, res: Response) => {
     try {
       const { contactId } = req.params;
+      console.log('Fetching contact details for ID:', contactId);
       const contact = await storage.getCrmContactWithFullDetails(parseInt(contactId));
+      console.log('Contact details retrieved:', contact);
       if (!contact) {
         return res.status(404).json({ error: 'Contact not found' });
       }

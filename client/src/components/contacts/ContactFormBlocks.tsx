@@ -80,12 +80,13 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
       const fetchContactDetails = async () => {
         try {
           const response = await apiRequest('GET', `/api/crm/contacts/${contactId}/details`);
+          console.log('Contact details response:', response);
           
           // Populate blocks from existing contact data
           const newBlocks: Block[] = [];
           
           // Add phone blocks
-          if (response.phones) {
+          if (response.phones && response.phones.length > 0) {
             response.phones.forEach((phone: any, index: number) => {
               newBlocks.push({
                 id: `phone-${index}`,
@@ -98,10 +99,25 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
                 }
               });
             });
+          } else if (response.notes) {
+            // Try to extract phone from notes for older contacts
+            const phoneMatch = response.notes.match(/Primary phone:\s*([+\d\s()-]+)/i);
+            if (phoneMatch) {
+              newBlocks.push({
+                id: 'phone-from-notes',
+                type: 'phone',
+                data: {
+                  number: phoneMatch[1].trim(),
+                  type: 'Mobile',
+                  isPrimary: true,
+                  hasWhatsApp: false
+                }
+              });
+            }
           }
           
           // Add email blocks
-          if (response.emails) {
+          if (response.emails && response.emails.length > 0) {
             response.emails.forEach((email: any, index: number) => {
               newBlocks.push({
                 id: `email-${index}`,
@@ -113,6 +129,20 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
                 }
               });
             });
+          } else if (response.notes) {
+            // Try to extract email from notes for older contacts
+            const emailMatch = response.notes.match(/Primary email:\s*([^\s\n]+@[^\s\n]+)/i);
+            if (emailMatch) {
+              newBlocks.push({
+                id: 'email-from-notes',
+                type: 'email',
+                data: {
+                  address: emailMatch[1].trim(),
+                  type: 'Personal',
+                  isPrimary: true
+                }
+              });
+            }
           }
           
           // Add address blocks
