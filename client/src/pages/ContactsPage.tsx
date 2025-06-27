@@ -205,11 +205,26 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
-                                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                                    {contact.fullName}
-                                  </h3>
-                                  {((contact.tags && contact.tags.length > 0) || contact.relationship || contact.isWhatsappLinked) && (
-                                    <div className="flex items-center flex-wrap gap-1 mt-1">
+                                  {/* Name with Checkmark */}
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                                      {contact.fullName}
+                                    </h3>
+                                    {contact.isWhatsappLinked && (
+                                      <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                    )}
+                                  </div>
+
+                                  {/* Description/Notes */}
+                                  {contact.notes && (
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
+                                      {contact.notes}
+                                    </p>
+                                  )}
+
+                                  {/* Tags below description */}
+                                  {((contact.tags && contact.tags.length > 0) || contact.relationship) && (
+                                    <div className="flex items-center flex-wrap gap-1">
                                       {/* Display individual tags if available */}
                                       {contact.tags && contact.tags.length > 0 ? (
                                         contact.tags.map((tag: string, index: number) => (
@@ -225,15 +240,7 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                                           </Badge>
                                         )
                                       )}
-                                      {contact.isWhatsappLinked && (
-                                        <Check className="w-3 h-3 text-green-500" />
-                                      )}
                                     </div>
-                                  )}
-                                  {contact.notes && (
-                                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                      {contact.notes}
-                                    </p>
                                   )}
                                 </div>
                               </div>
@@ -271,8 +278,29 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
-                            <h3 className="font-semibold">{contact.fullName}</h3>
-                            {contact.notes && <p className="text-sm text-gray-600">{contact.notes}</p>}
+                            {/* Name with Checkmark */}
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold">{contact.fullName}</h3>
+                              {contact.isWhatsappLinked && (
+                                <Check className="w-4 h-4 text-green-600" />
+                              )}
+                            </div>
+                            
+                            {/* Description/Notes */}
+                            {contact.notes && (
+                              <p className="text-sm text-gray-600 mb-2">{contact.notes}</p>
+                            )}
+                            
+                            {/* Tags */}
+                            {contact.tags && contact.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {contact.tags.map((tag: string, index: number) => (
+                                  <Badge key={index} variant="secondary" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -306,8 +334,29 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
-                            <h3 className="font-semibold">{contact.fullName}</h3>
-                            {contact.notes && <p className="text-sm text-gray-600">{contact.notes}</p>}
+                            {/* Name with Checkmark */}
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold">{contact.fullName}</h3>
+                              {contact.isWhatsappLinked && (
+                                <Check className="w-4 h-4 text-green-600" />
+                              )}
+                            </div>
+                            
+                            {/* Description/Notes */}
+                            {contact.notes && (
+                              <p className="text-sm text-gray-600 mb-2">{contact.notes}</p>
+                            )}
+                            
+                            {/* Tags */}
+                            {contact.tags && contact.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {contact.tags.map((tag: string, index: number) => (
+                                  <Badge key={index} variant="secondary" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
