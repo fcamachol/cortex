@@ -225,7 +225,13 @@ export const ActionService = {
             description: processedConfig.description || 'Automatically created task',
             priority: nlpAnalysis.isUrgent ? 'high' : (processedConfig.priority || 'medium'),
             status: 'to_do',
-            dueDate: nlpAnalysis.suggestedDueDate || (processedConfig.dueDate ? new Date(processedConfig.dueDate) : null)
+            dueDate: nlpAnalysis.suggestedDueDate || (processedConfig.dueDate ? new Date(processedConfig.dueDate) : null),
+            // WhatsApp message linking fields
+            triggeringMessageId: triggerContext.context.messageId,
+            triggeringInstanceName: triggerContext.context.instanceName,
+            triggeringSenderJid: triggerContext.context.senderJid,
+            triggeringChatJid: triggerContext.context.chatId,
+            triggerType: triggerContext.triggerType
         };
         
         const createdTask = await storage.createTask(taskData);

@@ -1358,7 +1358,13 @@ class DatabaseStorage {
                 priority: taskData.priority || 'medium',
                 dueDate: taskData.dueDate || null,
                 parentTaskId: taskData.parentTaskId || null,
-                tags: taskData.tags || []
+                tags: taskData.tags || [],
+                // WhatsApp message linking fields
+                triggeringMessageId: taskData.triggeringMessageId || null,
+                triggeringInstanceName: taskData.triggeringInstanceName || null,
+                triggeringSenderJid: taskData.triggeringSenderJid || null,
+                triggeringChatJid: taskData.triggeringChatJid || null,
+                triggerType: taskData.triggerType || null
             })
             .returning();
         return task;
@@ -1390,6 +1396,12 @@ class DatabaseStorage {
             parentTaskId: crmTasks.parentTaskId,
             tags: crmTasks.tags,
             userId: crmTasks.userId,
+            // WhatsApp message linking fields
+            triggeringMessageId: crmTasks.triggeringMessageId,
+            triggeringInstanceName: crmTasks.triggeringInstanceName,
+            triggeringSenderJid: crmTasks.triggeringSenderJid,
+            triggeringChatJid: crmTasks.triggeringChatJid,
+            triggerType: crmTasks.triggerType,
             createdAt: crmTasks.createdAt,
             updatedAt: crmTasks.updatedAt
         }).from(crmTasks);
