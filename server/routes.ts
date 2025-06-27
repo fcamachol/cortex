@@ -784,9 +784,18 @@ export async function registerRoutes(app: Express): Promise<void> {
       
       // Get userId from authenticated session (or use first user for now)
       const users = await storage.getUsers();
-      const userId = users.length > 0 ? users[0].userId : null;
+      let userId = users.length > 0 ? users[0].userId : null;
+      
+      // If no users exist, create a development user
       if (!userId) {
-        return res.status(400).json({ error: 'No user found' });
+        console.log('No users found, creating development user...');
+        const devUser = await storage.createAppUser({
+          email: 'dev@test.com',
+          passwordHash: 'dev-hash',
+          fullName: 'Development User'
+        });
+        userId = devUser.userId;
+        console.log('Created development user:', userId);
       }
       
       // Add userId to project data

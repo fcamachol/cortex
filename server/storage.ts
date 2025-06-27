@@ -1275,32 +1275,44 @@ class DatabaseStorage {
     // =========================================================================
 
     async createProject(projectData: any): Promise<any> {
-        // Generate UUID with cj_ prefix for CRM projects (unified entity system)
-        const projectId = `cj_${crypto.randomUUID()}`;
-        
-        // Use raw SQL to insert with unified entity ID and user_id linkage (no direct spaceId)
-        const result = await db.execute(sql`
-            INSERT INTO crm.projects (id, name, description, status, start_date, end_date, user_id)
-            VALUES (${projectId}, ${projectData.name}, ${projectData.description}, ${projectData.status || 'planning'}, ${projectData.startDate}, ${projectData.endDate}, ${projectData.userId})
-            RETURNING id, name, description, status, start_date, end_date, user_id, created_at, updated_at
-        `);
-        
-        const project = result.rows[0];
-        
-        // Handle space linking through unified entity system if spaceId provided
-        if (projectData.spaceId) {
-            // Create space linking through app.space_items table using correct field names
-            await db.insert(driveSpaceItems).values({
-                spaceId: projectData.spaceId,
-                itemType: 'project',
-                title: projectData.name,
+        try {
+            // Generate UUID with cj_ prefix for CRM projects (unified entity system)
+            const projectId = `cj_${crypto.randomUUID()}`;
+            
+            console.log('Creating project with ID:', projectId);
+            console.log('Project data:', projectData);
+            
+            // Use Drizzle ORM to insert project
+            const [project] = await db.insert(crmProjects).values({
+                id: projectId,
+                name: projectData.name,
                 description: projectData.description,
-                content: { projectId: projectId }, // Store the cj_ UUID in content metadata
-                status: 'active'
-            });
+                status: projectData.status || 'planning',
+                userId: projectData.userId
+            }).returning();
+            
+            console.log('Project created:', project);
+            
+            // Handle space linking through unified entity system if spaceId provided
+            if (projectData.spaceId) {
+                console.log('Creating space link for spaceId:', projectData.spaceId);
+                // Create space linking through app.space_items table
+                await db.insert(appSpaceItems).values({
+                    spaceId: projectData.spaceId,
+                    itemType: 'project',
+                    title: projectData.name,
+                    description: projectData.description,
+                    content: { projectId: projectId }, // Store the cj_ UUID in content metadata
+                    status: 'active'
+                });
+                console.log('Space link created successfully');
+            }
+            
+            return project;
+        } catch (error) {
+            console.error('Error in createProject:', error);
+            throw error;
         }
-        
-        return project;
     }
 
     async getProjects(): Promise<any[]> {
