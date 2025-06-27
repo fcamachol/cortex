@@ -276,50 +276,107 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
             </CardContent>
           </Card>
 
-          {/* Relationships & Groups Collapsible Section */}
-          <Collapsible open={isRelationshipsOpen} onOpenChange={setIsRelationshipsOpen}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-4 h-auto">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  <span className="font-medium">RELATIONSHIPS & GROUPS</span>
-                </div>
-                {isRelationshipsOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-2 px-4 pb-4">
-              {contact.relationship ? (
-                <div className="text-sm text-gray-600">
-                  Relationship: {contact.relationship}
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500">No relationship specified</div>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
+          {/* All Contact Information - Flat Display */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="space-y-3">
+                {/* Phone Numbers */}
+                {fullContactDetails?.phones && fullContactDetails.phones.map((phone, index) => (
+                  <div key={index} className="text-sm">
+                    <span className="text-gray-900">{phone.phoneNumber}</span>
+                    {phone.label && <span className="text-gray-500 ml-2">({phone.label})</span>}
+                    {phone.isPrimary && <span className="text-green-600 ml-2">Primary</span>}
+                    {phone.isWhatsappLinked && <span className="text-green-600 ml-2">✓ WhatsApp</span>}
+                  </div>
+                ))}
 
-          {/* Personal Details Collapsible Section */}
-          <Collapsible open={isPersonalDetailsOpen} onOpenChange={setIsPersonalDetailsOpen}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-4 h-auto">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  <span className="font-medium">PERSONAL DETAILS</span>
+                {/* Email Addresses */}
+                {fullContactDetails?.emails && fullContactDetails.emails.map((email, index) => (
+                  <div key={index} className="text-sm">
+                    <span className="text-gray-900">{email.emailAddress}</span>
+                    {email.label && <span className="text-gray-500 ml-2">({email.label})</span>}
+                    {email.isPrimary && <span className="text-green-600 ml-2">Primary</span>}
+                  </div>
+                ))}
+
+                {/* Addresses */}
+                {fullContactDetails?.addresses && fullContactDetails.addresses.map((address, index) => (
+                  <div key={index} className="text-sm">
+                    <span className="text-gray-900">{address.street}, {address.city}</span>
+                    {address.label && <span className="text-gray-500 ml-2">({address.label})</span>}
+                    {address.isPrimary && <span className="text-green-600 ml-2">Primary</span>}
+                  </div>
+                ))}
+
+                {/* Relationship */}
+                {contact.relationship && (
+                  <div className="text-sm">
+                    <span className="text-gray-900">Relationship: {contact.relationship}</span>
+                  </div>
+                )}
+
+                {/* Tags */}
+                {contact.tags && contact.tags.length > 0 && (
+                  <div className="text-sm">
+                    <span className="text-gray-900">Tags: {contact.tags.join(', ')}</span>
+                  </div>
+                )}
+
+                {/* Groups */}
+                {fullContactDetails?.groups && fullContactDetails.groups.length > 0 && (
+                  <div className="text-sm">
+                    <span className="text-gray-900">Groups: {fullContactDetails.groups.map(g => g.name).join(', ')}</span>
+                  </div>
+                )}
+
+                {/* Related Relationships */}
+                {fullContactDetails?.relationships && fullContactDetails.relationships.length > 0 && (
+                  <div className="text-sm">
+                    <span className="text-gray-900">Relationships: {fullContactDetails.relationships.map(r => 
+                      `${r.relatedContact?.fullName} (${r.relationshipType})`
+                    ).join(', ')}</span>
+                  </div>
+                )}
+
+                {/* Companies */}
+                {fullContactDetails?.companies && fullContactDetails.companies.length > 0 && (
+                  <div className="text-sm">
+                    <span className="text-gray-900">Companies: {fullContactDetails.companies.map(c => 
+                      `${c.company.name}${c.position ? ` - ${c.position}` : ''}`
+                    ).join(', ')}</span>
+                  </div>
+                )}
+
+                {/* Special Dates */}
+                {fullContactDetails?.specialDates && fullContactDetails.specialDates.length > 0 && (
+                  <div className="text-sm">
+                    <span className="text-gray-900">Special Dates: {fullContactDetails.specialDates.map(d => 
+                      `${d.label}: ${formatDate(d.date)}`
+                    ).join(', ')}</span>
+                  </div>
+                )}
+
+                {/* Interests */}
+                {fullContactDetails?.interests && fullContactDetails.interests.length > 0 && (
+                  <div className="text-sm">
+                    <span className="text-gray-900">Interests: {fullContactDetails.interests.map(i => i.interest).join(', ')}</span>
+                  </div>
+                )}
+
+                {/* Creation Date */}
+                <div className="text-sm">
+                  <span className="text-gray-900">Created: {formatDate(contact.createdAt)}</span>
                 </div>
-                {isPersonalDetailsOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-2 px-4 pb-4">
-              <div className="text-sm text-gray-600">
-                Created: {formatDate(contact.createdAt)}
+
+                {/* Notes */}
+                {contact.notes && (
+                  <div className="text-sm">
+                    <span className="text-gray-900">Notes: {contact.notes.trim()}</span>
+                  </div>
+                )}
               </div>
-              {contact.notes && (
-                <div className="text-sm text-gray-600">
-                  Notes: {contact.notes.trim()}
-                </div>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
+            </CardContent>
+          </Card>
 
           {/* Activity Section */}
           <Tabs defaultValue="tasks" className="w-full">
