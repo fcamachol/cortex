@@ -14,6 +14,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { ProjectForm } from '../tasks/ProjectForm';
 import { TaskForm } from '../tasks/TaskForm';
 import { SpaceForm } from './SpaceForm';
+import { ProjectDetailModal } from '../projects/ProjectDetailModal';
 import { 
   Plus, 
   MoreHorizontal, 
