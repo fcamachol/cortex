@@ -216,19 +216,17 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
                                   </div>
 
                                   {/* Profession and Company */}
-                                  {contact.companies && contact.companies.length > 0 && (
+                                  {(contact.profession || contact.company) && (
                                     <div className="mb-2">
-                                      {contact.companies.map((company: any, index: number) => (
-                                        <p key={index} className="text-xs text-gray-700 dark:text-gray-300 font-medium">
-                                          {company.position && company.company?.name ? (
-                                            `${company.position} en ${company.company.name}`
-                                          ) : company.position ? (
-                                            company.position
-                                          ) : company.company?.name ? (
-                                            company.company.name
-                                          ) : null}
-                                        </p>
-                                      ))}
+                                      <p className="text-xs text-gray-700 dark:text-gray-300 font-medium">
+                                        {contact.profession && contact.company ? (
+                                          `${contact.profession} en ${contact.company}`
+                                        ) : contact.profession ? (
+                                          contact.profession
+                                        ) : contact.company ? (
+                                          contact.company
+                                        ) : null}
+                                      </p>
                                     </div>
                                   )}
 

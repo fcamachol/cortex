@@ -1995,39 +1995,9 @@ class DatabaseStorage {
 
     // Core Contact Operations
     async getCrmContacts(ownerUserId: string): Promise<any[]> {
-        return await db.select({
-            contactId: crmContacts.contactId,
-            ownerUserId: crmContacts.ownerUserId,
-            fullName: crmContacts.fullName,
-            relationship: crmContacts.relationship,
-            tags: crmContacts.tags,
-            profilePictureUrl: crmContacts.profilePictureUrl,
-            notes: crmContacts.notes,
-            whatsappJid: crmContacts.whatsappJid,
-            whatsappInstanceId: crmContacts.whatsappInstanceId,
-            isWhatsappLinked: crmContacts.isWhatsappLinked,
-            whatsappLinkedAt: crmContacts.whatsappLinkedAt,
-            createdAt: crmContacts.createdAt,
-            updatedAt: crmContacts.updatedAt,
-            companies: sql<any[]>`COALESCE((
-                SELECT json_agg(
-                    json_build_object(
-                        'position', ${crmCompanyMembers.role},
-                        'company', json_build_object(
-                            'companyId', ${crmCompanies.companyId},
-                            'name', ${crmCompanies.name}
-                        )
-                    )
-                )
-                FROM ${crmCompanyMembers}
-                JOIN ${crmCompanies} ON ${crmCompanyMembers.companyId} = ${crmCompanies.companyId}
-                WHERE ${crmCompanyMembers.contactId} = ${crmContacts.contactId}
-                AND ${crmCompanyMembers.isCurrent} = true
-            ), '[]'::json)`
-        })
-        .from(crmContacts)
-        .where(eq(crmContacts.ownerUserId, ownerUserId))
-        .orderBy(desc(crmContacts.createdAt));
+        return await db.select().from(crmContacts)
+            .where(eq(crmContacts.ownerUserId, ownerUserId))
+            .orderBy(desc(crmContacts.createdAt));
     }
 
     async getCrmContactById(contactId: number): Promise<any | null> {

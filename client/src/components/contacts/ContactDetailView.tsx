@@ -237,19 +237,17 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                   </div>
 
                   {/* Profession and Company */}
-                  {fullContactDetails?.companies && fullContactDetails.companies.length > 0 && (
+                  {(contact.profession || contact.company) && (
                     <div className="mb-3">
-                      {fullContactDetails.companies.map((company, index) => (
-                        <p key={index} className="text-sm text-gray-700 dark:text-gray-300 font-medium">
-                          {company.position && company.company.name ? (
-                            `${company.position} en ${company.company.name}`
-                          ) : company.position ? (
-                            company.position
-                          ) : company.company.name ? (
-                            company.company.name
-                          ) : null}
-                        </p>
-                      ))}
+                      <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                        {contact.profession && contact.company ? (
+                          `${contact.profession} en ${contact.company}`
+                        ) : contact.profession ? (
+                          contact.profession
+                        ) : contact.company ? (
+                          contact.company
+                        ) : null}
+                      </p>
                     </div>
                   )}
 

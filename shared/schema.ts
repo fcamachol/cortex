@@ -1168,6 +1168,9 @@ export const crmContacts = crmSchema.table("contacts", {
   tags: jsonb("tags").default('[]'), // Array of tags: ['Client', 'Friend', 'Partner']
   profilePictureUrl: varchar("profile_picture_url", { length: 500 }),
   notes: text("notes"),
+  // Direct profession and company fields for simplified display
+  profession: varchar("profession", { length: 150 }), // Direct profession field
+  company: varchar("company", { length: 150 }), // Direct company field
   // WhatsApp Integration - Link to WhatsApp contacts
   whatsappJid: varchar("whatsapp_jid", { length: 100 }), // Links to whatsapp.contacts.contactJid
   whatsappInstanceId: varchar("whatsapp_instance_id", { length: 100 }), // Track which WhatsApp instance
