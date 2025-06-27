@@ -784,7 +784,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       
       // Get userId from authenticated session (or use first user for now)
       const users = await storage.getUsers();
-      const userId = users.length > 0 ? users[0].user_id : null;
+      const userId = users.length > 0 ? users[0].userId : null;
       if (!userId) {
         return res.status(400).json({ error: 'No user found' });
       }

@@ -71,6 +71,11 @@ class DatabaseStorage {
         return user || null;
     }
 
+    async getUsers(): Promise<AppUser[]> {
+        const users = await db.select().from(appUsers);
+        return users;
+    }
+
     async getUserByEmail(email: string): Promise<AppUser | null> {
         const [user] = await db.select().from(appUsers).where(eq(appUsers.email, email.toLowerCase()));
         return user || null;
