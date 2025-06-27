@@ -78,6 +78,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [isMainContact, setIsMainContact] = useState(false);
 
   // Fetch existing contact details in edit mode
   useEffect(() => {
@@ -182,6 +183,11 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
           setCompany(response.company || '');
           setTags(response.tags || []);
           setDescription(response.notes || '');
+          
+          // Check if this is the main contact
+          const isMain = response.relationship === "Self" || response.tags?.includes("Main");
+          setIsMainContact(isMain);
+          
           setBlocks(newBlocks);
         } catch (error) {
           console.error('Error fetching contact details:', error);
@@ -950,11 +956,19 @@ function CompanyBlock({ block, onUpdate }: {
 }
 
 // Block Content based on type
-function BlockContent({ block, onUpdate, ownerUserId }: { 
+function BlockContent({ block, onUpdate, ownerUserId, isMainContact }: { 
   block: Block; 
   onUpdate: (blockId: string, field: string, value: any) => void;
   ownerUserId: string;
+  isMainContact?: boolean;
 }) {
+  // Fetch WhatsApp instances for main contact only
+  const { data: whatsappInstances = [] } = useQuery({
+    queryKey: ['/api/whatsapp/instances', ownerUserId],
+    queryFn: () => fetch(`/api/whatsapp/instances?ownerUserId=${ownerUserId}`).then(res => res.json()),
+    enabled: isMainContact && !!ownerUserId,
+  });
+
   switch (block.type) {
     case 'phone':
       return (
@@ -986,6 +1000,29 @@ function BlockContent({ block, onUpdate, ownerUserId }: {
               />
             </div>
           </div>
+          
+          {/* WhatsApp Instance Selection - Only for Main Contact */}
+          {isMainContact && block.data.hasWhatsApp && (
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">WhatsApp Instance</label>
+              <Select
+                value={block.data.whatsappInstanceId || ''}
+                onValueChange={(value) => onUpdate(block.id, 'whatsappInstanceId', value)}
+              >
+                <SelectTrigger className="h-10 border-gray-300 rounded-lg">
+                  <SelectValue placeholder="Select WhatsApp instance" />
+                </SelectTrigger>
+                <SelectContent>
+                  {whatsappInstances.map((instance: any) => (
+                    <SelectItem key={instance.instanceName} value={instance.instanceName}>
+                      {instance.instanceName} - {instance.status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="flex items-center gap-4">
             <div className="flex items-center space-x-2">
               <Checkbox
