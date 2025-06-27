@@ -1,4 +1,4 @@
-import { pgTable, pgSchema, text, boolean, timestamp, uuid, integer, jsonb, bigint, varchar, serial, numeric, index, primaryKey, uniqueIndex, pgEnum, unique } from "drizzle-orm/pg-core";
+import { pgTable, pgSchema, text, boolean, timestamp, uuid, integer, jsonb, bigint, varchar, serial, numeric, index, primaryKey, uniqueIndex, pgEnum, unique, date } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -1567,17 +1567,18 @@ export const crmProjects = crmSchema.table("projects", {
   id: varchar("id", { length: 50 }).primaryKey(), // cj_ prefixed UUID
   name: varchar("name", { length: 200 }).notNull(),
   description: text("description"),
-  status: varchar("status", { length: 50 }).default("planning"), // planning, active, on_hold, completed, cancelled
+  status: varchar("status", { length: 50 }).default("active"), 
   priority: varchar("priority", { length: 20 }).default("medium"), // low, medium, high, urgent
-  startDate: varchar("start_date", { length: 10 }), // YYYY-MM-DD
-  endDate: varchar("end_date", { length: 10 }), // YYYY-MM-DD
+  startDate: date("start_date"), 
+  endDate: date("end_date"),
   budget: numeric("budget", { precision: 15, scale: 2 }),
   spentAmount: numeric("spent_amount", { precision: 15, scale: 2 }).default("0.00"),
   progress: integer("progress").default(0), // 0-100 percentage
   tags: jsonb("tags").$type<string[]>(),
   color: varchar("color", { length: 7 }), // hex color
   parentProjectId: varchar("parent_project_id", { length: 50 }), // self-reference for sub-projects
-  spaceId: integer("space_id").references(() => appSpaces.spaceId),
+  userId: uuid("user_id").notNull().references(() => appUsers.userId), // Link to authenticated users
+  ownerUserId: uuid("owner_user_id").references(() => appUsers.userId), // Current owner
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

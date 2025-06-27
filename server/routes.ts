@@ -828,7 +828,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       const { projectId } = req.params;
       const updates = req.body;
       
-      const updatedProject = await storage.updateProject(parseInt(projectId), updates);
+      const updatedProject = await storage.updateProject(projectId, updates);
       res.json(updatedProject);
     } catch (error) {
       console.error('Error updating project:', error);
@@ -839,7 +839,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.delete('/api/crm/projects/:projectId', async (req: Request, res: Response) => {
     try {
       const { projectId } = req.params;
-      await storage.deleteProject(parseInt(projectId));
+      await storage.deleteProject(projectId);
       res.json({ success: true });
     } catch (error) {
       console.error('Error deleting project:', error);
