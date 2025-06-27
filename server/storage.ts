@@ -2114,6 +2114,11 @@ class DatabaseStorage {
                     label: phone.label === 'WhatsApp' ? 'Mobile' : phone.label,
                     contactId: contact.contactId
                 });
+                
+                // If phone is marked as having WhatsApp, attempt to link
+                if (phone.isWhatsappLinked) {
+                    await this.linkContactToWhatsApp(contact.contactId, phone.phoneNumber);
+                }
             }
             
             // Process emails
@@ -2168,6 +2173,11 @@ class DatabaseStorage {
                     label: phone.label === 'WhatsApp' ? 'Mobile' : phone.label,
                     contactId: contactId
                 });
+                
+                // If phone is marked as having WhatsApp, attempt to link
+                if (phone.isWhatsappLinked) {
+                    await this.linkContactToWhatsApp(contactId, phone.phoneNumber);
+                }
             }
             
             // Add new emails
