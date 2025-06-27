@@ -174,7 +174,6 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
             });
           }
           
-          console.log('Created blocks:', newBlocks);
           setBlocks(newBlocks);
         } catch (error) {
           console.error('Error fetching contact details:', error);

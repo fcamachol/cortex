@@ -1,6 +1,8 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Search, Users, Heart, Star, Building2, Briefcase, Check, Phone, Mail } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -12,7 +14,6 @@ import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from 
 import type { CrmContact } from "@shared/schema";
 import { ContactFormBlocks } from "@/components/contacts/ContactFormBlocks";
 import { ContactModal } from "@/components/contacts/ContactModal";
-import ContactDetailView from "@/components/contacts/ContactDetailView";
 import { CompanyForm } from "@/components/contacts/CompanyForm";
 
 interface ContactsPageProps {
@@ -27,6 +28,9 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
   const [selectedContact, setSelectedContact] = React.useState<CrmContact | null>(null);
   const [showContactModal, setShowContactModal] = React.useState(false);
   const [editingContact, setEditingContact] = React.useState<CrmContact | null>(null);
+  
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: contactsList = [], isLoading: contactsLoading } = useQuery({
     queryKey: ['/api/crm/contacts', userId],
@@ -44,6 +48,27 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
     queryKey: ['/api/crm/contacts/upcoming-dates', userId],
     queryFn: () => fetch(`/api/crm/contacts/upcoming-dates?ownerUserId=${userId}`).then(res => res.json()),
     enabled: !!userId,
+  });
+
+  const deleteContactMutation = useMutation({
+    mutationFn: async (contactId: number) => {
+      return await apiRequest('DELETE', `/api/crm/contacts/${contactId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
+      setEditingContact(null);
+      toast({
+        title: "Success",
+        description: "Contact deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete contact",
+        variant: "destructive",
+      });
+    },
   });
 
   const getInitials = (name: string) => {
@@ -524,12 +549,35 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
 
       {/* Contact Edit Modal */}
       {editingContact && (
-        <ContactDetailView
-          contact={editingContact}
-          interests={[]} 
-          onClose={handleCloseEdit}
-          onUpdate={handleUpdateContact}
-        />
+        <Dialog open={true} onOpenChange={() => setEditingContact(null)}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Contact</DialogTitle>
+            </DialogHeader>
+            <ContactFormBlocks
+              ownerUserId={editingContact.ownerUserId}
+              spaceId={1}
+              isEditMode={true}
+              contactId={editingContact.contactId}
+              initialData={{
+                fullName: editingContact.fullName,
+                relationship: editingContact.relationship || "",
+                tags: editingContact.tags || [],
+                profilePictureUrl: editingContact.profilePictureUrl || "",
+                notes: editingContact.notes || "",
+              }}
+              onSuccess={() => {
+                setEditingContact(null);
+                queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
+              }}
+              onDelete={() => {
+                if (editingContact.contactId) {
+                  deleteContactMutation.mutate(editingContact.contactId);
+                }
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
