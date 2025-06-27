@@ -124,7 +124,7 @@ function TaskCreationForm({ projectId, onTaskCreated }: TaskCreationFormProps) {
 
       // Link the task to the project using the unified entity system
       await apiRequest('/api/crm/task-entities', 'POST', {
-        taskId: taskResponse.id,
+        taskId: taskResponse.taskId || taskResponse.id,
         entityId: projectId,
         relationshipType: 'assigned_to_project',
       });

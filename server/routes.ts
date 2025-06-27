@@ -1036,6 +1036,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       
       // Transform response for frontend
       const transformedTask = {
+        id: task.id,
         taskId: task.taskId || task.task_id,
         title: task.title,
         description: task.description,
@@ -1056,6 +1057,25 @@ export async function registerRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error('Error creating task:', error);
       res.status(500).json({ error: 'Failed to create task' });
+    }
+  });
+
+  // Link tasks to entities (projects, contacts, etc.)
+  app.post('/api/crm/task-entities', async (req: Request, res: Response) => {
+    try {
+      const { taskId, entityId, relationshipType } = req.body;
+      console.log('Linking task to entity:', { taskId, entityId, relationshipType });
+      
+      const link = await storage.createTaskEntityLink(taskId, entityId, relationshipType);
+      
+      res.json({
+        success: true,
+        link: link,
+        message: 'Task successfully linked to entity'
+      });
+    } catch (error) {
+      console.error('Error linking task to entity:', error);
+      res.status(500).json({ error: 'Failed to link task to entity' });
     }
   });
 

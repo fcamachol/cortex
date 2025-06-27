@@ -19,6 +19,7 @@ import {
     crmContacts, crmContactPhones, crmContactEmails, crmContactAddresses, 
     crmContactAliases, crmSpecialDates, crmInterests, crmContactInterests,
     crmCompanyMembers, crmContactGroups, crmContactGroupMembers, crmContactRelationships, crmGroups,
+    taskEntities,
     // Finance Schema
     financeAccounts, financeTransactions, financePayables, financeReceivables, financeCategories,
     financeRecurringBills, financeLoans, financeLoanPayments, financePayablePayments, financeReceivablePayments,
@@ -1353,26 +1354,20 @@ class DatabaseStorage {
     // =========================================================================
 
     async createTask(taskData: any): Promise<any> {
+        // Generate a standard UUID for the new task
+        const taskId = crypto.randomUUID();
+        
         const [task] = await db.insert(crmTasks)
             .values({
-                instanceId: taskData.instanceId,
+                id: taskId,
                 title: taskData.title,
                 description: taskData.description,
-                status: taskData.status || 'pending',
+                status: taskData.status || 'todo',
                 priority: taskData.priority || 'medium',
-                taskType: taskData.taskType || 'task',
                 dueDate: taskData.dueDate || null,
-                triggeringMessageId: taskData.triggeringMessageId || null,
-                relatedChatJid: taskData.relatedChatJid || null,
-                senderJid: taskData.senderJid || null,
-                contactName: taskData.contactName || null,
-                originalMessageContent: taskData.originalMessageContent || null,
-                assignedToUserId: taskData.assignedToUserId || null,
-                createdByUserId: taskData.createdByUserId || null,
-                spaceId: taskData.spaceId || null,
-                projectId: taskData.projectId || null,
                 parentTaskId: taskData.parentTaskId || null,
-                linkedPayableId: taskData.linkedPayableId || null
+                spaceId: taskData.spaceId || null,
+                tags: taskData.tags || []
             })
             .returning();
         return task;
@@ -1397,6 +1392,24 @@ class DatabaseStorage {
         // For now, return empty array - project-task linking will be implemented
         // when the unified entity system is fully integrated
         return [];
+    }
+
+    async createTaskEntityLink(taskId: string, entityId: string, relationshipType: string): Promise<any> {
+        try {
+            const [link] = await db.insert(taskEntities)
+                .values({
+                    taskId: taskId,
+                    entityId: entityId,
+                    relationshipType: relationshipType
+                })
+                .returning();
+            
+            console.log('Task-Entity link created:', { taskId, entityId, relationshipType });
+            return link;
+        } catch (error) {
+            console.error('Error creating task-entity link:', error);
+            throw error;
+        }
     }
 
     // =========================================================================
