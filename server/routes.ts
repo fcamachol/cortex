@@ -3608,7 +3608,13 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post('/api/crm/groups', async (req: Request, res: Response) => {
     try {
-      const group = await storage.createCrmGroup(req.body);
+      // Process tags - convert comma-separated string to array
+      const groupData = { ...req.body };
+      if (groupData.tags && typeof groupData.tags === 'string') {
+        groupData.tags = groupData.tags.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag.length > 0);
+      }
+      
+      const group = await storage.createCrmGroup(groupData);
       res.status(201).json(group);
     } catch (error) {
       console.error('Error creating CRM group:', error);
@@ -3631,7 +3637,13 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.put('/api/crm/groups/:groupId', async (req: Request, res: Response) => {
     try {
-      const group = await storage.updateCrmGroup(req.params.groupId, req.body);
+      // Process tags - convert comma-separated string to array
+      const updateData = { ...req.body };
+      if (updateData.tags && typeof updateData.tags === 'string') {
+        updateData.tags = updateData.tags.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag.length > 0);
+      }
+      
+      const group = await storage.updateCrmGroup(req.params.groupId, updateData);
       res.json(group);
     } catch (error) {
       console.error('Error updating CRM group:', error);
