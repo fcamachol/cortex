@@ -13,13 +13,14 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Project {
-  project_id: number;
-  project_name: string;
+  id: string; // cj_ prefixed UUID
+  name: string;
   description?: string;
   status: string;
-  start_date?: string;
-  end_date?: string;
-  created_at: string;
+  startDate?: string;
+  endDate?: string;
+  spaceId?: number;
+  createdAt: string;
 }
 
 interface ProjectFormProps {
@@ -32,11 +33,11 @@ interface ProjectFormProps {
 }
 
 const projectFormSchema = z.object({
-  project_name: z.string().min(1, 'Project name is required'),
+  name: z.string().min(1, 'Project name is required'),
   description: z.string().optional(),
-  status: z.enum(['active', 'on_hold', 'completed', 'cancelled']),
-  start_date: z.date().optional(),
-  end_date: z.date().optional(),
+  status: z.enum(['planning', 'active', 'on_hold', 'completed', 'cancelled']),
+  startDate: z.date().optional(),
+  endDate: z.date().optional(),
 });
 
 type ProjectFormData = z.infer<typeof projectFormSchema>;
@@ -45,20 +46,20 @@ export function ProjectForm({ project, onSubmit, onClose, isLoading, isOpen = tr
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectFormSchema),
     defaultValues: {
-      project_name: project?.project_name || '',
+      name: project?.name || '',
       description: project?.description || '',
-      status: (project?.status as any) || 'active',
-      start_date: project?.start_date ? new Date(project.start_date) : undefined,
-      end_date: project?.end_date ? new Date(project.end_date) : undefined,
+      status: (project?.status as any) || 'planning',
+      startDate: project?.startDate ? new Date(project.startDate) : undefined,
+      endDate: project?.endDate ? new Date(project.endDate) : undefined,
     },
   });
 
   const handleSubmit = (data: ProjectFormData) => {
     const formattedData = {
       ...data,
-      start_date: data.start_date?.toISOString(),
-      end_date: data.end_date?.toISOString(),
-      space_id: spaceId || null,
+      startDate: data.startDate?.toISOString().split('T')[0], // YYYY-MM-DD format
+      endDate: data.endDate?.toISOString().split('T')[0], // YYYY-MM-DD format
+      spaceId: spaceId || null,
     };
     onSubmit(formattedData);
   };
@@ -77,7 +78,7 @@ export function ProjectForm({ project, onSubmit, onClose, isLoading, isOpen = tr
             {/* Project Name */}
             <FormField
               control={form.control}
-              name="project_name"
+              name="name"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Project Name</FormLabel>
@@ -137,7 +138,7 @@ export function ProjectForm({ project, onSubmit, onClose, isLoading, isOpen = tr
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="start_date"
+                name="startDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Start Date</FormLabel>
