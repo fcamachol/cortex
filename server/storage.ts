@@ -1282,14 +1282,14 @@ class DatabaseStorage {
             console.log('Creating project with ID:', projectId);
             console.log('Project data:', projectData);
             
-            // Use Drizzle ORM to insert project
-            const [project] = await db.insert(crmProjects).values({
-                id: projectId,
-                name: projectData.name,
-                description: projectData.description,
-                status: projectData.status || 'planning',
-                userId: projectData.userId
-            }).returning();
+            // Use raw SQL to insert with correct field mapping for existing database structure
+            const result = await db.execute(sql`
+                INSERT INTO crm.projects (id, project_name, description, status, user_id)
+                VALUES (${projectId}, ${projectData.name}, ${projectData.description}, ${projectData.status || 'planning'}, ${projectData.userId})
+                RETURNING id, project_name, description, status, user_id, created_at, updated_at
+            `);
+            
+            const project = result.rows[0];
             
             console.log('Project created:', project);
             
