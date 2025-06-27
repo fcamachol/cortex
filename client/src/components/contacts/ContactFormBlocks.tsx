@@ -1380,6 +1380,7 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
   ownerUserId: string;
 }) {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
   const { data: contactsList = [] } = useQuery({
     queryKey: ['/api/crm/contacts', ownerUserId],
