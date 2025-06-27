@@ -10,6 +10,7 @@ export const appSchema = pgSchema("app");
 export const actionsSchema = pgSchema("actions");
 export const calendarSchema = pgSchema("calendar");
 export const financeSchema = pgSchema("finance");
+export const driveSchema = pgSchema("drive");
 
 // Enums for App schema
 export const workspaceRoleEnum = appSchema.enum("workspace_role", ["admin", "member", "viewer"]);
@@ -894,7 +895,7 @@ export const appUserPreferencesRelations = relations(appUserPreferences, ({ one 
 // =============================================================================
 
 // Core Drive-like spaces table (cs_ prefix)
-export const driveSpaces = appSchema.table("drive_spaces", {
+export const driveSpaces = driveSchema.table("spaces", {
   id: varchar("id", { length: 50 }).primaryKey(), // cs_ prefix
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
@@ -931,7 +932,7 @@ export const driveSpaceMembers = appSchema.table("drive_space_members", {
 }));
 
 // Content in spaces (Google Drive files in folders)
-export const driveSpaceItems = appSchema.table("drive_space_items", {
+export const driveSpaceItems = driveSchema.table("space_items", {
   id: uuid("id").primaryKey().defaultRandom(),
   spaceId: varchar("space_id", { length: 50 }).notNull().references(() => driveSpaces.id, { onDelete: "cascade" }),
   itemType: varchar("item_type", { length: 20 }).notNull(), // 'task', 'note', 'document', 'bill', 'receivable', 'transaction', 'space', 'company', 'contact', 'group', 'project', 'event'
