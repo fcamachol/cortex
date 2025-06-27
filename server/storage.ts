@@ -4082,7 +4082,6 @@ class DatabaseStorage {
                 return {
                     ...group,
                     parentGroupId: group.parent_group_id,
-                    spaceId: group.space_id,
                     whatsappJid: group.whatsapp_jid,
                     whatsappInstanceId: group.whatsapp_instance_id,
                     whatsappLinkedAt: group.whatsapp_linked_at,
@@ -4110,7 +4109,6 @@ class DatabaseStorage {
                     tags,
                     parent_group_id as "parentGroupId",
                     status,
-                    space_id as "spaceId",
                     whatsapp_jid as "whatsappJid",
                     whatsapp_instance_id as "whatsappInstanceId",
                     whatsapp_linked_at as "whatsappLinkedAt",
@@ -4140,7 +4138,7 @@ class DatabaseStorage {
                     tags = ${JSON.stringify(updateData.tags || [])},
                     parent_group_id = ${updateData.parentGroupId},
                     status = ${updateData.status},
-                    space_id = ${updateData.spaceId},
+
                     updated_at = NOW()
                 WHERE id = ${groupId}
                 RETURNING *
@@ -4151,7 +4149,6 @@ class DatabaseStorage {
                 return {
                     ...group,
                     parentGroupId: group.parent_group_id,
-                    spaceId: group.space_id,
                     whatsappJid: group.whatsapp_jid,
                     whatsappInstanceId: group.whatsapp_instance_id,
                     whatsappLinkedAt: group.whatsapp_linked_at,
