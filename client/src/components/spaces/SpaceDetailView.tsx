@@ -12,6 +12,7 @@ import { apiRequest } from '@/lib/queryClient';
 
 import { ProjectForm } from '../tasks/ProjectForm';
 import { TaskForm } from '../tasks/TaskForm';
+import { SpaceForm } from './SpaceForm';
 import { 
   Plus, 
   MoreHorizontal, 
@@ -105,6 +106,9 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
   const [editedSpace, setEditedSpace] = useState<Partial<Space>>({});
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
+  const [showSubspaceForm, setShowSubspaceForm] = useState(false);
+  const [showFileForm, setShowFileForm] = useState(false);
+  const [showEventForm, setShowEventForm] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -555,6 +559,12 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                         setShowProjectForm(true);
                       } else if (itemType === 'task') {
                         setShowTaskForm(true);
+                      } else if (itemType === 'subspace') {
+                        setShowSubspaceForm(true);
+                      } else if (itemType === 'file') {
+                        setShowFileForm(true);
+                      } else if (itemType === 'event') {
+                        setShowEventForm(true);
                       }
                     }}>
                       <Plus className="h-4 w-4 mr-2" />
@@ -595,14 +605,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                     <div className="text-center py-12">
                       <FolderOpen className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                       <p className="text-gray-500">No subspaces found</p>
-                      <Button className="mt-4" onClick={() => {
-                        // For subspaces, we could add a separate create subspace modal
-                        // For now, just show a toast indicating this feature
-                        toast({
-                          title: "Create Subspace",
-                          description: "Subspace creation will be implemented soon.",
-                        });
-                      }}>
+                      <Button className="mt-4" onClick={() => setShowSubspaceForm(true)}>
                         <Plus className="h-4 w-4 mr-2" />
                         Create Subspace
                       </Button>
@@ -682,6 +685,112 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
               toast({
                 title: "Error",
                 description: "Failed to create task. Please try again.",
+                variant: "destructive"
+              });
+            });
+          }}
+        />
+      )}
+
+      {/* Subspace Form Modal */}
+      {showSubspaceForm && (
+        <SubspaceForm
+          isOpen={showSubspaceForm}
+          onClose={() => setShowSubspaceForm(false)}
+          parentSpaceId={spaceId}
+          onSubmit={(subspaceData) => {
+            // Handle subspace creation
+            const subspaceWithParent = {
+              ...subspaceData,
+              parentSpaceId: spaceId,
+              category: space?.category || 'work'
+            };
+            
+            apiRequest(`/api/spaces`, {
+              method: 'POST',
+              body: JSON.stringify(subspaceWithParent)
+            }).then(() => {
+              toast({
+                title: "Subspace Created",
+                description: `Subspace created within "${space?.spaceName}".`,
+              });
+              setShowSubspaceForm(false);
+              queryClient.invalidateQueries({ queryKey: ['/api/spaces'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'items'] });
+            }).catch((error) => {
+              toast({
+                title: "Error",
+                description: "Failed to create subspace. Please try again.",
+                variant: "destructive"
+              });
+            });
+          }}
+        />
+      )}
+
+      {/* File/Document Form Modal */}
+      {showFileForm && (
+        <FileForm
+          isOpen={showFileForm}
+          onClose={() => setShowFileForm(false)}
+          onSubmit={(fileData) => {
+            // Handle file/document creation
+            const fileWithSpace = {
+              ...fileData,
+              space_id: spaceId,
+              space_name: space?.spaceName
+            };
+            
+            apiRequest(`/api/crm/documents`, {
+              method: 'POST',
+              body: JSON.stringify(fileWithSpace)
+            }).then(() => {
+              toast({
+                title: "File Created",
+                description: `File added to "${space?.spaceName}" space.`,
+              });
+              setShowFileForm(false);
+              queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'items'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/crm/documents'] });
+            }).catch((error) => {
+              toast({
+                title: "Error",
+                description: "Failed to create file. Please try again.",
+                variant: "destructive"
+              });
+            });
+          }}
+        />
+      )}
+
+      {/* Event Form Modal */}
+      {showEventForm && (
+        <EventForm
+          isOpen={showEventForm}
+          onClose={() => setShowEventForm(false)}
+          onSubmit={(eventData) => {
+            // Handle event creation
+            const eventWithSpace = {
+              ...eventData,
+              space_id: spaceId,
+              space_name: space?.spaceName
+            };
+            
+            apiRequest(`/api/crm/events`, {
+              method: 'POST',
+              body: JSON.stringify(eventWithSpace)
+            }).then(() => {
+              toast({
+                title: "Event Created",
+                description: `Event created and assigned to "${space?.spaceName}" space.`,
+              });
+              setShowEventForm(false);
+              queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'items'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/crm/events'] });
+            }).catch((error) => {
+              toast({
+                title: "Error",
+                description: "Failed to create event. Please try again.",
                 variant: "destructive"
               });
             });
