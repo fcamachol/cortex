@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -111,10 +112,16 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
   const [showEventForm, setShowEventForm] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [location, navigate] = useLocation();
 
   // Fetch all spaces first
   const { data: allSpaces = [], isLoading: spacesLoading } = useQuery({
     queryKey: ['/api/spaces'],
+    select: (data: any) => {
+      if (!data) return [];
+      if (Array.isArray(data)) return data;
+      return Object.values(data).flat();
+    }
   });
 
   // Fetch space items
@@ -634,10 +641,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
             };
             
             // Make API call to create project
-            apiRequest(`/api/crm/projects`, {
-              method: 'POST',
-              body: JSON.stringify(projectWithSpace)
-            }).then(() => {
+            apiRequest('POST', `/api/crm/projects`, projectWithSpace).then(() => {
               toast({
                 title: "Project Created",
                 description: `Project created and assigned to "${space?.spaceName}" space.`,
@@ -670,10 +674,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
             };
             
             // Make API call to create task
-            apiRequest(`/api/crm/tasks`, {
-              method: 'POST',
-              body: JSON.stringify(taskWithSpace)
-            }).then(() => {
+            apiRequest('POST', `/api/crm/tasks`, taskWithSpace).then(() => {
               toast({
                 title: "Task Created", 
                 description: `Task created and assigned to "${space?.spaceName}" space.`,
@@ -693,23 +694,20 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
       )}
 
       {/* Subspace Form Modal */}
-      {showSubspaceForm && (
-        <SubspaceForm
+      {showSubspaceForm && allSpaces && (
+        <SpaceForm
           isOpen={showSubspaceForm}
           onClose={() => setShowSubspaceForm(false)}
-          parentSpaceId={spaceId}
-          onSubmit={(subspaceData) => {
-            // Handle subspace creation
+          spaces={Array.isArray(allSpaces) ? allSpaces : []}
+          onSubmit={(spaceIdParam, subspaceData) => {
+            // Handle subspace creation with parent assignment
             const subspaceWithParent = {
               ...subspaceData,
               parentSpaceId: spaceId,
               category: space?.category || 'work'
             };
             
-            apiRequest(`/api/spaces`, {
-              method: 'POST',
-              body: JSON.stringify(subspaceWithParent)
-            }).then(() => {
+            apiRequest('POST', '/api/spaces', subspaceWithParent).then(() => {
               toast({
                 title: "Subspace Created",
                 description: `Subspace created within "${space?.spaceName}".`,
@@ -728,74 +726,34 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
         />
       )}
 
-      {/* File/Document Form Modal */}
+      {/* File/Document Placeholder Modal */}
       {showFileForm && (
-        <FileForm
-          isOpen={showFileForm}
-          onClose={() => setShowFileForm(false)}
-          onSubmit={(fileData) => {
-            // Handle file/document creation
-            const fileWithSpace = {
-              ...fileData,
-              space_id: spaceId,
-              space_name: space?.spaceName
-            };
-            
-            apiRequest(`/api/crm/documents`, {
-              method: 'POST',
-              body: JSON.stringify(fileWithSpace)
-            }).then(() => {
-              toast({
-                title: "File Created",
-                description: `File added to "${space?.spaceName}" space.`,
-              });
-              setShowFileForm(false);
-              queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'items'] });
-              queryClient.invalidateQueries({ queryKey: ['/api/crm/documents'] });
-            }).catch((error) => {
-              toast({
-                title: "Error",
-                description: "Failed to create file. Please try again.",
-                variant: "destructive"
-              });
-            });
-          }}
-        />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">File Management</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              File creation and management features will be implemented soon. For now, you can manage files through the main CRM modules.
+            </p>
+            <div className="flex justify-end">
+              <Button onClick={() => setShowFileForm(false)}>Close</Button>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* Event Form Modal */}
+      {/* Event Placeholder Modal */}
       {showEventForm && (
-        <EventForm
-          isOpen={showEventForm}
-          onClose={() => setShowEventForm(false)}
-          onSubmit={(eventData) => {
-            // Handle event creation
-            const eventWithSpace = {
-              ...eventData,
-              space_id: spaceId,
-              space_name: space?.spaceName
-            };
-            
-            apiRequest(`/api/crm/events`, {
-              method: 'POST',
-              body: JSON.stringify(eventWithSpace)
-            }).then(() => {
-              toast({
-                title: "Event Created",
-                description: `Event created and assigned to "${space?.spaceName}" space.`,
-              });
-              setShowEventForm(false);
-              queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'items'] });
-              queryClient.invalidateQueries({ queryKey: ['/api/crm/events'] });
-            }).catch((error) => {
-              toast({
-                title: "Error",
-                description: "Failed to create event. Please try again.",
-                variant: "destructive"
-              });
-            });
-          }}
-        />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Event Management</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Event creation features will be implemented soon. For now, you can manage events through the main CRM modules.
+            </p>
+            <div className="flex justify-end">
+              <Button onClick={() => setShowEventForm(false)}>Close</Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
