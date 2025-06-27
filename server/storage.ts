@@ -1270,18 +1270,25 @@ class DatabaseStorage {
     // =========================================================================
 
     async createProject(projectData: any): Promise<CrmProject> {
+        // Generate UUID with cj_ prefix for CRM projects
+        const projectId = `cj_${crypto.randomUUID()}`;
+        
         const [project] = await db.insert(crmProjects)
             .values({
-                instanceId: projectData.instanceId || 'default-instance',
-                projectName: projectData.projectName || projectData.project_name,
+                id: projectId,
+                name: projectData.name,
                 description: projectData.description,
-                status: projectData.status || 'active',
+                status: projectData.status || 'planning',
                 priority: projectData.priority || 'medium',
                 startDate: projectData.startDate,
-                dueDate: projectData.dueDate,
-                assignedToUserId: projectData.assignedToUserId,
-                createdByUserId: projectData.createdByUserId,
-                spaceId: projectData.spaceId || projectData.space_id || null
+                endDate: projectData.endDate,
+                budget: projectData.budget,
+                spentAmount: projectData.spentAmount || '0.00',
+                progress: projectData.progress || 0,
+                tags: projectData.tags || [],
+                color: projectData.color,
+                parentProjectId: projectData.parentProjectId,
+                spaceId: projectData.spaceId || null
             })
             .returning();
         return project;

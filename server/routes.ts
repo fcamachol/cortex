@@ -755,21 +755,24 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const projects = await storage.getProjects();
       
-      // Transform field names from snake_case to camelCase for frontend compatibility
+      // Return projects with the correct field names from crmProjects schema
       const transformedProjects = projects.map(project => ({
-        projectId: project.projectId || project.project_id,
-        projectName: project.projectName || project.project_name,
+        id: project.id,
+        name: project.name,
         description: project.description,
         status: project.status,
         priority: project.priority,
-        startDate: project.startDate || project.start_date,
-        dueDate: project.dueDate || project.due_date,
-        completedDate: project.completedDate || project.completed_date,
-        assignedToUserId: project.assignedToUserId || project.assigned_to_user_id,
-        createdByUserId: project.createdByUserId || project.created_by_user_id,
-        createdAt: project.createdAt || project.created_at,
-        updatedAt: project.updatedAt || project.updated_at,
-        spaceId: project.spaceId || project.space_id
+        startDate: project.startDate,
+        endDate: project.endDate,
+        budget: project.budget,
+        spentAmount: project.spentAmount,
+        progress: project.progress,
+        tags: project.tags,
+        color: project.color,
+        parentProjectId: project.parentProjectId,
+        spaceId: project.spaceId,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt
       }));
       
       res.json(transformedProjects);
