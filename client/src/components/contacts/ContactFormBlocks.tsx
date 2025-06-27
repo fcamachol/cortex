@@ -1394,13 +1394,21 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
   const { data: contactsList = [] } = useQuery({
     queryKey: ['/api/crm/contacts', ownerUserId],
     queryFn: async () => {
+      console.log('Fetching contacts with ownerUserId:', ownerUserId);
+      if (!ownerUserId) {
+        throw new Error('Owner user ID is required');
+      }
       const response = await fetch(`/api/crm/contacts?ownerUserId=${ownerUserId}`);
       if (!response.ok) {
+        console.error(`Contacts fetch failed: ${response.status} ${response.statusText}`);
         throw new Error(`Failed to fetch contacts: ${response.status}`);
       }
-      return response.json();
+      const contacts = await response.json();
+      console.log('Contacts fetched successfully:', contacts.length, 'contacts');
+      return contacts;
     },
     enabled: !!ownerUserId && isLinkModalOpen,
+    staleTime: 30000,
   });
 
   const selectedContact = contactsList.find((c: any) => c.contactId === block.data.contactId);
@@ -1411,7 +1419,12 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
   );
 
   // Handle contact selection
-  const handleContactSelect = (contact: any) => {
+  const handleContactSelect = (contact: any, event?: React.MouseEvent) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    console.log('Selecting contact:', contact);
     onUpdate(block.id, 'contactId', contact.contactId);
     setSelectedContactName(contact.fullName);
     setSearchTerm(contact.fullName);
@@ -1544,7 +1557,7 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
                     {filteredContacts.slice(0, 5).map((contact: any) => (
                       <div
                         key={contact.contactId}
-                        onClick={() => handleContactSelect(contact)}
+                        onClick={(e) => handleContactSelect(contact, e)}
                         className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                       >
                         <User className="h-4 w-4 text-gray-500" />
