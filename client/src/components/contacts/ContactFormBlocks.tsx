@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Phone, Mail, MapPin, Building2, Users, Link as LinkIcon, Calendar, Tag, MessageSquare, Plus, MoreHorizontal, X, User, ChevronDown, ChevronUp, Check, Trash2 } from "lucide-react";
@@ -588,8 +589,8 @@ function ContactInfoSection({ blocks, onUpdate, onRemove, onAddSubBlock, ownerUs
           <h3 className="font-medium text-gray-900">Contact Info</h3>
         </div>
         <div className="flex items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -599,28 +600,24 @@ function ContactInfoSection({ blocks, onUpdate, onRemove, onAddSubBlock, ownerUs
                 <Plus className="h-3 w-3 mr-1" />
                 Add
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56" align="end">
-              <div className="space-y-1">
-                {CONTACT_INFO_BLOCKS.map((blockType) => (
-                  <Button
-                    key={blockType.id}
-                    variant="ghost"
-                    className="w-full justify-start text-sm"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log('Adding block type:', blockType.id);
-                      onAddSubBlock(blockType.id);
-                    }}
-                  >
-                    <blockType.icon className="h-4 w-4 mr-2" />
-                    {blockType.label}
-                  </Button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end">
+              {CONTACT_INFO_BLOCKS.map((blockType) => (
+                <DropdownMenuItem
+                  key={blockType.id}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Adding block type:', blockType.id);
+                    onAddSubBlock(blockType.id);
+                  }}
+                >
+                  <blockType.icon className="h-4 w-4 mr-2" />
+                  {blockType.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </div>
       </div>
@@ -662,8 +659,8 @@ function RelationshipSection({ blocks, onUpdate, onRemove, onAddSubBlock, ownerU
           <h3 className="font-medium text-gray-900">Relationships & Groups</h3>
         </div>
         <div className="flex items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -673,28 +670,24 @@ function RelationshipSection({ blocks, onUpdate, onRemove, onAddSubBlock, ownerU
                 <Plus className="h-3 w-3 mr-1" />
                 Add
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56" align="end">
-              <div className="space-y-1">
-                {RELATIONSHIP_BLOCKS.map((blockType) => (
-                  <Button
-                    key={blockType.id}
-                    variant="ghost"
-                    className="w-full justify-start text-sm"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log('Adding relationship block type:', blockType.id);
-                      onAddSubBlock(blockType.id);
-                    }}
-                  >
-                    <blockType.icon className="h-4 w-4 mr-2" />
-                    {blockType.label}
-                  </Button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end">
+              {RELATIONSHIP_BLOCKS.map((blockType) => (
+                <DropdownMenuItem
+                  key={blockType.id}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Adding relationship block type:', blockType.id);
+                    onAddSubBlock(blockType.id);
+                  }}
+                >
+                  <blockType.icon className="h-4 w-4 mr-2" />
+                  {blockType.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </div>
       </div>
@@ -735,8 +728,8 @@ function PersonalDetailsSection({ blocks, onUpdate, onRemove, onAddSubBlock, own
           <h3 className="font-medium text-gray-900">Personal Details</h3>
         </div>
         <div className="flex items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -746,28 +739,24 @@ function PersonalDetailsSection({ blocks, onUpdate, onRemove, onAddSubBlock, own
                 <Plus className="h-3 w-3 mr-1" />
                 Add
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56" align="end">
-              <div className="space-y-1">
-                {PERSONAL_DETAILS_BLOCKS.filter(b => b.id !== 'note').map((blockType) => (
-                  <Button
-                    key={blockType.id}
-                    variant="ghost"
-                    className="w-full justify-start text-sm"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log('Adding personal details block type:', blockType.id);
-                      onAddSubBlock(blockType.id);
-                    }}
-                  >
-                    <blockType.icon className="h-4 w-4 mr-2" />
-                    {blockType.label}
-                  </Button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end">
+              {PERSONAL_DETAILS_BLOCKS.filter(b => b.id !== 'note').map((blockType) => (
+                <DropdownMenuItem
+                  key={blockType.id}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Adding personal details block type:', blockType.id);
+                    onAddSubBlock(blockType.id);
+                  }}
+                >
+                  <blockType.icon className="h-4 w-4 mr-2" />
+                  {blockType.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </div>
       </div>
