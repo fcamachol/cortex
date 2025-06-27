@@ -79,8 +79,16 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
     if (isEditMode && contactId) {
       const fetchContactDetails = async () => {
         try {
-          const response = await apiRequest('GET', `/api/crm/contacts/${contactId}/details`);
-          console.log('Contact details response:', response);
+          // Force fresh data by adding timestamp to bypass cache
+          const response = await fetch(`/api/crm/contacts/${contactId}/details?t=${Date.now()}`)
+            .then(res => res.json());
+          console.log('Contact details response (fresh):', response);
+          
+          // If response is empty or null, return early
+          if (!response || Object.keys(response).length === 0) {
+            console.log('Empty response, skipping block creation');
+            return;
+          }
           
           // Populate blocks from existing contact data
           const newBlocks: Block[] = [];
