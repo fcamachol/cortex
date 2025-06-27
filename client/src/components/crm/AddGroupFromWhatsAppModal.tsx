@@ -100,19 +100,19 @@ export function AddGroupFromWhatsAppModal({
   const createProjectMutation = useMutation({
     mutationFn: async (projectName: string) => {
       return apiRequest('POST', '/api/crm/projects', { 
-        projectName,
+        name: projectName,
         spaceId: selectedSpaceId || null,
         userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42' 
       });
     },
     onSuccess: (newProject) => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/projects'] });
-      setSelectedProjectId(newProject.projectId);
+      setSelectedProjectId(newProject.id);
       setShowCreateProject(false);
       setNewProjectName('');
       toast({
         title: "Project created",
-        description: `"${newProject.projectName}" has been created successfully.`,
+        description: `"${newProject.name}" has been created successfully.`,
       });
     },
     onError: (error) => {
@@ -278,6 +278,7 @@ export function AddGroupFromWhatsAppModal({
                             {Array.isArray(spaces) && spaces.map((space: any) => (
                               <CommandItem
                                 key={space.spaceId}
+                                value={space.spaceName}
                                 onSelect={() => {
                                   setSelectedSpaceId(space.spaceId);
                                   setSpaceDropdownOpen(false);
@@ -350,7 +351,7 @@ export function AddGroupFromWhatsAppModal({
                           className="flex-1 justify-between"
                         >
                           {selectedProjectId
-                            ? filteredProjects?.find((project: any) => project.projectId === selectedProjectId)?.projectName
+                            ? filteredProjects?.find((project: any) => project.id === selectedProjectId)?.name
                             : "Select a project..."}
                           <Building2 className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
@@ -362,18 +363,19 @@ export function AddGroupFromWhatsAppModal({
                           <CommandGroup>
                             {Array.isArray(filteredProjects) && filteredProjects.map((project: any) => (
                               <CommandItem
-                                key={project.projectId}
+                                key={project.id}
+                                value={project.name}
                                 onSelect={() => {
-                                  setSelectedProjectId(project.projectId);
+                                  setSelectedProjectId(project.id);
                                   setProjectDropdownOpen(false);
                                 }}
                               >
                                 <Check
                                   className={`mr-2 h-4 w-4 ${
-                                    selectedProjectId === project.projectId ? "opacity-100" : "opacity-0"
+                                    selectedProjectId === project.id ? "opacity-100" : "opacity-0"
                                   }`}
                                 />
-                                {project.projectName}
+                                {project.name}
                               </CommandItem>
                             ))}
                           </CommandGroup>
