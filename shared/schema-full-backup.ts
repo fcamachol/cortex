@@ -1137,8 +1137,8 @@ export type WhatsappConversation = WhatsappChat;
 export const taskStatusEnum = crmSchema.enum("task_status", ["to_do", "in_progress", "done", "cancelled"]);
 export const taskPriorityEnum = crmSchema.enum("task_priority", ["low", "medium", "high", "urgent"]);
 
-// CRM Companies - Business entities for loans, contracts, and business relationships (LEGACY - replaced by unified system)
-export const crmCompaniesLegacy = crmSchema.table("companies_legacy", {
+// CRM Companies - Business entities for loans, contracts, and business relationships
+export const crmCompanies = crmSchema.table("companies", {
   companyId: serial("company_id").primaryKey(),
   spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
   companyName: varchar("company_name", { length: 255 }).notNull(),
@@ -1302,8 +1302,8 @@ export const crmContactRelationships = crmSchema.table("contact_relationships", 
   pk: primaryKey({ columns: [table.contactAId, table.contactBId] }),
 }));
 
-// CRM Objects - Physical items, assets, products, or any trackable entity (LEGACY - replaced by unified system)
-export const crmObjectsLegacy = crmSchema.table("objects_legacy", {
+// CRM Objects - Physical items, assets, products, or any trackable entity
+export const crmObjects = crmSchema.table("objects", {
   objectId: varchar("object_id", { length: 50 }).primaryKey(), // co_ prefixed UUID
   ownerUserId: uuid("owner_user_id").notNull().references(() => appUsers.userId),
   spaceId: integer("space_id").references(() => appSpaces.spaceId),
