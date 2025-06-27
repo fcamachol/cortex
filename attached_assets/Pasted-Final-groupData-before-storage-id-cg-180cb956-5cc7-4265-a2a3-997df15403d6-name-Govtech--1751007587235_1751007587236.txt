@@ -1,0 +1,59 @@
+Final groupData before storage: {
+  id: 'cg_180cb956-5cc7-4265-a2a3-997df15403d6',
+  name: 'Govtech Labs / Valarix',
+  type: 'team',
+  description: null,
+  color: '#3B82F6',
+  tags: [ 'Contabilidad', 'IA' ],
+  status: 'active',
+  whatsappJid: '120363401160603819@g.us',
+  whatsappInstanceId: 'instance-1750433520122',
+  whatsappLinkedAt: '2025-06-27T06:59:20.749Z'
+}
+Error creating CRM group: error: column "tags" is of type character varying[] but expression is of type record
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.createCrmGroup (/home/runner/workspace/server/storage.ts:4049:28)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3621:21) {
+  length: 204,
+  severity: 'ERROR',
+  code: '42804',
+  detail: undefined,
+  hint: 'You will need to rewrite or cast the expression.',
+  position: '592',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '586',
+  routine: 'transformAssignedExpr'
+}
+Error creating CRM group: error: column "tags" is of type character varying[] but expression is of type record
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.createCrmGroup (/home/runner/workspace/server/storage.ts:4049:28)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3621:21) {
+  length: 204,
+  severity: 'ERROR',
+  code: '42804',
+  detail: undefined,
+  hint: 'You will need to rewrite or cast the expression.',
+  position: '592',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '586',
+  routine: 'transformAssignedExpr'
+}
+POST /api/crm/groups 500 

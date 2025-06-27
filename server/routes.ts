@@ -3610,14 +3610,10 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       // Process tags - convert comma-separated string to array
       const groupData = { ...req.body };
-      console.log('Original tags:', groupData.tags, 'Type:', typeof groupData.tags);
-      
       if (groupData.tags && typeof groupData.tags === 'string') {
         groupData.tags = groupData.tags.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag.length > 0);
-        console.log('Processed tags:', groupData.tags);
       }
       
-      console.log('Final groupData before storage:', groupData);
       const group = await storage.createCrmGroup(groupData);
       res.status(201).json(group);
     } catch (error) {

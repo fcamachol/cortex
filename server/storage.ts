@@ -17,7 +17,7 @@ import {
     crmProjects, crmTasks, crmCompanies, crmCalendarEvents, crmEventAttendees, crmNotes,
     crmContacts, crmContactPhones, crmContactEmails, crmContactAddresses, 
     crmContactAliases, crmSpecialDates, crmInterests, crmContactInterests,
-    crmCompanyMembers, crmContactGroups, crmContactGroupMembers, crmContactRelationships,
+    crmCompanyMembers, crmContactGroups, crmContactGroupMembers, crmContactRelationships, crmGroups,
     // Finance Schema
     financeAccounts, financeTransactions, financePayables, financeReceivables, financeCategories,
     financeRecurringBills, financeLoans, financeLoanPayments, financePayablePayments, financeReceivablePayments,
@@ -4046,51 +4046,37 @@ class DatabaseStorage {
 
     async createCrmGroup(groupData: any): Promise<any> {
         try {
-            const result = await db.execute(sql`
-                INSERT INTO crm.groups (
-                    id,
-                    name,
-                    type,
-                    description,
-                    color,
-                    tags,
-                    parent_group_id,
-                    status,
-                    whatsapp_jid,
-                    whatsapp_instance_id,
-                    whatsapp_linked_at,
-                    is_whatsapp_linked
-                ) VALUES (
-                    ${groupData.id},
-                    ${groupData.name},
-                    ${groupData.type || 'team'},
-                    ${groupData.description || null},
-                    ${groupData.color || '#3B82F6'},
-                    ${groupData.tags || []},
-                    ${groupData.parentGroupId || null},
-                    ${groupData.status || 'active'},
-                    ${groupData.whatsappJid || null},
-                    ${groupData.whatsappInstanceId || null},
-                    ${groupData.whatsappLinkedAt || null},
-                    ${groupData.whatsappJid ? true : false}
-                ) RETURNING *
-            `);
+            const [group] = await db.insert(crmGroups).values({
+                id: groupData.id,
+                name: groupData.name,
+                type: groupData.type || 'team',
+                description: groupData.description || null,
+                color: groupData.color || '#3B82F6',
+                tags: groupData.tags || [],
+                parentGroupId: groupData.parentGroupId || null,
+                status: groupData.status || 'active',
+                whatsappJid: groupData.whatsappJid || null,
+                whatsappInstanceId: groupData.whatsappInstanceId || null,
+                whatsappLinkedAt: groupData.whatsappLinkedAt || null,
+                isWhatsappLinked: groupData.whatsappJid ? true : false
+            }).returning();
             
-            // Return the first row with proper field mapping
-            const group = result.rows[0];
-            if (group) {
-                return {
-                    ...group,
-                    parentGroupId: group.parent_group_id,
-                    whatsappJid: group.whatsapp_jid,
-                    whatsappInstanceId: group.whatsapp_instance_id,
-                    whatsappLinkedAt: group.whatsapp_linked_at,
-                    isWhatsappLinked: group.is_whatsapp_linked,
-                    createdAt: group.created_at,
-                    updatedAt: group.updated_at
-                };
-            }
-            return group;
+            return {
+                id: group.id,
+                name: group.name,
+                type: group.type,
+                description: group.description,
+                color: group.color,
+                tags: group.tags,
+                parentGroupId: group.parentGroupId,
+                status: group.status,
+                whatsappJid: group.whatsappJid,
+                whatsappInstanceId: group.whatsappInstanceId,
+                whatsappLinkedAt: group.whatsappLinkedAt,
+                isWhatsappLinked: group.isWhatsappLinked,
+                createdAt: group.createdAt,
+                updatedAt: group.updatedAt
+            };
         } catch (error) {
             console.error('Error creating CRM group:', error);
             throw error;
