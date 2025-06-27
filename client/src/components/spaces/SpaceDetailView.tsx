@@ -491,7 +491,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                       <Card key={childSpace.spaceId} className="hover:shadow-md transition-shadow cursor-pointer"
                             onClick={() => {
                               // Navigate to subspace using event system
-                              window.dispatchEvent(new CustomEvent('spaceSelected', { detail: childSpace }));
+                              window.dispatchEvent(new CustomEvent('spaceSelected', { detail: { spaceId: childSpace.spaceId } }));
                             }}>
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between">
@@ -587,8 +587,8 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
                       {subspaces.map((subspace: Space) => (
                         <Card key={subspace.spaceId} className="hover:shadow-md transition-shadow cursor-pointer"
                               onClick={() => {
-                                const currentPath = buildSpacePath(space.spaceId, allFlatSpaces);
-                                navigate(`/spaces/${currentPath}/${subspace.spaceId}`);
+                                // Navigate to subspace using event system
+                                window.dispatchEvent(new CustomEvent('spaceSelected', { detail: { spaceId: subspace.spaceId } }));
                               }}>
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between">
