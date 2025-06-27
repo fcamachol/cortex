@@ -2162,6 +2162,7 @@ class DatabaseStorage {
             const contact = await this.createCrmContact(mainContactData);
             
             // Process phones (ensure Mobile label instead of WhatsApp)
+            // The addContactPhone method will automatically handle instance linking for main contacts
             for (const phone of phones) {
                 await this.addContactPhone({
                     ...phone,
@@ -2318,15 +2319,50 @@ class DatabaseStorage {
                 .where(eq(crmContactPhones.contactId, phoneData.contactId));
         }
 
-        // Create WhatsApp JID from phone number and check if it exists in WhatsApp contacts
-        const whatsappJid = this.phoneToWhatsAppJid(phoneData.phoneNumber);
-        const whatsappContact = await this.getWhatsappContactByJid(whatsappJid);
+        // Get contact details to check if it's a main contact
+        const contact = await this.getCrmContactById(phoneData.contactId);
+        
+        let isWhatsappLinked = false;
+        let whatsappJid = null;
+        let whatsappInstanceName = null;
+        
+        if (contact) {
+            // Create WhatsApp JID from phone number
+            const potentialJid = this.phoneToWhatsAppJid(phoneData.phoneNumber);
+            
+            if (contact.relationship === 'Self' || contact.relationship === 'self') {
+                // For main contacts, check WhatsApp instances (they own these instances)
+                const instance = await this.getWhatsappInstanceByOwnerJid(potentialJid);
+                if (instance) {
+                    isWhatsappLinked = true;
+                    whatsappJid = instance.ownerJid;
+                    whatsappInstanceName = instance.instanceName;
+                    
+                    // Also update the main contact with WhatsApp linking info
+                    await this.updateCrmContact(contact.contactId, {
+                        whatsappJid: instance.ownerJid,
+                        whatsappInstanceId: instance.instanceName,
+                        isWhatsappLinked: true,
+                        whatsappLinkedAt: new Date()
+                    });
+                    
+                    console.log(`🔗 Main contact ${contact.fullName} linked to WhatsApp instance: ${instance.instanceName}`);
+                }
+            } else {
+                // For regular contacts, check regular WhatsApp contacts
+                const whatsappContact = await this.getWhatsappContactByJid(potentialJid);
+                if (whatsappContact) {
+                    isWhatsappLinked = true;
+                    whatsappJid = potentialJid;
+                }
+            }
+        }
         
         const [phone] = await db.insert(crmContactPhones)
             .values({
                 ...phoneData,
-                isWhatsappLinked: !!whatsappContact,
-                whatsappJid: whatsappContact ? whatsappJid : null
+                isWhatsappLinked,
+                whatsappJid
             })
             .returning();
         
@@ -2355,6 +2391,19 @@ class DatabaseStorage {
             return contact || null;
         } catch (error) {
             console.error('Error checking WhatsApp contact:', error);
+            return null;
+        }
+    }
+
+    private async getWhatsappInstanceByOwnerJid(ownerJid: string): Promise<any | null> {
+        try {
+            const [instance] = await db.select()
+                .from(whatsappInstances)
+                .where(eq(whatsappInstances.ownerJid, ownerJid))
+                .limit(1);
+            return instance || null;
+        } catch (error) {
+            console.error('Error checking WhatsApp instance by owner JID:', error);
             return null;
         }
     }
