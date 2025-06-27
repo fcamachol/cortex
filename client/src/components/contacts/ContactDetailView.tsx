@@ -365,11 +365,19 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                     Special Dates
                   </h4>
                   <div className="space-y-1">
-                    {fullContactDetails.specialDates.map((date, index) => (
-                      <div key={index} className="text-sm">
-                        <span className="text-gray-900 dark:text-gray-100">{date.label}: {formatDate(date.date)}</span>
-                      </div>
-                    ))}
+                    {fullContactDetails.specialDates.map((date, index) => {
+                      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                      const formattedDate = `${monthNames[date.eventMonth - 1]} ${date.eventDay}${date.originalYear ? `, ${date.originalYear}` : ''}`;
+                      const categoryIcon = date.category === 'birthday' ? '🎂' : date.category === 'anniversary' ? '💕' : '📅';
+                      
+                      return (
+                        <div key={index} className="text-sm">
+                          <span className="text-gray-900 dark:text-gray-100">
+                            {categoryIcon} {date.eventName}: {formattedDate}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
