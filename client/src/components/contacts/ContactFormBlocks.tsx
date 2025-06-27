@@ -714,6 +714,7 @@ function RelationshipSection({ blocks, onUpdate, onRemove, onAddSubBlock, ownerU
               block={block}
               onUpdate={onUpdate}
               onRemove={onRemove}
+              ownerUserId={ownerUserId}
             />
           ))}
         </div>
@@ -813,9 +814,9 @@ function CompanyBlock({ block, onUpdate }: {
     mutationFn: async (companyData: any) => {
       return await apiRequest('/api/crm/companies', 'POST', companyData);
     },
-    onSuccess: (newCompany) => {
+    onSuccess: (newCompany: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/companies'] });
-      onUpdate(block.id, 'companyId', newCompany.id);
+      onUpdate(block.id, 'companyId', newCompany.companyId || newCompany.id);
       onUpdate(block.id, 'companyName', newCompany.companyName);
       setShowCreateModal(false);
       setNewCompanyName('');

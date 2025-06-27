@@ -1228,7 +1228,9 @@ export const crmSpecialDates = crmSchema.table("special_dates", {
   specialDateId: serial("special_date_id").primaryKey(),
   contactId: integer("contact_id").notNull().references(() => crmContacts.contactId, { onDelete: "cascade" }),
   eventName: varchar("event_name", { length: 100 }).notNull(), // 'Birthday', 'Anniversary', etc.
-  eventDate: timestamp("event_date", { withTimezone: true }).notNull(),
+  eventDay: integer("event_day").notNull(), // Day of month (1-31)
+  eventMonth: integer("event_month").notNull(), // Month (1-12)
+  originalYear: integer("original_year"), // Optional: for reference (birth year, wedding year, etc.)
   reminderDaysBefore: integer("reminder_days_before").default(7).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

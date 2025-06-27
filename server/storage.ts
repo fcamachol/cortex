@@ -2263,6 +2263,58 @@ class DatabaseStorage {
                 }
             }
             
+            // Add new special dates
+            for (const dateBlock of specialDates) {
+                if (dateBlock.day && dateBlock.month) {
+                    // Create a date from day/month/year (use current year if not specified)
+                    const year = dateBlock.year || new Date().getFullYear();
+                    const eventDate = new Date(year, dateBlock.month - 1, dateBlock.day);
+                    
+                    await this.addContactSpecialDate({
+                        contactId: contactId,
+                        eventName: dateBlock.title || dateBlock.type || 'Special Date',
+                        eventDate: eventDate,
+                        reminderDaysBefore: dateBlock.reminderDays || 7
+                    });
+                }
+            }
+            
+            // Add new interests
+            for (const interestBlock of interests) {
+                if (interestBlock.name && interestBlock.name.trim()) {
+                    // First ensure the interest exists in the master list
+                    let interest = await db.select().from(crmInterests)
+                        .where(eq(crmInterests.name, interestBlock.name.trim()))
+                        .limit(1);
+                    
+                    if (interest.length === 0) {
+                        // Create new interest in master list
+                        const [newInterest] = await db.insert(crmInterests)
+                            .values({ name: interestBlock.name.trim() })
+                            .returning();
+                        interest = [newInterest];
+                    }
+                    
+                    // Link interest to contact
+                    await db.insert(crmContactInterests)
+                        .values({
+                            contactId: contactId,
+                            interestId: interest[0].interestId
+                        })
+                        .onConflictDoNothing();
+                }
+            }
+            
+            // Add new aliases
+            for (const aliasBlock of aliases) {
+                if (aliasBlock.name && aliasBlock.name.trim()) {
+                    await this.addContactAlias({
+                        contactId: contactId,
+                        alias: aliasBlock.name.trim()
+                    });
+                }
+            }
+            
             return contact;
         } catch (error) {
             console.error('Error updating complete contact:', error);
