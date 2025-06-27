@@ -2098,6 +2098,95 @@ class DatabaseStorage {
         }
     }
 
+    // Complete Contact Methods (handles all block data)
+    async createCompleteContact(contactData: any): Promise<any> {
+        try {
+            // Extract block data
+            const { phones = [], emails = [], addresses = [], ...mainContactData } = contactData;
+            
+            // Create the main contact first
+            const contact = await this.createCrmContact(mainContactData);
+            
+            // Process phones (ensure Mobile label instead of WhatsApp)
+            for (const phone of phones) {
+                await this.addContactPhone({
+                    ...phone,
+                    label: phone.label === 'WhatsApp' ? 'Mobile' : phone.label,
+                    contactId: contact.contactId
+                });
+            }
+            
+            // Process emails
+            for (const email of emails) {
+                await this.addContactEmail({
+                    ...email,
+                    contactId: contact.contactId
+                });
+            }
+            
+            // Process addresses
+            for (const address of addresses) {
+                await this.addContactAddress({
+                    ...address,
+                    contactId: contact.contactId
+                });
+            }
+            
+            return contact;
+        } catch (error) {
+            console.error('Error creating complete contact:', error);
+            throw error;
+        }
+    }
+
+    async updateCompleteContact(contactId: number, contactData: any): Promise<any> {
+        try {
+            // Extract block data
+            const { phones = [], emails = [], addresses = [], ...mainContactData } = contactData;
+            
+            // Update the main contact first
+            const contact = await this.updateCrmContact(contactId, mainContactData);
+            
+            // Clear existing data and recreate with new block data
+            // This is a simple approach - delete all existing and recreate
+            
+            // Delete existing phones, emails, addresses
+            await db.delete(crmContactPhones).where(eq(crmContactPhones.contactId, contactId));
+            await db.delete(crmContactEmails).where(eq(crmContactEmails.contactId, contactId));
+            await db.delete(crmContactAddresses).where(eq(crmContactAddresses.contactId, contactId));
+            
+            // Add new phones (ensure Mobile label instead of WhatsApp)
+            for (const phone of phones) {
+                await this.addContactPhone({
+                    ...phone,
+                    label: phone.label === 'WhatsApp' ? 'Mobile' : phone.label,
+                    contactId: contactId
+                });
+            }
+            
+            // Add new emails
+            for (const email of emails) {
+                await this.addContactEmail({
+                    ...email,
+                    contactId: contactId
+                });
+            }
+            
+            // Add new addresses
+            for (const address of addresses) {
+                await this.addContactAddress({
+                    ...address,
+                    contactId: contactId
+                });
+            }
+            
+            return contact;
+        } catch (error) {
+            console.error('Error updating complete contact:', error);
+            throw error;
+        }
+    }
+
     // Create contact phone record
     async createCrmContactPhone(phoneData: any): Promise<any> {
         try {

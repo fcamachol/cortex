@@ -212,7 +212,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
       const primaryPhone = phoneBlocks.find(b => b.data.isPrimary)?.data.number || phoneBlocks[0]?.data.number || '';
       const primaryEmail = emailBlocks.find(b => b.data.isPrimary)?.data.address || emailBlocks[0]?.data.address || '';
 
-      // Build complete contact object
+      // Build complete contact object with block data
       const completeContactData = {
         ...contactData,
         primaryPhone,
@@ -220,13 +220,34 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
         profession: profession || companyBlocks[0]?.data.role || '',
         company: company || companyBlocks[0]?.data.name || '',
         notes: description || noteBlocks.map(b => b.data.content).join('\n') || initialData?.notes || '',
+        // Include all block data for processing
+        phones: phoneBlocks.map(block => ({
+          phoneNumber: block.data.number,
+          label: block.data.type,
+          isPrimary: block.data.isPrimary,
+          isWhatsappLinked: block.data.hasWhatsApp
+        })),
+        emails: emailBlocks.map(block => ({
+          emailAddress: block.data.address,
+          label: block.data.type,
+          isPrimary: block.data.isPrimary
+        })),
+        addresses: addressBlocks.map(block => ({
+          streetAddress: block.data.street,
+          city: block.data.city,
+          state: block.data.state,
+          postalCode: block.data.zipCode,
+          country: block.data.country,
+          label: block.data.type,
+          isPrimary: block.data.isPrimary
+        }))
       };
 
       if (isEditMode && contactId) {
-        const response = await apiRequest('PUT', `/api/crm/contacts/${contactId}`, completeContactData);
+        const response = await apiRequest('PUT', `/api/crm/contacts/${contactId}/complete`, completeContactData);
         return response;
       } else {
-        const response = await apiRequest('POST', '/api/crm/contacts', completeContactData);
+        const response = await apiRequest('POST', '/api/crm/contacts/complete', completeContactData);
         return response;
       }
     },

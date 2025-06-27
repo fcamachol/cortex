@@ -2677,6 +2677,30 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Complete Contact Routes (handles all block data)
+  app.post('/api/crm/contacts/complete', async (req: Request, res: Response) => {
+    try {
+      const contactData = req.body;
+      const contact = await storage.createCompleteContact(contactData);
+      res.json(contact);
+    } catch (error) {
+      console.error('Error creating complete contact:', error);
+      res.status(500).json({ error: 'Failed to create complete contact' });
+    }
+  });
+
+  app.put('/api/crm/contacts/:contactId/complete', async (req: Request, res: Response) => {
+    try {
+      const { contactId } = req.params;
+      const contactData = req.body;
+      const contact = await storage.updateCompleteContact(parseInt(contactId), contactData);
+      res.json(contact);
+    } catch (error) {
+      console.error('Error updating complete contact:', error);
+      res.status(500).json({ error: 'Failed to update complete contact' });
+    }
+  });
+
   // Contact Phone Routes
   app.get('/api/crm/contacts/:contactId/phones', async (req: Request, res: Response) => {
     try {
