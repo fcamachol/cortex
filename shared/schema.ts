@@ -1494,7 +1494,11 @@ export const crmGroups = crmSchema.table("groups", {
   tags: jsonb("tags").$type<string[]>(),
   parentGroupId: varchar("parent_group_id", { length: 50 }), // self-reference for hierarchy
   status: varchar("status", { length: 20 }).default("active"),
-  spaceId: integer("space_id").references(() => appSpaces.spaceId),
+  // WhatsApp linking fields
+  whatsappJid: varchar("whatsapp_jid", { length: 200 }),
+  whatsappInstanceId: varchar("whatsapp_instance_id", { length: 50 }),
+  whatsappLinkedAt: timestamp("whatsapp_linked_at", { withTimezone: true }),
+  isWhatsappLinked: boolean("is_whatsapp_linked").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
