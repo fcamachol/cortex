@@ -1394,7 +1394,6 @@ export const crmCalendarEvents = crmSchema.table("calendar_events", {
   projectId: integer("project_id"),
   taskId: integer("task_id"),
   relatedChatJid: varchar("related_chat_jid", { length: 100 }),
-  entityId: varchar("entity_id", { length: 50 }), // Unified entity ID (cp_, cg_, cc_, co_)
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   spaceId: integer("space_id"),
@@ -1932,7 +1931,6 @@ export const financePayables = financeSchema.table("payables", {
   contactId: integer("contact_id"), // References CRM contact when available
   categoryId: integer("category_id").references(() => financeCategories.categoryId),
   moratoryRate: numeric("moratory_rate", { precision: 5, scale: 4 }).default("0.0000"), // Daily moratory interest rate
-  entityId: varchar("entity_id", { length: 50 }), // Unified entity ID (cp_, cg_, cc_, co_)
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -1949,7 +1947,6 @@ export const financeReceivables = financeSchema.table("receivables", {
   status: receivableStatusEnum("status").notNull().default("draft"),
   contactId: integer("contact_id"), // References CRM contact when available
   categoryId: integer("category_id").references(() => financeCategories.categoryId),
-  entityId: varchar("entity_id", { length: 50 }), // Unified entity ID (cp_, cg_, cc_, co_)
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -2300,4 +2297,9 @@ export type CreditCardDetails = typeof creditCardDetails.$inferSelect;
 export type InsertCreditCardDetails = z.infer<typeof insertCreditCardDetailsSchema>;
 
 export type Statement = typeof statements.$inferSelect;
+
+// CRM Entity Activities - Junction table for linking entities to activities
+export const insertCrmEntityActivitySchema = createInsertSchema(crmEntityActivities);
+export type CrmEntityActivity = typeof crmEntityActivities.$inferSelect;
+export type InsertCrmEntityActivity = z.infer<typeof insertCrmEntityActivitySchema>;
 export type InsertStatement = z.infer<typeof insertStatementSchema>;
