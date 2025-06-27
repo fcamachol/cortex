@@ -353,8 +353,8 @@ export function TasksPage() {
                 />
               </div>
             </div>
-            <Select value={selectedProject?.toString() || 'all'} onValueChange={(value) => 
-              setSelectedProject(value === 'all' ? null : parseInt(value))
+            <Select value={selectedProject || 'all'} onValueChange={(value) => 
+              setSelectedProject(value === 'all' ? null : value)
             }>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="All Projects" />
