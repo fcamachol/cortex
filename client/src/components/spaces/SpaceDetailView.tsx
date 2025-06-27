@@ -633,15 +633,14 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
           isOpen={showProjectForm}
           onClose={() => setShowProjectForm(false)}
           onSubmit={(projectData) => {
-            // Handle project creation with space assignment
-            const projectWithSpace = {
+            // Handle project creation with space linking through unified entity system
+            const projectWithSpaceLinking = {
               ...projectData,
-              space_id: spaceId,
-              space_name: space?.spaceName
+              spaceId: spaceId // Pass spaceId for backend linking through app.space_items
             };
             
             // Make API call to create project
-            apiRequest('POST', `/api/crm/projects`, projectWithSpace).then(() => {
+            apiRequest('POST', `/api/crm/projects`, projectWithSpaceLinking).then(() => {
               toast({
                 title: "Project Created",
                 description: `Project created and assigned to "${space?.spaceName}" space.`,

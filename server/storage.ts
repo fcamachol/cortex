@@ -1273,14 +1273,29 @@ class DatabaseStorage {
         // Generate UUID with cj_ prefix for CRM projects (unified entity system)
         const projectId = `cj_${crypto.randomUUID()}`;
         
-        // Use raw SQL to insert with unified entity ID and user_id linkage
+        // Use raw SQL to insert with unified entity ID and user_id linkage (no direct spaceId)
         const result = await db.execute(sql`
-            INSERT INTO crm.projects (id, instance_id, project_name, description, status, start_date, end_date, space_id, user_id)
-            VALUES (${projectId}, ${'instance-1750433520122'}, ${projectData.name}, ${projectData.description}, ${projectData.status || 'active'}, ${projectData.startDate}, ${projectData.endDate}, ${projectData.spaceId}, ${projectData.userId})
-            RETURNING id, project_id, project_name, description, status, start_date, end_date, space_id, user_id, created_at, updated_at
+            INSERT INTO crm.projects (id, name, description, status, start_date, end_date, user_id)
+            VALUES (${projectId}, ${projectData.name}, ${projectData.description}, ${projectData.status || 'planning'}, ${projectData.startDate}, ${projectData.endDate}, ${projectData.userId})
+            RETURNING id, name, description, status, start_date, end_date, user_id, created_at, updated_at
         `);
         
-        return result.rows[0];
+        const project = result.rows[0];
+        
+        // Handle space linking through unified entity system if spaceId provided
+        if (projectData.spaceId) {
+            // Create space linking through app.space_items table using correct field names
+            await db.insert(appSpaceItems).values({
+                spaceId: projectData.spaceId,
+                itemType: 'project',
+                title: projectData.name,
+                description: projectData.description,
+                content: { projectId: projectId }, // Store the cj_ UUID in content metadata
+                status: 'active'
+            });
+        }
+        
+        return project;
     }
 
     async getProjects(): Promise<any[]> {

@@ -794,16 +794,14 @@ export async function registerRoutes(app: Express): Promise<void> {
       
       const project = await storage.createProject(projectDataWithUser);
       
-      // Transform response for frontend (map database fields to API format)
+      // Transform response for frontend (unified entity system format)
       const transformedProject = {
         id: project.id, // Unified entity ID (cj_ prefixed)
-        projectId: project.project_id, // Legacy integer ID
-        name: project.project_name, // Map project_name to name
+        name: project.name, // Direct field mapping
         description: project.description,
         status: project.status,
         startDate: project.start_date,
         endDate: project.end_date,
-        spaceId: project.space_id,
         userId: project.user_id,
         createdAt: project.created_at,
         updatedAt: project.updated_at
