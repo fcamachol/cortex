@@ -2645,6 +2645,51 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Activity-related endpoints for contacts
+  app.get('/api/crm/contacts/:contactId/tasks', async (req: Request, res: Response) => {
+    try {
+      const { contactId } = req.params;
+      const tasks = await storage.getRelatedTasksForContact(parseInt(contactId));
+      res.json(tasks);
+    } catch (error) {
+      console.error('Error fetching related tasks for contact:', error);
+      res.status(500).json({ error: 'Failed to fetch related tasks for contact' });
+    }
+  });
+
+  app.get('/api/crm/contacts/:contactId/events', async (req: Request, res: Response) => {
+    try {
+      const { contactId } = req.params;
+      const events = await storage.getRelatedEventsForContact(parseInt(contactId));
+      res.json(events);
+    } catch (error) {
+      console.error('Error fetching related events for contact:', error);
+      res.status(500).json({ error: 'Failed to fetch related events for contact' });
+    }
+  });
+
+  app.get('/api/crm/contacts/:contactId/finance', async (req: Request, res: Response) => {
+    try {
+      const { contactId } = req.params;
+      const financeRecords = await storage.getRelatedFinanceForContact(parseInt(contactId));
+      res.json(financeRecords);
+    } catch (error) {
+      console.error('Error fetching related finance records for contact:', error);
+      res.status(500).json({ error: 'Failed to fetch related finance records for contact' });
+    }
+  });
+
+  app.get('/api/crm/contacts/:contactId/notes', async (req: Request, res: Response) => {
+    try {
+      const { contactId } = req.params;
+      const notes = await storage.getRelatedNotesForContact(parseInt(contactId));
+      res.json(notes);
+    } catch (error) {
+      console.error('Error fetching related notes for contact:', error);
+      res.status(500).json({ error: 'Failed to fetch related notes for contact' });
+    }
+  });
+
   app.post('/api/crm/contacts', async (req: Request, res: Response) => {
     try {
       const contact = await storage.createCrmContact(req.body);

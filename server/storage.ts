@@ -3470,6 +3470,172 @@ class DatabaseStorage {
         return normalized;
     }
 
+    // =============================
+    // CONTACT ACTIVITY LINKING
+    // =============================
+    
+    /**
+     * Get tasks related to a contact using contactId, WhatsApp JID, or email
+     */
+    async getRelatedTasksForContact(contactId: number): Promise<any[]> {
+        try {
+            // First get the contact to extract identifiers
+            const contact = await this.getCrmContactWithFullDetails(contactId);
+            if (!contact) return [];
+
+            const identifiers = [
+                contactId.toString(), // Contact ID as string
+                contact.whatsappJid,  // WhatsApp JID
+                ...contact.phones?.map(p => p.phoneNumber) || [],  // Phone numbers
+                ...contact.emails?.map(e => e.emailAddress) || []  // Email addresses
+            ].filter(Boolean);
+
+            // Search tasks that mention any of these identifiers
+            const tasks = await db.select()
+                .from(crmTasks)
+                .where(
+                    or(
+                        // Direct contact assignment
+                        sql`${crmTasks.description} ILIKE ANY(${identifiers.map(id => `%${id}%`)})`,
+                        sql`${crmTasks.title} ILIKE ANY(${identifiers.map(id => `%${id}%`)})`,
+                        // WhatsApp JID match in related chat
+                        eq(crmTasks.relatedChatJid, contact.whatsappJid || ''),
+                        // Contact ID in metadata or description
+                        sql`${crmTasks.description} ILIKE ${'%' + contactId + '%'}`
+                    )
+                )
+                .orderBy(desc(crmTasks.createdAt))
+                .limit(20);
+
+            return tasks;
+        } catch (error) {
+            console.error('Error fetching related tasks for contact:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Get events related to a contact using contactId, WhatsApp JID, or email
+     */
+    async getRelatedEventsForContact(contactId: number): Promise<any[]> {
+        try {
+            const contact = await this.getCrmContactWithFullDetails(contactId);
+            if (!contact) return [];
+
+            const identifiers = [
+                contact.fullName,
+                contact.whatsappJid,
+                ...contact.phones?.map(p => p.phoneNumber) || [],
+                ...contact.emails?.map(e => e.emailAddress) || []
+            ].filter(Boolean);
+
+            // Search CRM calendar events that mention the contact
+            const events = await db.select()
+                .from(crmCalendarEvents)
+                .where(
+                    or(
+                        // Event title or description mentions contact
+                        sql`${crmCalendarEvents.title} ILIKE ANY(${identifiers.map(id => `%${id}%`)})`,
+                        sql`${crmCalendarEvents.description} ILIKE ANY(${identifiers.map(id => `%${id}%`)})`,
+                        // Contact mentioned in attendees or location
+                        sql`${crmCalendarEvents.location} ILIKE ANY(${identifiers.map(id => `%${id}%`)})`,
+                        sql`${crmCalendarEvents.attendees} ILIKE ANY(${identifiers.map(id => `%${id}%`)})`
+                    )
+                )
+                .orderBy(desc(crmCalendarEvents.startTime))
+                .limit(20);
+
+            return events;
+        } catch (error) {
+            console.error('Error fetching related events for contact:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Get finance records related to a contact
+     */
+    async getRelatedFinanceForContact(contactId: number): Promise<any[]> {
+        try {
+            const contact = await this.getCrmContactWithFullDetails(contactId);
+            if (!contact) return [];
+
+            const records = [];
+
+            // Search payables (bills) that involve this contact
+            const payables = await db.select()
+                .from(financePayables)
+                .where(
+                    or(
+                        sql`${financePayables.description} ILIKE ${'%' + contact.fullName + '%'}`,
+                        sql`${financePayables.vendorName} ILIKE ${'%' + contact.fullName + '%'}`
+                    )
+                )
+                .orderBy(desc(financePayables.createdAt))
+                .limit(10);
+
+            records.push(...payables.map(p => ({ ...p, type: 'payable' })));
+
+            // Search loans that involve this contact as creditor
+            const loans = await db.select()
+                .from(financeLoans)
+                .where(
+                    or(
+                        eq(financeLoans.creditorType, 'contact'),
+                        sql`${financeLoans.purpose} ILIKE ${'%' + contact.fullName + '%'}`
+                    )
+                )
+                .orderBy(desc(financeLoans.createdAt))
+                .limit(10);
+
+            records.push(...loans.map(l => ({ ...l, type: 'loan' })));
+
+            return records.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        } catch (error) {
+            console.error('Error fetching related finance records for contact:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Get notes related to a contact
+     */
+    async getRelatedNotesForContact(contactId: number): Promise<any[]> {
+        try {
+            const contact = await this.getCrmContactWithFullDetails(contactId);
+            if (!contact) return [];
+
+            const identifiers = [
+                contact.fullName,
+                contact.whatsappJid,
+                ...contact.phones?.map(p => p.phoneNumber) || [],
+                ...contact.emails?.map(e => e.emailAddress) || []
+            ].filter(Boolean);
+
+            // Search CRM notes that mention the contact
+            const notes = await db.select()
+                .from(crmNotes)
+                .where(
+                    or(
+                        // Direct contact linking
+                        eq(crmNotes.contactId, contactId),
+                        // Content mentions contact identifiers
+                        sql`${crmNotes.title} ILIKE ANY(${identifiers.map(id => `%${id}%`)})`,
+                        sql`${crmNotes.content} ILIKE ANY(${identifiers.map(id => `%${id}%`)})`,
+                        // Tags mention contact
+                        sql`${crmNotes.tags} && ARRAY[${identifiers.map(id => `'${id}'`).join(',')}]`
+                    )
+                )
+                .orderBy(desc(crmNotes.createdAt))
+                .limit(20);
+
+            return notes;
+        } catch (error) {
+            console.error('Error fetching related notes for contact:', error);
+            return [];
+        }
+    }
+
 
 }
 
