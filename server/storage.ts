@@ -4050,14 +4050,14 @@ class DatabaseStorage {
                 id: groupData.id,
                 name: groupData.name,
                 type: groupData.type || 'team',
-                description: groupData.description || null,
+                description: groupData.description,
                 color: groupData.color || '#3B82F6',
                 tags: groupData.tags || [],
-                parentGroupId: groupData.parentGroupId || null,
+                parentGroupId: groupData.parentGroupId,
                 status: groupData.status || 'active',
-                whatsappJid: groupData.whatsappJid || null,
-                whatsappInstanceId: groupData.whatsappInstanceId || null,
-                whatsappLinkedAt: groupData.whatsappLinkedAt || null,
+                whatsappJid: groupData.whatsappJid,
+                whatsappInstanceId: groupData.whatsappInstanceId,
+                whatsappLinkedAt: groupData.whatsappLinkedAt ? new Date(groupData.whatsappLinkedAt) : undefined,
                 isWhatsappLinked: groupData.whatsappJid ? true : false
             }).returning();
             
