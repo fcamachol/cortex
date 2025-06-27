@@ -424,8 +424,8 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
                           projectId={projectId}
                           onTaskCreated={(newTask) => {
                             setShowTaskForm(false);
-                            // Invalidate project query to refresh tasks
-                            queryClient.invalidateQueries({ queryKey: ['/api/crm/projects'] });
+                            // Invalidate project detail query to refresh tasks
+                            queryClient.invalidateQueries({ queryKey: [`/api/crm/projects/${projectId}/detail`] });
                           }}
                         />
                       </CardContent>

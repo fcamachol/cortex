@@ -1391,9 +1391,27 @@ class DatabaseStorage {
     }
 
     async getTasksByProjectId(projectId: string): Promise<any[]> {
-        // For now, return empty array - project-task linking will be implemented
-        // when the unified entity system is fully integrated
-        return [];
+        try {
+            // Get tasks linked to this project through the entity relationship system
+            const results = await db.select({
+                taskId: taskEntities.taskId,
+                entityId: taskEntities.entityId,
+                relationshipType: taskEntities.relationshipType,
+                task: crmTasks
+            })
+            .from(taskEntities)
+            .innerJoin(crmTasks, eq(taskEntities.taskId, crmTasks.id))
+            .where(and(
+                eq(taskEntities.entityId, projectId),
+                eq(taskEntities.relationshipType, 'assigned_to_project')
+            ));
+
+            // Return just the task data
+            return results.map(result => result.task);
+        } catch (error) {
+            console.error('Error fetching tasks by project ID:', error);
+            return [];
+        }
     }
 
     async createTaskEntityLink(taskId: string, entityId: string, relationshipType: string): Promise<any> {
