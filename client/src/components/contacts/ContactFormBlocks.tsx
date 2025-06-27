@@ -1393,8 +1393,14 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
 
   const { data: contactsList = [] } = useQuery({
     queryKey: ['/api/crm/contacts', ownerUserId],
-    queryFn: () => fetch(`/api/crm/contacts?ownerUserId=${ownerUserId}`).then(res => res.json()),
-    enabled: !!ownerUserId,
+    queryFn: async () => {
+      const response = await fetch(`/api/crm/contacts?ownerUserId=${ownerUserId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch contacts: ${response.status}`);
+      }
+      return response.json();
+    },
+    enabled: !!ownerUserId && isLinkModalOpen,
   });
 
   const selectedContact = contactsList.find((c: any) => c.contactId === block.data.contactId);
