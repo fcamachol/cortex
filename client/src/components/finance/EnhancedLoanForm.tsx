@@ -13,7 +13,7 @@ import { Building2, User, Search, CalendarIcon } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-// Enhanced loan schema matching the new design
+// Enhanced loan schema using unified entity IDs
 const loanSchema = z.object({
   spaceId: z.number(),
   principalAmount: z.string().min(1, "Principal amount is required"),
@@ -25,10 +25,8 @@ const loanSchema = z.object({
   purpose: z.string().optional(),
   collateral: z.string().optional(),
   status: z.enum(["active", "paid", "defaulted"]).default("active"),
-  lenderContactId: z.number().optional(),
-  lenderType: z.enum(["contact", "company"]).optional(),
-  borrowerContactId: z.number().optional(),
-  borrowerType: z.enum(["contact", "company"]).optional(),
+  lenderEntityId: z.string().optional(), // Unified entity UUID (cp_ or cc_ prefixed)
+  borrowerEntityId: z.string().optional(), // Unified entity UUID (cp_ or cc_ prefixed)
   moratoryInterestRate: z.string().optional(),
   moratoryInterestPeriod: z.enum(["daily", "monthly", "yearly"]).optional(),
 });
@@ -49,7 +47,7 @@ export function EnhancedLoanForm({ spaceId, onSuccess, onCancel, editingLoan }: 
   // Lender selection state
   const [lenderSearchTerm, setLenderSearchTerm] = useState("");
   const [selectedLender, setSelectedLender] = useState<{
-    id: number;
+    id: string; // Unified entity UUID
     name: string;
     type: "contact" | "company";
   } | null>(null);
@@ -57,7 +55,7 @@ export function EnhancedLoanForm({ spaceId, onSuccess, onCancel, editingLoan }: 
   // Borrower selection state
   const [borrowerSearchTerm, setBorrowerSearchTerm] = useState("");
   const [selectedBorrower, setSelectedBorrower] = useState<{
-    id: number;
+    id: string; // Unified entity UUID
     name: string;
     type: "contact" | "company";
   } | null>(null);
@@ -88,10 +86,8 @@ export function EnhancedLoanForm({ spaceId, onSuccess, onCancel, editingLoan }: 
       purpose: editingLoan?.purpose || "",
       collateral: editingLoan?.collateral || "",
       status: editingLoan?.status || "active",
-      lenderContactId: editingLoan?.lenderContactId,
-      lenderType: editingLoan?.lenderType,
-      borrowerContactId: editingLoan?.borrowerContactId,
-      borrowerType: editingLoan?.borrowerType,
+      lenderEntityId: editingLoan?.lenderEntityId,
+      borrowerEntityId: editingLoan?.borrowerEntityId,
       moratoryInterestRate: editingLoan?.moratoryInterestRate || "",
       moratoryInterestPeriod: editingLoan?.moratoryInterestPeriod || "monthly",
     },
@@ -101,10 +97,8 @@ export function EnhancedLoanForm({ spaceId, onSuccess, onCancel, editingLoan }: 
     mutationFn: (data: LoanFormData) => 
       apiRequest("POST", "/api/finance/loans", {
         ...data,
-        lenderContactId: selectedLender?.id,
-        lenderType: selectedLender?.type,
-        borrowerContactId: selectedBorrower?.id,
-        borrowerType: selectedBorrower?.type,
+        lenderEntityId: selectedLender?.id,
+        borrowerEntityId: selectedBorrower?.id,
         principalAmount: parseFloat(data.principalAmount),
         interestRate: parseFloat(data.interestRate),
         moratoryInterestRate: data.moratoryInterestRate ? parseFloat(data.moratoryInterestRate) : undefined,
@@ -130,10 +124,8 @@ export function EnhancedLoanForm({ spaceId, onSuccess, onCancel, editingLoan }: 
     mutationFn: (data: LoanFormData) =>
       apiRequest("PUT", `/api/finance/loans/${editingLoan?.loanId}`, {
         ...data,
-        lenderContactId: selectedLender?.id,
-        lenderType: selectedLender?.type,
-        borrowerContactId: selectedBorrower?.id,
-        borrowerType: selectedBorrower?.type,
+        lenderEntityId: selectedLender?.id,
+        borrowerEntityId: selectedBorrower?.id,
         principalAmount: parseFloat(data.principalAmount),
         interestRate: parseFloat(data.interestRate),
         moratoryInterestRate: data.moratoryInterestRate ? parseFloat(data.moratoryInterestRate) : undefined,

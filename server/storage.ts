@@ -1776,12 +1776,25 @@ class DatabaseStorage {
 
     async createLoan(data: any): Promise<any> {
         try {
-            // Placeholder implementation
-            return {
-                loanId: Date.now(),
-                ...data,
-                createdAt: new Date()
-            };
+            const [loan] = await db.insert(financeLoans)
+                .values({
+                    spaceId: data.spaceId,
+                    principalAmount: data.principalAmount,
+                    interestRate: data.interestRate,
+                    interestType: data.interestType || 'simple',
+                    startDate: data.startDate,
+                    termMonths: data.termMonths,
+                    paymentFrequency: data.paymentFrequency,
+                    purpose: data.purpose,
+                    collateral: data.collateral,
+                    status: data.status || 'active',
+                    lenderEntityId: data.lenderEntityId, // New unified entity field
+                    borrowerEntityId: data.borrowerEntityId, // New unified entity field
+                    moratoryInterestRate: data.moratoryInterestRate,
+                    moratoryInterestPeriod: data.moratoryInterestPeriod,
+                })
+                .returning();
+            return loan;
         } catch (error) {
             console.error('Error creating loan:', error);
             throw error;
