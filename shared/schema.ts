@@ -1491,7 +1491,7 @@ export const crmGroups = crmSchema.table("groups", {
   type: varchar("type", { length: 50 }), // team, family, category, etc.
   description: text("description"),
   color: varchar("color", { length: 7 }), // hex color
-  tags: jsonb("tags").$type<string[]>(),
+  tags: text("tags").array(),
   parentGroupId: varchar("parent_group_id", { length: 50 }), // self-reference for hierarchy
   status: varchar("status", { length: 20 }).default("active"),
   // WhatsApp linking fields

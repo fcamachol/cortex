@@ -5,9 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Plus, Check } from 'lucide-react';
+import { Users, Plus, Check, Building2, FolderOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 
 interface AddGroupFromWhatsAppModalProps {
@@ -30,14 +30,75 @@ export function AddGroupFromWhatsAppModal({
   const [description, setDescription] = useState('');
   const [color, setColor] = useState('#3B82F6');
   const [tags, setTags] = useState('');
+  const [linkType, setLinkType] = useState('none'); // 'none', 'space', 'project'
+  const [selectedSpaceId, setSelectedSpaceId] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [showCreateSpace, setShowCreateSpace] = useState(false);
+  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [newSpaceName, setNewSpaceName] = useState('');
+  const [newProjectName, setNewProjectName] = useState('');
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch spaces
+  const { data: spaces = [] } = useQuery({
+    queryKey: ['/api/spaces'],
+    enabled: linkType === 'space'
+  });
+
+  // Fetch projects
+  const { data: projects = [] } = useQuery({
+    queryKey: ['/api/crm/projects'],
+    enabled: linkType === 'project'
+  });
 
   // Generate UUID with cg_ prefix for CRM groups
   const generateGroupId = () => {
     return `cg_${crypto.randomUUID()}`;
   };
+
+  // Create space mutation
+  const createSpaceMutation = useMutation({
+    mutationFn: async (spaceName: string) => {
+      return apiRequest('POST', '/api/spaces', { 
+        spaceName, 
+        category: 'work',
+        userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42' 
+      });
+    },
+    onSuccess: (newSpace) => {
+      setSelectedSpaceId(newSpace.spaceId);
+      setShowCreateSpace(false);
+      setNewSpaceName('');
+      queryClient.invalidateQueries({ queryKey: ['/api/spaces'] });
+      toast({
+        title: "Success",
+        description: "Space created successfully",
+      });
+    }
+  });
+
+  // Create project mutation
+  const createProjectMutation = useMutation({
+    mutationFn: async (projectName: string) => {
+      return apiRequest('POST', '/api/crm/projects', { 
+        projectName,
+        spaceId: selectedSpaceId || null,
+        userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'
+      });
+    },
+    onSuccess: (newProject) => {
+      setSelectedProjectId(newProject.projectId);
+      setShowCreateProject(false);
+      setNewProjectName('');
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/projects'] });
+      toast({
+        title: "Success",
+        description: "Project created successfully",
+      });
+    }
+  });
 
   const createGroupMutation = useMutation({
     mutationFn: async (groupData: any) => {
