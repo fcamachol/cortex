@@ -2215,19 +2215,8 @@ class DatabaseStorage {
                     .where(eq(crmContactPhones.contactId, phoneData.contactId));
             }
 
-            // Prepare phone data with WhatsApp linking
-            const phoneInsertData = {
-                contactId: phoneData.contactId,
-                phoneNumber: phoneData.phoneNumber,
-                label: phoneData.label || 'Mobile',
-                isPrimary: phoneData.isPrimary || false,
-                isWhatsappLinked: phoneData.hasWhatsApp || phoneData.isWhatsappLinked || false,
-                whatsappJid: phoneData.whatsappJid || null,
-                whatsappInstanceName: phoneData.whatsappInstanceName || null,
-            };
-
             const [phone] = await db.insert(crmContactPhones)
-                .values(phoneInsertData)
+                .values(phoneData)
                 .returning();
             
             return phone;
