@@ -3322,7 +3322,7 @@ class DatabaseStorage {
                     await db.update(crmContacts)
                         .set({
                             whatsappJid: contact.jid,
-                            whatsappInstanceId: contact.instanceId,
+                            whatsappInstanceId: contact.instanceName,
                             isWhatsappLinked: true,
                             whatsappLinkedAt: new Date(),
                             updatedAt: new Date()
