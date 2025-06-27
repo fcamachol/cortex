@@ -1284,14 +1284,13 @@ class DatabaseStorage {
             console.log('Creating project with ID:', projectId);
             console.log('Project data:', projectData);
             
-            // Use raw SQL to insert with correct field mapping for existing database structure
-            const result = await db.execute(sql`
-                INSERT INTO crm.projects (id, project_name, description, status, user_id, instance_id)
-                VALUES (${projectId}, ${projectData.name}, ${projectData.description}, ${projectData.status || 'planning'}, ${projectData.userId}, 'instance-1750433520122')
-                RETURNING id, project_name, description, status, user_id, created_at, updated_at
-            `);
-            
-            const project = result.rows[0];
+            // Use Drizzle ORM to insert with correct schema
+            const [project] = await db.insert(crmProjects).values({
+                id: projectId,
+                name: projectData.name,
+                description: projectData.description,
+                status: projectData.status || 'planning'
+            }).returning();
             
             console.log('Project created:', project);
             
@@ -1323,13 +1322,8 @@ class DatabaseStorage {
     }
 
     async getProjects(): Promise<any[]> {
-        // Use raw SQL to get both unified entity ID and legacy fields
-        const result = await db.execute(sql`
-            SELECT id, project_id, project_name, description, status, start_date, end_date, space_id, user_id, created_at, updated_at
-            FROM crm.projects
-            ORDER BY created_at DESC
-        `);
-        return result.rows as any[];
+        const projects = await db.select().from(crmProjects).orderBy(crmProjects.createdAt);
+        return projects;
     }
 
     async getProjectById(projectId: string): Promise<CrmProject | null> {
