@@ -1334,7 +1334,14 @@ class DatabaseStorage {
 
     async getProjectById(projectId: string): Promise<CrmProject | null> {
         const [project] = await db.select().from(crmProjects).where(eq(crmProjects.id, projectId));
-        return project || null;
+        
+        if (!project) return null;
+        
+        // Transform database fields to expected format
+        return {
+            ...project,
+            name: project.projectName || project.name, // Handle both field names
+        } as CrmProject;
     }
 
     async updateProject(projectId: number, updates: any): Promise<CrmProject> {
