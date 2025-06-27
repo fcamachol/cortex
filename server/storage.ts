@@ -3,6 +3,8 @@ import { sql, eq, desc, asc, and, or, ilike } from "drizzle-orm";
 import {
     // App Schema
     appUsers, appWorkspaces, appSpaces, appWorkspaceMembers,
+    // Google Drive-like Spaces
+    driveSpaces, driveSpaceMembers, driveSpaceItems, driveSpaceShareLinks, driveSpaceActivity,
     // WhatsApp Schema
     whatsappInstances, whatsappContacts, whatsappChats, whatsappMessages,
     whatsappGroups, whatsappGroupParticipants, whatsappMessageReactions,
@@ -35,6 +37,12 @@ import {
     type CrmProject, type InsertCrmProject,
     type CrmTask, type InsertCrmTask,
     type CrmCompany, type InsertCrmCompany,
+    // Google Drive-like Spaces Types
+    type DriveSpace, type InsertDriveSpace,
+    type DriveSpaceMember, type InsertDriveSpaceMember,
+    type DriveSpaceItem, type InsertDriveSpaceItem,
+    type DriveSpaceShareLink, type InsertDriveSpaceShareLink,
+    type DriveSpaceActivity, type InsertDriveSpaceActivity,
     type FinanceAccount, type InsertFinanceAccount,
     type FinanceTransaction, type InsertFinanceTransaction,
     type FinancePayable, type InsertFinancePayable,
@@ -3659,6 +3667,352 @@ class DatabaseStorage {
         } catch (error) {
             console.error('Error fetching related notes for contact:', error);
             return [];
+        }
+    }
+
+    // =============================================================================
+    // GOOGLE DRIVE-LIKE SPACES STORAGE METHODS
+    // =============================================================================
+
+    // Drive Spaces Methods
+    async getDriveSpaces(createdBy?: string): Promise<DriveSpace[]> {
+        try {
+            const query = db.select().from(driveSpaces);
+            
+            if (createdBy) {
+                return await query.where(eq(driveSpaces.createdBy, createdBy));
+            }
+            
+            return await query.orderBy(asc(driveSpaces.name));
+        } catch (error) {
+            console.error('Error fetching drive spaces:', error);
+            throw error;
+        }
+    }
+
+    async createDriveSpace(spaceData: InsertDriveSpace): Promise<DriveSpace> {
+        try {
+            const [space] = await db.insert(driveSpaces).values(spaceData).returning();
+            
+            // Log activity
+            await this.logDriveSpaceActivity({
+                spaceId: space.id,
+                actorId: space.createdBy,
+                actionType: 'created',
+                targetType: 'space',
+                targetId: space.id,
+                details: { spaceName: space.name }
+            });
+            
+            return space;
+        } catch (error) {
+            console.error('Error creating drive space:', error);
+            throw error;
+        }
+    }
+
+    async getDriveSpace(spaceId: string): Promise<DriveSpace | undefined> {
+        try {
+            const [space] = await db.select()
+                .from(driveSpaces)
+                .where(eq(driveSpaces.id, spaceId));
+            return space;
+        } catch (error) {
+            console.error('Error fetching drive space:', error);
+            throw error;
+        }
+    }
+
+    async updateDriveSpace(spaceId: string, updates: Partial<InsertDriveSpace>): Promise<DriveSpace | undefined> {
+        try {
+            const [space] = await db.update(driveSpaces)
+                .set(updates)
+                .where(eq(driveSpaces.id, spaceId))
+                .returning();
+            return space;
+        } catch (error) {
+            console.error('Error updating drive space:', error);
+            throw error;
+        }
+    }
+
+    async deleteDriveSpace(spaceId: string): Promise<void> {
+        try {
+            await db.delete(driveSpaces).where(eq(driveSpaces.id, spaceId));
+        } catch (error) {
+            console.error('Error deleting drive space:', error);
+            throw error;
+        }
+    }
+
+    // Drive Space Items Methods
+    async getDriveSpaceItems(spaceId: string): Promise<DriveSpaceItem[]> {
+        try {
+            return await db.select()
+                .from(driveSpaceItems)
+                .where(eq(driveSpaceItems.spaceId, spaceId))
+                .orderBy(
+                    desc(driveSpaceItems.isPinned),
+                    asc(driveSpaceItems.sortOrder),
+                    asc(driveSpaceItems.name)
+                );
+        } catch (error) {
+            console.error('Error fetching drive space items:', error);
+            throw error;
+        }
+    }
+
+    async addItemToSpace(itemData: InsertDriveSpaceItem): Promise<DriveSpaceItem> {
+        try {
+            const [item] = await db.insert(driveSpaceItems).values(itemData).returning();
+            
+            // Log activity
+            await this.logDriveSpaceActivity({
+                spaceId: item.spaceId,
+                actorId: item.addedBy,
+                actionType: 'created',
+                targetType: 'item',
+                targetId: item.itemId,
+                details: { itemType: item.itemType, itemName: item.name }
+            });
+            
+            return item;
+        } catch (error) {
+            console.error('Error adding item to space:', error);
+            throw error;
+        }
+    }
+
+    async moveItemToSpace(itemId: string, fromSpaceId: string, toSpaceId: string, movedBy: string): Promise<void> {
+        try {
+            await db.update(driveSpaceItems)
+                .set({ 
+                    spaceId: toSpaceId,
+                    lastAccessedAt: new Date()
+                })
+                .where(and(
+                    eq(driveSpaceItems.itemId, itemId),
+                    eq(driveSpaceItems.spaceId, fromSpaceId)
+                ));
+            
+            // Log activity for both spaces
+            await this.logDriveSpaceActivity({
+                spaceId: fromSpaceId,
+                actorId: movedBy,
+                actionType: 'moved',
+                targetType: 'item',
+                targetId: itemId,
+                details: { toSpaceId }
+            });
+            
+            await this.logDriveSpaceActivity({
+                spaceId: toSpaceId,
+                actorId: movedBy,
+                actionType: 'moved',
+                targetType: 'item',
+                targetId: itemId,
+                details: { fromSpaceId }
+            });
+        } catch (error) {
+            console.error('Error moving item to space:', error);
+            throw error;
+        }
+    }
+
+    async removeItemFromSpace(spaceId: string, itemId: string): Promise<void> {
+        try {
+            await db.delete(driveSpaceItems)
+                .where(and(
+                    eq(driveSpaceItems.spaceId, spaceId),
+                    eq(driveSpaceItems.itemId, itemId)
+                ));
+        } catch (error) {
+            console.error('Error removing item from space:', error);
+            throw error;
+        }
+    }
+
+    async toggleItemStar(spaceId: string, itemId: string, starred: boolean): Promise<void> {
+        try {
+            await db.update(driveSpaceItems)
+                .set({ isStarred: starred })
+                .where(and(
+                    eq(driveSpaceItems.spaceId, spaceId),
+                    eq(driveSpaceItems.itemId, itemId)
+                ));
+        } catch (error) {
+            console.error('Error toggling item star:', error);
+            throw error;
+        }
+    }
+
+    // Drive Space Members Methods
+    async getDriveSpaceMembers(spaceId: string): Promise<DriveSpaceMember[]> {
+        try {
+            return await db.select()
+                .from(driveSpaceMembers)
+                .where(eq(driveSpaceMembers.spaceId, spaceId));
+        } catch (error) {
+            console.error('Error fetching drive space members:', error);
+            throw error;
+        }
+    }
+
+    async addSpaceMember(memberData: InsertDriveSpaceMember): Promise<DriveSpaceMember> {
+        try {
+            const [member] = await db.insert(driveSpaceMembers).values(memberData).returning();
+            
+            // Log activity
+            await this.logDriveSpaceActivity({
+                spaceId: member.spaceId,
+                actorId: member.addedBy,
+                actionType: 'shared',
+                targetType: 'member',
+                targetId: member.entityId,
+                details: { role: member.role }
+            });
+            
+            return member;
+        } catch (error) {
+            console.error('Error adding space member:', error);
+            throw error;
+        }
+    }
+
+    async updateSpaceMemberRole(spaceId: string, entityId: string, role: string, permissions: Partial<{ canShare: boolean, canEdit: boolean, canComment: boolean }>): Promise<void> {
+        try {
+            await db.update(driveSpaceMembers)
+                .set({ role, ...permissions })
+                .where(and(
+                    eq(driveSpaceMembers.spaceId, spaceId),
+                    eq(driveSpaceMembers.entityId, entityId)
+                ));
+        } catch (error) {
+            console.error('Error updating space member role:', error);
+            throw error;
+        }
+    }
+
+    async removeSpaceMember(spaceId: string, entityId: string): Promise<void> {
+        try {
+            await db.delete(driveSpaceMembers)
+                .where(and(
+                    eq(driveSpaceMembers.spaceId, spaceId),
+                    eq(driveSpaceMembers.entityId, entityId)
+                ));
+        } catch (error) {
+            console.error('Error removing space member:', error);
+            throw error;
+        }
+    }
+
+    // Drive Space Activity Methods
+    async logDriveSpaceActivity(activityData: InsertDriveSpaceActivity): Promise<DriveSpaceActivity> {
+        try {
+            const [activity] = await db.insert(driveSpaceActivity).values(activityData).returning();
+            return activity;
+        } catch (error) {
+            console.error('Error logging drive space activity:', error);
+            throw error;
+        }
+    }
+
+    async getDriveSpaceActivity(spaceId: string, limit: number = 50): Promise<DriveSpaceActivity[]> {
+        try {
+            return await db.select()
+                .from(driveSpaceActivity)
+                .where(eq(driveSpaceActivity.spaceId, spaceId))
+                .orderBy(desc(driveSpaceActivity.createdAt))
+                .limit(limit);
+        } catch (error) {
+            console.error('Error fetching drive space activity:', error);
+            throw error;
+        }
+    }
+
+    // Search across spaces and items
+    async searchDriveSpaces(query: string, entityId?: string): Promise<{ spaces: DriveSpace[], items: DriveSpaceItem[] }> {
+        try {
+            const searchPattern = `%${query}%`;
+            
+            // Search spaces
+            let spacesQuery = db.select()
+                .from(driveSpaces)
+                .where(or(
+                    ilike(driveSpaces.name, searchPattern),
+                    ilike(driveSpaces.description, searchPattern)
+                ));
+            
+            // Filter by entity access if provided
+            if (entityId) {
+                spacesQuery = spacesQuery.where(or(
+                    eq(driveSpaces.createdBy, entityId),
+                    sql`${driveSpaces.id} IN (SELECT space_id FROM ${driveSpaceMembers} WHERE entity_id = ${entityId})`
+                ));
+            }
+            
+            const spaces = await spacesQuery.orderBy(asc(driveSpaces.name));
+            
+            // Search items
+            let itemsQuery = db.select()
+                .from(driveSpaceItems)
+                .where(or(
+                    ilike(driveSpaceItems.name, searchPattern)
+                ));
+            
+            // Filter by entity access if provided
+            if (entityId) {
+                itemsQuery = itemsQuery.where(sql`${driveSpaceItems.spaceId} IN (
+                    SELECT id FROM ${driveSpaces} WHERE created_by = ${entityId}
+                    UNION
+                    SELECT space_id FROM ${driveSpaceMembers} WHERE entity_id = ${entityId}
+                )`);
+            }
+            
+            const items = await itemsQuery.orderBy(desc(driveSpaceItems.lastAccessedAt));
+            
+            return { spaces, items };
+        } catch (error) {
+            console.error('Error searching drive spaces:', error);
+            throw error;
+        }
+    }
+
+    // Get starred items across all accessible spaces
+    async getStarredItems(entityId: string): Promise<DriveSpaceItem[]> {
+        try {
+            return await db.select()
+                .from(driveSpaceItems)
+                .where(and(
+                    eq(driveSpaceItems.isStarred, true),
+                    sql`${driveSpaceItems.spaceId} IN (
+                        SELECT id FROM ${driveSpaces} WHERE created_by = ${entityId}
+                        UNION
+                        SELECT space_id FROM ${driveSpaceMembers} WHERE entity_id = ${entityId}
+                    )`
+                ))
+                .orderBy(desc(driveSpaceItems.lastAccessedAt));
+        } catch (error) {
+            console.error('Error fetching starred items:', error);
+            throw error;
+        }
+    }
+
+    // Get recent items across all accessible spaces
+    async getRecentItems(entityId: string, limit: number = 20): Promise<DriveSpaceItem[]> {
+        try {
+            return await db.select()
+                .from(driveSpaceItems)
+                .where(sql`${driveSpaceItems.spaceId} IN (
+                    SELECT id FROM ${driveSpaces} WHERE created_by = ${entityId}
+                    UNION
+                    SELECT space_id FROM ${driveSpaceMembers} WHERE entity_id = ${entityId}
+                )`)
+                .orderBy(desc(driveSpaceItems.lastAccessedAt))
+                .limit(limit);
+        } catch (error) {
+            console.error('Error fetching recent items:', error);
+            throw error;
         }
     }
 

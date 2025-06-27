@@ -1,0 +1,367 @@
+-- =====================================================
+-- GOOGLE DRIVE-LIKE SPACES SYSTEM
+-- Recommended approach for familiar folder experience
+-- =====================================================
+
+-- Core spaces table (like Google Drive folders)
+CREATE TABLE spaces (
+    id VARCHAR(50) PRIMARY KEY, -- cs_ prefix
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    parent_space_id VARCHAR(50) REFERENCES spaces(id) ON DELETE CASCADE,
+    space_type VARCHAR(50) DEFAULT 'folder', -- 'folder', 'project', 'shared', 'starred'
+    color VARCHAR(7), -- #FF5733 for UI customization
+    icon VARCHAR(50), -- folder, project, star, etc.
+    is_private BOOLEAN DEFAULT TRUE,
+    is_starred BOOLEAN DEFAULT FALSE,
+    is_archived BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(50) NOT NULL,
+    last_accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metadata JSONB,
+    
+    -- Prevent self-reference
+    CHECK (id != parent_space_id)
+);
+
+-- =====================================================
+-- SPACE MEMBERSHIP (Google Drive sharing model)
+-- =====================================================
+
+CREATE TABLE space_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    space_id VARCHAR(50) NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    entity_id VARCHAR(50) NOT NULL, -- cp_, cc_, cg_ entities
+    role VARCHAR(20) NOT NULL CHECK (role IN ('owner', 'editor', 'commenter', 'viewer')),
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    added_by VARCHAR(50) NOT NULL,
+    last_accessed_at TIMESTAMP,
+    can_share BOOLEAN DEFAULT FALSE,
+    can_edit BOOLEAN DEFAULT FALSE,
+    can_comment BOOLEAN DEFAULT FALSE,
+    can_view BOOLEAN DEFAULT TRUE,
+    metadata JSONB,
+    
+    UNIQUE(space_id, entity_id)
+);
+
+-- =====================================================
+-- CONTENT IN SPACES (Google Drive files in folders)
+-- =====================================================
+
+CREATE TABLE space_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    space_id VARCHAR(50) NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    item_type VARCHAR(20) NOT NULL CHECK (
+        item_type IN ('task', 'note', 'document', 'bill', 'receivable', 'transaction', 'space')
+    ),
+    item_id VARCHAR(50) NOT NULL, -- UUID for content, cs_ for sub-spaces
+    name VARCHAR(255), -- Display name (can be different from actual content title)
+    is_starred BOOLEAN DEFAULT FALSE,
+    is_pinned BOOLEAN DEFAULT FALSE, -- Pin to top of folder
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    added_by VARCHAR(50) NOT NULL,
+    last_accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sort_order INTEGER DEFAULT 0,
+    metadata JSONB,
+    
+    UNIQUE(space_id, item_type, item_id)
+);
+
+-- =====================================================
+-- SPACE SHARING LINKS (Google Drive share links)
+-- =====================================================
+
+CREATE TABLE space_share_links (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    space_id VARCHAR(50) NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    link_token VARCHAR(100) NOT NULL UNIQUE,
+    access_level VARCHAR(20) NOT NULL CHECK (access_level IN ('viewer', 'commenter', 'editor')),
+    expires_at TIMESTAMP,
+    password_hash VARCHAR(255), -- Optional password protection
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(50) NOT NULL,
+    access_count INTEGER DEFAULT 0,
+    last_accessed_at TIMESTAMP,
+    metadata JSONB
+);
+
+-- =====================================================
+-- RECENT ACTIVITY (Google Drive activity feed)
+-- =====================================================
+
+CREATE TABLE space_activity (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    space_id VARCHAR(50) NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    actor_id VARCHAR(50) NOT NULL, -- Who performed the action
+    action_type VARCHAR(50) NOT NULL, -- 'created', 'updated', 'deleted', 'shared', 'moved', 'copied'
+    target_type VARCHAR(20), -- 'space', 'item', 'member'
+    target_id VARCHAR(50), -- ID of the target
+    details JSONB, -- Action-specific details
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metadata JSONB
+);
+
+-- =====================================================
+-- INDEXES FOR GOOGLE DRIVE-LIKE PERFORMANCE
+-- =====================================================
+
+-- Space hierarchy and navigation
+CREATE INDEX idx_spaces_parent ON spaces(parent_space_id);
+CREATE INDEX idx_spaces_owner ON spaces(created_by);
+CREATE INDEX idx_spaces_starred ON spaces(is_starred) WHERE is_starred = TRUE;
+CREATE INDEX idx_spaces_updated ON spaces(updated_at DESC);
+
+-- Space membership
+CREATE INDEX idx_space_members_entity ON space_members(entity_id);
+CREATE INDEX idx_space_members_role ON space_members(space_id, role);
+CREATE INDEX idx_space_members_access ON space_members(last_accessed_at DESC);
+
+-- Space items (folder contents)
+CREATE INDEX idx_space_items_space ON space_items(space_id, sort_order);
+CREATE INDEX idx_space_items_starred ON space_items(space_id, is_starred) WHERE is_starred = TRUE;
+CREATE INDEX idx_space_items_pinned ON space_items(space_id, is_pinned) WHERE is_pinned = TRUE;
+CREATE INDEX idx_space_items_item ON space_items(item_type, item_id);
+CREATE INDEX idx_space_items_recent ON space_items(last_accessed_at DESC);
+
+-- Share links
+CREATE INDEX idx_share_links_token ON space_share_links(link_token);
+CREATE INDEX idx_share_links_space ON space_share_links(space_id) WHERE is_active = TRUE;
+
+-- Activity
+CREATE INDEX idx_space_activity_space ON space_activity(space_id, created_at DESC);
+CREATE INDEX idx_space_activity_actor ON space_activity(actor_id, created_at DESC);
+
+-- =====================================================
+-- GOOGLE DRIVE-LIKE VIEWS
+-- =====================================================
+
+-- My Drive (spaces I own)
+CREATE VIEW my_spaces AS
+SELECT 
+    s.*,
+    (SELECT COUNT(*) FROM space_items si WHERE si.space_id = s.id) as item_count,
+    (SELECT COUNT(*) FROM space_members sm WHERE sm.space_id = s.id) as member_count
+FROM spaces s
+WHERE s.created_by = current_setting('app.current_user_id', true);
+
+-- Shared with me (spaces where I'm a member but not owner)
+CREATE VIEW shared_with_me AS
+SELECT 
+    s.*,
+    sm.role,
+    sm.added_at as shared_at,
+    sm.last_accessed_at,
+    (SELECT COUNT(*) FROM space_items si WHERE si.space_id = s.id) as item_count
+FROM spaces s
+JOIN space_members sm ON s.id = sm.space_id
+WHERE sm.entity_id = current_setting('app.current_user_id', true)
+    AND s.created_by != current_setting('app.current_user_id', true);
+
+-- Starred items across all spaces
+CREATE VIEW starred_items AS
+SELECT 
+    si.space_id,
+    s.name as space_name,
+    si.item_type,
+    si.item_id,
+    si.name as item_name,
+    si.last_accessed_at
+FROM space_items si
+JOIN spaces s ON si.space_id = s.id
+LEFT JOIN space_members sm ON s.id = sm.space_id
+WHERE si.is_starred = TRUE
+    AND (
+        s.created_by = current_setting('app.current_user_id', true) OR
+        sm.entity_id = current_setting('app.current_user_id', true)
+    );
+
+-- Recent activity across my spaces
+CREATE VIEW my_recent_activity AS
+SELECT 
+    sa.*,
+    s.name as space_name
+FROM space_activity sa
+JOIN spaces s ON sa.space_id = s.id
+LEFT JOIN space_members sm ON s.id = sm.space_id
+WHERE s.created_by = current_setting('app.current_user_id', true)
+    OR sm.entity_id = current_setting('app.current_user_id', true)
+ORDER BY sa.created_at DESC;
+
+-- Space breadcrumbs (folder path)
+CREATE VIEW space_breadcrumbs AS
+WITH RECURSIVE space_path AS (
+    SELECT 
+        id,
+        name,
+        parent_space_id,
+        0 as level,
+        ARRAY[name] as path_names,
+        ARRAY[id] as path_ids
+    FROM spaces 
+    WHERE parent_space_id IS NULL
+    
+    UNION ALL
+    
+    SELECT 
+        s.id,
+        s.name,
+        s.parent_space_id,
+        sp.level + 1,
+        sp.path_names || s.name,
+        sp.path_ids || s.id
+    FROM spaces s
+    JOIN space_path sp ON s.parent_space_id = sp.id
+)
+SELECT * FROM space_path;
+
+-- =====================================================
+-- GOOGLE DRIVE-LIKE FUNCTIONALITY EXAMPLES
+-- =====================================================
+
+-- Create folder structure like Google Drive
+INSERT INTO spaces (id, name, created_by, space_type) VALUES
+('cs_root', 'My Drive', 'cp_john_doe', 'root'),
+('cs_work', 'Work', 'cp_john_doe', 'folder'),
+('cs_personal', 'Personal', 'cp_john_doe', 'folder'),
+('cs_shared', 'Shared Projects', 'cp_john_doe', 'shared');
+
+-- Create subfolders
+INSERT INTO spaces (id, name, parent_space_id, created_by) VALUES
+('cs_projects', 'Active Projects', 'cs_work', 'cp_john_doe'),
+('cs_clients', 'Client Files', 'cs_work', 'cp_john_doe'),
+('cs_family', 'Family', 'cs_personal', 'cp_john_doe'),
+('cs_finances', 'Finances', 'cs_personal', 'cp_john_doe');
+
+-- Add items to folders (like putting files in Drive folders)
+INSERT INTO space_items (space_id, item_type, item_id, name, added_by) VALUES
+('cs_projects', 'task', 'task-uuid-123', 'Website Redesign Tasks', 'cp_john_doe'),
+('cs_projects', 'note', 'note-uuid-abc', 'Project Meeting Notes', 'cp_john_doe'),
+('cs_projects', 'document', 'doc-uuid-def', 'Project Proposal.pdf', 'cp_john_doe'),
+('cs_clients', 'bill', 'bill-uuid-xyz', 'Acme Corp Invoice', 'cp_john_doe'),
+('cs_family', 'task', 'task-family-456', 'Weekend Plans', 'cp_john_doe');
+
+-- Share folder with team members (like Google Drive sharing)
+INSERT INTO space_members (space_id, entity_id, role, added_by, can_share, can_edit) VALUES
+('cs_projects', 'cp_jane_designer', 'editor', 'cp_john_doe', TRUE, TRUE),
+('cs_projects', 'cp_mike_dev', 'editor', 'cp_john_doe', FALSE, TRUE),
+('cs_clients', 'cp_client_contact', 'viewer', 'cp_john_doe', FALSE, FALSE);
+
+-- Create shareable link
+INSERT INTO space_share_links (space_id, link_token, access_level, created_by) VALUES
+('cs_projects', 'proj_share_abc123def456', 'viewer', 'cp_john_doe');
+
+-- Star important items
+UPDATE space_items SET is_starred = TRUE 
+WHERE item_id IN ('task-uuid-123', 'note-uuid-abc');
+
+-- Pin important items to top of folder
+UPDATE space_items SET is_pinned = TRUE, sort_order = -1
+WHERE item_id = 'task-uuid-123';
+
+-- =====================================================
+-- GOOGLE DRIVE-LIKE QUERIES
+-- =====================================================
+
+-- Browse folder contents (like opening a Drive folder)
+SELECT 
+    si.item_type,
+    si.item_id,
+    si.name,
+    si.is_starred,
+    si.is_pinned,
+    si.last_accessed_at,
+    si.sort_order
+FROM space_items si
+WHERE si.space_id = 'cs_projects'
+ORDER BY 
+    si.is_pinned DESC,
+    si.sort_order ASC,
+    si.name ASC;
+
+-- Get folder structure with item counts (like Drive sidebar)
+SELECT 
+    sb.id,
+    REPEAT('  ', sb.level) || sb.name as indented_name,
+    sb.level,
+    s.is_starred,
+    (SELECT COUNT(*) FROM space_items si WHERE si.space_id = sb.id) as item_count,
+    s.updated_at
+FROM space_breadcrumbs sb
+JOIN spaces s ON sb.id = s.id
+WHERE s.created_by = 'cp_john_doe' OR s.id IN (
+    SELECT space_id FROM space_members WHERE entity_id = 'cp_john_doe'
+)
+ORDER BY sb.path_names;
+
+-- Search across all my spaces (like Drive search)
+SELECT 
+    'space' as result_type,
+    s.id as result_id,
+    s.name as result_name,
+    sb.path_names as breadcrumb,
+    s.updated_at as last_modified
+FROM spaces s
+JOIN space_breadcrumbs sb ON s.id = sb.id
+WHERE s.name ILIKE '%project%'
+    AND (s.created_by = 'cp_john_doe' OR s.id IN (
+        SELECT space_id FROM space_members WHERE entity_id = 'cp_john_doe'
+    ))
+
+UNION ALL
+
+SELECT 
+    si.item_type as result_type,
+    si.item_id as result_id,
+    si.name as result_name,
+    sb.path_names as breadcrumb,
+    si.last_accessed_at as last_modified
+FROM space_items si
+JOIN spaces s ON si.space_id = s.id
+JOIN space_breadcrumbs sb ON s.id = sb.id
+WHERE si.name ILIKE '%project%'
+    AND (s.created_by = 'cp_john_doe' OR s.id IN (
+        SELECT space_id FROM space_members WHERE entity_id = 'cp_john_doe'
+    ))
+ORDER BY last_modified DESC;
+
+-- Get recent files (like Drive recent)
+SELECT 
+    si.item_type,
+    si.item_id,
+    si.name,
+    s.name as space_name,
+    si.last_accessed_at
+FROM space_items si
+JOIN spaces s ON si.space_id = s.id
+LEFT JOIN space_members sm ON s.id = sm.space_id
+WHERE s.created_by = 'cp_john_doe' OR sm.entity_id = 'cp_john_doe'
+ORDER BY si.last_accessed_at DESC
+LIMIT 20;
+
+-- Check permissions (like Drive access control)
+SELECT 
+    s.name as space_name,
+    sm.role,
+    sm.can_share,
+    sm.can_edit,
+    sm.can_comment,
+    sm.can_view
+FROM spaces s
+LEFT JOIN space_members sm ON s.id = sm.space_id AND sm.entity_id = 'cp_john_doe'
+WHERE s.id = 'cs_projects';
+
+-- Get activity feed for a space
+SELECT 
+    sa.action_type,
+    sa.actor_id,
+    sa.target_type,
+    sa.target_id,
+    sa.details,
+    sa.created_at
+FROM space_activity sa
+WHERE sa.space_id = 'cs_projects'
+ORDER BY sa.created_at DESC
+LIMIT 50;
