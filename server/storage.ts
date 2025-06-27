@@ -2181,6 +2181,18 @@ class DatabaseStorage {
                 });
             }
             
+            // Add new relationships
+            for (const relationship of relationships) {
+                if (relationship.relatedContactId && relationship.relationshipType) {
+                    await this.addContactRelationship({
+                        contactId: contactId,
+                        relatedContactId: relationship.relatedContactId,
+                        relationshipType: relationship.relationshipType,
+                        notes: relationship.notes || null
+                    });
+                }
+            }
+            
             return contact;
         } catch (error) {
             console.error('Error updating complete contact:', error);
@@ -2523,6 +2535,22 @@ class DatabaseStorage {
     async createContactRelationship(relationshipData: any): Promise<any> {
         const [relationship] = await db.insert(crmContactRelationships)
             .values(relationshipData)
+            .returning();
+        return relationship;
+    }
+
+    async addContactRelationship(relationshipData: any): Promise<any> {
+        // Create relationship data for the database
+        const dbRelationshipData = {
+            contactAId: relationshipData.contactId,
+            contactBId: relationshipData.relatedContactId,
+            relationshipAToB: relationshipData.relationshipType,
+            relationshipBToA: relationshipData.relationshipType, // Could be different if needed
+            notes: relationshipData.notes
+        };
+        
+        const [relationship] = await db.insert(crmContactRelationships)
+            .values(dbRelationshipData)
             .returning();
         return relationship;
     }
