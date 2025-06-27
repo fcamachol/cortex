@@ -66,6 +66,7 @@ interface SpaceItem {
   itemType: string;
   title: string;
   description?: string;
+  content?: any; // For storing additional data like projectId
   metadata?: any;
   referenceId?: string; // For projects: cj_ prefixed UUID, for tasks: regular UUID
   createdAt?: string;
@@ -252,8 +253,13 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
               key={item.itemId} 
               className="hover:shadow-md transition-all cursor-pointer group"
               onClick={() => {
-                if (type === 'projects' && item.referenceId) {
-                  setSelectedProjectId(item.referenceId);
+                if (type === 'projects') {
+                  // Use referenceId if available, otherwise fall back to content.projectId
+                  const projectId = item.referenceId || item.content?.projectId;
+                  if (projectId) {
+                    console.log('Opening project modal for ID:', projectId);
+                    setSelectedProjectId(projectId);
+                  }
                 }
               }}
             >
@@ -315,8 +321,13 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
             key={item.itemId} 
             className="hover:shadow-sm transition-all cursor-pointer"
             onClick={() => {
-              if (type === 'projects' && item.referenceId) {
-                setSelectedProjectId(item.referenceId);
+              if (type === 'projects') {
+                // Use referenceId if available, otherwise fall back to content.projectId
+                const projectId = item.referenceId || item.content?.projectId;
+                if (projectId) {
+                  console.log('Opening project modal for ID:', projectId);
+                  setSelectedProjectId(projectId);
+                }
               }
             }}
           >
