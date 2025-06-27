@@ -87,13 +87,7 @@ export default function Sidebar({ activeModule, onSetActiveModule }: SidebarProp
       badge: null,
       badgeColor: null
     },
-    {
-      id: "spaces",
-      label: "Spaces",
-      icon: Hash,
-      badge: null,
-      badgeColor: null
-    },
+
   ];
 
   return (
