@@ -914,7 +914,7 @@ export const driveSpaces = driveSchema.table("spaces", {
 });
 
 // Space membership (Google Drive sharing model)
-export const driveSpaceMembers = appSchema.table("drive_space_members", {
+export const driveSpaceMembers = driveSchema.table("space_members", {
   id: uuid("id").primaryKey().defaultRandom(),
   spaceId: varchar("space_id", { length: 50 }).notNull().references(() => driveSpaces.id, { onDelete: "cascade" }),
   entityId: varchar("entity_id", { length: 50 }).notNull(), // cp_, cc_, cg_ entities
@@ -950,7 +950,7 @@ export const driveSpaceItems = driveSchema.table("space_items", {
 }));
 
 // Space sharing links (Google Drive share links)
-export const driveSpaceShareLinks = appSchema.table("drive_space_share_links", {
+export const driveSpaceShareLinks = driveSchema.table("space_share_links", {
   id: uuid("id").primaryKey().defaultRandom(),
   spaceId: varchar("space_id", { length: 50 }).notNull().references(() => driveSpaces.id, { onDelete: "cascade" }),
   linkToken: varchar("link_token", { length: 100 }).notNull().unique(),
@@ -966,7 +966,7 @@ export const driveSpaceShareLinks = appSchema.table("drive_space_share_links", {
 });
 
 // Recent activity (Google Drive activity feed)
-export const driveSpaceActivity = appSchema.table("drive_space_activity", {
+export const driveSpaceActivity = driveSchema.table("space_activity", {
   id: uuid("id").primaryKey().defaultRandom(),
   spaceId: varchar("space_id", { length: 50 }).notNull().references(() => driveSpaces.id, { onDelete: "cascade" }),
   actorId: varchar("actor_id", { length: 50 }).notNull(), // Who performed the action
