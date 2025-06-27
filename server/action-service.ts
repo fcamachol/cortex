@@ -51,14 +51,14 @@ export const ActionService = {
             // if (!await storage.isInternalUser(cleanReaction.reactorJid)) return;
             
             // Get the original message content for template processing
-            const originalMessage = await storage.getWhatsappMessageById(cleanReaction.messageId, cleanReaction.instanceId);
+            const originalMessage = await storage.getWhatsappMessageById(cleanReaction.messageId, cleanReaction.instanceName);
             console.log(`🔍 Retrieved message for reaction: ${cleanReaction.messageId}`, originalMessage?.content?.substring(0, 50));
             
             // Trigger action logic based on reaction
-            await this.triggerAction(cleanReaction.instanceId, 'reaction', cleanReaction.reactionEmoji, {
+            await this.triggerAction(cleanReaction.instanceName, 'reaction', cleanReaction.reactionEmoji, {
                 messageId: cleanReaction.messageId,
                 reactorJid: cleanReaction.reactorJid,
-                chatId: originalMessage?.chatId || await this.getChatIdFromMessage(cleanReaction.messageId, cleanReaction.instanceId),
+                chatId: originalMessage?.chatId || await this.getChatIdFromMessage(cleanReaction.messageId, cleanReaction.instanceName),
                 content: originalMessage?.content || '',
                 senderJid: originalMessage?.senderJid || '',
                 timestamp: cleanReaction.timestamp
@@ -214,15 +214,17 @@ export const ActionService = {
         // Use NLP to enhance task creation
         const nlpAnalysis = this.analyzeContentWithNLP(triggerContext.context.content || '');
         
-        // Create task with processed data
+        // TODO: Get actual userId from authentication context
+        // For now, using development placeholder
+        const userId = 'default-user-id';
+        
+        // Create task with processed data using unified entity schema
         const taskData = {
-            instanceId: triggerContext.instanceId,
+            userId: userId, // Use userId instead of instanceId
             title: processedConfig.title || `Task from ${triggerContext.triggerType}`,
             description: processedConfig.description || 'Automatically created task',
             priority: nlpAnalysis.isUrgent ? 'high' : (processedConfig.priority || 'medium'),
             status: 'to_do',
-            triggeringMessageId: triggerContext.context.messageId,
-            relatedChatJid: triggerContext.context.chatId,
             dueDate: nlpAnalysis.suggestedDueDate || (processedConfig.dueDate ? new Date(processedConfig.dueDate) : null)
         };
         
