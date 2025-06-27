@@ -57,6 +57,10 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
     staleTime: 30000,
   });
 
+  // Debug logging
+  console.log('ContactDetailView fullContactDetails:', fullContactDetails);
+  console.log('ContactDetailView isLoadingDetails:', isLoadingDetails);
+
   // Fetch related contacts for relationship creation
   const { data: allContacts } = useQuery({
     queryKey: ['/api/crm/contacts'],
