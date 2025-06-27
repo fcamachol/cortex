@@ -699,7 +699,7 @@ export function SpaceDetailView({ spaceId, parentSpaceId }: SpaceDetailViewProps
           isOpen={showSubspaceForm}
           onClose={() => setShowSubspaceForm(false)}
           spaces={Array.isArray(allSpaces) ? allSpaces : []}
-          onSubmit={(spaceIdParam, subspaceData) => {
+          onSubmit={(editingSpaceId, subspaceData) => {
             // Handle subspace creation with parent assignment
             const subspaceWithParent = {
               ...subspaceData,
