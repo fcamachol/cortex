@@ -1607,18 +1607,18 @@ export const crmEvents = crmSchema.table("events", {
 
 // Content Entities (Standard UUIDs for high-volume data)
 export const crmTasks = crmSchema.table("tasks", {
-  id: varchar("id", { length: 36 }).primaryKey(), // standard UUID
+  id: varchar("id", { length: 50 }).primaryKey(), // ct_ prefixed UUID for unified entity system
   title: varchar("title", { length: 300 }).notNull(),
   description: text("description"),
-  status: varchar("status", { length: 20 }).default("todo"), // todo, in_progress, done, cancelled
+  status: varchar("status", { length: 20 }).default("to_do"), // to_do, in_progress, done, cancelled
   priority: varchar("priority", { length: 20 }).default("medium"),
   dueDate: timestamp("due_date", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
   estimatedHours: numeric("estimated_hours", { precision: 5, scale: 2 }),
   actualHours: numeric("actual_hours", { precision: 5, scale: 2 }),
-  parentTaskId: varchar("parent_task_id", { length: 36 }), // hierarchical tasks
+  parentTaskId: varchar("parent_task_id", { length: 50 }), // hierarchical tasks using ct_ prefix
   tags: jsonb("tags").$type<string[]>(),
-  spaceId: integer("space_id").references(() => appSpaces.spaceId),
+  userId: uuid("user_id").notNull().references(() => appUsers.userId), // Link to authenticated users
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

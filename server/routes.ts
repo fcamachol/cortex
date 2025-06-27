@@ -764,7 +764,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         status: project.status,
         startDate: project.start_date,
         endDate: project.end_date,
-        spaceId: project.space_id,
+        userId: project.user_id, // Link to authenticated users instead of spaces
         userId: project.user_id,
         createdAt: project.created_at,
         updatedAt: project.updated_at
@@ -861,12 +861,8 @@ export async function registerRoutes(app: Express): Promise<void> {
       // Get associated tasks
       const tasks = await storage.getTasksByProjectId(projectId);
       
-      // Get project files from space items if available
+      // Get project files - will be implemented through unified entity system
       let projectFiles = [];
-      if (project.spaceId) {
-        const spaceItems = await storage.getSpaceItems(project.spaceId, 'file');
-        projectFiles = spaceItems || [];
-      }
 
       // Transform project data
       const projectDetail = {
@@ -883,7 +879,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         tags: project.tags,
         color: project.color,
         parentProjectId: project.parentProjectId,
-        spaceId: project.spaceId,
+
         createdAt: project.createdAt,
         updatedAt: project.updatedAt,
         // Associated content
