@@ -9,7 +9,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Phone, Mail, MapPin, Building2, Users, Link as LinkIcon, Calendar, Tag, MessageSquare, Plus, MoreHorizontal, X, User, ChevronDown, ChevronUp, Check } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Phone, Mail, MapPin, Building2, Users, Link as LinkIcon, Calendar, Tag, MessageSquare, Plus, MoreHorizontal, X, User, ChevronDown, ChevronUp, Check, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -50,6 +51,7 @@ interface ContactFormBlocksProps {
   spaceId?: number;
   isEditMode?: boolean;
   contactId?: number;
+  onDelete?: () => void;
   initialData?: {
     fullName?: string;
     relationship?: string;
@@ -59,9 +61,10 @@ interface ContactFormBlocksProps {
   };
 }
 
-export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode = false, contactId, initialData }: ContactFormBlocksProps) {
+export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode = false, contactId, onDelete, initialData }: ContactFormBlocksProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   
   // Core contact fields
   const [contactName, setContactName] = useState(initialData?.fullName || '');
@@ -311,10 +314,26 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
 
   return (
     <div className="space-y-4 px-6 py-6">
-      {/* Header with person icon */}
-      <div className="flex items-center gap-3 mb-6">
-        <User className="h-6 w-6 text-gray-700" />
-        <h2 className="text-xl font-semibold text-gray-900">Add New Contact</h2>
+      {/* Header with person icon and delete button */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <User className="h-6 w-6 text-gray-700" />
+          <h2 className="text-xl font-semibold text-gray-900">
+            {isEditMode ? "Edit Contact" : "Add New Contact"}
+          </h2>
+        </div>
+        {isEditMode && onDelete && (
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            onClick={() => setShowDeleteAlert(true)}
+            className="flex items-center gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </Button>
+        )}
       </div>
       
       <form onSubmit={onSubmit} className="space-y-4">
@@ -1364,6 +1383,32 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Alert */}
+      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Contact</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this contact? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (onDelete) {
+                  onDelete();
+                }
+                setShowDeleteAlert(false);
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

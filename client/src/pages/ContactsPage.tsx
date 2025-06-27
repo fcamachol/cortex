@@ -60,8 +60,7 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
 
   const handleContactClick = (contact: CrmContact) => {
     console.log('Contact clicked:', contact);
-    setSelectedContact(contact);
-    setShowContactModal(true);
+    setEditingContact(contact);
   };
 
   const handleEditContact = (contact: CrmContact) => {
