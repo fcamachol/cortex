@@ -56,27 +56,26 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
     staleTime: 30000,
   });
 
-  // Fetch all contacts for relationship selection
-  const { data: allContacts = [] } = useQuery({
-    queryKey: ['/api/crm/contacts', contact.ownerUserId],
-    queryFn: () => apiRequest('GET', `/api/crm/contacts?ownerUserId=${contact.ownerUserId}`),
+  // Fetch related contacts for relationship creation
+  const { data: allContacts } = useQuery({
+    queryKey: ['/api/crm/contacts'],
+    queryFn: () => apiRequest('GET', '/api/crm/contacts'),
     staleTime: 30000,
   });
 
-  // Fetch contact relationships
-  const { data: relationships = [] } = useQuery({
+  // Fetch relationships for this contact
+  const { data: relationships } = useQuery({
     queryKey: ['/api/crm/contact-relationships', contact.contactId],
-    queryFn: () => apiRequest('GET', `/api/crm/contact-relationships?contactAId=${contact.contactId}`),
+    queryFn: () => apiRequest('GET', `/api/crm/contact-relationships?contactId=${contact.contactId}`),
     staleTime: 30000,
   });
 
-  // Relationship form
-  const relationshipForm = useForm<RelationshipFormData>({
-    resolver: zodResolver(relationshipFormSchema),
-    defaultValues: {
-      contactBId: 0,
-      relationshipAToB: "",
-      relationshipBToA: "",
+  // Delete contact mutation
+  const deleteContactMutation = useMutation({
+    mutationFn: (contactId: number) => apiRequest('DELETE', `/api/crm/contacts/${contactId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
+      onClose();
     },
   });
 
@@ -121,36 +120,16 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
     },
   });
 
-  // Delete contact mutation
-  const deleteContactMutation = useMutation({
-    mutationFn: (contactId: number) => 
-      apiRequest('DELETE', `/api/crm/contacts/${contactId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
-      onUpdate();
-      onClose();
+  // Relationship form
+  const relationshipForm = useForm<RelationshipFormData>({
+    resolver: zodResolver(relationshipFormSchema),
+    defaultValues: {
+      contactBId: 0,
+      relationshipAToB: "",
+      relationshipBToA: "",
     },
   });
 
-  // Process data after all hooks are called
-  const contactData = fullContactDetails || contact;
-  const contactsList = Array.isArray(allContacts) ? allContacts : [];
-  const relationshipsList = Array.isArray(relationships) ? relationships : [];
-
-  // Show loading state while fetching detailed contact info
-  if (isLoadingDetails) {
-    return (
-      <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <div className="flex items-center justify-center p-8">
-            <div className="text-gray-500">Loading contact details...</div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Relationship form handlers
   const handleCreateRelationship = (data: RelationshipFormData) => {
     createRelationshipMutation.mutate(data);
   };
@@ -339,110 +318,15 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-4 px-4 pb-4">
-              {/* Phone Numbers */}
-              {(fullContactDetails?.phones || contact.phones) && (fullContactDetails?.phones || contact.phones).length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Phone className="w-4 h-4" />
-                      Phone Numbers
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {(fullContactDetails?.phones || contact.phones).map((phone, index) => (
-                        <div key={index} className="flex items-center gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{phone.phoneNumber}</span>
-                              {phone.isPrimary && (
-                                <Badge variant="secondary" className="text-xs">Primary</Badge>
-                              )}
-                              {phone.isWhatsappLinked && (
-                                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 border-green-300">
-                                  <Check className="w-3 h-3 mr-1" />
-                                  WhatsApp
-                                </Badge>
-                              )}
-                            </div>
-                            {phone.label && (
-                              <span className="text-sm text-gray-500">{phone.label}</span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Email Addresses */}
-              {(fullContactDetails?.emails || contact.emails) && (fullContactDetails?.emails || contact.emails).length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Mail className="w-4 h-4" />
-                      Email Addresses
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {(fullContactDetails?.emails || contact.emails).map((email, index) => (
-                        <div key={index} className="flex items-center gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{email.emailAddress}</span>
-                              {email.isPrimary && (
-                                <Badge variant="secondary" className="text-xs">Primary</Badge>
-                              )}
-                            </div>
-                            {email.label && (
-                              <span className="text-sm text-gray-500">{email.label}</span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Addresses */}
-              {contact.addresses && contact.addresses.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      Addresses
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {contact.addresses.map((address, index) => (
-                        <div key={index} className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            {address.label && (
-                              <Badge variant="outline">{address.label}</Badge>
-                            )}
-                            {address.isPrimary && (
-                              <Badge variant="secondary" className="text-xs">Primary</Badge>
-                            )}
-                          </div>
-                          <div className="text-sm">
-                            {address.street && <div>{address.street}</div>}
-                            <div>
-                              {[address.city, address.state, address.postalCode]
-                                .filter(Boolean)
-                                .join(', ')}
-                            </div>
-                            {address.country && <div>{address.country}</div>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              <div className="text-sm text-gray-600">
+                Primary phone: {contact.notes?.includes('+') ? contact.notes.split('\n')[0]?.replace('Primary phone: ', '') : 'Not specified'}
+              </div>
+              <div className="text-sm text-gray-600">
+                Primary email: {contact.notes?.includes('@') ? contact.notes.split('\n')[1]?.replace('Primary email: ', '') : 'Not specified'}
+              </div>
+              <div className="text-sm text-gray-500">
+                Detailed contact information will be displayed here once the full contact schema is integrated.
+              </div>
             </CollapsibleContent>
           </Collapsible>
 
@@ -458,59 +342,18 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-4 px-4 pb-4">
-              {/* Special Dates */}
-              {contact.specialDates && contact.specialDates.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      Special Dates
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {contact.specialDates.map((date, index) => (
-                        <div key={index} className="flex items-center gap-3">
-                          <div className="flex-shrink-0">
-                            <div className="w-8 h-8 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
-                              <Heart className="w-4 h-4 text-red-600 dark:text-red-400" />
-                            </div>
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-medium">{date.eventName}</div>
-                            <div className="text-sm text-gray-500">
-                              {formatDate(date.eventDate)}
-                              {date.reminderDaysBefore > 0 && (
-                                <span className="ml-2">
-                                  (Reminder: {date.reminderDaysBefore} days before)
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+              {contact.relationship && (
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-blue-500" />
+                  <span className="text-sm">Relationship</span>
+                  <Badge className={getRelationshipColor(contact.relationship)}>
+                    {contact.relationship}
+                  </Badge>
+                </div>
               )}
-
-              {/* Interests */}
-              {contact.interests && contact.interests.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Interests & Hobbies</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {contact.interests.map((interest, index) => (
-                        <Badge key={index} variant="secondary">
-                          {interest.interest.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              <div className="text-sm text-gray-500">
+                Company affiliations and group memberships will be displayed here.
+              </div>
             </CollapsibleContent>
           </Collapsible>
 
@@ -526,46 +369,14 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-4 px-4 pb-4">
-              {contact.companyMemberships && contact.companyMemberships.length > 0 ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Building2 className="w-4 h-4" />
-                      Company Affiliations
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {contact.companyMemberships.map((membership, index) => (
-                        <div key={index} className="flex items-start gap-3 p-3 border rounded-lg">
-                          <Building2 className="w-5 h-5 text-blue-600 mt-1" />
-                          <div className="flex-1">
-                            <div className="font-medium">{membership.company.companyName}</div>
-                            {membership.role && (
-                              <div className="text-sm text-gray-600">{membership.role}</div>
-                            )}
-                            <div className="text-xs text-gray-500 mt-1">
-                              {membership.startDate && `Started: ${formatDate(membership.startDate)}`}
-                              {membership.endDate && ` • Ended: ${formatDate(membership.endDate)}`}
-                              {membership.isCurrent && (
-                                <Badge variant="secondary" className="ml-2 text-xs">Current</Badge>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center text-gray-500">
-                      No company affiliations recorded
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-purple-500" />
+                <span className="text-sm">Created</span>
+                <span className="text-sm text-gray-600">{formatDate(contact.createdAt)}</span>
+              </div>
+              <div className="text-sm text-gray-500">
+                Special dates, interests, and other personal details will be displayed here.
+              </div>
             </CollapsibleContent>
           </Collapsible>
 
@@ -579,294 +390,65 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
             </TabsList>
 
             <TabsContent value="tasks" className="space-y-4">
-              {contact.groupMemberships && contact.groupMemberships.length > 0 ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="w-4 h-4" />
-                      Contact Groups
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {contact.groupMemberships.map((membership, index) => (
-                        <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
-                          <div className="text-2xl">{membership.group.groupIcon || '👥'}</div>
-                          <div className="flex-1">
-                            <div className="font-medium">{membership.group.groupName}</div>
-                            {membership.group.groupDescription && (
-                              <div className="text-sm text-gray-600">{membership.group.groupDescription}</div>
-                            )}
-                            {membership.roleInGroup && (
-                              <div className="text-xs text-gray-500 mt-1">
-                                Role: {membership.roleInGroup}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center text-gray-500">
-                      Not a member of any contact groups
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center text-gray-500">
+                    No tasks linked to this contact yet
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
-            {/* Relationships Tab */}
-            <TabsContent value="relationships" className="space-y-4">
-              {contact.relationshipsAsA && contact.relationshipsAsA.length > 0 ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Personal Relationships</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {contact.relationshipsAsA.map((relationship, index) => (
-                        <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
-                          <Avatar className="w-8 h-8">
-                            <AvatarFallback className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                              {getInitials(relationship.contactB.fullName)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="font-medium">{relationship.contactB.fullName}</div>
-                            <div className="text-sm text-gray-600">
-                              {relationship.relationshipType}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center text-gray-500">
-                      No personal relationships recorded
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+            <TabsContent value="events" className="space-y-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center text-gray-500">
+                    No events scheduled with this contact
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
-            {/* Relationships Tab */}
-            <TabsContent value="relationships" className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Contact Relationships</h3>
-                <Button 
-                  onClick={() => setIsAddingRelationship(true)}
-                  size="sm"
-                  disabled={isAddingRelationship || editingRelationshipId !== null}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Relationship
-                </Button>
-              </div>
+            <TabsContent value="finance" className="space-y-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center text-gray-500">
+                    No financial records for this contact
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-              {/* Add/Edit Relationship Form */}
-              {(isAddingRelationship || editingRelationshipId !== null) && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>
-                      {editingRelationshipId ? 'Edit Relationship' : 'Add New Relationship'}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Form {...relationshipForm}>
-                      <form 
-                        onSubmit={relationshipForm.handleSubmit(
-                          editingRelationshipId ? handleUpdateRelationship : handleCreateRelationship
-                        )}
-                        className="space-y-4"
-                      >
-                        <FormField
-                          control={relationshipForm.control}
-                          name="contactBId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Related Contact</FormLabel>
-                              <Select 
-                                onValueChange={(value) => field.onChange(parseInt(value))}
-                                value={field.value?.toString() || ""}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select a contact" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {contactsList
-                                    .filter(c => c.contactId !== contact.contactId)
-                                    .map((c) => (
-                                      <SelectItem key={c.contactId} value={c.contactId.toString()}>
-                                        {c.fullName}
-                                      </SelectItem>
-                                    ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={relationshipForm.control}
-                          name="relationshipAToB"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>
-                                {contact.fullName} is _____ to the selected contact
-                              </FormLabel>
-                              <FormControl>
-                                <Input 
-                                  placeholder="e.g., brother, colleague, friend"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={relationshipForm.control}
-                          name="relationshipBToA"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>
-                                The selected contact is _____ to {contact.fullName}
-                              </FormLabel>
-                              <FormControl>
-                                <Input 
-                                  placeholder="e.g., sister, manager, friend"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <div className="flex gap-2">
-                          <Button 
-                            type="submit"
-                            disabled={createRelationshipMutation.isPending || updateRelationshipMutation.isPending}
-                          >
-                            {createRelationshipMutation.isPending || updateRelationshipMutation.isPending
-                              ? "Saving..."
-                              : editingRelationshipId ? "Update Relationship" : "Add Relationship"
-                            }
-                          </Button>
-                          <Button 
-                            type="button" 
-                            variant="outline"
-                            onClick={handleCancelRelationshipEdit}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </form>
-                    </Form>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Existing Relationships */}
-              {relationshipsList.length > 0 ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Existing Relationships</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {relationshipsList.map((relationship: any) => {
-                        const relatedContact = contactsList.find(c => c.contactId === relationship.contactBId);
-                        return (
-                          <div key={relationship.relationshipId} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div className="flex-1">
-                              <div className="font-medium">{relatedContact?.fullName || 'Unknown Contact'}</div>
-                              <div className="text-sm text-gray-600">
-                                {contact.fullName} is {relationship.relationshipAToB || 'unspecified'} to {relatedContact?.fullName}
-                                {relationship.relationshipBToA && (
-                                  <span>
-                                    <br />
-                                    {relatedContact?.fullName} is {relationship.relationshipBToA} to {contact.fullName}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditRelationship(relationship)}
-                                disabled={isAddingRelationship || editingRelationshipId !== null}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  if (confirm('Are you sure you want to delete this relationship?')) {
-                                    handleDeleteRelationship(relationship.relationshipId);
-                                  }
-                                }}
-                                disabled={deleteRelationshipMutation.isPending}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center text-gray-500">
-                      No relationships recorded for this contact
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+            <TabsContent value="notes" className="space-y-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center text-gray-500">
+                    No notes or documents for this contact yet
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
-
-
         </div>
-      </DialogContent>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Contact</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete <strong>{contact.fullName}</strong>? This action cannot be undone and will permanently remove this contact and all associated data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteContact}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {deleteContactMutation.isPending ? "Deleting..." : "Delete Contact"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Contact</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this contact? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteContact}>
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </DialogContent>
     </Dialog>
   );
 }
