@@ -177,6 +177,25 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
             });
           }
           
+          // Add special date blocks
+          if (response.specialDates) {
+            response.specialDates.forEach((specialDate: any, index: number) => {
+              newBlocks.push({
+                id: `date-${index}`,
+                type: 'date',
+                data: {
+                  title: specialDate.eventName,
+                  type: specialDate.category === 'birthday' ? 'birthday' : 
+                        specialDate.category === 'anniversary' ? 'anniversary' : 'other',
+                  day: specialDate.eventDay,
+                  month: specialDate.eventMonth,
+                  year: specialDate.originalYear,
+                  reminderDays: specialDate.reminderDaysBefore || 7
+                }
+              });
+            });
+          }
+          
           // Populate form fields with existing data
           setContactName(response.fullName || '');
           setProfession(response.profession || '');
