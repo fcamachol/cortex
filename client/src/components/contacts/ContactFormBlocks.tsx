@@ -175,6 +175,12 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
             });
           }
           
+          // Populate form fields with existing data
+          setContactName(response.fullName || '');
+          setProfession(response.profession || '');
+          setCompany(response.company || '');
+          setTags(response.tags || []);
+          setDescription(response.notes || '');
           setBlocks(newBlocks);
         } catch (error) {
           console.error('Error fetching contact details:', error);
