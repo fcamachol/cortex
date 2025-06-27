@@ -1376,13 +1376,25 @@ class DatabaseStorage {
     }
 
     async getTasks(instanceId?: string): Promise<any[]> {
-        let query = db.select().from(crmTasks).orderBy(desc(crmTasks.createdAt));
+        const result = await db.select({
+            taskId: crmTasks.id, // Map id to taskId for frontend compatibility
+            id: crmTasks.id,
+            title: crmTasks.title,
+            description: crmTasks.description,
+            status: crmTasks.status,
+            priority: crmTasks.priority,
+            dueDate: crmTasks.dueDate,
+            completedAt: crmTasks.completedAt,
+            estimatedHours: crmTasks.estimatedHours,
+            actualHours: crmTasks.actualHours,
+            parentTaskId: crmTasks.parentTaskId,
+            tags: crmTasks.tags,
+            userId: crmTasks.userId,
+            createdAt: crmTasks.createdAt,
+            updatedAt: crmTasks.updatedAt
+        }).from(crmTasks).orderBy(desc(crmTasks.createdAt));
         
-        if (instanceId) {
-            query = query.where(eq(crmTasks.instanceId, instanceId));
-        }
-        
-        return await query;
+        return result;
     }
 
     async getTaskById(taskId: number): Promise<any | null> {
