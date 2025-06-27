@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { ChevronDown, ChevronRight, Plus, MoreHorizontal, FolderOpen, Folder, GripVertical, CheckSquare, FileText, Calendar, DollarSign, Briefcase, Users, Target, Edit2, Link, Palette, Settings, Star, EyeOff, Copy, Archive, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -49,6 +50,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
   const [selectedItemType, setSelectedItemType] = useState<string>('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   // Fetch spaces data
   const { data: spaces, isLoading } = useQuery({
@@ -324,7 +326,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
                       paddingLeft: `${4 + level * 6}px`
                     }}
                     onClick={() => {
-                      onSpaceSelect?.(space);
+                      setLocation(`/spaces/${space.spaceId}`);
                     }}
                   >
               {/* Drag Handle */}
@@ -765,7 +767,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId }: SpacesSidebarP
               className="text-base font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer"
               onClick={() => {
                 // Navigate to all spaces view
-                window.dispatchEvent(new CustomEvent('spaceSelected', { detail: { spaceId: null } }));
+                setLocation('/spaces');
               }}
             >
               Spaces
