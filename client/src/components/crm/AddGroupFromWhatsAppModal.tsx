@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +32,6 @@ export function AddGroupFromWhatsAppModal({
   const [description, setDescription] = useState('');
   const [color, setColor] = useState('#3B82F6');
   const [tags, setTags] = useState('');
-  const [linkType, setLinkType] = useState('none'); // 'none', 'space', 'project'
   const [selectedSpaceId, setSelectedSpaceId] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [showCreateSpace, setShowCreateSpace] = useState(false);
@@ -47,15 +46,21 @@ export function AddGroupFromWhatsAppModal({
 
   // Fetch spaces
   const { data: spaces = [] } = useQuery({
-    queryKey: ['/api/spaces'],
-    enabled: linkType === 'space'
+    queryKey: ['/api/spaces']
   });
 
   // Fetch projects
   const { data: projects = [] } = useQuery({
-    queryKey: ['/api/crm/projects'],
-    enabled: linkType === 'project'
+    queryKey: ['/api/crm/projects']
   });
+
+  // Filter projects based on selected space
+  const filteredProjects = useMemo(() => {
+    if (!selectedSpaceId || !Array.isArray(projects)) {
+      return projects;
+    }
+    return projects.filter((project: any) => project.spaceId === parseInt(selectedSpaceId));
+  }, [projects, selectedSpaceId]);
 
   // Generate UUID with cg_ prefix for CRM groups
   const generateGroupId = () => {
@@ -258,42 +263,177 @@ export function AddGroupFromWhatsAppModal({
           <div className="space-y-3">
             <Label>Link to Space or Project (Optional)</Label>
             
-            {/* Link Type Selection */}
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant={linkType === 'none' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  setLinkType('none');
-                  setSelectedSpaceId('');
-                  setSelectedProjectId('');
-                }}
-                className="flex-1"
-              >
-                None
-              </Button>
-              <Button
-                type="button"
-                variant={linkType === 'space' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setLinkType('space')}
-                className="flex-1"
-              >
-                <FolderOpen className="h-4 w-4 mr-1" />
-                Space
-              </Button>
-              <Button
-                type="button"
-                variant={linkType === 'project' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setLinkType('project')}
-                className="flex-1"
-              >
-                <Building2 className="h-4 w-4 mr-1" />
-                Project
-              </Button>
+            {/* Space and Project Selection Side by Side */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Space Column */}
+              <div className="space-y-2">
+                {!showCreateSpace ? (
+                  <div className="flex gap-2">
+                    <Popover open={spaceDropdownOpen} onOpenChange={setSpaceDropdownOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={spaceDropdownOpen}
+                          className="flex-1 justify-between"
+                        >
+                          {selectedSpaceId
+                            ? spaces?.find((space: any) => space.spaceId === selectedSpaceId)?.spaceName
+                            : "Select a space..."}
+                          <FolderOpen className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0">
+                        <Command>
+                          <CommandInput placeholder="Search spaces..." />
+                          <CommandEmpty>No space found.</CommandEmpty>
+                          <CommandGroup>
+                            {Array.isArray(spaces) && spaces.map((space: any) => (
+                              <CommandItem
+                                key={space.spaceId}
+                                onSelect={() => {
+                                  setSelectedSpaceId(space.spaceId);
+                                  setSpaceDropdownOpen(false);
+                                  // Clear project selection when space changes
+                                  setSelectedProjectId('');
+                                }}
+                              >
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${
+                                    selectedSpaceId === space.spaceId ? "opacity-100" : "opacity-0"
+                                  }`}
+                                />
+                                {space.spaceName}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowCreateSpace(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="New space name"
+                      value={newSpaceName}
+                      onChange={(e) => setNewSpaceName(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => createSpaceMutation.mutate(newSpaceName)}
+                      disabled={!newSpaceName.trim() || createSpaceMutation.isPending}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowCreateSpace(false);
+                        setNewSpaceName('');
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Project Column */}
+              <div className="space-y-2">
+                {!showCreateProject ? (
+                  <div className="flex gap-2">
+                    <Popover open={projectDropdownOpen} onOpenChange={setProjectDropdownOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={projectDropdownOpen}
+                          className="flex-1 justify-between"
+                        >
+                          {selectedProjectId
+                            ? filteredProjects?.find((project: any) => project.projectId === selectedProjectId)?.projectName
+                            : "Select a project..."}
+                          <Building2 className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0">
+                        <Command>
+                          <CommandInput placeholder="Search projects..." />
+                          <CommandEmpty>No project found.</CommandEmpty>
+                          <CommandGroup>
+                            {Array.isArray(filteredProjects) && filteredProjects.map((project: any) => (
+                              <CommandItem
+                                key={project.projectId}
+                                onSelect={() => {
+                                  setSelectedProjectId(project.projectId);
+                                  setProjectDropdownOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${
+                                    selectedProjectId === project.projectId ? "opacity-100" : "opacity-0"
+                                  }`}
+                                />
+                                {project.projectName}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowCreateProject(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="New project name"
+                      value={newProjectName}
+                      onChange={(e) => setNewProjectName(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => createProjectMutation.mutate(newProjectName)}
+                      disabled={!newProjectName.trim() || createProjectMutation.isPending}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowCreateProject(false);
+                        setNewProjectName('');
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
+          </div>
 
             {/* Space Selection */}
             {linkType === 'space' && (
