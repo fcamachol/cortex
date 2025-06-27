@@ -30,10 +30,11 @@ export const payableStatusEnum = financeSchema.enum("payable_status", ["unpaid",
 export const receivableStatusEnum = financeSchema.enum("receivable_status", ["draft", "sent", "partially_paid", "paid", "overdue"]);
 export const loanStatusEnum = financeSchema.enum("loan_status", ["active", "paid_off", "in_arrears"]);
 export const interestPeriodTypeEnum = financeSchema.enum("interest_period_type", ["daily", "weekly", "monthly", "annually"]);
-export const accountTypeEnum = financeSchema.enum("account_type", [
-  "checking", "savings", "credit_card", "investment", "loan", "mortgage", 
-  "business", "cash", "crypto", "retirement", "other"
-]);
+// Temporarily commented out due to existing enum in database
+// export const accountTypeEnum = financeSchema.enum("account_type", [
+//   "checking", "savings", "credit_card", "investment", "loan", "mortgage", 
+//   "business", "cash", "crypto", "retirement", "other"
+// ]);
 
 // Enums for WhatsApp schema
 export const chatTypeEnum = whatsappSchema.enum("chat_type", ["individual", "group"]);
@@ -2271,7 +2272,7 @@ export const financeAccounts = financeSchema.table("accounts", {
   accountId: serial("account_id").primaryKey(),
   spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
   accountName: varchar("account_name", { length: 255 }).notNull(),
-  accountType: accountTypeEnum("account_type").notNull(),
+  accountType: varchar("account_type", { length: 50 }).notNull(), // Temporarily using varchar instead of enum
   institutionName: varchar("institution_name", { length: 255 }),
   accountNumber: varchar("account_number", { length: 50 }), // Last 4 digits or masked number
   currentBalance: numeric("current_balance", { precision: 12, scale: 2 }).default("0.00"),
