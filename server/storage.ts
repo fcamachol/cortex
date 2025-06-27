@@ -1755,7 +1755,7 @@ class DatabaseStorage {
                 .select()
                 .from(crmCompanies)
                 .where(eq(crmCompanies.spaceId, spaceId))
-                .orderBy(crmCompanies.name);
+                .orderBy(crmCompanies.companyName);
         } catch (error) {
             console.error('Error fetching CRM companies:', error);
             throw error;
