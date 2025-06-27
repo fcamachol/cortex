@@ -2102,7 +2102,7 @@ class DatabaseStorage {
     async createCompleteContact(contactData: any): Promise<any> {
         try {
             // Extract block data
-            const { phones = [], emails = [], addresses = [], ...mainContactData } = contactData;
+            const { phones = [], emails = [], addresses = [], specialDates = [], interests = [], aliases = [], ...mainContactData } = contactData;
             
             // Create the main contact first
             const contact = await this.createCrmContact(mainContactData);
@@ -2137,6 +2137,58 @@ class DatabaseStorage {
                 });
             }
             
+            // Process special dates
+            for (const dateBlock of specialDates) {
+                if (dateBlock.day && dateBlock.month) {
+                    // Create a date from day/month/year (use current year if not specified)
+                    const year = dateBlock.year || new Date().getFullYear();
+                    const eventDate = new Date(year, dateBlock.month - 1, dateBlock.day);
+                    
+                    await this.addContactSpecialDate({
+                        contactId: contact.contactId,
+                        eventName: dateBlock.title || dateBlock.type || 'Special Date',
+                        eventDate: eventDate,
+                        reminderDaysBefore: dateBlock.reminderDays || 7
+                    });
+                }
+            }
+            
+            // Process interests
+            for (const interestBlock of interests) {
+                if (interestBlock.name && interestBlock.name.trim()) {
+                    // First ensure the interest exists in the master list
+                    let interest = await db.select().from(crmInterests)
+                        .where(eq(crmInterests.name, interestBlock.name.trim()))
+                        .limit(1);
+                    
+                    if (interest.length === 0) {
+                        // Create new interest in master list
+                        const [newInterest] = await db.insert(crmInterests)
+                            .values({ name: interestBlock.name.trim() })
+                            .returning();
+                        interest = [newInterest];
+                    }
+                    
+                    // Link interest to contact
+                    await db.insert(crmContactInterests)
+                        .values({
+                            contactId: contact.contactId,
+                            interestId: interest[0].interestId
+                        })
+                        .onConflictDoNothing();
+                }
+            }
+            
+            // Process aliases
+            for (const aliasBlock of aliases) {
+                if (aliasBlock.name && aliasBlock.name.trim()) {
+                    await this.addContactAlias({
+                        contactId: contact.contactId,
+                        alias: aliasBlock.name.trim()
+                    });
+                }
+            }
+            
             return contact;
         } catch (error) {
             console.error('Error creating complete contact:', error);
@@ -2147,7 +2199,7 @@ class DatabaseStorage {
     async updateCompleteContact(contactId: number, contactData: any): Promise<any> {
         try {
             // Extract block data
-            const { phones = [], emails = [], addresses = [], relationships = [], ...mainContactData } = contactData;
+            const { phones = [], emails = [], addresses = [], specialDates = [], interests = [], aliases = [], relationships = [], ...mainContactData } = contactData;
             
             // Update the main contact first
             const contact = await this.updateCrmContact(contactId, mainContactData);
@@ -2155,7 +2207,7 @@ class DatabaseStorage {
             // Clear existing data and recreate with new block data
             // This is a simple approach - delete all existing and recreate
             
-            // Delete existing phones, emails, addresses, relationships
+            // Delete existing phones, emails, addresses, relationships, special dates, interests, aliases
             await db.delete(crmContactPhones).where(eq(crmContactPhones.contactId, contactId));
             await db.delete(crmContactEmails).where(eq(crmContactEmails.contactId, contactId));
             await db.delete(crmContactAddresses).where(eq(crmContactAddresses.contactId, contactId));
@@ -2165,6 +2217,9 @@ class DatabaseStorage {
                     eq(crmContactRelationships.contactBId, contactId)
                 )
             );
+            await db.delete(crmSpecialDates).where(eq(crmSpecialDates.contactId, contactId));
+            await db.delete(crmContactInterests).where(eq(crmContactInterests.contactId, contactId));
+            await db.delete(crmContactAliases).where(eq(crmContactAliases.contactId, contactId));
             
             // Add new phones (ensure Mobile label instead of WhatsApp)
             for (const phone of phones) {

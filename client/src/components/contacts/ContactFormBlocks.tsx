@@ -327,7 +327,7 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
       case 'link':
         return { contactId: '', relationship: '' };
       case 'date':
-        return { title: '', date: '', type: 'birthday', reminderDays: 7 };
+        return { title: '', day: null, month: null, year: null, type: 'birthday', reminderDays: 7 };
       case 'interest':
         return { name: '' };
       case 'alias':
@@ -1235,34 +1235,78 @@ function BlockContent({ block, onUpdate, ownerUserId, isMainContact }: {
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Date</label>
-              <Input
-                type="date"
-                value={block.data.date || ''}
-                onChange={(e) => onUpdate(block.id, 'date', e.target.value)}
-                className="h-10 border-gray-300 rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Reminder (days before)</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Day</label>
               <Select
-                value={String(block.data.reminderDays || 7)}
-                onValueChange={(value) => onUpdate(block.id, 'reminderDays', parseInt(value))}
+                value={String(block.data.day || '')}
+                onValueChange={(value) => onUpdate(block.id, 'day', parseInt(value))}
               >
                 <SelectTrigger className="h-10 border-gray-300 rounded-lg">
-                  <SelectValue />
+                  <SelectValue placeholder="Day" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">1 day</SelectItem>
-                  <SelectItem value="3">3 days</SelectItem>
-                  <SelectItem value="7">7 days</SelectItem>
-                  <SelectItem value="14">14 days</SelectItem>
-                  <SelectItem value="30">30 days</SelectItem>
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                    <SelectItem key={day} value={String(day)}>{day}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Month</label>
+              <Select
+                value={String(block.data.month || '')}
+                onValueChange={(value) => onUpdate(block.id, 'month', parseInt(value))}
+              >
+                <SelectTrigger className="h-10 border-gray-300 rounded-lg">
+                  <SelectValue placeholder="Month" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">January</SelectItem>
+                  <SelectItem value="2">February</SelectItem>
+                  <SelectItem value="3">March</SelectItem>
+                  <SelectItem value="4">April</SelectItem>
+                  <SelectItem value="5">May</SelectItem>
+                  <SelectItem value="6">June</SelectItem>
+                  <SelectItem value="7">July</SelectItem>
+                  <SelectItem value="8">August</SelectItem>
+                  <SelectItem value="9">September</SelectItem>
+                  <SelectItem value="10">October</SelectItem>
+                  <SelectItem value="11">November</SelectItem>
+                  <SelectItem value="12">December</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Year (optional)</label>
+              <Input
+                type="number"
+                placeholder="e.g., 1990"
+                value={block.data.year || ''}
+                onChange={(e) => onUpdate(block.id, 'year', e.target.value ? parseInt(e.target.value) : null)}
+                className="h-10 border-gray-300 rounded-lg"
+                min="1900"
+                max="2100"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Reminder (days before)</label>
+            <Select
+              value={String(block.data.reminderDays || 7)}
+              onValueChange={(value) => onUpdate(block.id, 'reminderDays', parseInt(value))}
+            >
+              <SelectTrigger className="h-10 border-gray-300 rounded-lg">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 day</SelectItem>
+                <SelectItem value="3">3 days</SelectItem>
+                <SelectItem value="7">7 days</SelectItem>
+                <SelectItem value="14">14 days</SelectItem>
+                <SelectItem value="30">30 days</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       );
@@ -1452,14 +1496,22 @@ function ContactViewMode({ blocks, contactName, profession, company, tags, descr
                   <Calendar className="h-4 w-4 text-purple-500" />
                   <span className="text-sm font-medium">Special Dates</span>
                 </div>
-                {dateBlocks.map((block) => (
-                  <div key={block.id} className="ml-6">
-                    <span className="text-sm">
-                      {block.data.title || block.data.type}: {block.data.date ? new Date(block.data.date).toLocaleDateString() : 'No date set'} 
-                      (Reminder: {block.data.reminderDays || 7} days prior)
-                    </span>
-                  </div>
-                ))}
+                {dateBlocks.map((block) => {
+                  const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June', 
+                                     'July', 'August', 'September', 'October', 'November', 'December'];
+                  const dateDisplay = block.data.day && block.data.month 
+                    ? `${block.data.day}/${block.data.month}${block.data.year ? `/${block.data.year}` : ''}`
+                    : 'No date set';
+                  
+                  return (
+                    <div key={block.id} className="ml-6">
+                      <span className="text-sm">
+                        {block.data.title || block.data.type}: {dateDisplay}
+                        {' '}(Reminder: {block.data.reminderDays || 7} days prior)
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
