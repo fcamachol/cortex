@@ -52,13 +52,7 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   // Fetch full contact details including phones with WhatsApp linking info
   const { data: fullContactDetails, isLoading: isLoadingDetails, error } = useQuery({
-    queryKey: ['/api/crm/contacts/details', contact.contactId],
-    queryFn: async () => {
-      console.log('Making API request for contact details:', contact.contactId);
-      const result = await apiRequest('GET', `/api/crm/contacts/${contact.contactId}/details`);
-      console.log('API response received:', result);
-      return result;
-    },
+    queryKey: [`/api/crm/contacts/${contact.contactId}/details`],
     staleTime: 0, // Disable caching temporarily for debugging
     cacheTime: 0,
   });
@@ -66,7 +60,6 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
   // Debug logging
   console.log('ContactDetailView fullContactDetails:', fullContactDetails);
   console.log('ContactDetailView isLoadingDetails:', isLoadingDetails);
-  console.log('ContactDetailView error:', error);
 
   // Fetch related contacts for relationship creation
   const { data: allContacts } = useQuery({
