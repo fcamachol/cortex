@@ -214,11 +214,11 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Header Card */}
+          {/* Header Card - Contact Bubble Style */}
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-start gap-4">
-                <Avatar className="w-20 h-20">
+                <Avatar className="w-16 h-16">
                   <AvatarImage src={contact.profilePictureUrl || ""} />
                   <AvatarFallback className="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300 text-lg">
                     {getInitials(contact.fullName)}
@@ -226,51 +226,29 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                 </Avatar>
                 
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {contact.fullName}
-                    </h2>
-                    {contact.relationship && (
-                      <Badge className={getRelationshipColor(contact.relationship)}>
-                        {contact.relationship}
-                      </Badge>
-                    )}
-                  </div>
+                  {/* Name */}
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    {contact.fullName}
+                  </h2>
                   
-                  {contact.aliases && contact.aliases.length > 0 && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <Tag className="w-4 h-4 text-gray-500" />
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        Also known as: {contact.aliases.map(a => a.alias).join(', ')}
+                  {/* Relationship Tag with Checkmark */}
+                  {contact.relationship && (
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-sm text-gray-700 bg-gray-100 px-2 py-1 rounded dark:bg-gray-700 dark:text-gray-300">
+                        {contact.relationship}
                       </span>
+                      {contact.isWhatsappLinked && (
+                        <Check className="w-4 h-4 text-green-600" />
+                      )}
                     </div>
                   )}
-                  
-                  {/* Quick Contact Info with WhatsApp Badge */}
-                  <div className="space-y-2 mt-3">
-                    {(fullContactDetails?.phones || contact.phones) && (fullContactDetails?.phones || contact.phones).length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm">{(fullContactDetails?.phones || contact.phones)[0].phoneNumber}</span>
-                        {(fullContactDetails?.phones || contact.phones)[0].isWhatsappLinked && (
-                          <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 border-green-300">
-                            <Check className="w-3 h-3 mr-1" />
-                            WhatsApp
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                    {(fullContactDetails?.emails || contact.emails) && (fullContactDetails?.emails || contact.emails).length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm">{(fullContactDetails?.emails || contact.emails)[0].emailAddress}</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <p className="text-sm text-gray-500 mt-3">
-                    Added {formatDate(contact.createdAt)}
-                  </p>
+
+                  {/* Description/Notes */}
+                  {contact.notes && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                      {contact.notes.trim()}
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>
