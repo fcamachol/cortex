@@ -125,8 +125,8 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
             <Tabs defaultValue="overview" className="h-full flex flex-col">
               <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="tasks">Tasks ({project.taskCount})</TabsTrigger>
-                <TabsTrigger value="files">Files ({project.files.length})</TabsTrigger>
+                <TabsTrigger value="tasks">Tasks ({project.taskCount || 0})</TabsTrigger>
+                <TabsTrigger value="files">Files ({project.files?.length || 0})</TabsTrigger>
                 <TabsTrigger value="timeline">Timeline</TabsTrigger>
               </TabsList>
 
@@ -152,10 +152,10 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold">
-                          {project.completedTasks}/{project.taskCount}
+                          {project.completedTasks || 0}/{project.taskCount || 0}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {project.taskProgress}% complete
+                          {project.taskProgress || 0}% complete
                         </p>
                       </CardContent>
                     </Card>
@@ -166,9 +166,9 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(project.budget)}</div>
+                        <div className="text-2xl font-bold">{formatCurrency(project.budget || 0)}</div>
                         <p className="text-xs text-muted-foreground">
-                          {formatCurrency(project.spentAmount)} spent
+                          {formatCurrency(project.spentAmount || 0)} spent
                         </p>
                       </CardContent>
                     </Card>
@@ -180,10 +180,10 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
                       </CardHeader>
                       <CardContent>
                         <div className="text-sm font-bold">
-                          {formatDate(project.startDate)}
+                          {project.startDate ? formatDate(project.startDate) : 'Not set'}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          to {formatDate(project.endDate)}
+                          to {project.endDate ? formatDate(project.endDate) : 'Not set'}
                         </p>
                       </CardContent>
                     </Card>
