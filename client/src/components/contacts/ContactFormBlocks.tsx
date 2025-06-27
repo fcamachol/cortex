@@ -1074,6 +1074,89 @@ function BlockContent({ block, onUpdate, ownerUserId }: {
         </div>
       );
 
+    case 'address':
+      return (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Label</label>
+              <Select
+                value={block.data.type || 'Home'}
+                onValueChange={(value) => onUpdate(block.id, 'type', value)}
+              >
+                <SelectTrigger className="h-10 border-gray-300 rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Home">Home</SelectItem>
+                  <SelectItem value="Work">Work</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center space-x-2 pt-6">
+              <Checkbox
+                id={`primary-address-${block.id}`}
+                checked={block.data.isPrimary || false}
+                onCheckedChange={(checked) => onUpdate(block.id, 'isPrimary', checked)}
+              />
+              <label htmlFor={`primary-address-${block.id}`} className="text-sm text-gray-600">
+                Primary Address
+              </label>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Street Address</label>
+            <Input
+              placeholder="123 Main Street"
+              value={block.data.street || ''}
+              onChange={(e) => onUpdate(block.id, 'street', e.target.value)}
+              className="h-10 border-gray-300 rounded-lg"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">City</label>
+              <Input
+                placeholder="New York"
+                value={block.data.city || ''}
+                onChange={(e) => onUpdate(block.id, 'city', e.target.value)}
+                className="h-10 border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">State/Province</label>
+              <Input
+                placeholder="NY"
+                value={block.data.state || ''}
+                onChange={(e) => onUpdate(block.id, 'state', e.target.value)}
+                className="h-10 border-gray-300 rounded-lg"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">ZIP/Postal Code</label>
+              <Input
+                placeholder="10001"
+                value={block.data.zipCode || ''}
+                onChange={(e) => onUpdate(block.id, 'zipCode', e.target.value)}
+                className="h-10 border-gray-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Country</label>
+              <Input
+                placeholder="United States"
+                value={block.data.country || ''}
+                onChange={(e) => onUpdate(block.id, 'country', e.target.value)}
+                className="h-10 border-gray-300 rounded-lg"
+              />
+            </div>
+          </div>
+        </div>
+      );
+
     case 'group':
       return (
         <div className="text-sm text-gray-500 py-4 text-center">
