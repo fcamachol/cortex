@@ -3349,6 +3349,252 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // =============================================================================
+  // GOOGLE DRIVE-LIKE SPACES API ROUTES
+  // =============================================================================
+
+  // Get all drive spaces (with optional creator filter)
+  app.get('/api/drive-spaces', async (req: Request, res: Response) => {
+    try {
+      const { createdBy } = req.query;
+      const spaces = await storage.getDriveSpaces(createdBy as string);
+      res.json(spaces);
+    } catch (error) {
+      console.error('Error fetching drive spaces:', error);
+      res.status(500).json({ error: 'Failed to fetch drive spaces' });
+    }
+  });
+
+  // Create a new drive space
+  app.post('/api/drive-spaces', async (req: Request, res: Response) => {
+    try {
+      const spaceData = req.body;
+      const space = await storage.createDriveSpace(spaceData);
+      res.status(201).json(space);
+    } catch (error) {
+      console.error('Error creating drive space:', error);
+      res.status(500).json({ error: 'Failed to create drive space' });
+    }
+  });
+
+  // Get a specific drive space
+  app.get('/api/drive-spaces/:spaceId', async (req: Request, res: Response) => {
+    try {
+      const { spaceId } = req.params;
+      const space = await storage.getDriveSpace(spaceId);
+      
+      if (!space) {
+        return res.status(404).json({ error: 'Drive space not found' });
+      }
+      
+      res.json(space);
+    } catch (error) {
+      console.error('Error fetching drive space:', error);
+      res.status(500).json({ error: 'Failed to fetch drive space' });
+    }
+  });
+
+  // Update a drive space
+  app.put('/api/drive-spaces/:spaceId', async (req: Request, res: Response) => {
+    try {
+      const { spaceId } = req.params;
+      const updates = req.body;
+      const space = await storage.updateDriveSpace(spaceId, updates);
+      
+      if (!space) {
+        return res.status(404).json({ error: 'Drive space not found' });
+      }
+      
+      res.json(space);
+    } catch (error) {
+      console.error('Error updating drive space:', error);
+      res.status(500).json({ error: 'Failed to update drive space' });
+    }
+  });
+
+  // Delete a drive space
+  app.delete('/api/drive-spaces/:spaceId', async (req: Request, res: Response) => {
+    try {
+      const { spaceId } = req.params;
+      await storage.deleteDriveSpace(spaceId);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting drive space:', error);
+      res.status(500).json({ error: 'Failed to delete drive space' });
+    }
+  });
+
+  // Get items in a space
+  app.get('/api/drive-spaces/:spaceId/items', async (req: Request, res: Response) => {
+    try {
+      const { spaceId } = req.params;
+      const items = await storage.getDriveSpaceItems(spaceId);
+      res.json(items);
+    } catch (error) {
+      console.error('Error fetching space items:', error);
+      res.status(500).json({ error: 'Failed to fetch space items' });
+    }
+  });
+
+  // Add item to space
+  app.post('/api/drive-spaces/:spaceId/items', async (req: Request, res: Response) => {
+    try {
+      const { spaceId } = req.params;
+      const itemData = { ...req.body, spaceId };
+      const item = await storage.addItemToSpace(itemData);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error('Error adding item to space:', error);
+      res.status(500).json({ error: 'Failed to add item to space' });
+    }
+  });
+
+  // Move item between spaces
+  app.post('/api/drive-spaces/:fromSpaceId/items/:itemId/move', async (req: Request, res: Response) => {
+    try {
+      const { fromSpaceId, itemId } = req.params;
+      const { toSpaceId, movedBy } = req.body;
+      
+      await storage.moveItemToSpace(itemId, fromSpaceId, toSpaceId, movedBy);
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Error moving item:', error);
+      res.status(500).json({ error: 'Failed to move item' });
+    }
+  });
+
+  // Remove item from space
+  app.delete('/api/drive-spaces/:spaceId/items/:itemId', async (req: Request, res: Response) => {
+    try {
+      const { spaceId, itemId } = req.params;
+      await storage.removeItemFromSpace(spaceId, itemId);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error removing item from space:', error);
+      res.status(500).json({ error: 'Failed to remove item from space' });
+    }
+  });
+
+  // Toggle item star/favorite
+  app.post('/api/drive-spaces/:spaceId/items/:itemId/star', async (req: Request, res: Response) => {
+    try {
+      const { spaceId, itemId } = req.params;
+      const { starred } = req.body;
+      
+      await storage.toggleItemStar(spaceId, itemId, starred);
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Error toggling item star:', error);
+      res.status(500).json({ error: 'Failed to toggle item star' });
+    }
+  });
+
+  // Get space members
+  app.get('/api/drive-spaces/:spaceId/members', async (req: Request, res: Response) => {
+    try {
+      const { spaceId } = req.params;
+      const members = await storage.getDriveSpaceMembers(spaceId);
+      res.json(members);
+    } catch (error) {
+      console.error('Error fetching space members:', error);
+      res.status(500).json({ error: 'Failed to fetch space members' });
+    }
+  });
+
+  // Add member to space
+  app.post('/api/drive-spaces/:spaceId/members', async (req: Request, res: Response) => {
+    try {
+      const { spaceId } = req.params;
+      const memberData = { ...req.body, spaceId };
+      const member = await storage.addSpaceMember(memberData);
+      res.status(201).json(member);
+    } catch (error) {
+      console.error('Error adding space member:', error);
+      res.status(500).json({ error: 'Failed to add space member' });
+    }
+  });
+
+  // Update member role/permissions
+  app.put('/api/drive-spaces/:spaceId/members/:entityId', async (req: Request, res: Response) => {
+    try {
+      const { spaceId, entityId } = req.params;
+      const { role, ...permissions } = req.body;
+      
+      await storage.updateSpaceMemberRole(spaceId, entityId, role, permissions);
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Error updating member role:', error);
+      res.status(500).json({ error: 'Failed to update member role' });
+    }
+  });
+
+  // Remove member from space
+  app.delete('/api/drive-spaces/:spaceId/members/:entityId', async (req: Request, res: Response) => {
+    try {
+      const { spaceId, entityId } = req.params;
+      await storage.removeSpaceMember(spaceId, entityId);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error removing space member:', error);
+      res.status(500).json({ error: 'Failed to remove space member' });
+    }
+  });
+
+  // Get space activity
+  app.get('/api/drive-spaces/:spaceId/activity', async (req: Request, res: Response) => {
+    try {
+      const { spaceId } = req.params;
+      const { limit } = req.query;
+      const activity = await storage.getDriveSpaceActivity(spaceId, limit ? parseInt(limit as string) : 50);
+      res.json(activity);
+    } catch (error) {
+      console.error('Error fetching space activity:', error);
+      res.status(500).json({ error: 'Failed to fetch space activity' });
+    }
+  });
+
+  // Search spaces and items
+  app.get('/api/drive-spaces/search', async (req: Request, res: Response) => {
+    try {
+      const { q, entityId } = req.query;
+      
+      if (!q) {
+        return res.status(400).json({ error: 'Search query is required' });
+      }
+      
+      const results = await storage.searchDriveSpaces(q as string, entityId as string);
+      res.json(results);
+    } catch (error) {
+      console.error('Error searching drive spaces:', error);
+      res.status(500).json({ error: 'Failed to search drive spaces' });
+    }
+  });
+
+  // Get starred items for an entity
+  app.get('/api/drive-spaces/starred/:entityId', async (req: Request, res: Response) => {
+    try {
+      const { entityId } = req.params;
+      const starredItems = await storage.getStarredItems(entityId);
+      res.json(starredItems);
+    } catch (error) {
+      console.error('Error fetching starred items:', error);
+      res.status(500).json({ error: 'Failed to fetch starred items' });
+    }
+  });
+
+  // Get recent items for an entity
+  app.get('/api/drive-spaces/recent/:entityId', async (req: Request, res: Response) => {
+    try {
+      const { entityId } = req.params;
+      const { limit } = req.query;
+      const recentItems = await storage.getRecentItems(entityId, limit ? parseInt(limit as string) : 20);
+      res.json(recentItems);
+    } catch (error) {
+      console.error('Error fetching recent items:', error);
+      res.status(500).json({ error: 'Failed to fetch recent items' });
+    }
+  });
+
   // Error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     console.error('Unhandled error:', err);
