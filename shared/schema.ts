@@ -10,7 +10,6 @@ export const appSchema = pgSchema("app");
 export const actionsSchema = pgSchema("actions");
 export const calendarSchema = pgSchema("calendar");
 export const financeSchema = pgSchema("finance");
-export const driveSchema = pgSchema("drive");
 
 // Enums for App schema
 export const workspaceRoleEnum = appSchema.enum("workspace_role", ["admin", "member", "viewer"]);
@@ -684,6 +683,26 @@ export const appSpaceTemplates = appSchema.table("space_templates", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Space Items table (content within spaces)
+export const appSpaceItems = appSchema.table("space_items", {
+  itemId: serial("item_id").primaryKey(),
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId),
+  itemType: varchar("item_type", { length: 50 }).notNull(),
+  parentItemId: integer("parent_item_id"),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  content: jsonb("content").default({}),
+  status: varchar("status", { length: 50 }).default("active"),
+  priority: varchar("priority", { length: 50 }).default("medium"),
+  dueDate: timestamp("due_date", { withTimezone: true }),
+  assignedTo: varchar("assigned_to", { length: 255 }),
+  tags: text("tags").array(),
+  metadata: jsonb("metadata").default({}),
+  displayOrder: integer("display_order").default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
 // Space Views table (different ways to view space content)
 export const appSpaceViews = appSchema.table("space_views", {
   viewId: serial("view_id").primaryKey(),
@@ -891,85 +910,39 @@ export const appUserPreferencesRelations = relations(appUserPreferences, ({ one 
 }));
 
 // =============================================================================
-// GOOGLE DRIVE-LIKE SPACES SYSTEM (NEW ARCHITECTURE)
+// GOOGLE DRIVE-LIKE SPACES SYSTEM (UNIFIED WITH APP SCHEMA)
 // =============================================================================
 
-// Core Drive-like spaces table (cs_ prefix)
-export const driveSpaces = driveSchema.table("spaces", {
-  id: varchar("id", { length: 50 }).primaryKey(), // cs_ prefix
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  parentSpaceId: varchar("parent_space_id", { length: 50 }).references((): any => driveSpaces.id, { onDelete: "cascade" }),
-  spaceType: varchar("space_type", { length: 50 }).default("folder").notNull(), // 'folder', 'project', 'shared', 'starred'
-  color: varchar("color", { length: 7 }), // #FF5733 for UI customization
-  icon: varchar("icon", { length: 50 }), // folder, project, star, etc.
-  isPrivate: boolean("is_private").default(true).notNull(),
-  isStarred: boolean("is_starred").default(false).notNull(),
-  isArchived: boolean("is_archived").default(false).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-  createdBy: varchar("created_by", { length: 50 }).notNull(), // Entity ID (cp_, cc_, etc.)
-  lastAccessedAt: timestamp("last_accessed_at", { withTimezone: true }).defaultNow().notNull(),
-  metadata: jsonb("metadata"),
-});
+// Use existing app.spaces table as foundation for Google Drive-like functionality
+// The appSpaces table already has comprehensive space management capabilities
 
-// Space membership (Google Drive sharing model)
-export const driveSpaceMembers = driveSchema.table("space_members", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  spaceId: varchar("space_id", { length: 50 }).notNull().references(() => driveSpaces.id, { onDelete: "cascade" }),
-  entityId: varchar("entity_id", { length: 50 }).notNull(), // cp_, cc_, cg_ entities
-  role: varchar("role", { length: 20 }).notNull(), // 'owner', 'editor', 'commenter', 'viewer'
-  addedAt: timestamp("added_at", { withTimezone: true }).defaultNow().notNull(),
-  addedBy: varchar("added_by", { length: 50 }).notNull(),
-  lastAccessedAt: timestamp("last_accessed_at", { withTimezone: true }),
-  canShare: boolean("can_share").default(false).notNull(),
-  canEdit: boolean("can_edit").default(false).notNull(),
-  canComment: boolean("can_comment").default(false).notNull(),
-  canView: boolean("can_view").default(true).notNull(),
-  metadata: jsonb("metadata"),
-}, (table) => ({
-  uniqueSpaceEntity: unique().on(table.spaceId, table.entityId)
-}));
+// Drive-like aliases for existing app schema tables (to maintain existing API compatibility)
+export const driveSpaces = appSpaces;
+export const driveSpaceMembers = appSpaceMembers;
+export const driveSpaceItems = appSpaceItems;
 
-// Content in spaces (Google Drive files in folders)
-export const driveSpaceItems = driveSchema.table("space_items", {
+// Additional Google Drive-like functionality tables that extend the app schema
+// Space sharing links (Google Drive share links) - adds public sharing to existing spaces
+export const appSpaceShareLinks = appSchema.table("space_share_links", {
   id: uuid("id").primaryKey().defaultRandom(),
-  spaceId: varchar("space_id", { length: 50 }).notNull().references(() => driveSpaces.id, { onDelete: "cascade" }),
-  itemType: varchar("item_type", { length: 20 }).notNull(), // 'task', 'note', 'document', 'bill', 'receivable', 'transaction', 'space', 'company', 'contact', 'group', 'project', 'event'
-  itemId: varchar("item_id", { length: 50 }).notNull(), // UUID for content, cs_ for sub-spaces
-  name: varchar("name", { length: 255 }), // Display name (can be different from actual content title)
-  isStarred: boolean("is_starred").default(false).notNull(),
-  isPinned: boolean("is_pinned").default(false).notNull(), // Pin to top of folder
-  addedAt: timestamp("added_at", { withTimezone: true }).defaultNow().notNull(),
-  addedBy: varchar("added_by", { length: 50 }).notNull(),
-  lastAccessedAt: timestamp("last_accessed_at", { withTimezone: true }).defaultNow().notNull(),
-  sortOrder: integer("sort_order").default(0).notNull(),
-  metadata: jsonb("metadata"),
-}, (table) => ({
-  uniqueSpaceTypeItem: unique().on(table.spaceId, table.itemType, table.itemId)
-}));
-
-// Space sharing links (Google Drive share links)
-export const driveSpaceShareLinks = driveSchema.table("space_share_links", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  spaceId: varchar("space_id", { length: 50 }).notNull().references(() => driveSpaces.id, { onDelete: "cascade" }),
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
   linkToken: varchar("link_token", { length: 100 }).notNull().unique(),
   accessLevel: varchar("access_level", { length: 20 }).notNull(), // 'viewer', 'commenter', 'editor'
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   passwordHash: varchar("password_hash", { length: 255 }), // Optional password protection
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  createdBy: varchar("created_by", { length: 50 }).notNull(),
+  createdBy: uuid("created_by").notNull(),
   accessCount: integer("access_count").default(0).notNull(),
   lastAccessedAt: timestamp("last_accessed_at", { withTimezone: true }),
   metadata: jsonb("metadata"),
 });
 
-// Recent activity (Google Drive activity feed)
-export const driveSpaceActivity = driveSchema.table("space_activity", {
+// Recent activity (Google Drive activity feed) - adds activity tracking to existing spaces
+export const appSpaceActivity = appSchema.table("space_activity", {
   id: uuid("id").primaryKey().defaultRandom(),
-  spaceId: varchar("space_id", { length: 50 }).notNull().references(() => driveSpaces.id, { onDelete: "cascade" }),
-  actorId: varchar("actor_id", { length: 50 }).notNull(), // Who performed the action
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
+  actorId: uuid("actor_id").notNull(), // Who performed the action
   actionType: varchar("action_type", { length: 50 }).notNull(), // 'created', 'updated', 'deleted', 'shared', 'moved', 'copied'
   targetType: varchar("target_type", { length: 20 }), // 'space', 'item', 'member'
   targetId: varchar("target_id", { length: 50 }), // ID of the target
@@ -978,86 +951,49 @@ export const driveSpaceActivity = driveSchema.table("space_activity", {
   metadata: jsonb("metadata"),
 });
 
-// Google Drive-like insert schemas
-export const insertDriveSpaceSchema = createInsertSchema(driveSpaces).omit({
+// Drive-like aliases for the new tables
+export const driveSpaceShareLinks = appSpaceShareLinks;
+export const driveSpaceActivity = appSpaceActivity;
+
+// Google Drive-like insert schemas using the existing app schema tables
+export const insertDriveSpaceSchema = createInsertSchema(appSpaces).omit({
+  spaceId: true,
   createdAt: true,
   updatedAt: true,
-  lastAccessedAt: true,
 });
 
-export const insertDriveSpaceMemberSchema = createInsertSchema(driveSpaceMembers).omit({
-  id: true,
-  addedAt: true,
+export const insertDriveSpaceMemberSchema = createInsertSchema(appSpaceMembers).omit({
+  memberId: true,
+  joinedAt: true,
 });
 
-export const insertDriveSpaceItemSchema = createInsertSchema(driveSpaceItems).omit({
-  id: true,
-  addedAt: true,
-  lastAccessedAt: true,
+export const insertDriveSpaceItemSchema = createInsertSchema(appSpaceItems).omit({
+  itemId: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
-export const insertDriveSpaceShareLinkSchema = createInsertSchema(driveSpaceShareLinks).omit({
+export const insertDriveSpaceShareLinkSchema = createInsertSchema(appSpaceShareLinks).omit({
   id: true,
   createdAt: true,
 });
 
-export const insertDriveSpaceActivitySchema = createInsertSchema(driveSpaceActivity).omit({
+export const insertDriveSpaceActivitySchema = createInsertSchema(appSpaceActivity).omit({
   id: true,
   createdAt: true,
 });
 
-// Google Drive-like types
-export type DriveSpace = typeof driveSpaces.$inferSelect;
+// Google Drive-like types using the existing app schema tables
+export type DriveSpace = typeof appSpaces.$inferSelect;
 export type InsertDriveSpace = z.infer<typeof insertDriveSpaceSchema>;
-export type DriveSpaceMember = typeof driveSpaceMembers.$inferSelect;
+export type DriveSpaceMember = typeof appSpaceMembers.$inferSelect;
 export type InsertDriveSpaceMember = z.infer<typeof insertDriveSpaceMemberSchema>;
-export type DriveSpaceItem = typeof driveSpaceItems.$inferSelect;
+export type DriveSpaceItem = typeof appSpaceItems.$inferSelect;
 export type InsertDriveSpaceItem = z.infer<typeof insertDriveSpaceItemSchema>;
-export type DriveSpaceShareLink = typeof driveSpaceShareLinks.$inferSelect;
+export type DriveSpaceShareLink = typeof appSpaceShareLinks.$inferSelect;
 export type InsertDriveSpaceShareLink = z.infer<typeof insertDriveSpaceShareLinkSchema>;
-export type DriveSpaceActivity = typeof driveSpaceActivity.$inferSelect;
+export type DriveSpaceActivity = typeof appSpaceActivity.$inferSelect;
 export type InsertDriveSpaceActivity = z.infer<typeof insertDriveSpaceActivitySchema>;
-
-// Google Drive-like relations
-export const driveSpacesRelations = relations(driveSpaces, ({ one, many }) => ({
-  parentSpace: one(driveSpaces, {
-    fields: [driveSpaces.parentSpaceId],
-    references: [driveSpaces.id],
-  }),
-  childSpaces: many(driveSpaces),
-  members: many(driveSpaceMembers),
-  items: many(driveSpaceItems),
-  shareLinks: many(driveSpaceShareLinks),
-  activities: many(driveSpaceActivity),
-}));
-
-export const driveSpaceMembersRelations = relations(driveSpaceMembers, ({ one }) => ({
-  space: one(driveSpaces, {
-    fields: [driveSpaceMembers.spaceId],
-    references: [driveSpaces.id],
-  }),
-}));
-
-export const driveSpaceItemsRelations = relations(driveSpaceItems, ({ one }) => ({
-  space: one(driveSpaces, {
-    fields: [driveSpaceItems.spaceId],
-    references: [driveSpaces.id],
-  }),
-}));
-
-export const driveSpaceShareLinksRelations = relations(driveSpaceShareLinks, ({ one }) => ({
-  space: one(driveSpaces, {
-    fields: [driveSpaceShareLinks.spaceId],
-    references: [driveSpaces.id],
-  }),
-}));
-
-export const driveSpaceActivityRelations = relations(driveSpaceActivity, ({ one }) => ({
-  space: one(driveSpaces, {
-    fields: [driveSpaceActivity.spaceId],
-    references: [driveSpaces.id],
-  }),
-}));
 
 // Legacy tables for backward compatibility during migration
 export const tasks = pgTable("tasks", {

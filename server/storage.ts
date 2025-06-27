@@ -3680,10 +3680,10 @@ class DatabaseStorage {
             const query = db.select().from(driveSpaces);
             
             if (createdBy) {
-                return await query.where(eq(driveSpaces.createdBy, createdBy));
+                return await query.where(eq(driveSpaces.creatorUserId, createdBy));
             }
             
-            return await query.orderBy(asc(driveSpaces.name));
+            return await query.orderBy(asc(driveSpaces.spaceName));
         } catch (error) {
             console.error('Error fetching drive spaces:', error);
             throw error;
@@ -3696,12 +3696,12 @@ class DatabaseStorage {
             
             // Log activity
             await this.logDriveSpaceActivity({
-                spaceId: space.id,
-                actorId: space.createdBy,
+                spaceId: space.spaceId,
+                actorId: space.creatorUserId,
                 actionType: 'created',
                 targetType: 'space',
-                targetId: space.id,
-                details: { spaceName: space.name }
+                targetId: space.spaceId.toString(),
+                details: { spaceName: space.spaceName }
             });
             
             return space;
