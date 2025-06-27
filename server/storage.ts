@@ -1269,25 +1269,16 @@ class DatabaseStorage {
     // CRM PROJECT METHODS
     // =========================================================================
 
-    async createProject(projectData: any): Promise<CrmProject> {
-        // Generate UUID with cj_ prefix for CRM projects
-        const projectId = `cj_${crypto.randomUUID()}`;
-        
+    async createProject(projectData: any): Promise<any> {
         const [project] = await db.insert(crmProjects)
             .values({
-                id: projectId,
-                name: projectData.name,
+                instanceId: 'default-instance',
+                projectName: projectData.name,
                 description: projectData.description,
-                status: projectData.status || 'planning',
-                priority: projectData.priority || 'medium',
+                status: projectData.status || 'active',
                 startDate: projectData.startDate,
                 endDate: projectData.endDate,
-                budget: projectData.budget,
-                spentAmount: projectData.spentAmount || '0.00',
-                progress: projectData.progress || 0,
-                tags: projectData.tags || [],
-                color: projectData.color,
-                parentProjectId: projectData.parentProjectId,
+                ownerUserId: projectData.userId,
                 spaceId: projectData.spaceId || null
             })
             .returning();
@@ -1295,7 +1286,13 @@ class DatabaseStorage {
     }
 
     async getProjects(): Promise<any[]> {
-        return await db.select().from(crmProjects).orderBy(crmProjects.createdAt);
+        // Use raw SQL to work with the actual database structure
+        const result = await db.execute(sql`
+            SELECT project_id, project_name, description, status, start_date, end_date, space_id, created_at, updated_at
+            FROM crm.projects
+            ORDER BY created_at DESC
+        `);
+        return result.rows as any[];
     }
 
     async getProjectById(projectId: string): Promise<CrmProject | null> {
