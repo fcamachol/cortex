@@ -1469,7 +1469,10 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsLinkModalOpen(true)}
+                onClick={() => {
+                  console.log('Opening link modal (change) with ownerUserId:', ownerUserId);
+                  setIsLinkModalOpen(true);
+                }}
                 className="text-xs text-blue-600 hover:text-blue-700 p-1 h-auto ml-auto"
               >
                 Change
@@ -1478,7 +1481,10 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
           ) : (
             <Button
               variant="outline"
-              onClick={() => setIsLinkModalOpen(true)}
+              onClick={() => {
+                console.log('Opening link modal with ownerUserId:', ownerUserId);
+                setIsLinkModalOpen(true);
+              }}
               className="w-full justify-start text-sm text-gray-500"
             >
               <LinkIcon className="h-4 w-4 mr-2" />
