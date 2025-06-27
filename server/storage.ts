@@ -1401,6 +1401,8 @@ class DatabaseStorage {
 
     async createTaskEntityLink(taskId: string, entityId: string, relationshipType: string): Promise<any> {
         try {
+            console.log('Attempting to insert with Drizzle:', { taskId, entityId, relationshipType });
+            
             const [link] = await db.insert(taskEntities)
                 .values({
                     taskId: taskId,
@@ -1409,7 +1411,7 @@ class DatabaseStorage {
                 })
                 .returning();
             
-            console.log('Task-Entity link created:', { taskId, entityId, relationshipType });
+            console.log('Task-Entity link created successfully:', { taskId, entityId, relationshipType });
             return link;
         } catch (error) {
             console.error('Error creating task-entity link:', error);

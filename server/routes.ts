@@ -1056,30 +1056,6 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // POST /api/crm/task-entities - Create task-entity link
-  app.post('/api/crm/task-entities', async (req: Request, res: Response) => {
-    try {
-      const { taskId, entityId, relationshipType } = req.body;
-      
-      console.log('Creating task-entity link with values:', {
-        taskId: taskId + ' (length: ' + taskId?.length + ')',
-        entityId: entityId + ' (length: ' + entityId?.length + ')',
-        relationshipType: relationshipType + ' (length: ' + relationshipType?.length + ')'
-      });
-      
-      const link = await storage.createTaskEntityLink({
-        taskId,
-        entityId,
-        relationshipType
-      });
-      
-      res.json(link);
-    } catch (error) {
-      console.error('Error creating task-entity link:', error);
-      res.status(500).json({ error: 'Failed to create task-entity link' });
-    }
-  });
-
   // Link tasks to entities (projects, contacts, etc.)
   app.post('/api/crm/task-entities', async (req: Request, res: Response) => {
     try {
