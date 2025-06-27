@@ -40,6 +40,7 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingRelationship, setIsAddingRelationship] = useState(false);
   const [editingRelationshipId, setEditingRelationshipId] = useState<number | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const queryClient = useQueryClient();
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
@@ -83,15 +84,6 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
     },
   });
 
-  // Delete contact mutation
-  const deleteContactMutation = useMutation({
-    mutationFn: () => apiRequest('DELETE', `/api/crm/contacts/${contact.contactId}`),
-    onSuccess: () => {
-      onUpdate();
-      onClose();
-    },
-  });
-
   // Create relationship mutation
   const createRelationshipMutation = useMutation({
     mutationFn: (data: RelationshipFormData) => apiRequest('POST', '/api/crm/contact-relationships', {
@@ -121,6 +113,17 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
       apiRequest('DELETE', `/api/crm/contact-relationships/${relationshipId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/contact-relationships', contact.contactId] });
+    },
+  });
+
+  // Delete contact mutation
+  const deleteContactMutation = useMutation({
+    mutationFn: (contactId: number) => 
+      apiRequest('DELETE', `/api/crm/contacts/${contactId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/contacts'] });
+      onUpdate();
+      onClose();
     },
   });
 
@@ -201,6 +204,10 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
     updateContactMutation.mutate(data);
   };
 
+  const handleDeleteContact = () => {
+    deleteContactMutation.mutate(contact.contactId);
+  };
+
   if (isEditing) {
     return (
       <Dialog open={true} onOpenChange={() => setIsEditing(false)}>
@@ -240,6 +247,9 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
               <Button variant="outline" size="sm" onClick={handleEdit}>
                 <Edit className="w-4 h-4 mr-2" />
                 Edit
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowDeleteConfirm(true)}>
+                <Trash2 className="w-4 h-4" />
               </Button>
               <Button variant="ghost" size="sm" onClick={onClose}>
                 <X className="w-4 h-4" />
