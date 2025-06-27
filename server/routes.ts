@@ -757,15 +757,17 @@ export async function registerRoutes(app: Express): Promise<void> {
       
       // Map database fields to frontend expected format
       const transformedProjects = projects.map(project => ({
-        id: project.projectId || project.project_id,
-        name: project.projectName || project.project_name,
+        id: project.id, // Unified entity ID (cj_ prefixed)
+        projectId: project.project_id, // Legacy integer ID
+        name: project.project_name, // Map project_name to name
         description: project.description,
         status: project.status,
-        startDate: project.startDate || project.start_date,
-        endDate: project.endDate || project.end_date,
-        spaceId: project.spaceId || project.space_id,
-        createdAt: project.createdAt || project.created_at,
-        updatedAt: project.updatedAt || project.updated_at
+        startDate: project.start_date,
+        endDate: project.end_date,
+        spaceId: project.space_id,
+        userId: project.user_id,
+        createdAt: project.created_at,
+        updatedAt: project.updated_at
       }));
       
       res.json(transformedProjects);
