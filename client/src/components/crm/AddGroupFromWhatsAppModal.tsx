@@ -129,6 +129,13 @@ export function AddGroupFromWhatsAppModal({
     setDescription('');
     setColor('#3B82F6');
     setTags('');
+    setLinkType('none');
+    setSelectedSpaceId('');
+    setSelectedProjectId('');
+    setShowCreateSpace(false);
+    setShowCreateProject(false);
+    setNewSpaceName('');
+    setNewProjectName('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -155,6 +162,9 @@ export function AddGroupFromWhatsAppModal({
       whatsappJid: groupJid,
       whatsappInstanceId: instanceId,
       whatsappLinkedAt: new Date().toISOString(),
+      // Optional space/project linking
+      linkedSpaceId: linkType === 'space' ? selectedSpaceId : null,
+      linkedProjectId: linkType === 'project' ? selectedProjectId : null,
     };
 
     createGroupMutation.mutate(groupData);
@@ -238,6 +248,164 @@ export function AddGroupFromWhatsAppModal({
               placeholder="Enter group description"
               rows={3}
             />
+          </div>
+
+          {/* Link to Space or Project */}
+          <div className="space-y-3">
+            <Label>Link to Space or Project (Optional)</Label>
+            
+            {/* Link Type Selection */}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={linkType === 'none' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setLinkType('none');
+                  setSelectedSpaceId('');
+                  setSelectedProjectId('');
+                }}
+                className="flex-1"
+              >
+                None
+              </Button>
+              <Button
+                type="button"
+                variant={linkType === 'space' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setLinkType('space')}
+                className="flex-1"
+              >
+                <FolderOpen className="h-4 w-4 mr-1" />
+                Space
+              </Button>
+              <Button
+                type="button"
+                variant={linkType === 'project' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setLinkType('project')}
+                className="flex-1"
+              >
+                <Building2 className="h-4 w-4 mr-1" />
+                Project
+              </Button>
+            </div>
+
+            {/* Space Selection */}
+            {linkType === 'space' && (
+              <div className="space-y-2">
+                {!showCreateSpace ? (
+                  <div className="flex gap-2">
+                    <Select value={selectedSpaceId} onValueChange={setSelectedSpaceId}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select a space" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.isArray(spaces) && spaces.map((space: any) => (
+                          <SelectItem key={space.spaceId} value={space.spaceId}>
+                            {space.spaceName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowCreateSpace(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="New space name"
+                      value={newSpaceName}
+                      onChange={(e) => setNewSpaceName(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => createSpaceMutation.mutate(newSpaceName)}
+                      disabled={!newSpaceName.trim() || createSpaceMutation.isPending}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowCreateSpace(false);
+                        setNewSpaceName('');
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Project Selection */}
+            {linkType === 'project' && (
+              <div className="space-y-2">
+                {!showCreateProject ? (
+                  <div className="flex gap-2">
+                    <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select a project" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.isArray(projects) && projects.map((project: any) => (
+                          <SelectItem key={project.projectId} value={project.projectId}>
+                            {project.projectName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowCreateProject(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="New project name"
+                      value={newProjectName}
+                      onChange={(e) => setNewProjectName(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => createProjectMutation.mutate(newProjectName)}
+                      disabled={!newProjectName.trim() || createProjectMutation.isPending}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowCreateProject(false);
+                        setNewProjectName('');
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Color */}
