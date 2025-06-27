@@ -2140,14 +2140,12 @@ class DatabaseStorage {
             // Process special dates
             for (const dateBlock of specialDates) {
                 if (dateBlock.day && dateBlock.month) {
-                    // Create a date from day/month/year (use current year if not specified)
-                    const year = dateBlock.year || new Date().getFullYear();
-                    const eventDate = new Date(year, dateBlock.month - 1, dateBlock.day);
-                    
                     await this.addContactSpecialDate({
                         contactId: contact.contactId,
                         eventName: dateBlock.title || dateBlock.type || 'Special Date',
-                        eventDate: eventDate,
+                        eventDay: dateBlock.day,
+                        eventMonth: dateBlock.month,
+                        originalYear: dateBlock.year || null,
                         reminderDaysBefore: dateBlock.reminderDays || 7
                     });
                 }
@@ -2266,14 +2264,12 @@ class DatabaseStorage {
             // Add new special dates
             for (const dateBlock of specialDates) {
                 if (dateBlock.day && dateBlock.month) {
-                    // Create a date from day/month/year (use current year if not specified)
-                    const year = dateBlock.year || new Date().getFullYear();
-                    const eventDate = new Date(year, dateBlock.month - 1, dateBlock.day);
-                    
                     await this.addContactSpecialDate({
                         contactId: contactId,
                         eventName: dateBlock.title || dateBlock.type || 'Special Date',
-                        eventDate: eventDate,
+                        eventDay: dateBlock.day,
+                        eventMonth: dateBlock.month,
+                        originalYear: dateBlock.year || null,
                         reminderDaysBefore: dateBlock.reminderDays || 7
                     });
                 }
@@ -2526,7 +2522,7 @@ class DatabaseStorage {
     async getContactSpecialDates(contactId: number): Promise<any[]> {
         return await db.select().from(crmSpecialDates)
             .where(eq(crmSpecialDates.contactId, contactId))
-            .orderBy(asc(crmSpecialDates.eventDate));
+            .orderBy(asc(crmSpecialDates.eventMonth), asc(crmSpecialDates.eventDay));
     }
 
     async addContactSpecialDate(dateData: any): Promise<any> {
@@ -2711,22 +2707,22 @@ class DatabaseStorage {
 
     async getUpcomingSpecialDates(ownerUserId: string, daysAhead: number = 30): Promise<any[]> {
         const today = new Date();
-        const futureDate = new Date();
-        futureDate.setDate(today.getDate() + daysAhead);
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth() + 1; // JS months are 0-based
+        const currentDay = today.getDate();
 
         return await db.select({
             contactId: crmContacts.contactId,
             contactName: crmContacts.fullName,
             eventName: crmSpecialDates.eventName,
-            eventDate: crmSpecialDates.eventDate,
+            eventDay: crmSpecialDates.eventDay,
+            eventMonth: crmSpecialDates.eventMonth,
+            originalYear: crmSpecialDates.originalYear,
             reminderDaysBefore: crmSpecialDates.reminderDaysBefore,
         }).from(crmSpecialDates)
         .innerJoin(crmContacts, eq(crmSpecialDates.contactId, crmContacts.contactId))
-        .where(and(
-            eq(crmContacts.ownerUserId, ownerUserId),
-            sql`${crmSpecialDates.eventDate} BETWEEN ${today} AND ${futureDate}`
-        ))
-        .orderBy(asc(crmSpecialDates.eventDate));
+        .where(eq(crmContacts.ownerUserId, ownerUserId))
+        .orderBy(asc(crmSpecialDates.eventMonth), asc(crmSpecialDates.eventDay));
     }
 
     // Company Management Methods
