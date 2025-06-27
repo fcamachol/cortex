@@ -427,12 +427,7 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                 </div>
               )}
 
-              {/* Creation Date */}
-              <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                <div className="text-sm text-gray-500">
-                  Created: {formatDate(contact.createdAt)}
-                </div>
-              </div>
+
             </CardContent>
           </Card>
 
