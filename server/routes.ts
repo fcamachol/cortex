@@ -1037,26 +1037,40 @@ export async function registerRoutes(app: Express): Promise<void> {
       // Transform response for frontend
       const transformedTask = {
         id: task.id,
-        taskId: task.taskId || task.task_id,
         title: task.title,
         description: task.description,
         status: task.status,
         priority: task.priority,
-        dueDate: task.dueDate || task.due_date,
-        projectId: task.projectId || task.project_id,
-        parentTaskId: task.parentTaskId || task.parent_task_id,
-        assignedToUserId: task.assignedToUserId || task.assigned_to_user_id,
-        createdByUserId: task.createdByUserId || task.created_by_user_id,
-        spaceId: task.spaceId || task.space_id,
-        instanceId: task.instanceId || task.instance_id,
-        createdAt: task.createdAt || task.created_at,
-        updatedAt: task.updatedAt || task.updated_at
+        dueDate: task.dueDate,
+        parentTaskId: task.parentTaskId,
+        spaceId: task.spaceId,
+        tags: task.tags,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt
       };
       
       res.json(transformedTask);
     } catch (error) {
       console.error('Error creating task:', error);
       res.status(500).json({ error: 'Failed to create task' });
+    }
+  });
+
+  // POST /api/crm/task-entities - Create task-entity link
+  app.post('/api/crm/task-entities', async (req: Request, res: Response) => {
+    try {
+      const { taskId, entityId, relationshipType } = req.body;
+      
+      const link = await storage.createTaskEntityLink({
+        taskId,
+        entityId,
+        relationshipType
+      });
+      
+      res.json(link);
+    } catch (error) {
+      console.error('Error creating task-entity link:', error);
+      res.status(500).json({ error: 'Failed to create task-entity link' });
     }
   });
 

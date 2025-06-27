@@ -1373,6 +1373,17 @@ class DatabaseStorage {
         return task;
     }
 
+    async createTaskEntityLink(data: { taskId: string; entityId: string; relationshipType: string }): Promise<any> {
+        const [link] = await db.insert(taskEntities)
+            .values({
+                taskId: data.taskId,
+                entityId: data.entityId,
+                relationshipType: data.relationshipType
+            })
+            .returning();
+        return link;
+    }
+
     async getTasks(instanceId?: string): Promise<any[]> {
         let query = db.select().from(crmTasks).orderBy(desc(crmTasks.createdAt));
         

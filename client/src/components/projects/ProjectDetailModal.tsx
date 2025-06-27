@@ -114,7 +114,7 @@ function TaskCreationForm({ projectId, onTaskCreated }: TaskCreationFormProps) {
   const createTaskMutation = useMutation({
     mutationFn: async (data: TaskFormData) => {
       // Create the task
-      const taskResponse = await apiRequest('/api/crm/tasks', 'POST', {
+      const taskResponse = await apiRequest('POST', '/api/crm/tasks', {
         title: data.title,
         description: data.description,
         priority: data.priority,
@@ -122,9 +122,11 @@ function TaskCreationForm({ projectId, onTaskCreated }: TaskCreationFormProps) {
         dueDate: data.dueDate || null,
       });
 
+      const taskData = await taskResponse.json();
+
       // Link the task to the project using the unified entity system
-      await apiRequest('/api/crm/task-entities', 'POST', {
-        taskId: taskResponse.taskId || taskResponse.id,
+      await apiRequest('POST', '/api/crm/task-entities', {
+        taskId: taskData.id,
         entityId: projectId,
         relationshipType: 'assigned_to_project',
       });
