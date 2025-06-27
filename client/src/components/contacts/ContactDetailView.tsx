@@ -273,11 +273,12 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
             </CardContent>
           </Card>
 
-          {/* Contact Details - Only Additional Information Not in Header */}
-          <Card>
-            <CardContent className="p-6 space-y-4">
-              {/* Phone Numbers */}
-              {fullContactDetails?.phones && fullContactDetails.phones.length > 0 && (
+          {/* Contact Details - Additional Information */}
+          {!isLoadingDetails && fullContactDetails && (
+            <Card>
+              <CardContent className="p-6 space-y-4">
+                {/* Phone Numbers */}
+                {fullContactDetails.phones && fullContactDetails.phones.length > 0 && (
                 <div>
                   <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
                     <Phone className="w-4 h-4" />
@@ -436,8 +437,9 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
               )}
 
 
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Activity Section */}
           <Tabs defaultValue="tasks" className="w-full">
