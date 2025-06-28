@@ -15,7 +15,7 @@ import {
     // Actions Schema
     actionRules, actionExecutions,
     // CRM Schema - Comprehensive Contacts Module
-    crmProjects, crmTasks, crmCompanies, crmCalendarEvents, crmEventAttendees, crmNotes,
+    crmProjects, crmTasks, crmCompanies, crmCalendarEvents, crmEventAttendees, crmNotes, crmNotesLegacy,
     crmContacts, crmContactPhones, crmContactEmails, crmContactAddresses, 
     crmContactAliases, crmSpecialDates, crmInterests, crmContactInterests,
     crmCompanyMembers, crmContactGroups, crmContactGroupMembers, crmContactRelationships, crmGroups,

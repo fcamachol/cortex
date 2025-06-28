@@ -1,0 +1,31 @@
+{
+  "id": "1751090433650-95xo1w0b6",
+  "timestamp": "2025-06-28T06:00:33.650Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages.upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "live-test-1750199771",
+    "data": {
+      "key": {
+        "remoteJid": "5214423678505@s.whatsapp.net",
+        "fromMe": false,
+        "id": "IMPORT_FIX_TEST_1751090433578"
+      },
+      "message": {
+        "reactionMessage": {
+          "text": "📝",
+          "key": {
+            "id": "3A2E26100C176CAA0E55"
+          },
+          "senderTimestampMs": "1751090433578"
+        }
+      },
+      "messageType": "reactionMessage",
+      "messageTimestamp": 1751090433,
+      "pushName": "Import Fix Test"
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

@@ -1,0 +1,31 @@
+{
+  "id": "1751090396478-8mwjl4ihh",
+  "timestamp": "2025-06-28T05:59:56.478Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages.upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "live-test-1750199771",
+    "data": {
+      "key": {
+        "remoteJid": "5214423678505@s.whatsapp.net",
+        "fromMe": false,
+        "id": "CORRECT_URL_TEST_1751090396421"
+      },
+      "message": {
+        "reactionMessage": {
+          "text": "📝",
+          "key": {
+            "id": "3A2E26100C176CAA0E55"
+          },
+          "senderTimestampMs": "1751090396421"
+        }
+      },
+      "messageType": "reactionMessage",
+      "messageTimestamp": 1751090396,
+      "pushName": "URL Test"
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
