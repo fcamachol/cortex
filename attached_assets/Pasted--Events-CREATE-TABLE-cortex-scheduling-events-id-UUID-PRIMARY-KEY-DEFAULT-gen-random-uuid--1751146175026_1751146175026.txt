@@ -1,0 +1,121 @@
+-- Events
+CREATE TABLE cortex_scheduling.events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
+    timezone VARCHAR(50) DEFAULT 'UTC',
+    is_all_day BOOLEAN DEFAULT FALSE,
+    location VARCHAR(500),
+    location_type VARCHAR(50) CHECK (location_type IN ('physical', 'virtual', 'phone')),
+    meeting_url VARCHAR(500),
+    recurrence_rule TEXT,
+    recurrence_end_date TIMESTAMP,
+    is_recurring BOOLEAN DEFAULT FALSE,
+    parent_event_id UUID REFERENCES cortex_scheduling.events(id),
+    created_by_entity_id VARCHAR(50),
+    organizer_entity_id VARCHAR(50),
+    status VARCHAR(50) DEFAULT 'confirmed' CHECK (status IN ('tentative', 'confirmed', 'cancelled')),
+    external_event_id VARCHAR(255),
+    calendar_provider VARCHAR(50),
+    space_id VARCHAR(50),
+    triggering_message_id VARCHAR(255),
+    triggering_instance_name VARCHAR(255),
+    tags JSONB DEFAULT '[]',
+    custom_fields JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CHECK (end_time > start_time)
+);
+
+-- Event participants
+CREATE TABLE cortex_scheduling.event_participants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID NOT NULL REFERENCES cortex_scheduling.events(id) ON DELETE CASCADE,
+    participant_entity_id VARCHAR(50) NOT NULL,
+    response_status VARCHAR(20) DEFAULT 'pending' CHECK (
+        response_status IN ('pending', 'accepted', 'declined', 'tentative')
+    ),
+    role VARCHAR(50) DEFAULT 'attendee' CHECK (role IN ('organizer', 'attendee', 'optional')),
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    responded_at TIMESTAMP
+);
+
+-- Reminders
+CREATE TABLE cortex_scheduling.reminders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(500) NOT NULL,
+    description TEXT,
+    remind_at TIMESTAMP NOT NULL,
+    timezone VARCHAR(50) DEFAULT 'UTC',
+    status VARCHAR(20) DEFAULT 'pending' CHECK (
+        status IN ('pending', 'snoozed', 'completed', 'dismissed', 'cancelled')
+    ),
+    reminder_type VARCHAR(30) DEFAULT 'once' CHECK (
+        reminder_type IN ('once', 'recurring', 'location_based', 'conditional')
+    ),
+    priority VARCHAR(10) DEFAULT 'medium' CHECK (
+        priority IN ('low', 'medium', 'high', 'urgent')
+    ),
+    reminded_user_id VARCHAR(50) NOT NULL,
+    notification_methods JSONB DEFAULT '["in_app"]',
+    is_urgent_override BOOLEAN DEFAULT FALSE,
+    location_name VARCHAR(255),
+    latitude DECIMAL(10, 8),
+    longitude DECIMAL(11, 8),
+    location_radius_meters INTEGER DEFAULT 100,
+    recurrence_pattern JSONB,
+    recurrence_end_date TIMESTAMP,
+    condition_type VARCHAR(50),
+    condition_data JSONB,
+    snooze_count INTEGER DEFAULT 0,
+    snooze_until TIMESTAMP,
+    max_snoozes INTEGER DEFAULT 3,
+    completed_at TIMESTAMP,
+    completed_by VARCHAR(50),
+    completion_notes TEXT,
+    auto_delete_after_days INTEGER DEFAULT 30,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(50),
+    metadata JSONB DEFAULT '{}'
+);
+
+-- Reminder links
+CREATE TABLE cortex_scheduling.reminder_links (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    reminder_id UUID NOT NULL REFERENCES cortex_scheduling.reminders(id) ON DELETE CASCADE,
+    entity_id VARCHAR(50),
+    content_type VARCHAR(50),
+    content_id VARCHAR(50),
+    relationship_type VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metadata JSONB DEFAULT '{}',
+    CHECK (
+        (entity_id IS NOT NULL AND content_type IS NULL AND content_id IS NULL) OR
+        (entity_id IS NULL AND content_type IS NOT NULL AND content_id IS NOT NULL)
+    )
+);
+
+-- Calendar integrations
+CREATE TABLE cortex_scheduling.calendar_integrations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id VARCHAR(50) NOT NULL,
+    provider_type VARCHAR(50) CHECK (provider_type IN ('google', 'outlook', 'apple', 'caldav')),
+    provider_account_id VARCHAR(255),
+    account_name VARCHAR(255),
+    access_token TEXT,
+    refresh_token TEXT,
+    token_expires_at TIMESTAMP,
+    sync_status VARCHAR(50) DEFAULT 'active' CHECK (
+        sync_status IN ('active', 'error', 'revoked', 'pending')
+    ),
+    last_sync_at TIMESTAMP,
+    sync_direction VARCHAR(20) DEFAULT 'bidirectional' CHECK (
+        sync_direction IN ('import_only', 'export_only', 'bidirectional')
+    ),
+    default_calendar_id VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
