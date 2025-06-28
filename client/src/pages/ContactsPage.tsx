@@ -75,7 +75,20 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
 
   const { data: upcomingDates = [] } = useQuery({
     queryKey: ['/api/crm/contacts/upcoming-dates', userId],
-    queryFn: () => fetch(`/api/crm/contacts/upcoming-dates?ownerUserId=${userId}`).then(res => res.json()),
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/crm/contacts/upcoming-dates?ownerUserId=${userId}`);
+        if (!response.ok) {
+          console.warn('Upcoming dates API failed, returning empty array');
+          return [];
+        }
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.warn('Error fetching upcoming dates:', error);
+        return [];
+      }
+    },
     enabled: !!userId,
   });
 
