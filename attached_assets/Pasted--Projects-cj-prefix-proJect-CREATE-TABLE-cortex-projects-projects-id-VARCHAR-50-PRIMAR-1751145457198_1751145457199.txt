@@ -1,0 +1,121 @@
+-- Projects - cj_ prefix (proJect)
+CREATE TABLE cortex_projects.projects (
+    id VARCHAR(50) PRIMARY KEY DEFAULT generate_entity_id('cj'),
+    
+    -- Basic information
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    project_code VARCHAR(50), -- Internal reference code
+    
+    -- Status and priority
+    status VARCHAR(50) DEFAULT 'planning' CHECK (
+        status IN ('planning', 'active', 'on_hold', 'completed', 'cancelled', 'archived')
+    ),
+    priority VARCHAR(20) DEFAULT 'medium' CHECK (
+        priority IN ('low', 'medium', 'high', 'urgent')
+    ),
+    
+    -- Timeline
+    start_date DATE,
+    end_date DATE,
+    estimated_completion_date DATE,
+    actual_completion_date DATE,
+    
+    -- Financial tracking
+    budget NUMERIC(15,2), -- Total project budget
+    spent_amount NUMERIC(15,2) DEFAULT 0, -- Amount spent so far
+    hourly_rate NUMERIC(8,2), -- Default hourly rate for this project
+    
+    -- Progress tracking
+    progress_percentage INTEGER DEFAULT 0 CHECK (progress_percentage >= 0 AND progress_percentage <= 100),
+    
+    -- Relationships (via entity_relationships table)
+    owner_entity_id VARCHAR(50), -- Project manager (references persons)
+    client_entity_id VARCHAR(50), -- Client (references persons/companies)
+    space_id VARCHAR(50), -- Which space contains this project
+    
+    -- Classification
+    project_type VARCHAR(50), -- 'development', 'marketing', 'research', 'consulting'
+    methodology VARCHAR(50), -- 'agile', 'waterfall', 'kanban', 'scrum'
+    
+    -- Flexible metadata
+    tags JSONB DEFAULT '[]',
+    custom_fields JSONB DEFAULT '{}',
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(50) -- References cortex_foundation.users.id
+);
+
+-- Tasks (UUID primary keys for high volume)
+CREATE TABLE cortex_projects.tasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    
+    -- Basic information
+    title VARCHAR(500) NOT NULL,
+    description TEXT,
+    task_number VARCHAR(50), -- Human-readable task number (PROJ-001)
+    
+    -- Status and priority
+    status VARCHAR(50) DEFAULT 'todo' CHECK (
+        status IN ('todo', 'in_progress', 'waiting', 'review', 'done', 'cancelled')
+    ),
+    priority VARCHAR(20) DEFAULT 'medium' CHECK (
+        priority IN ('low', 'medium', 'high', 'urgent')
+    ),
+    
+    -- Timing
+    due_date TIMESTAMP,
+    start_date TIMESTAMP,
+    completed_at TIMESTAMP,
+    estimated_hours NUMERIC(5,2),
+    actual_hours NUMERIC(5,2),
+    
+    -- Hierarchy
+    parent_task_id UUID REFERENCES cortex_projects.tasks(id), -- For subtasks
+    project_entity_id VARCHAR(50), -- Which project (references cortex_projects.projects.id)
+    
+    -- Assignment (linked via entity_relationships)
+    created_by_entity_id VARCHAR(50), -- Who created it
+    assigned_to_entity_id VARCHAR(50), -- Who should do it
+    space_id VARCHAR(50), -- Which space contains this task
+    
+    -- WhatsApp integration
+    triggering_message_id VARCHAR(255), -- Links to whatsapp.messages.message_id
+    triggering_instance_name VARCHAR(255), -- Links to whatsapp.messages.instance_name
+    
+    -- Progress
+    progress_percentage INTEGER DEFAULT 0 CHECK (progress_percentage >= 0 AND progress_percentage <= 100),
+    
+    -- Metadata
+    tags JSONB DEFAULT '[]',
+    custom_fields JSONB DEFAULT '{}',
+    attachments JSONB DEFAULT '[]', -- Document/file references
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Project milestones
+CREATE TABLE cortex_projects.milestones (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id VARCHAR(50) NOT NULL, -- References cortex_projects.projects.id
+    
+    -- Basic information
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    
+    -- Timeline
+    due_date DATE,
+    completed_at TIMESTAMP,
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'pending' CHECK (
+        status IN ('pending', 'in_progress', 'completed', 'missed')
+    ),
+    
+    -- Progress
+    progress_percentage INTEGER DEFAULT 0 CHECK (progress_percentage >= 0 AND progress_percentage <= 100),
+    
+    -- Dependencies
+    depends_on_milestone_
