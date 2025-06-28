@@ -3294,9 +3294,9 @@ class DatabaseStorage {
             // Generate title if missing - use chat ID and date format
             const finalTitle = noteData.title || `${noteData.relatedChatJid || 'Unknown'} ${new Date().toLocaleDateString()}`;
             
-            // Create note using Drizzle ORM
+            // Create note using Drizzle ORM with correct field names for legacy table
             const [createdNote] = await db
-                .insert(crmNotes)
+                .insert(crmNotesLegacy)
                 .values({
                     title: finalTitle,
                     content: noteData.content || 'Automatically created note',
