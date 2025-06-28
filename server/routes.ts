@@ -2170,7 +2170,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/api/crm/tasks/:taskId', async (req: Request, res: Response) => {
     try {
       const { taskId } = req.params;
-      const task = await storage.getTaskById(parseInt(taskId));
+      const task = await storage.getTaskById(taskId); // Use string directly, not parseInt
       if (!task) {
         return res.status(404).json({ error: 'Task not found' });
       }

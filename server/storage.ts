@@ -1355,25 +1355,24 @@ class DatabaseStorage {
             dueDate = typeof taskData.dueDate === 'string' ? new Date(taskData.dueDate) : taskData.dueDate;
         }
         
-        const now = new Date();
+        // Use raw SQL to avoid Drizzle schema issues with legacy fields
+        const result = await db.execute(sql`
+            INSERT INTO crm.tasks (
+                id, user_id, title, description, status, priority, due_date, parent_task_id, tags
+            ) VALUES (
+                ${taskId}, 
+                ${taskData.userId}, 
+                ${taskData.title}, 
+                ${taskData.description}, 
+                ${taskData.status || 'to_do'}, 
+                ${taskData.priority || 'medium'}, 
+                ${dueDate}, 
+                ${taskData.parentTaskId}, 
+                ${JSON.stringify(taskData.tags || [])}
+            ) RETURNING *
+        `);
         
-        const [task] = await db.insert(crmTasks)
-            .values({
-                id: taskId,
-                userId: taskData.userId, // Include userId field for unified entity architecture
-                title: taskData.title,
-                description: taskData.description,
-                status: taskData.status || 'to_do',
-                priority: taskData.priority || 'medium',
-                dueDate: dueDate,
-                parentTaskId: taskData.parentTaskId || null,
-                tags: taskData.tags || [],
-                createdAt: now,
-                updatedAt: now
-                // Note: WhatsApp message linking is now handled via the task_message_links junction table
-            })
-            .returning();
-        return task;
+        return result.rows[0];
     }
 
     async createTaskEntityLink(data: { taskId: string; entityId: string; relationshipType: string }): Promise<any> {
@@ -1420,9 +1419,12 @@ class DatabaseStorage {
         return result;
     }
 
-    async getTaskById(taskId: number): Promise<any | null> {
-        const [task] = await db.select().from(crmTasks).where(eq(crmTasks.taskId, taskId));
-        return task || null;
+    async getTaskById(taskId: string): Promise<any | null> {
+        // Use raw SQL to avoid schema conflicts with legacy fields
+        const result = await db.execute(sql`
+            SELECT * FROM crm.tasks WHERE id = ${taskId}
+        `);
+        return result.rows[0] || null;
     }
 
     async getTasksByProjectId(projectId: string): Promise<any[]> {
