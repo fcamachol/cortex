@@ -3315,6 +3315,16 @@ class DatabaseStorage {
             throw error;
         }
     }
+
+    async getCrmNotes(): Promise<any[]> {
+        try {
+            const notes = await db.select().from(crmNotesLegacy).orderBy(desc(crmNotesLegacy.createdAt));
+            return notes;
+        } catch (error) {
+            console.error('❌ Error fetching CRM notes:', error);
+            throw error;
+        }
+    }
     async getMessageReplies(originalMessageId: string, instanceId: string): Promise<any[]> {
         try {
             const replies = await db.select()

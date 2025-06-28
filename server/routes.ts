@@ -200,6 +200,17 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Notes API endpoint for testing
+  app.get('/api/crm/notes', async (req: Request, res: Response) => {
+    try {
+      const notes = await storage.getCrmNotes();
+      res.json(notes);
+    } catch (error) {
+      console.error('Error fetching notes:', error);
+      res.status(500).json({ error: 'Failed to fetch notes' });
+    }
+  });
+
   // WhatsApp routes
   app.get('/api/whatsapp/conversations/:userId', async (req: Request, res: Response) => {
     try {

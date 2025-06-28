@@ -1,0 +1,31 @@
+{
+  "id": "1751090542785-d4cqauaz1",
+  "timestamp": "2025-06-28T06:02:22.785Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages.upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "live-test-1750199771",
+    "data": {
+      "key": {
+        "remoteJid": "5214423678505@s.whatsapp.net",
+        "fromMe": false,
+        "id": "REACTION_1751090542732"
+      },
+      "message": {
+        "reactionMessage": {
+          "text": "📝",
+          "key": {
+            "id": "3A454393EC5D2E06A721"
+          },
+          "senderTimestampMs": "1751090542732"
+        }
+      },
+      "messageType": "reactionMessage",
+      "messageTimestamp": 1751090542,
+      "pushName": "Existing Message Test"
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
