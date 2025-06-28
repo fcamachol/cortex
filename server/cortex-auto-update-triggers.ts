@@ -10,11 +10,11 @@ export async function createCortexAutoUpdateTriggers() {
   console.log('🔧 Creating auto-update triggers across all Cortex schemas...');
 
   try {
-    // First, ensure the update_updated_at_column function exists in public schema
+    // First, ensure the update_updated_at_column function exists
     console.log('📊 Creating update_updated_at_column function...');
     
     await db.execute(sql`
-      CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+      CREATE OR REPLACE FUNCTION update_updated_at_column()
       RETURNS TRIGGER AS $$
       BEGIN
           NEW.updated_at = CURRENT_TIMESTAMP;
@@ -72,52 +72,52 @@ export async function createCortexAutoUpdateTriggers() {
     // Scheduling Schema Triggers
     console.log('📊 Creating Scheduling schema triggers...');
     
-    await db.execute(sql`CREATE TRIGGER trg_events_updated_at BEFORE UPDATE ON cortex_scheduling.events FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_event_participants_updated_at BEFORE UPDATE ON cortex_scheduling.event_participants FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_reminders_updated_at BEFORE UPDATE ON cortex_scheduling.reminders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_reminder_links_updated_at BEFORE UPDATE ON cortex_scheduling.reminder_links FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_calendar_integrations_updated_at BEFORE UPDATE ON cortex_scheduling.calendar_integrations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_events_updated_at BEFORE UPDATE ON cortex_scheduling.events FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_event_participants_updated_at BEFORE UPDATE ON cortex_scheduling.event_participants FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_reminders_updated_at BEFORE UPDATE ON cortex_scheduling.reminders FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_reminder_links_updated_at BEFORE UPDATE ON cortex_scheduling.reminder_links FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_calendar_integrations_updated_at BEFORE UPDATE ON cortex_scheduling.calendar_integrations FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
 
     console.log('✅ Scheduling triggers created (5 triggers)');
 
     // Knowledge Schema Triggers
     console.log('📊 Creating Knowledge schema triggers...');
     
-    await db.execute(sql`CREATE TRIGGER trg_notes_updated_at BEFORE UPDATE ON cortex_knowledge.notes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_documents_updated_at BEFORE UPDATE ON cortex_knowledge.documents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_document_types_updated_at BEFORE UPDATE ON cortex_knowledge.document_types FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_folders_updated_at BEFORE UPDATE ON cortex_knowledge.folders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_bookmarks_updated_at BEFORE UPDATE ON cortex_knowledge.bookmarks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_google_drive_config_updated_at BEFORE UPDATE ON cortex_knowledge.google_drive_config FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_google_drive_folders_updated_at BEFORE UPDATE ON cortex_knowledge.google_drive_folders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_notes_updated_at BEFORE UPDATE ON cortex_knowledge.notes FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_documents_updated_at BEFORE UPDATE ON cortex_knowledge.documents FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_document_types_updated_at BEFORE UPDATE ON cortex_knowledge.document_types FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_folders_updated_at BEFORE UPDATE ON cortex_knowledge.folders FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_bookmarks_updated_at BEFORE UPDATE ON cortex_knowledge.bookmarks FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_google_drive_config_updated_at BEFORE UPDATE ON cortex_knowledge.google_drive_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_google_drive_folders_updated_at BEFORE UPDATE ON cortex_knowledge.google_drive_folders FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
 
     console.log('✅ Knowledge triggers created (7 triggers)');
 
     // Communication Schema Triggers
     console.log('📊 Creating Communication schema triggers...');
     
-    await db.execute(sql`CREATE TRIGGER trg_channels_updated_at BEFORE UPDATE ON cortex_communication.channels FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_conversations_updated_at BEFORE UPDATE ON cortex_communication.conversations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_messages_unified_updated_at BEFORE UPDATE ON cortex_communication.messages_unified FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_participants_updated_at BEFORE UPDATE ON cortex_communication.participants FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_channel_entity_links_updated_at BEFORE UPDATE ON cortex_communication.channel_entity_links FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_message_templates_updated_at BEFORE UPDATE ON cortex_communication.message_templates FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_communication_events_updated_at BEFORE UPDATE ON cortex_communication.communication_events FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_communication_automations_updated_at BEFORE UPDATE ON cortex_communication.communication_automations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_channels_updated_at BEFORE UPDATE ON cortex_communication.channels FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_conversations_updated_at BEFORE UPDATE ON cortex_communication.conversations FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_messages_unified_updated_at BEFORE UPDATE ON cortex_communication.messages_unified FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_participants_updated_at BEFORE UPDATE ON cortex_communication.participants FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_channel_entity_links_updated_at BEFORE UPDATE ON cortex_communication.channel_entity_links FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_message_templates_updated_at BEFORE UPDATE ON cortex_communication.message_templates FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_communication_events_updated_at BEFORE UPDATE ON cortex_communication.communication_events FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_communication_automations_updated_at BEFORE UPDATE ON cortex_communication.communication_automations FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
 
     console.log('✅ Communication triggers created (8 triggers)');
 
     // Automation Schema Triggers
     console.log('📊 Creating Automation schema triggers...');
     
-    await db.execute(sql`CREATE TRIGGER trg_rules_updated_at BEFORE UPDATE ON cortex_automation.rules FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_workflows_updated_at BEFORE UPDATE ON cortex_automation.workflows FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_workflow_steps_updated_at BEFORE UPDATE ON cortex_automation.workflow_steps FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_templates_updated_at BEFORE UPDATE ON cortex_automation.templates FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_rule_executions_updated_at BEFORE UPDATE ON cortex_automation.rule_executions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_workflow_executions_updated_at BEFORE UPDATE ON cortex_automation.workflow_executions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_triggers_updated_at BEFORE UPDATE ON cortex_automation.triggers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
-    await db.execute(sql`CREATE TRIGGER trg_trigger_executions_updated_at BEFORE UPDATE ON cortex_automation.trigger_executions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_rules_updated_at BEFORE UPDATE ON cortex_automation.rules FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_workflows_updated_at BEFORE UPDATE ON cortex_automation.workflows FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_workflow_steps_updated_at BEFORE UPDATE ON cortex_automation.workflow_steps FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_templates_updated_at BEFORE UPDATE ON cortex_automation.templates FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_rule_executions_updated_at BEFORE UPDATE ON cortex_automation.rule_executions FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_workflow_executions_updated_at BEFORE UPDATE ON cortex_automation.workflow_executions FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_triggers_updated_at BEFORE UPDATE ON cortex_automation.triggers FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
+    await db.execute(sql`CREATE TRIGGER trg_trigger_executions_updated_at BEFORE UPDATE ON cortex_automation.trigger_executions FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column()`);
 
     console.log('✅ Automation triggers created (8 triggers)');
 
