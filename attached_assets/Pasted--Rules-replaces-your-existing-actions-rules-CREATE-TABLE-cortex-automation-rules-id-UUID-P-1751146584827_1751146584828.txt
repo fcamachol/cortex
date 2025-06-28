@@ -1,0 +1,132 @@
+-- Rules (replaces your existing actions.rules)
+CREATE TABLE cortex_automation.rules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    trigger_type VARCHAR(50) NOT NULL CHECK (
+        trigger_type IN ('whatsapp_message', 'schedule', 'entity_change', 'manual', 'webhook')
+    ),
+    priority INTEGER DEFAULT 100,
+    created_by VARCHAR(50) NOT NULL,
+    space_id VARCHAR(50),
+    last_executed_at TIMESTAMP,
+    execution_count INTEGER DEFAULT 0,
+    success_count INTEGER DEFAULT 0,
+    failure_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Rule conditions
+CREATE TABLE cortex_automation.rule_conditions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    rule_id UUID NOT NULL REFERENCES cortex_automation.rules(id) ON DELETE CASCADE,
+    condition_type VARCHAR(50) NOT NULL,
+    operator VARCHAR(20) NOT NULL CHECK (
+        operator IN ('equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 
+                    'ends_with', 'matches_regex', 'greater_than', 'less_than', 'in_list')
+    ),
+    field_name VARCHAR(100),
+    value TEXT,
+    condition_group INTEGER DEFAULT 1,
+    group_operator VARCHAR(3) DEFAULT 'AND' CHECK (group_operator IN ('AND', 'OR')),
+    is_negated BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Rule actions
+CREATE TABLE cortex_automation.rule_actions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    rule_id UUID NOT NULL REFERENCES cortex_automation.rules(id) ON DELETE CASCADE,
+    action_type VARCHAR(50) NOT NULL CHECK (
+        action_type IN ('create_task', 'create_note', 'send_message', 'create_reminder', 
+                       'update_entity', 'send_email', 'webhook_call', 'create_event')
+    ),
+    action_order INTEGER NOT NULL,
+    target_entity_id VARCHAR(50),
+    parameters JSONB NOT NULL DEFAULT '{}',
+    template_id UUID,
+    is_conditional BOOLEAN DEFAULT FALSE,
+    condition_expression TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Rule executions
+CREATE TABLE cortex_automation.rule_executions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    rule_id UUID NOT NULL REFERENCES cortex_automation.rules(id),
+    trigger_data JSONB,
+    execution_result JSONB,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('success', 'failed', 'partial', 'skipped')),
+    error_message TEXT,
+    actions_executed INTEGER DEFAULT 0,
+    actions_failed INTEGER DEFAULT 0,
+    execution_time_ms INTEGER,
+    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metadata JSONB DEFAULT '{}'
+);
+
+-- Templates
+CREATE TABLE cortex_automation.templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    template_type VARCHAR(50) NOT NULL CHECK (
+        template_type IN ('message', 'task', 'note', 'email', 'document')
+    ),
+    content TEXT NOT NULL,
+    variables JSONB DEFAULT '[]',
+    is_active BOOLEAN DEFAULT TRUE,
+    category VARCHAR(100),
+    created_by VARCHAR(50),
+    usage_count INTEGER DEFAULT 0,
+    last_used_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Workflows (multi-step automation)
+CREATE TABLE cortex_automation.workflows (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    trigger_event VARCHAR(100) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    version INTEGER DEFAULT 1,
+    created_by VARCHAR(50),
+    total_executions INTEGER DEFAULT 0,
+    successful_executions INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Workflow steps
+CREATE TABLE cortex_automation.workflow_steps (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workflow_id UUID NOT NULL REFERENCES cortex_automation.workflows(id) ON DELETE CASCADE,
+    step_order INTEGER NOT NULL,
+    step_name VARCHAR(255),
+    step_type VARCHAR(50) NOT NULL CHECK (
+        step_type IN ('action', 'condition', 'wait', 'human_approval', 'loop', 'parallel')
+    ),
+    step_config JSONB NOT NULL DEFAULT '{}',
+    success_step_id UUID,
+    failure_step_id UUID,
+    timeout_seconds INTEGER,
+    retry_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Triggers
+CREATE TABLE cortex_automation.triggers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    trigger_name VARCHAR(255) NOT NULL,
+    trigger_type VARCHAR(50) NOT NULL,
+    entity_type VARCHAR(50),
+    event_type VARCHAR(50),
+    conditions JSONB DEFAULT '{}',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
