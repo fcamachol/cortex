@@ -450,7 +450,7 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
                         {fullContactDetails.relationships.map((relationship, index) => (
                           <div key={index} className="text-sm">
                             <span className="text-gray-900 dark:text-gray-100">
-                              {relationship.relatedContact?.fullName} ({relationship.relationshipType})
+                              {relationship.relatedContactName} ({relationship.relationshipType})
                             </span>
                           </div>
                         ))}
