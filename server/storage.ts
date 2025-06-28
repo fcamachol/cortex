@@ -20,6 +20,7 @@ import {
     crmContactAliases, crmSpecialDates, crmInterests, crmContactInterests,
     crmCompanyMembers, crmContactGroups, crmContactGroupMembers, crmContactRelationships, crmGroups,
     taskEntities, taskMessageLinks,
+    type TaskMessageLink, type InsertTaskMessageLink,
     // Finance Schema
     financeAccounts, financeTransactions, financePayables, financeReceivables, financeCategories,
     financeRecurringBills, financeLoans, financeLoanPayments, financePayablePayments, financeReceivablePayments,
@@ -4341,6 +4342,70 @@ class DatabaseStorage {
             `);
         } catch (error) {
             console.error('Error deleting CRM group:', error);
+            throw error;
+        }
+    }
+
+    // =========================================================================
+    // TASK-MESSAGE LINKING METHODS - Pure Junction Table Management
+    // =========================================================================
+
+    async createTaskMessageLink(linkData: InsertTaskMessageLink): Promise<TaskMessageLink> {
+        try {
+            const [link] = await db.insert(taskMessageLinks).values(linkData).returning();
+            return link;
+        } catch (error) {
+            console.error('Error creating task-message link:', error);
+            throw error;
+        }
+    }
+
+    async getTaskMessageLinks(taskId: string): Promise<TaskMessageLink[]> {
+        try {
+            return await db.select()
+                .from(taskMessageLinks)
+                .where(eq(taskMessageLinks.taskId, taskId));
+        } catch (error) {
+            console.error('Error fetching task message links:', error);
+            return [];
+        }
+    }
+
+    async getMessageTaskLinks(messageId: string, instanceId: string): Promise<TaskMessageLink[]> {
+        try {
+            return await db.select()
+                .from(taskMessageLinks)
+                .where(and(
+                    eq(taskMessageLinks.messageId, messageId),
+                    eq(taskMessageLinks.instanceId, instanceId)
+                ));
+        } catch (error) {
+            console.error('Error fetching message task links:', error);
+            return [];
+        }
+    }
+
+    async deleteTaskMessageLink(taskId: string, messageId: string, instanceId: string, linkType: string): Promise<void> {
+        try {
+            await db.delete(taskMessageLinks)
+                .where(and(
+                    eq(taskMessageLinks.taskId, taskId),
+                    eq(taskMessageLinks.messageId, messageId),
+                    eq(taskMessageLinks.instanceId, instanceId),
+                    eq(taskMessageLinks.linkType, linkType)
+                ));
+        } catch (error) {
+            console.error('Error deleting task-message link:', error);
+            throw error;
+        }
+    }
+
+    async deleteAllTaskMessageLinks(taskId: string): Promise<void> {
+        try {
+            await db.delete(taskMessageLinks)
+                .where(eq(taskMessageLinks.taskId, taskId));
+        } catch (error) {
+            console.error('Error deleting all task message links:', error);
             throw error;
         }
     }

@@ -1715,6 +1715,14 @@ export const taskMessageLinks = crmSchema.table("task_message_links", {
   pk: primaryKey({ columns: [table.taskId, table.messageId, table.instanceId, table.linkType] })
 }));
 
+export const taskMessageLinksRelations = relations(taskMessageLinks, ({ one }) => ({
+  task: one(crmTasks, {
+    fields: [taskMessageLinks.taskId],
+    references: [crmTasks.id]
+  })
+  // Note: Cross-schema reference to whatsapp.messages handled at application level
+}));
+
 // Activity Logging
 export const activityLog = crmSchema.table("activity_log", {
   id: varchar("id", { length: 36 }).primaryKey(),
@@ -2100,6 +2108,8 @@ export const insertCrmNotesSchema = createInsertSchema(crmNotes).omit({
   updatedAt: true,
 });
 
+export const insertTaskMessageLinkSchema = createInsertSchema(taskMessageLinks);
+
 // =========================================================================
 // COMPREHENSIVE CRM TYPES - Complete TypeScript definitions
 // =========================================================================
@@ -2139,6 +2149,8 @@ export type CrmContactGroup = typeof crmContactGroups.$inferSelect;
 export type InsertCrmContactGroup = z.infer<typeof insertCrmContactGroupSchema>;
 export type CrmContactGroupMember = typeof crmContactGroupMembers.$inferSelect;
 export type InsertCrmContactGroupMember = z.infer<typeof insertCrmContactGroupMemberSchema>;
+export type TaskMessageLink = typeof taskMessageLinks.$inferSelect;
+export type InsertTaskMessageLink = z.infer<typeof insertTaskMessageLinkSchema>;
 
 // =========================================================================
 // COMPREHENSIVE CONTACT WITH RELATIONS TYPE - For 360-degree view
