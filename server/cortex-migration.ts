@@ -17,6 +17,17 @@ import {
   cortexActivityLog,
   cortexTags
 } from "../shared/cortex-schema.js";
+import {
+  cortexFoundationSchema,
+  cortexFoundationUsers,
+  cortexFoundationWorkspaces,
+  cortexFoundationEntityRelationships,
+  cortexFoundationSpaces,
+  cortexFoundationWorkspaceMembers,
+  cortexFoundationSpaceMembers,
+  cortexFoundationActivityLog,
+  cortexFoundationTags
+} from "../shared/cortex-foundation-schema.js";
 import { nanoid } from "nanoid";
 
 // =====================================================
@@ -33,23 +44,36 @@ export class CortexMigration {
   }
 
   /**
-   * Phase 1: Create Cortex schema and tables without affecting existing structure
+   * Phase 1: Create Cortex schemas and tables without affecting existing structure
    */
   async createCortexSchema(): Promise<void> {
-    console.log("🚀 Starting Cortex schema creation (Phase 1)...");
+    console.log("🚀 Starting Cortex schemas creation (Phase 1)...");
     
     try {
-      // Create cortex schema if it doesn't exist
+      // Create schemas if they don't exist
       await this.db.execute(`CREATE SCHEMA IF NOT EXISTS cortex;`);
-      console.log("✅ Cortex schema created");
+      await this.db.execute(`CREATE SCHEMA IF NOT EXISTS cortex_foundation;`);
+      console.log("✅ Cortex schemas created");
+
+      // Create entity ID generation function
+      await this.createEntityIdFunction();
+      console.log("✅ Entity ID generation function created");
 
       // Create all enums
       await this.createEnums();
       console.log("✅ Cortex enums created");
 
+      // Create foundation enums
+      await this.createFoundationEnums();
+      console.log("✅ Foundation enums created");
+
       // Create all tables
       await this.createTables();
       console.log("✅ Cortex tables created");
+
+      // Create foundation tables
+      await this.createFoundationTables();
+      console.log("✅ Foundation tables created");
 
       // Create indexes
       await this.createIndexes();
@@ -59,12 +83,26 @@ export class CortexMigration {
       await this.createViews();
       console.log("✅ Cortex views created");
 
-      console.log("🎉 Cortex schema creation completed successfully!");
+      console.log("🎉 Cortex schemas creation completed successfully!");
       
     } catch (error) {
-      console.error("❌ Error creating Cortex schema:", error);
+      console.error("❌ Error creating Cortex schemas:", error);
       throw error;
     }
+  }
+
+  /**
+   * Create entity ID generation function
+   */
+  private async createEntityIdFunction(): Promise<void> {
+    await this.db.execute(`
+      CREATE OR REPLACE FUNCTION generate_entity_id(prefix TEXT)
+      RETURNS VARCHAR(50) AS $$
+      BEGIN
+        RETURN prefix || '_' || REPLACE(gen_random_uuid()::TEXT, '-', '');
+      END;
+      $$ LANGUAGE plpgsql;
+    `);
   }
 
   /**
@@ -96,6 +134,289 @@ export class CortexMigration {
         }
       }
     }
+  }
+
+  /**
+   * Create foundation enums
+   */
+  private async createFoundationEnums(): Promise<void> {
+    // Plan type enum
+    await this.db.execute(`
+      CREATE TYPE cortex_foundation.plan_type AS ENUM (
+        'free', 'starter', 'professional', 'enterprise'
+      );
+    `);
+
+    // Space type enum
+    await this.db.execute(`
+      CREATE TYPE cortex_foundation.space_type AS ENUM (
+        'folder', 'workspace', 'project', 'team', 'personal', 'archive', 'template'
+      );
+    `);
+
+    // Privacy enum
+    await this.db.execute(`
+      CREATE TYPE cortex_foundation.privacy AS ENUM (
+        'private', 'public', 'restricted', 'shared'
+      );
+    `);
+
+    // Relationship type enum
+    await this.db.execute(`
+      CREATE TYPE cortex_foundation.relationship_type AS ENUM (
+        'related_to', 'belongs_to', 'contains', 'depends_on', 'blocks', 'references',
+        'married_to', 'parent_of', 'child_of', 'sibling_of', 'friend_of', 'colleague_of',
+        'manager_of', 'reports_to', 'works_for', 'founded', 'consultant_for',
+        'subsidiary_of', 'owns', 'client_of', 'vendor_of', 'partner_with', 'competitor_of',
+        'manages', 'sponsors', 'assigned_to', 'predecessor_of', 'successor_of',
+        'created_by', 'mentions', 'about', 'taken_during', 'summary_of', 'tagged_with'
+      );
+    `);
+  }
+
+  /**
+   * Create foundation tables
+   */
+  private async createFoundationTables(): Promise<void> {
+    // Foundation Users table
+    await this.db.execute(`
+      CREATE TABLE cortex_foundation.users (
+        id VARCHAR(50) PRIMARY KEY DEFAULT generate_entity_id('cu'),
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        full_name VARCHAR(255) NOT NULL,
+        first_name VARCHAR(100),
+        last_name VARCHAR(100),
+        profile_picture_url VARCHAR(500),
+        timezone VARCHAR(50) DEFAULT 'UTC',
+        locale VARCHAR(10) DEFAULT 'en_US',
+        is_email_verified BOOLEAN DEFAULT FALSE,
+        email_verification_token VARCHAR(255),
+        email_verification_expires TIMESTAMP,
+        password_reset_token VARCHAR(255),
+        password_reset_expires TIMESTAMP,
+        last_login_at TIMESTAMP,
+        login_count INTEGER DEFAULT 0,
+        failed_login_attempts INTEGER DEFAULT 0,
+        locked_until TIMESTAMP,
+        is_active BOOLEAN DEFAULT TRUE,
+        is_admin BOOLEAN DEFAULT FALSE,
+        notification_preferences JSONB DEFAULT '{}',
+        ui_preferences JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Foundation Workspaces table
+    await this.db.execute(`
+      CREATE TABLE cortex_foundation.workspaces (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL,
+        slug VARCHAR(100) NOT NULL UNIQUE,
+        description TEXT,
+        logo_url VARCHAR(500),
+        primary_color VARCHAR(7),
+        domain VARCHAR(255),
+        owner_user_id VARCHAR(50) NOT NULL REFERENCES cortex_foundation.users(id),
+        plan_type cortex_foundation.plan_type DEFAULT 'free',
+        max_users INTEGER DEFAULT 5,
+        max_storage_gb INTEGER DEFAULT 1,
+        is_active BOOLEAN DEFAULT TRUE,
+        trial_ends_at TIMESTAMP,
+        settings JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Foundation Entity Relationships table
+    await this.db.execute(`
+      CREATE TABLE cortex_foundation.entity_relationships (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        from_entity_id VARCHAR(50) NOT NULL,
+        to_entity_id VARCHAR(50),
+        content_type VARCHAR(50),
+        content_id VARCHAR(50),
+        relationship_type cortex_foundation.relationship_type NOT NULL,
+        is_bidirectional BOOLEAN DEFAULT FALSE,
+        weight NUMERIC(3,2) DEFAULT 1.0,
+        metadata JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_by VARCHAR(50),
+        is_active BOOLEAN DEFAULT TRUE,
+        
+        CHECK (
+          (to_entity_id IS NOT NULL AND content_type IS NULL AND content_id IS NULL) OR
+          (to_entity_id IS NULL AND content_type IS NOT NULL AND content_id IS NOT NULL)
+        ),
+        CHECK (from_entity_id != to_entity_id OR to_entity_id IS NULL),
+        CHECK (weight >= 0.0 AND weight <= 1.0)
+      );
+    `);
+
+    // Foundation Spaces table
+    await this.db.execute(`
+      CREATE TABLE cortex_foundation.spaces (
+        id VARCHAR(50) PRIMARY KEY DEFAULT generate_entity_id('cs'),
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        parent_space_id VARCHAR(50) REFERENCES cortex_foundation.spaces(id) ON DELETE CASCADE,
+        space_type cortex_foundation.space_type DEFAULT 'folder',
+        category VARCHAR(100),
+        privacy cortex_foundation.privacy DEFAULT 'private',
+        owner_user_id VARCHAR(50) NOT NULL,
+        color VARCHAR(7),
+        icon VARCHAR(50),
+        cover_image_url VARCHAR(500),
+        is_starred BOOLEAN DEFAULT FALSE,
+        is_pinned BOOLEAN DEFAULT FALSE,
+        is_archived BOOLEAN DEFAULT FALSE,
+        last_accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        sort_order INTEGER DEFAULT 0,
+        level INTEGER DEFAULT 0,
+        path TEXT,
+        template_id VARCHAR(50),
+        is_template BOOLEAN DEFAULT FALSE,
+        custom_fields JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        
+        CHECK (id != parent_space_id)
+      );
+    `);
+
+    // Foundation Workspace Members table
+    await this.db.execute(`
+      CREATE TABLE cortex_foundation.workspace_members (
+        workspace_id UUID NOT NULL REFERENCES cortex_foundation.workspaces(id) ON DELETE CASCADE,
+        user_id VARCHAR(50) NOT NULL REFERENCES cortex_foundation.users(id) ON DELETE CASCADE,
+        role VARCHAR(50) DEFAULT 'member',
+        permissions JSONB DEFAULT '{}',
+        invited_by VARCHAR(50),
+        invited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        joined_at TIMESTAMP,
+        last_active_at TIMESTAMP,
+        is_active BOOLEAN DEFAULT TRUE,
+        PRIMARY KEY (workspace_id, user_id)
+      );
+    `);
+
+    // Foundation Space Members table
+    await this.db.execute(`
+      CREATE TABLE cortex_foundation.space_members (
+        space_id VARCHAR(50) NOT NULL REFERENCES cortex_foundation.spaces(id) ON DELETE CASCADE,
+        user_id VARCHAR(50) NOT NULL REFERENCES cortex_foundation.users(id) ON DELETE CASCADE,
+        role VARCHAR(50) DEFAULT 'viewer',
+        permissions JSONB DEFAULT '{"canRead": true, "canWrite": false, "canShare": false, "canDelete": false, "canManageMembers": false}',
+        invited_by VARCHAR(50),
+        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_accessed_at TIMESTAMP,
+        is_active BOOLEAN DEFAULT TRUE,
+        PRIMARY KEY (space_id, user_id)
+      );
+    `);
+
+    // Foundation Activity Log table
+    await this.db.execute(`
+      CREATE TABLE cortex_foundation.activity_log (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        workspace_id UUID REFERENCES cortex_foundation.workspaces(id),
+        user_id VARCHAR(50) NOT NULL REFERENCES cortex_foundation.users(id),
+        entity_type VARCHAR(50),
+        entity_id VARCHAR(50),
+        action VARCHAR(100) NOT NULL,
+        description TEXT,
+        changes JSONB,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        session_id VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Foundation Tags table
+    await this.db.execute(`
+      CREATE TABLE cortex_foundation.tags (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(100) NOT NULL,
+        description TEXT,
+        color VARCHAR(7),
+        icon VARCHAR(50),
+        category VARCHAR(100),
+        workspace_id UUID REFERENCES cortex_foundation.workspaces(id),
+        created_by VARCHAR(50) NOT NULL REFERENCES cortex_foundation.users(id),
+        usage_count INTEGER DEFAULT 0,
+        is_system BOOLEAN DEFAULT FALSE,
+        is_public BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        
+        UNIQUE (workspace_id, name)
+      );
+    `);
+
+    // Create indexes for foundation tables
+    await this.createFoundationIndexes();
+  }
+
+  /**
+   * Create foundation table indexes
+   */
+  private async createFoundationIndexes(): Promise<void> {
+    // Users indexes
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_users_email_idx ON cortex_foundation.users(email);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_users_active_idx ON cortex_foundation.users(is_active);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_users_last_seen_idx ON cortex_foundation.users(last_seen_at);`);
+
+    // Workspaces indexes
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_workspaces_owner_idx ON cortex_foundation.workspaces(owner_user_id);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_workspaces_active_idx ON cortex_foundation.workspaces(is_active);`);
+
+    // Entity relationships indexes
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_entity_relationships_from_idx ON cortex_foundation.entity_relationships(from_entity_id);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_entity_relationships_to_idx ON cortex_foundation.entity_relationships(to_entity_id);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_entity_relationships_content_idx ON cortex_foundation.entity_relationships(content_type, content_id);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_entity_relationships_type_idx ON cortex_foundation.entity_relationships(relationship_type);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_entity_relationships_active_idx ON cortex_foundation.entity_relationships(is_active);`);
+
+    // Spaces indexes
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_spaces_name_idx ON cortex_foundation.spaces(name);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_spaces_parent_idx ON cortex_foundation.spaces(parent_space_id);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_spaces_owner_idx ON cortex_foundation.spaces(owner_user_id);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_spaces_type_idx ON cortex_foundation.spaces(space_type);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_spaces_category_idx ON cortex_foundation.spaces(category);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_spaces_level_idx ON cortex_foundation.spaces(level);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_spaces_path_idx ON cortex_foundation.spaces(path);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_spaces_sort_order_idx ON cortex_foundation.spaces(sort_order);`);
+
+    // Workspace members indexes
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_workspace_members_workspace_idx ON cortex_foundation.workspace_members(workspace_id);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_workspace_members_user_idx ON cortex_foundation.workspace_members(user_id);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_workspace_members_role_idx ON cortex_foundation.workspace_members(role);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_workspace_members_active_idx ON cortex_foundation.workspace_members(is_active);`);
+
+    // Space members indexes
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_space_members_space_idx ON cortex_foundation.space_members(space_id);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_space_members_user_idx ON cortex_foundation.space_members(user_id);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_space_members_role_idx ON cortex_foundation.space_members(role);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_space_members_active_idx ON cortex_foundation.space_members(is_active);`);
+
+    // Activity log indexes
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_activity_log_workspace_idx ON cortex_foundation.activity_log(workspace_id);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_activity_log_user_idx ON cortex_foundation.activity_log(user_id);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_activity_log_entity_idx ON cortex_foundation.activity_log(entity_type, entity_id);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_activity_log_action_idx ON cortex_foundation.activity_log(action);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_activity_log_created_at_idx ON cortex_foundation.activity_log(created_at);`);
+
+    // Tags indexes
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_tags_name_idx ON cortex_foundation.tags(name);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_tags_category_idx ON cortex_foundation.tags(category);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_tags_workspace_idx ON cortex_foundation.tags(workspace_id);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_tags_created_by_idx ON cortex_foundation.tags(created_by);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_tags_usage_idx ON cortex_foundation.tags(usage_count);`);
+    await this.db.execute(`CREATE INDEX IF NOT EXISTS cortex_foundation_tags_system_idx ON cortex_foundation.tags(is_system);`);
   }
 
   /**
