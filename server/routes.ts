@@ -1055,6 +1055,117 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // ===================================================================
+  // TASK-MESSAGE LINKING ENDPOINTS - Clean Junction Table Architecture
+  // ===================================================================
+
+  // Create a new task-message link
+  app.post('/api/crm/task-message-links', async (req: Request, res: Response) => {
+    try {
+      const { taskId, messageId, instanceId, linkType } = req.body;
+      
+      if (!taskId || !messageId || !instanceId || !linkType) {
+        return res.status(400).json({ 
+          error: 'taskId, messageId, instanceId, and linkType are required' 
+        });
+      }
+
+      console.log('Creating task-message link:', { taskId, messageId, instanceId, linkType });
+      
+      const link = await storage.createTaskMessageLink({
+        taskId,
+        messageId,
+        instanceId,
+        linkType
+      });
+      
+      res.status(201).json({
+        success: true,
+        link,
+        message: 'Task-message link created successfully'
+      });
+    } catch (error) {
+      console.error('Error creating task-message link:', error);
+      res.status(500).json({ error: 'Failed to create task-message link' });
+    }
+  });
+
+  // Get all message links for a specific task
+  app.get('/api/crm/task-message-links/:taskId', async (req: Request, res: Response) => {
+    try {
+      const { taskId } = req.params;
+      
+      console.log('Fetching message links for task:', taskId);
+      
+      const links = await storage.getTaskMessageLinks(taskId);
+      
+      res.json(links);
+    } catch (error) {
+      console.error('Error fetching task message links:', error);
+      res.status(500).json({ error: 'Failed to fetch task message links' });
+    }
+  });
+
+  // Get all task links for a specific message (reverse lookup)
+  app.get('/api/crm/message-task-links/:messageId/:instanceId', async (req: Request, res: Response) => {
+    try {
+      const { messageId, instanceId } = req.params;
+      
+      console.log('Fetching task links for message:', { messageId, instanceId });
+      
+      const links = await storage.getMessageTaskLinks(messageId, instanceId);
+      
+      res.json(links);
+    } catch (error) {
+      console.error('Error fetching message task links:', error);
+      res.status(500).json({ error: 'Failed to fetch message task links' });
+    }
+  });
+
+  // Delete a specific task-message link
+  app.delete('/api/crm/task-message-links', async (req: Request, res: Response) => {
+    try {
+      const { taskId, messageId, instanceId, linkType } = req.body;
+      
+      if (!taskId || !messageId || !instanceId || !linkType) {
+        return res.status(400).json({ 
+          error: 'taskId, messageId, instanceId, and linkType are required' 
+        });
+      }
+
+      console.log('Deleting task-message link:', { taskId, messageId, instanceId, linkType });
+      
+      await storage.deleteTaskMessageLink(taskId, messageId, instanceId, linkType);
+      
+      res.json({
+        success: true,
+        message: 'Task-message link deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting task-message link:', error);
+      res.status(500).json({ error: 'Failed to delete task-message link' });
+    }
+  });
+
+  // Delete all message links for a specific task
+  app.delete('/api/crm/task-message-links/:taskId', async (req: Request, res: Response) => {
+    try {
+      const { taskId } = req.params;
+      
+      console.log('Deleting all message links for task:', taskId);
+      
+      await storage.deleteAllTaskMessageLinks(taskId);
+      
+      res.json({
+        success: true,
+        message: 'All task message links deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting all task message links:', error);
+      res.status(500).json({ error: 'Failed to delete all task message links' });
+    }
+  });
+
   app.get('/api/crm/checklist-items', async (req: Request, res: Response) => {
     try {
       const checklistItems = await storage.getChecklistItems();

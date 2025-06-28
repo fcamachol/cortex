@@ -1349,17 +1349,27 @@ class DatabaseStorage {
         // Generate a standard UUID for the new task
         const taskId = crypto.randomUUID();
         
+        // Convert dueDate string to Date object if provided
+        let dueDate = null;
+        if (taskData.dueDate) {
+            dueDate = typeof taskData.dueDate === 'string' ? new Date(taskData.dueDate) : taskData.dueDate;
+        }
+        
+        const now = new Date();
+        
         const [task] = await db.insert(crmTasks)
             .values({
                 id: taskId,
                 userId: taskData.userId, // Include userId field for unified entity architecture
                 title: taskData.title,
                 description: taskData.description,
-                status: taskData.status || 'todo',
+                status: taskData.status || 'to_do',
                 priority: taskData.priority || 'medium',
-                dueDate: taskData.dueDate || null,
+                dueDate: dueDate,
                 parentTaskId: taskData.parentTaskId || null,
-                tags: taskData.tags || []
+                tags: taskData.tags || [],
+                createdAt: now,
+                updatedAt: now
                 // Note: WhatsApp message linking is now handled via the task_message_links junction table
             })
             .returning();
