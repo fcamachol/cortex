@@ -1,0 +1,49 @@
+```sql
+-- Foundation indexes
+CREATE INDEX idx_users_email ON cortex_foundation.users(email);
+CREATE INDEX idx_users_active ON cortex_foundation.users(is_active) WHERE is_active = TRUE;
+CREATE INDEX idx_spaces_parent ON cortex_foundation.spaces(parent_space_id);
+CREATE INDEX idx_spaces_owner ON cortex_foundation.spaces(owner_user_id);
+CREATE INDEX idx_entity_relationships_from ON cortex_foundation.entity_relationships(from_entity_id);
+CREATE INDEX idx_entity_relationships_to ON cortex_foundation.entity_relationships(to_entity_id) WHERE to_entity_id IS NOT NULL;
+CREATE INDEX idx_entity_relationships_content ON cortex_foundation.entity_relationships(content_type, content_id) WHERE content_type IS NOT NULL;
+
+-- Entities indexes
+CREATE INDEX idx_persons_name ON cortex_entities.persons(full_name);
+CREATE INDEX idx_persons_whatsapp ON cortex_entities.persons(primary_whatsapp_jid, whatsapp_instance_name);
+CREATE INDEX idx_companies_name ON cortex_entities.companies(name);
+CREATE INDEX idx_objects_owner ON cortex_entities.objects(current_owner_entity_id);
+CREATE INDEX idx_objects_type ON cortex_entities.objects(object_type, category);
+
+-- Projects indexes
+CREATE INDEX idx_projects_status ON cortex_projects.projects(status);
+CREATE INDEX idx_tasks_status ON cortex_projects.tasks(status);
+CREATE INDEX idx_tasks_assigned ON cortex_projects.tasks(assigned_to_entity_id);
+CREATE INDEX idx_tasks_project ON cortex_projects.tasks(project_entity_id);
+CREATE INDEX idx_tasks_due_date ON cortex_projects.tasks(due_date);
+
+-- Finance indexes
+CREATE INDEX idx_accounts_owner ON cortex_finance.accounts(owner_entity_id);
+CREATE INDEX idx_transactions_date ON cortex_finance.transactions(transaction_date);
+CREATE INDEX idx_transactions_vendor ON cortex_finance.transactions(vendor_entity_id);
+CREATE INDEX idx_bills_payable_vendor ON cortex_finance.bills_payable(vendor_entity_id);
+CREATE INDEX idx_bills_payable_due ON cortex_finance.bills_payable(due_date);
+
+-- Scheduling indexes
+CREATE INDEX idx_events_time ON cortex_scheduling.events(start_time, end_time);
+CREATE INDEX idx_reminders_remind_at ON cortex_scheduling.reminders(remind_at);
+CREATE INDEX idx_reminders_status ON cortex_scheduling.reminders(status);
+
+-- Knowledge indexes
+CREATE INDEX idx_notes_created_by ON cortex_knowledge.notes(created_by_entity_id);
+CREATE INDEX idx_documents_google_drive ON cortex_knowledge.documents(google_drive_file_id);
+CREATE INDEX idx_documents_type ON cortex_knowledge.documents(document_type, document_subtype);
+
+-- Communication indexes
+CREATE INDEX idx_messages_timestamp ON cortex_communication.messages_unified(timestamp DESC);
+CREATE INDEX idx_channel_entity_links_entity ON cortex_communication.channel_entity_links(entity_id);
+
+-- Automation indexes
+CREATE INDEX idx_rules_active ON cortex_automation.rules(is_active) WHERE is_active = TRUE;
+CREATE INDEX idx_rule_executions_rule ON cortex_automation.rule_executions(rule_id, executed_at DESC);
+```
