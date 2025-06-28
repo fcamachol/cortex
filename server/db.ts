@@ -1,7 +1,7 @@
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import ws from "ws";
-import * as schema from "../shared/schema-working";
+import * as schema from "../shared/schema";
 
 // Configure WebSocket for Neon - always use ws in Node.js environment
 neonConfig.webSocketConstructor = ws;
@@ -21,7 +21,7 @@ export const pool = new Pool({
   connectionTimeoutMillis: 3000,
 });
 
-export const db = drizzle({ client: pool, schema });
+export const db = drizzle({ client: pool });
 
 // Connection queue to prevent overwhelming Neon
 class ConnectionQueue {

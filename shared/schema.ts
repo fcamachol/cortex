@@ -1991,30 +1991,18 @@ export const crmContactRelationshipsRelations = relations(crmContactRelationship
 
 // CRM Projects Relations
 export const crmProjectsRelations = relations(crmProjects, ({ one, many }) => ({
-  instance: one(whatsappInstances, {
-    fields: [crmProjects.instanceId],
-    references: [whatsappInstances.instanceId],
-  }),
-  space: one(appSpaces, {
-    fields: [crmProjects.spaceId],
-    references: [appSpaces.spaceId],
+  user: one(appUsers, {
+    fields: [crmProjects.userId],
+    references: [appUsers.userId],
   }),
   tasks: many(crmTasks),
 }));
 
 // CRM Tasks Relations
 export const crmTasksRelations = relations(crmTasks, ({ one }) => ({
-  instance: one(whatsappInstances, {
-    fields: [crmTasks.instanceId],
-    references: [whatsappInstances.instanceId],
-  }),
-  project: one(crmProjects, {
-    fields: [crmTasks.projectId],
-    references: [crmProjects.projectId],
-  }),
-  space: one(appSpaces, {
-    fields: [crmTasks.spaceId],
-    references: [appSpaces.spaceId],
+  user: one(appUsers, {
+    fields: [crmTasks.userId],
+    references: [appUsers.userId],
   }),
   linkedPayable: one(financePayables, {
     fields: [crmTasks.linkedPayableId],

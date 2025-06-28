@@ -642,7 +642,7 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {upcomingDates.length === 0 ? (
+              {!Array.isArray(upcomingDates) || upcomingDates.length === 0 ? (
                 <p className="text-sm text-gray-500">No upcoming events</p>
               ) : (
                 <div className="space-y-3">
