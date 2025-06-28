@@ -235,7 +235,7 @@ export const ActionService = {
         const linkData = {
             taskId: createdTask.id,
             messageId: triggerContext.context.messageId,
-            instanceId: triggerContext.context.instanceName,
+            instanceId: triggerContext.instanceId, // Use instanceId from the trigger context root
             linkType: 'trigger' as const // This message triggered the task creation
         };
         

@@ -1,0 +1,83 @@
+Error creating task-message link: error: null value in column "instance_id" of relation "task_message_links" violates not-null constraint
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.createTaskMessageLink (/home/runner/workspace/server/storage.ts:4328:28)
+    at async Object.createTaskAction (/home/runner/workspace/server/action-service.ts:242:9)
+    at async Object.executeAction (/home/runner/workspace/server/action-service.ts:123:30)
+    at async Object.triggerAction (/home/runner/workspace/server/action-service.ts:101:17)
+    at async Object.processReaction (/home/runner/workspace/server/action-service.ts:58:13) {
+  length: 296,
+  severity: 'ERROR',
+  code: '23502',
+  detail: 'Failing row contains (89e23640-6ad6-4bbf-b4c3-0aa256cde124, 3A2E26100C176CAA0E55, null, trigger).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'crm',
+  table: 'task_message_links',
+  column: 'instance_id',
+  dataType: undefined,
+  constraint: undefined,
+  file: 'execMain.c',
+  line: '2006',
+  routine: 'ExecConstraints'
+}
+❌ Error executing action create_task: error: null value in column "instance_id" of relation "task_message_links" violates not-null constraint
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.createTaskMessageLink (/home/runner/workspace/server/storage.ts:4328:28)
+    at async Object.createTaskAction (/home/runner/workspace/server/action-service.ts:242:9)
+    at async Object.executeAction (/home/runner/workspace/server/action-service.ts:123:30)
+    at async Object.triggerAction (/home/runner/workspace/server/action-service.ts:101:17)
+    at async Object.processReaction (/home/runner/workspace/server/action-service.ts:58:13) {
+  length: 296,
+  severity: 'ERROR',
+  code: '23502',
+  detail: 'Failing row contains (89e23640-6ad6-4bbf-b4c3-0aa256cde124, 3A2E26100C176CAA0E55, null, trigger).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'crm',
+  table: 'task_message_links',
+  column: 'instance_id',
+  dataType: undefined,
+  constraint: undefined,
+  file: 'execMain.c',
+  line: '2006',
+  routine: 'ExecConstraints'
+}
+✅ [live-test-1750199771] Chat upserted: 5214423678505@s.whatsapp.net
+📡 Notifying 2 connected clients of chat update
+📊 Action execution logged: d7e36f7c-3b03-4834-aede-f6c421b634f7 (failed)
+❌ Error in triggerAction: error: null value in column "instance_id" of relation "task_message_links" violates not-null constraint
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.createTaskMessageLink (/home/runner/workspace/server/storage.ts:4328:28)
+    at async Object.createTaskAction (/home/runner/workspace/server/action-service.ts:242:9)
+    at async Object.executeAction (/home/runner/workspace/server/action-service.ts:123:30)
+    at async Object.triggerAction (/home/runner/workspace/server/action-service.ts:101:17)
+    at async Object.processReaction (/home/runner/workspace/server/action-service.ts:58:13) {
+  length: 296,
+  severity: 'ERROR',
+  code: '23502',
+  detail: 'Failing row contains (89e23640-6ad6-4bbf-b4c3-0aa256cde124, 3A2E26100C176CAA0E55, null, trigger).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'crm',
+  table: 'task_message_links',
+  column: 'instance_id',
+  dataType: undefined,
+  constraint: undefined,
+  file: 'execMain.c',
+  line: '2006',
+  routine: 'ExecConstraints'
