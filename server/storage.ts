@@ -19,7 +19,7 @@ import {
     crmContacts, crmContactPhones, crmContactEmails, crmContactAddresses, 
     crmContactAliases, crmSpecialDates, crmInterests, crmContactInterests,
     crmCompanyMembers, crmContactGroups, crmContactGroupMembers, crmContactRelationships, crmGroups,
-    taskEntities,
+    taskEntities, taskMessageLinks,
     // Finance Schema
     financeAccounts, financeTransactions, financePayables, financeReceivables, financeCategories,
     financeRecurringBills, financeLoans, financeLoanPayments, financePayablePayments, financeReceivablePayments,
