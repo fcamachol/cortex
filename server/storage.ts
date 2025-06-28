@@ -1381,6 +1381,50 @@ class DatabaseStorage {
         return link;
     }
 
+    async createTaskMessageLink(data: {
+        taskId: string;
+        messageId: string;
+        instanceName: string;
+        chatJid: string;
+        senderJid?: string;
+        linkType: string;
+        context?: any;
+    }): Promise<any> {
+        const linkId = crypto.randomUUID();
+        const [link] = await db.insert(taskMessageLinks)
+            .values({
+                id: linkId,
+                taskId: data.taskId,
+                messageId: data.messageId,
+                instanceName: data.instanceName,
+                chatJid: data.chatJid,
+                senderJid: data.senderJid || null,
+                linkType: data.linkType,
+                context: data.context || null
+            })
+            .returning();
+        return link;
+    }
+
+    async getTaskMessageLinks(taskId: string): Promise<any[]> {
+        const links = await db.select()
+            .from(taskMessageLinks)
+            .where(eq(taskMessageLinks.taskId, taskId));
+        return links;
+    }
+
+    async getMessageTaskLinks(messageId: string, instanceName: string): Promise<any[]> {
+        const links = await db.select()
+            .from(taskMessageLinks)
+            .where(
+                and(
+                    eq(taskMessageLinks.messageId, messageId),
+                    eq(taskMessageLinks.instanceName, instanceName)
+                )
+            );
+        return links;
+    }
+
     async getTasks(userId?: string): Promise<any[]> {
         let query = db.select({
             taskId: crmTasks.id, // Map id to taskId for frontend compatibility
