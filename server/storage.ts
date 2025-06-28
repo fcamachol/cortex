@@ -1355,22 +1355,26 @@ class DatabaseStorage {
             dueDate = typeof taskData.dueDate === 'string' ? new Date(taskData.dueDate) : taskData.dueDate;
         }
         
-        // Use raw SQL to avoid Drizzle schema issues with legacy fields
-        const result = await db.execute(sql`
+        // Try direct value insertion without parameterization
+        const tagsJson = JSON.stringify(taskData.tags || []);
+        const dueDateStr = dueDate ? `'${dueDate.toISOString()}'` : 'NULL';
+        const parentTaskStr = taskData.parentTaskId ? `'${taskData.parentTaskId}'` : 'NULL';
+        
+        const result = await db.execute(sql.raw(`
             INSERT INTO crm.tasks (
                 id, user_id, title, description, status, priority, due_date, parent_task_id, tags
             ) VALUES (
-                ${taskId}, 
-                ${taskData.userId}, 
-                ${taskData.title}, 
-                ${taskData.description}, 
-                ${taskData.status || 'to_do'}, 
-                ${taskData.priority || 'medium'}, 
-                ${dueDate}, 
-                ${taskData.parentTaskId}, 
-                ${JSON.stringify(taskData.tags || [])}
+                '${taskId}', 
+                '${taskData.userId}', 
+                '${taskData.title}', 
+                '${taskData.description}', 
+                '${taskData.status || 'to_do'}', 
+                '${taskData.priority || 'medium'}', 
+                ${dueDateStr}, 
+                ${parentTaskStr}, 
+                '${tagsJson}'
             ) RETURNING *
-        `);
+        `));
         
         return result.rows[0];
     }
@@ -1421,10 +1425,17 @@ class DatabaseStorage {
 
     async getTaskById(taskId: string): Promise<any | null> {
         // Use raw SQL to avoid schema conflicts with legacy fields
-        const result = await db.execute(sql`
-            SELECT * FROM crm.tasks WHERE id = ${taskId}
-        `);
-        return result.rows[0] || null;
+        console.log('Fetching task with ID:', taskId);
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM crm.tasks WHERE id = ${taskId}
+            `);
+            console.log('Query successful, rows found:', result.rows.length);
+            return result.rows[0] || null;
+        } catch (error) {
+            console.error('SQL Error in getTaskById:', error);
+            throw error;
+        }
     }
 
     async getTasksByProjectId(projectId: string): Promise<any[]> {
