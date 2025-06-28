@@ -218,24 +218,29 @@ export const ActionService = {
         // For now, using development placeholder with proper UUID format
         const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
         
-        // Create task with processed data using unified entity schema
+        // Create task with clean data (no embedded WhatsApp fields)
         const taskData = {
-            userId: userId, // Use userId instead of instanceId
+            userId: userId,
             title: processedConfig.title || `Task from ${triggerContext.triggerType}`,
             description: processedConfig.description || 'Automatically created task',
             priority: nlpAnalysis.isUrgent ? 'high' : (processedConfig.priority || 'medium'),
             status: 'to_do',
-            dueDate: nlpAnalysis.suggestedDueDate || (processedConfig.dueDate ? new Date(processedConfig.dueDate) : null),
-            // WhatsApp message linking fields
-            triggeringMessageId: triggerContext.context.messageId,
-            triggeringInstanceName: triggerContext.context.instanceName,
-            triggeringSenderJid: triggerContext.context.senderJid,
-            triggeringChatJid: triggerContext.context.chatId,
-            triggerType: triggerContext.triggerType
+            dueDate: nlpAnalysis.suggestedDueDate || (processedConfig.dueDate ? new Date(processedConfig.dueDate) : null)
         };
         
         const createdTask = await storage.createTask(taskData);
         console.log(`✅ Task created: ${taskData.title}`);
+        
+        // Create task-message link using the new junction table
+        const linkData = {
+            taskId: createdTask.id,
+            messageId: triggerContext.context.messageId,
+            instanceId: triggerContext.context.instanceName,
+            linkType: 'trigger' as const // This message triggered the task creation
+        };
+        
+        await storage.createTaskMessageLink(linkData);
+        console.log(`🔗 Task-message link created: ${linkData.linkType}`);
         
         // Notify clients of new task via SSE
         SseManager.notifyClientsOfNewTask(createdTask);

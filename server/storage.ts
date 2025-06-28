@@ -1359,13 +1359,8 @@ class DatabaseStorage {
                 priority: taskData.priority || 'medium',
                 dueDate: taskData.dueDate || null,
                 parentTaskId: taskData.parentTaskId || null,
-                tags: taskData.tags || [],
-                // WhatsApp message linking fields
-                triggeringMessageId: taskData.triggeringMessageId || null,
-                triggeringInstanceName: taskData.triggeringInstanceName || null,
-                triggeringSenderJid: taskData.triggeringSenderJid || null,
-                triggeringChatJid: taskData.triggeringChatJid || null,
-                triggerType: taskData.triggerType || null
+                tags: taskData.tags || []
+                // Note: WhatsApp message linking is now handled via the task_message_links junction table
             })
             .returning();
         return task;
@@ -1382,49 +1377,9 @@ class DatabaseStorage {
         return link;
     }
 
-    async createTaskMessageLink(data: {
-        taskId: string;
-        messageId: string;
-        instanceName: string;
-        chatJid: string;
-        senderJid?: string;
-        linkType: string;
-        context?: any;
-    }): Promise<any> {
-        const linkId = crypto.randomUUID();
-        const [link] = await db.insert(taskMessageLinks)
-            .values({
-                id: linkId,
-                taskId: data.taskId,
-                messageId: data.messageId,
-                instanceName: data.instanceName,
-                chatJid: data.chatJid,
-                senderJid: data.senderJid || null,
-                linkType: data.linkType,
-                context: data.context || null
-            })
-            .returning();
-        return link;
-    }
 
-    async getTaskMessageLinks(taskId: string): Promise<any[]> {
-        const links = await db.select()
-            .from(taskMessageLinks)
-            .where(eq(taskMessageLinks.taskId, taskId));
-        return links;
-    }
 
-    async getMessageTaskLinks(messageId: string, instanceName: string): Promise<any[]> {
-        const links = await db.select()
-            .from(taskMessageLinks)
-            .where(
-                and(
-                    eq(taskMessageLinks.messageId, messageId),
-                    eq(taskMessageLinks.instanceName, instanceName)
-                )
-            );
-        return links;
-    }
+
 
     async getTasks(userId?: string): Promise<any[]> {
         let query = db.select({
@@ -1441,14 +1396,9 @@ class DatabaseStorage {
             parentTaskId: crmTasks.parentTaskId,
             tags: crmTasks.tags,
             userId: crmTasks.userId,
-            // WhatsApp message linking fields
-            triggeringMessageId: crmTasks.triggeringMessageId,
-            triggeringInstanceName: crmTasks.triggeringInstanceName,
-            triggeringSenderJid: crmTasks.triggeringSenderJid,
-            triggeringChatJid: crmTasks.triggeringChatJid,
-            triggerType: crmTasks.triggerType,
             createdAt: crmTasks.createdAt,
             updatedAt: crmTasks.updatedAt
+            // Note: WhatsApp message linking is now handled via the task_message_links junction table
         }).from(crmTasks);
         
         // Filter by userId if provided (unified entity architecture)
