@@ -1,0 +1,31 @@
+{
+  "id": "1751090676402-ebjw7zlxw",
+  "timestamp": "2025-06-28T06:04:36.402Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages.upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "live-test-1750199771",
+    "data": {
+      "key": {
+        "remoteJid": "5214423678505@s.whatsapp.net",
+        "fromMe": false,
+        "id": "REACTION_AFTER_FIX_1751090676322"
+      },
+      "message": {
+        "reactionMessage": {
+          "text": "📝",
+          "key": {
+            "id": "3A11DD1E184F89B9762E"
+          },
+          "senderTimestampMs": "1751090676322"
+        }
+      },
+      "messageType": "reactionMessage",
+      "messageTimestamp": 1751090676,
+      "pushName": "Schema Fix Test"
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

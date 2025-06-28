@@ -1629,16 +1629,23 @@ export const crmTasks = crmSchema.table("tasks", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// CRM Notes - Current database structure (legacy format but active table)
 export const crmNotes = crmSchema.table("notes", {
-  id: varchar("id", { length: 36 }).primaryKey(), // standard UUID
-  title: varchar("title", { length: 300 }),
+  noteId: serial("note_id").primaryKey(),
+  title: varchar("title", { length: 255 }),
   content: text("content").notNull(),
-  format: varchar("format", { length: 20 }).default("markdown"), // markdown, html, plain
-  tags: jsonb("tags").$type<string[]>(),
-  isPinned: boolean("is_pinned").default(false),
-  isArchived: boolean("is_archived").default(false),
-  searchVector: text("search_vector"), // for full-text search
+  createdByUserId: uuid("created_by_user_id").notNull().references(() => appUsers.userId),
+  instanceId: varchar("instance_id", { length: 100 }),
   spaceId: integer("space_id").references(() => appSpaces.spaceId),
+  // Optional entity linking
+  contactId: integer("contact_id").references(() => crmContacts.contactId),
+  taskId: integer("task_id"),
+  eventId: integer("event_id").references(() => crmCalendarEvents.eventId),
+  companyId: integer("company_id"),
+  entityId: varchar("entity_id", { length: 50 }), // Unified entity ID (cp_, cg_, cc_, co_)
+  // WhatsApp context
+  triggeringMessageId: varchar("triggering_message_id", { length: 100 }),
+  relatedChatJid: varchar("related_chat_jid", { length: 100 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

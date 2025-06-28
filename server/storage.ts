@@ -3296,7 +3296,7 @@ class DatabaseStorage {
             
             // Create note using Drizzle ORM with correct field names for legacy table
             const [createdNote] = await db
-                .insert(crmNotesLegacy)
+                .insert(crmNotes)
                 .values({
                     title: finalTitle,
                     content: noteData.content || 'Automatically created note',
