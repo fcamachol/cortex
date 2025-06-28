@@ -3302,7 +3302,7 @@ class DatabaseStorage {
                     content: noteData.content || 'Automatically created note',
                     createdByUserId: noteData.userId,
                     instanceId: noteData.instanceId,
-                    spaceId: noteData.spaceId,
+                    spaceId: null, // Make space_id nullable for standalone WhatsApp notes
                     triggeringMessageId: noteData.triggeringMessageId,
                     relatedChatJid: noteData.relatedChatJid,
                 })
@@ -3318,7 +3318,7 @@ class DatabaseStorage {
 
     async getCrmNotes(): Promise<any[]> {
         try {
-            const notes = await db.select().from(crmNotesLegacy).orderBy(desc(crmNotesLegacy.createdAt));
+            const notes = await db.select().from(crmNotes).orderBy(desc(crmNotes.createdAt));
             return notes;
         } catch (error) {
             console.error('❌ Error fetching CRM notes:', error);
