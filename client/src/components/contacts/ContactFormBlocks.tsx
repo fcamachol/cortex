@@ -1655,9 +1655,10 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
   }, [selectedContact, showSuggestions]);
 
   // Close suggestions when clicking outside
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (showSuggestions) {
+      if (showSuggestions && dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
       }
     };
@@ -1674,7 +1675,7 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-1">Linked Contact</label>
-          <div className="relative">
+          <div className="relative" ref={dropdownRef}>
             <Input
               value={searchTerm}
               onChange={(e) => {
@@ -1688,13 +1689,22 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
             
             {/* Dropdown Suggestions */}
             {showSuggestions && searchTerm && filteredContacts.length > 0 && (
-              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              <div className="absolute z-[9999] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                 {filteredContacts.slice(0, 5).map((contact: any) => (
                   <button
                     key={contact.contactId}
                     type="button"
-                    onClick={() => handleContactSelect(contact)}
-                    className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Contact selected:', contact.fullName);
+                      handleContactSelect(contact);
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 cursor-pointer"
                   >
                     <User className="h-4 w-4 text-gray-500" />
                     <div>
@@ -1710,7 +1720,7 @@ function LinkBlock({ block, onUpdate, ownerUserId }: {
             
             {/* No results message */}
             {showSuggestions && searchTerm && filteredContacts.length === 0 && (
-              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg px-3 py-2 text-gray-500 text-sm">
+              <div className="absolute z-[9999] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg px-3 py-2 text-gray-500 text-sm">
                 No contacts found
               </div>
             )}
