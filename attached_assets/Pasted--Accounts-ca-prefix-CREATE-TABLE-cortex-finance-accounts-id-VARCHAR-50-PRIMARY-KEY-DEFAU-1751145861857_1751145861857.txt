@@ -1,0 +1,95 @@
+-- Accounts (ca_ prefix)
+CREATE TABLE cortex_finance.accounts (
+    id VARCHAR(50) PRIMARY KEY DEFAULT generate_entity_id('ca'),
+    name VARCHAR(255) NOT NULL,
+    account_type VARCHAR(100) NOT NULL,
+    account_number VARCHAR(100),
+    institution_name VARCHAR(255),
+    current_balance NUMERIC(15,2) DEFAULT 0,
+    available_balance NUMERIC(15,2),
+    credit_limit NUMERIC(15,2),
+    currency VARCHAR(3) DEFAULT 'USD',
+    interest_rate NUMERIC(5,4),
+    owner_entity_id VARCHAR(50),
+    status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'closed', 'frozen', 'inactive')),
+    opened_date DATE,
+    closed_date DATE,
+    description TEXT,
+    external_account_id VARCHAR(255),
+    last_synced_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(50)
+);
+
+-- Transactions
+CREATE TABLE cortex_finance.transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    amount NUMERIC(15,2) NOT NULL,
+    transaction_type VARCHAR(50) NOT NULL CHECK (transaction_type IN ('income', 'expense', 'transfer', 'adjustment')),
+    description TEXT NOT NULL,
+    transaction_date DATE NOT NULL,
+    from_account_entity_id VARCHAR(50),
+    to_account_entity_id VARCHAR(50),
+    category VARCHAR(100),
+    subcategory VARCHAR(100),
+    vendor_entity_id VARCHAR(50),
+    project_entity_id VARCHAR(50),
+    created_by_entity_id VARCHAR(50),
+    reference_number VARCHAR(100),
+    receipt_url VARCHAR(500),
+    notes TEXT,
+    status VARCHAR(50) DEFAULT 'completed' CHECK (status IN ('pending', 'completed', 'cancelled', 'failed')),
+    external_transaction_id VARCHAR(255),
+    bank_provider VARCHAR(50),
+    tags JSONB DEFAULT '[]',
+    custom_fields JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CHECK (amount != 0)
+);
+
+-- Bills payable
+CREATE TABLE cortex_finance.bills_payable (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    bill_number VARCHAR(100),
+    vendor_entity_id VARCHAR(50) NOT NULL,
+    amount NUMERIC(15,2) NOT NULL,
+    amount_paid NUMERIC(15,2) DEFAULT 0,
+    bill_date DATE NOT NULL,
+    due_date DATE NOT NULL,
+    penalty_rate NUMERIC(5,4),
+    penalty_amount NUMERIC(15,2) DEFAULT 0,
+    status VARCHAR(50) DEFAULT 'unpaid' CHECK (
+        status IN ('draft', 'unpaid', 'partially_paid', 'paid', 'overdue', 'disputed', 'cancelled')
+    ),
+    project_entity_id VARCHAR(50),
+    account_entity_id VARCHAR(50),
+    created_by_entity_id VARCHAR(50),
+    description TEXT,
+    invoice_url VARCHAR(500),
+    receipt_url VARCHAR(500),
+    paid_date DATE,
+    payment_method VARCHAR(50),
+    tags JSONB DEFAULT '[]',
+    custom_fields JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CHECK (amount > 0),
+    CHECK (amount_paid >= 0),
+    CHECK (amount_paid <= amount + penalty_amount)
+);
+
+-- Bills receivable
+CREATE TABLE cortex_finance.bills_receivable (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_number VARCHAR(100),
+    customer_entity_id VARCHAR(50) NOT NULL,
+    amount NUMERIC(15,2) NOT NULL,
+    amount_received NUMERIC(15,2) DEFAULT 0,
+    invoice_date DATE NOT NULL,
+    due_date DATE NOT NULL,
+    penalty_rate NUMERIC(5,4),
+    penalty_amount NUMERIC(15,2) DEFAULT 0,
+    status VARCHAR(50) DEFAULT 'draft' CHECK (
+        status IN ('draft', 'sent', 'partially_paid', 'pai

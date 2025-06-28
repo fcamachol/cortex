@@ -1,0 +1,78 @@
+-- Communication channels
+CREATE TABLE cortex_communication.channels (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    channel_type VARCHAR(20) NOT NULL,
+    channel_name VARCHAR(255) NOT NULL,
+    provider VARCHAR(100),
+    configuration JSONB DEFAULT '{}',
+    user_id VARCHAR(50),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Universal conversations
+CREATE TABLE cortex_communication.conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    channel_type VARCHAR(20) NOT NULL,
+    channel_conversation_id VARCHAR(255),
+    conversation_type VARCHAR(20),
+    title VARCHAR(255),
+    participants JSONB DEFAULT '[]',
+    last_message_at TIMESTAMP,
+    is_archived BOOLEAN DEFAULT FALSE,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Unified messages
+CREATE TABLE cortex_communication.messages_unified (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID REFERENCES cortex_communication.conversations(id),
+    channel_type VARCHAR(20) NOT NULL,
+    channel_message_id VARCHAR(255),
+    sender_identifier VARCHAR(255),
+    sender_entity_id VARCHAR(50),
+    content TEXT,
+    message_type VARCHAR(20),
+    direction VARCHAR(10),
+    status VARCHAR(20),
+    timestamp TIMESTAMP NOT NULL,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Participants
+CREATE TABLE cortex_communication.participants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID REFERENCES cortex_communication.conversations(id) ON DELETE CASCADE,
+    entity_id VARCHAR(50),
+    channel_identifier VARCHAR(255),
+    display_name VARCHAR(255),
+    role VARCHAR(50),
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Channel entity links (connects WhatsApp to entities)
+CREATE TABLE cortex_communication.channel_entity_links (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    channel_type VARCHAR(20) NOT NULL,
+    channel_record_id VARCHAR(255) NOT NULL,
+    entity_id VARCHAR(50) NOT NULL,
+    relationship_type VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Message templates
+CREATE TABLE cortex_communication.message_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    template_type VARCHAR(50),
+    content TEXT NOT NULL,
+    variables JSONB DEFAULT '[]',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
