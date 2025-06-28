@@ -1705,18 +1705,14 @@ export const documentEntities = crmSchema.table("document_entities", {
 }));
 
 // Task-Message Linking Table for WhatsApp Integration
+// Pure junction table for many-to-many relationship between tasks and messages
 export const taskMessageLinks = crmSchema.table("task_message_links", {
-  id: varchar("id", { length: 36 }).primaryKey(), // standard UUID
   taskId: varchar("task_id", { length: 50 }).references(() => crmTasks.id, { onDelete: "cascade" }).notNull(),
   messageId: varchar("message_id", { length: 255 }).notNull(), // WhatsApp message ID
-  instanceName: varchar("instance_name", { length: 100 }).notNull(), // WhatsApp instance
-  chatJid: varchar("chat_jid", { length: 255 }).notNull(), // Chat where message exists
-  senderJid: varchar("sender_jid", { length: 255 }), // Who sent the message
-  linkType: varchar("link_type", { length: 50 }).notNull(), // triggered_by, references, responds_to, etc.
-  context: jsonb("context"), // Additional context data
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  instanceId: varchar("instance_id", { length: 100 }).notNull(), // WhatsApp instance
+  linkType: varchar("link_type", { length: 20 }).notNull(), // trigger, context, reply, forward_from_task, message_from_task
 }, (table) => ({
-  uniqueTaskMessage: unique().on(table.taskId, table.messageId, table.linkType)
+  pk: primaryKey({ columns: [table.taskId, table.messageId, table.instanceId, table.linkType] })
 }));
 
 // Activity Logging
