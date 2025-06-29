@@ -826,17 +826,17 @@ class DatabaseStorage {
     // Task management methods
 
 
-    async updateTask(taskId: number, updates: any): Promise<any> {
+    async updateTask(taskId: string, updates: any): Promise<any> {
         const result = await db.execute(sql`
-            UPDATE crm.tasks 
+            UPDATE cortex_projects.tasks 
             SET 
                 status = COALESCE(${updates.status || null}, status),
                 priority = COALESCE(${updates.priority || null}, priority),
-                title = COALESCE(${updates.title || null}, title),
+                name = COALESCE(${updates.title || null}, name),
                 description = COALESCE(${updates.description || null}, description),
                 due_date = COALESCE(${updates.due_date || null}, due_date),
                 updated_at = NOW()
-            WHERE task_id = ${taskId}
+            WHERE id = ${taskId}
             RETURNING *
         `);
         
@@ -1417,11 +1417,11 @@ class DatabaseStorage {
     }
 
     async getTaskById(taskId: string): Promise<any | null> {
-        // Use raw SQL to avoid schema conflicts with legacy fields
+        // Use Cortex projects schema for tasks
         console.log('Fetching task with ID:', taskId);
         try {
             const result = await db.execute(sql`
-                SELECT * FROM crm.tasks WHERE id = ${taskId}
+                SELECT * FROM cortex_projects.tasks WHERE id = ${taskId}
             `);
             console.log('Query successful, rows found:', result.rows.length);
             return result.rows[0] || null;
