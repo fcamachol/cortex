@@ -2146,19 +2146,75 @@ class DatabaseStorage {
             .orderBy(desc(crmContacts.createdAt));
     }
 
-    async getCrmContactById(contactId: number): Promise<any | null> {
+    async getCrmContactById(contactId: string | number): Promise<any | null> {
+        // Check if this is a Cortex entity ID (starts with cp_)
+        if (typeof contactId === 'string' && contactId.startsWith('cp_')) {
+            return await this.getCortexPersonById(contactId);
+        }
+        
+        // Legacy CRM contacts lookup (for backward compatibility)
         const [contact] = await db.select().from(crmContacts)
             .where(eq(crmContacts.contactId, contactId))
             .limit(1);
         return contact || null;
     }
 
-    async getCrmContactWithFullDetails(contactId: number): Promise<any | null> {
+    async getCortexPersonById(personId: string): Promise<any | null> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_entities.persons 
+                WHERE id = ${personId}
+                LIMIT 1
+            `);
+            
+            const rows = result.rows || [];
+            if (rows.length === 0) return null;
+            
+            const person = rows[0] as any;
+            
+            // Transform to match expected structure
+            return {
+                contactId: person.id,
+                id: person.id,
+                fullName: person.full_name,
+                firstName: person.first_name,
+                middleName: person.middle_name,
+                lastName: person.last_name,
+                nickname: person.nickname,
+                title: person.title,
+                profession: person.profession,
+                companyName: person.company_name,
+                dateOfBirth: person.date_of_birth,
+                gender: person.gender,
+                relationship: person.relationship,
+                notes: person.notes,
+                profilePictureUrl: person.profile_picture_url,
+                isActive: person.is_active,
+                primaryWhatsappJid: person.primary_whatsapp_jid,
+                whatsappInstanceName: person.whatsapp_instance_name,
+                isWhatsappLinked: person.is_whatsapp_linked,
+                whatsappLinkedAt: person.whatsapp_linked_at,
+                createdAt: person.created_at,
+                updatedAt: person.updated_at,
+                createdBy: person.created_by
+            };
+        } catch (error) {
+            console.error('Error fetching Cortex person:', error);
+            return null;
+        }
+    }
+
+    async getCrmContactWithFullDetails(contactId: string | number): Promise<any | null> {
         // Get the main contact
         const contact = await this.getCrmContactById(contactId);
         if (!contact) return null;
 
-        // Get all related data in parallel with error handling
+        // Check if this is a Cortex contact and get related data accordingly
+        if (typeof contactId === 'string' && contactId.startsWith('cp_')) {
+            return await this.getCortexContactWithFullDetails(contactId, contact);
+        }
+
+        // Legacy CRM contact - get all related data in parallel with error handling
         const [phones, emails, addresses, aliases, specialDates, interests, companies, groups, relationships] = await Promise.all([
             this.getContactPhones(contactId).catch(() => []),
             this.getContactEmails(contactId).catch(() => []),
@@ -2183,6 +2239,86 @@ class DatabaseStorage {
             groups,
             relationships
         };
+    }
+
+    async getCortexContactWithFullDetails(personId: string, baseContact: any): Promise<any | null> {
+        try {
+            // Get all related data from Cortex entities tables
+            const [phonesResult, emailsResult, addressesResult, specialDatesResult] = await Promise.all([
+                db.execute(sql`SELECT * FROM cortex_entities.contact_phones WHERE person_id = ${personId}`),
+                db.execute(sql`SELECT * FROM cortex_entities.contact_emails WHERE person_id = ${personId}`),
+                db.execute(sql`SELECT * FROM cortex_entities.contact_addresses WHERE person_id = ${personId}`),
+                db.execute(sql`SELECT * FROM cortex_entities.special_dates WHERE person_id = ${personId}`)
+            ]);
+
+            // Transform results to expected format
+            const phones = (phonesResult.rows || []).map((row: any) => ({
+                id: row.id,
+                phoneNumber: row.phone_number,
+                label: row.label,
+                isPrimary: row.is_primary,
+                isWhatsappEnabled: row.is_whatsapp_enabled,
+                createdAt: row.created_at
+            }));
+
+            const emails = (emailsResult.rows || []).map((row: any) => ({
+                id: row.id,
+                emailAddress: row.email_address,
+                label: row.label,
+                isPrimary: row.is_primary,
+                createdAt: row.created_at
+            }));
+
+            const addresses = (addressesResult.rows || []).map((row: any) => ({
+                id: row.id,
+                label: row.label,
+                streetAddress: row.street_address,
+                city: row.city,
+                state: row.state,
+                postalCode: row.postal_code,
+                country: row.country,
+                isPrimary: row.is_primary,
+                createdAt: row.created_at
+            }));
+
+            const specialDates = (specialDatesResult.rows || []).map((row: any) => ({
+                id: row.id,
+                eventName: row.event_name,
+                category: row.category,
+                eventDay: row.event_day,
+                eventMonth: row.event_month,
+                originalYear: row.original_year,
+                reminderDaysBefore: row.reminder_days_before,
+                createdAt: row.created_at
+            }));
+
+            return {
+                ...baseContact,
+                phones,
+                emails,
+                addresses,
+                specialDates,
+                aliases: [], // Not implemented in Cortex yet
+                interests: [], // Not implemented in Cortex yet
+                companies: [], // Not implemented in Cortex yet
+                groups: [], // Not implemented in Cortex yet
+                relationships: [] // Not implemented in Cortex yet
+            };
+        } catch (error) {
+            console.error('Error fetching Cortex contact details:', error);
+            return {
+                ...baseContact,
+                phones: [],
+                emails: [],
+                addresses: [],
+                specialDates: [],
+                aliases: [],
+                interests: [],
+                companies: [],
+                groups: [],
+                relationships: []
+            };
+        }
     }
 
     async createCrmContact(contactData: any): Promise<any> {
@@ -2342,6 +2478,86 @@ class DatabaseStorage {
             `);
 
             console.log('Successfully created Cortex contact:', personId);
+
+            // Insert phones if provided
+            if (phones && phones.length > 0) {
+                console.log('Inserting phones:', phones);
+                for (const phone of phones) {
+                    await db.execute(sql`
+                        INSERT INTO cortex_entities.contact_phones (
+                            person_id, phone_number, label, is_primary, is_whatsapp_enabled, created_at
+                        ) VALUES (
+                            ${personId},
+                            ${phone.phoneNumber || phone.phone_number},
+                            ${phone.label || 'Mobile'},
+                            ${phone.isPrimary || phone.is_primary || false},
+                            ${phone.isWhatsappLinked || phone.is_whatsapp_enabled || false},
+                            NOW()
+                        )
+                    `);
+                }
+            }
+
+            // Insert emails if provided
+            if (emails && emails.length > 0) {
+                console.log('Inserting emails:', emails);
+                for (const email of emails) {
+                    await db.execute(sql`
+                        INSERT INTO cortex_entities.contact_emails (
+                            person_id, email_address, label, is_primary, created_at
+                        ) VALUES (
+                            ${personId},
+                            ${email.emailAddress || email.email_address},
+                            ${email.label || 'Personal'},
+                            ${email.isPrimary || email.is_primary || false},
+                            NOW()
+                        )
+                    `);
+                }
+            }
+
+            // Insert addresses if provided
+            if (addresses && addresses.length > 0) {
+                console.log('Inserting addresses:', addresses);
+                for (const address of addresses) {
+                    await db.execute(sql`
+                        INSERT INTO cortex_entities.contact_addresses (
+                            person_id, label, street_address, city, state, postal_code, country, is_primary, created_at
+                        ) VALUES (
+                            ${personId},
+                            ${address.label || 'Home'},
+                            ${address.streetAddress || address.street_address || ''},
+                            ${address.city || ''},
+                            ${address.state || ''},
+                            ${address.postalCode || address.postal_code || ''},
+                            ${address.country || ''},
+                            ${address.isPrimary || address.is_primary || false},
+                            NOW()
+                        )
+                    `);
+                }
+            }
+
+            // Insert special dates if provided
+            if (specialDates && specialDates.length > 0) {
+                console.log('Inserting special dates:', specialDates);
+                for (const date of specialDates) {
+                    await db.execute(sql`
+                        INSERT INTO cortex_entities.special_dates (
+                            person_id, event_name, category, event_day, event_month, original_year, reminder_days_before, created_at
+                        ) VALUES (
+                            ${personId},
+                            ${date.eventName || date.event_name || ''},
+                            ${date.category || 'other'},
+                            ${date.eventDay || date.event_day || 1},
+                            ${date.eventMonth || date.event_month || 1},
+                            ${date.originalYear || date.original_year || null},
+                            ${date.reminderDaysBefore || date.reminder_days_before || 7},
+                            NOW()
+                        )
+                    `);
+                }
+            }
 
             // For compatibility with existing frontend, return in expected format
             return {
