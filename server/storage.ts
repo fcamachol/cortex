@@ -2258,6 +2258,8 @@ class DatabaseStorage {
 
     async createCortexContact(contactData: any): Promise<any> {
         try {
+            console.log('Creating Cortex contact with data:', JSON.stringify(contactData, null, 2));
+            
             // Generate Cortex person ID with cp_ prefix
             const personId = `cp_${crypto.randomUUID().replace(/-/g, '')}`;
             
@@ -2284,6 +2286,26 @@ class DatabaseStorage {
                 primaryWhatsappJid = null,
                 whatsappInstanceName = null
             } = contactData;
+            
+            console.log('Extracted contact fields:', {
+                personId,
+                fullName,
+                firstName,
+                middleName,
+                lastName,
+                nickname,
+                title,
+                profession,
+                companyName,
+                dateOfBirth,
+                gender,
+                relationship,
+                notes,
+                profilePictureUrl,
+                isWhatsappLinked,
+                primaryWhatsappJid,
+                whatsappInstanceName
+            });
 
             // Insert into cortex_entities.persons table
             const result = await db.execute(sql`
@@ -2292,13 +2314,13 @@ class DatabaseStorage {
                     nickname, title, profession, company_name, date_of_birth,
                     gender, relationship, notes, profile_picture_url,
                     is_active, primary_whatsapp_jid, whatsapp_instance_name,
-                    is_whatsapp_linked, created_at, updated_at
+                    is_whatsapp_linked, created_at, updated_at, created_by
                 ) VALUES (
                     ${personId}, ${fullName}, ${firstName}, ${middleName}, ${lastName},
                     ${nickname}, ${title}, ${profession}, ${companyName}, ${dateOfBirth},
                     ${gender}, ${relationship}, ${notes}, ${profilePictureUrl},
                     true, ${primaryWhatsappJid}, ${whatsappInstanceName},
-                    ${isWhatsappLinked}, NOW(), NOW()
+                    ${isWhatsappLinked}, NOW(), NOW(), 'system'
                 )
                 RETURNING *
             `);
