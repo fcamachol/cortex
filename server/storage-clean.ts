@@ -44,7 +44,7 @@ class DatabaseStorage {
     async getWhatsappConversations(instanceName: string): Promise<any[]> {
         try {
             const result = await db.execute(sql`
-                SELECT DISTINCT c.chat_id, c.instance_name, c.last_message_timestamp, 
+                SELECT DISTINCT c.chat_id, c.instance_name, c.name, c.phone, c.last_message_timestamp, 
                        c.unread_count, c.status, c.is_group, c.is_archived
                 FROM whatsapp.chats c
                 WHERE c.instance_name = ${instanceName}
@@ -53,7 +53,7 @@ class DatabaseStorage {
             return result.rows;
         } catch (error) {
             console.error('Error fetching conversations:', error);
-            return [];
+            throw error;
         }
     }
 
@@ -191,119 +191,6 @@ class DatabaseStorage {
 
     async deleteReceivable(receivableId: number): Promise<void> {
         throw new Error('Finance functionality temporarily disabled during schema migration');
-    }
-
-    // =============================
-    // MISSING METHODS STUBS (FOR LEGACY API COMPATIBILITY)
-    // =============================
-    
-    async getCrmContactById(contactId: string): Promise<any> {
-        return await this.getContactById(contactId);
-    }
-
-    async createCrmContact(contactData: any): Promise<any> {
-        // DISABLED: CRM functionality migrated to Cortex
-        throw new Error('CRM functionality migrated to Cortex entities');
-    }
-
-    async updateCrmContact(contactId: string, updates: any): Promise<any> {
-        // DISABLED: CRM functionality migrated to Cortex
-        throw new Error('CRM functionality migrated to Cortex entities');
-    }
-
-    async getCrmContactsByPhoneOrJid(phone: string): Promise<any[]> {
-        // DISABLED: CRM functionality migrated to Cortex
-        return [];
-    }
-
-    async linkContactToWhatsApp(contactId: string, phoneNumber: string): Promise<void> {
-        // DISABLED: WhatsApp linking functionality needs migration to Cortex
-        console.log(`WhatsApp linking disabled: ${contactId} with ${phoneNumber}`);
-    }
-
-    async createCrmContactPhone(data: any): Promise<any> {
-        // DISABLED: CRM functionality migrated to Cortex
-        throw new Error('CRM functionality migrated to Cortex entities');
-    }
-
-    async getCrmNotes(): Promise<any[]> {
-        // DISABLED: Notes functionality needs migration to Cortex
-        return [];
-    }
-
-    async getUserByEmail(email: string): Promise<any> {
-        try {
-            const result = await db.execute(sql`
-                SELECT * FROM app.users WHERE email = ${email}
-            `);
-            return result.rows[0] || null;
-        } catch (error) {
-            console.error('Error fetching user by email:', error);
-            return null;
-        }
-    }
-
-    async createAppUser(userData: any): Promise<any> {
-        try {
-            const userId = crypto.randomUUID();
-            const result = await db.execute(sql.raw(`
-                INSERT INTO app.users (id, email, password, name)
-                VALUES ('${userId}', '${userData.email}', '${userData.password}', '${userData.name}')
-                RETURNING *
-            `));
-            return result.rows[0];
-        } catch (error) {
-            console.error('Error creating user:', error);
-            throw error;
-        }
-    }
-
-    async getUserById(userId: string): Promise<any> {
-        try {
-            const result = await db.execute(sql`
-                SELECT * FROM app.users WHERE id = ${userId}
-            `);
-            return result.rows[0] || null;
-        } catch (error) {
-            console.error('Error fetching user by ID:', error);
-            return null;
-        }
-    }
-
-    async getTasks(userId?: string): Promise<any[]> {
-        try {
-            const result = await db.execute(sql`
-                SELECT *, name as title FROM cortex_projects.tasks
-                ORDER BY created_at DESC
-            `);
-            return result.rows;
-        } catch (error) {
-            console.error('Error fetching tasks:', error);
-            return [];
-        }
-    }
-
-    async createTask(taskData: any): Promise<any> {
-        return await this.createTaskGeneral(taskData);
-    }
-
-    async updateTask(taskId: string, updates: any): Promise<any> {
-        try {
-            const setClause = Object.keys(updates)
-                .map(key => `${key} = '${updates[key]}'`)
-                .join(', ');
-            
-            const result = await db.execute(sql.raw(`
-                UPDATE cortex_projects.tasks 
-                SET ${setClause}
-                WHERE id = '${taskId}'
-                RETURNING *
-            `));
-            return result.rows[0];
-        } catch (error) {
-            console.error('Error updating task:', error);
-            throw error;
-        }
     }
 
     // =============================
