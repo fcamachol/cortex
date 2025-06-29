@@ -2296,4 +2296,494 @@ export type CalendarAttendee = typeof calendarAttendees.$inferSelect;
 export type InsertCalendarAttendee = z.infer<typeof insertCalendarAttendeeSchema>;
 
 // =============================================================================
+// FINANCE SCHEMA TABLES
+// =============================================================================
+
+// Finance Categories - Hierarchical categories for income and expenses
+export const financeCategories = financeSchema.table("categories", {
+  categoryId: serial("category_id").primaryKey(),
+  workspaceId: uuid("workspace_id").notNull().references(() => appWorkspaces.workspaceId, { onDelete: "cascade" }),
+  parentCategoryId: integer("parent_category_id"),
+  categoryName: varchar("category_name", { length: 100 }).notNull(),
+});
+
+// Finance Transactions - The immutable ledger of all past financial movements
+export const financeTransactions = financeSchema.table("transactions", {
+  transactionId: serial("transaction_id").primaryKey(),
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
+  accountId: integer("account_id").references(() => financeAccounts.accountId), // Link to account
+  transactionDate: varchar("transaction_date", { length: 10 }).notNull(), // DATE as string (YYYY-MM-DD)
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  type: transactionTypeEnum("type").notNull(),
+  description: text("description"),
+  categoryId: integer("category_id").references(() => financeCategories.categoryId),
+  contactId: integer("contact_id"), // References CRM contact when available
+  createdByUserId: uuid("created_by_user_id").notNull().references(() => appUsers.userId),
+});
+
+// Finance Payables - Represents a single, specific bill to be paid
+export const financePayables = financeSchema.table("payables", {
+  payableId: serial("payable_id").primaryKey(),
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
+  amountPaid: numeric("amount_paid", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  penaltyBalance: numeric("penalty_balance", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  dueDate: varchar("due_date", { length: 10 }).notNull(), // DATE as string (YYYY-MM-DD)
+  status: payableStatusEnum("status").notNull().default("unpaid"),
+  contactId: integer("contact_id"), // References CRM contact when available
+  categoryId: integer("category_id").references(() => financeCategories.categoryId),
+  moratoryRate: numeric("moratory_rate", { precision: 5, scale: 4 }).default("0.0000"), // Daily moratory interest rate
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Finance Receivables - Represents invoices or money owed to you
+export const financeReceivables = financeSchema.table("receivables", {
+  receivableId: serial("receivable_id").primaryKey(),
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
+  amountReceived: numeric("amount_received", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  issueDate: varchar("issue_date", { length: 10 }).notNull(), // DATE as string (YYYY-MM-DD)
+  dueDate: varchar("due_date", { length: 10 }), // DATE as string (YYYY-MM-DD) - optional
+  status: receivableStatusEnum("status").notNull().default("draft"),
+  contactId: integer("contact_id"), // References CRM contact when available
+  categoryId: integer("category_id").references(() => financeCategories.categoryId),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Finance Payable Payments - Links transactions to the specific bills they are paying off
+export const financePayablePayments = financeSchema.table("payable_payments", {
+  paymentId: integer("payment_id").notNull().references(() => financeTransactions.transactionId, { onDelete: "cascade" }),
+  payableId: integer("payable_id").notNull().references(() => financePayables.payableId, { onDelete: "cascade" }),
+}, (table) => ({
+  pk: {
+    name: "payable_payments_pkey",
+    columns: [table.paymentId, table.payableId]
+  }
+}));
+
+// Finance Receivable Payments - Links income transactions to the specific receivables they are settling
+export const financeReceivablePayments = financeSchema.table("receivable_payments", {
+  paymentId: integer("payment_id").notNull().references(() => financeTransactions.transactionId, { onDelete: "cascade" }),
+  receivableId: integer("receivable_id").notNull().references(() => financeReceivables.receivableId, { onDelete: "cascade" }),
+}, (table) => ({
+  pk: {
+    name: "receivable_payments_pkey",
+    columns: [table.paymentId, table.receivableId]
+  }
+}));
+
+// Finance Recurring Bills - Templates that generate Payables on a schedule
+export const financeRecurringBills = financeSchema.table("recurring_bills", {
+  recurringBillId: serial("recurring_bill_id").primaryKey(),
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  defaultAmount: numeric("default_amount", { precision: 12, scale: 2 }),
+  recurrenceRule: text("recurrence_rule").notNull(), // iCal RRULE string
+  nextDueDate: varchar("next_due_date", { length: 10 }).notNull(), // DATE as string (YYYY-MM-DD)
+  contactId: integer("contact_id"), // References CRM contact when available
+  categoryId: integer("category_id").references(() => financeCategories.categoryId),
+});
+
+// Finance Loans - Credit instruments with interest and payment schedules
+export const financeLoans = financeSchema.table("loans", {
+  loanId: serial("loan_id").primaryKey(),
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
+  principalAmount: numeric("principal_amount", { precision: 12, scale: 2 }).notNull(),
+  interestRate: numeric("interest_rate", { precision: 5, scale: 4 }).notNull(),
+  interestType: varchar("interest_type", { length: 20 }).notNull().default("simple"), // 'simple' or 'compound'
+  startDate: varchar("start_date", { length: 10 }).notNull(), // DATE as string (YYYY-MM-DD)
+  termMonths: integer("term_months").notNull(),
+  paymentFrequency: varchar("payment_frequency", { length: 20 }).notNull().default("monthly"), // monthly, weekly, etc
+  purpose: varchar("purpose", { length: 100 }), // loan purpose
+  collateral: text("collateral"), // collateral description
+  status: loanStatusEnum("status").notNull().default("active"),
+  // Unified entity relationships using UUIDs - can link to contacts (cp_) or companies (cc_)
+  lenderEntityId: varchar("lender_entity_id", { length: 50 }), // Unified entity UUID (cp_ or cc_ prefixed)
+  borrowerEntityId: varchar("borrower_entity_id", { length: 50 }), // Unified entity UUID (cp_ or cc_ prefixed)
+  moratoryInterestRate: numeric("moratory_interest_rate", { precision: 5, scale: 4 }),
+  moratoryInterestPeriod: interestPeriodTypeEnum("moratory_interest_period"),
+});
+
+// Finance Accounts - Bank accounts, credit cards, investment accounts, etc.
+export const financeAccounts = financeSchema.table("accounts", {
+  accountId: serial("account_id").primaryKey(),
+  spaceId: integer("space_id").notNull().references(() => appSpaces.spaceId, { onDelete: "cascade" }),
+  accountName: varchar("account_name", { length: 255 }).notNull(),
+  accountType: varchar("account_type", { length: 50 }).notNull(), // Temporarily using varchar instead of enum
+  institutionName: varchar("institution_name", { length: 255 }),
+  accountNumber: varchar("account_number", { length: 50 }), // Last 4 digits or masked number
+  currentBalance: numeric("current_balance", { precision: 12, scale: 2 }).default("0.00"),
+  currency: varchar("currency", { length: 3 }).notNull().default("USD"),
+  isActive: boolean("is_active").notNull().default(true),
+  last4Digits: varchar("last_4_digits", { length: 4 }), // For display purposes
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Credit Card Details - Specific information for credit card accounts
+export const creditCardDetails = financeSchema.table("credit_card_details", {
+  accountId: integer("account_id").primaryKey().references(() => financeAccounts.accountId, { onDelete: "cascade" }),
+  creditLimit: numeric("credit_limit", { precision: 12, scale: 2 }).notNull(),
+  apr: numeric("apr", { precision: 6, scale: 4 }).notNull(), // Annual Percentage Rate
+  statementClosingDay: integer("statement_closing_day").notNull(), // Day of month (1-31)
+  paymentDueDaysAfterStatement: integer("payment_due_days_after_statement").notNull().default(21),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Statements - Historical record of monthly credit card statements
+export const statements = financeSchema.table("statements", {
+  statementId: serial("statement_id").primaryKey(),
+  accountId: integer("account_id").notNull().references(() => financeAccounts.accountId, { onDelete: "cascade" }),
+  statementPeriodStart: varchar("statement_period_start", { length: 10 }).notNull(), // DATE as string
+  statementPeriodEnd: varchar("statement_period_end", { length: 10 }).notNull(), // DATE as string
+  closingBalance: numeric("closing_balance", { precision: 12, scale: 2 }).notNull(),
+  minimumPaymentDue: numeric("minimum_payment_due", { precision: 12, scale: 2 }).notNull(),
+  paymentDueDate: varchar("payment_due_date", { length: 10 }).notNull(), // DATE as string
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Finance Loan Payments - Links transactions to loan payments with principal/interest breakdown
+export const financeLoanPayments = financeSchema.table("loan_payments", {
+  paymentId: integer("payment_id").notNull().references(() => financeTransactions.transactionId, { onDelete: "cascade" }),
+  loanId: integer("loan_id").notNull().references(() => financeLoans.loanId, { onDelete: "cascade" }),
+  principalPaid: numeric("principal_paid", { precision: 12, scale: 2 }).notNull(),
+  interestPaid: numeric("interest_paid", { precision: 12, scale: 2 }).notNull(),
+}, (table) => ({
+  pk: {
+    name: "loan_payments_pkey",
+    columns: [table.paymentId, table.loanId]
+  }
+}));
+
+// =============================================================================
+// FINANCE SCHEMA RELATIONS
+// =============================================================================
+
+export const financeCategoriesRelations = relations(financeCategories, ({ one, many }) => ({
+  workspace: one(appWorkspaces, {
+    fields: [financeCategories.workspaceId],
+    references: [appWorkspaces.workspaceId],
+  }),
+  parentCategory: one(financeCategories, {
+    fields: [financeCategories.parentCategoryId],
+    references: [financeCategories.categoryId],
+  }),
+  transactions: many(financeTransactions),
+  recurringBills: many(financeRecurringBills),
+}));
+
+export const financeAccountsRelations = relations(financeAccounts, ({ one, many }) => ({
+  space: one(appSpaces, {
+    fields: [financeAccounts.spaceId],
+    references: [appSpaces.spaceId],
+  }),
+  transactions: many(financeTransactions),
+  creditCardDetails: one(creditCardDetails, {
+    fields: [financeAccounts.accountId],
+    references: [creditCardDetails.accountId],
+  }),
+  statements: many(statements),
+}));
+
+export const creditCardDetailsRelations = relations(creditCardDetails, ({ one }) => ({
+  account: one(financeAccounts, {
+    fields: [creditCardDetails.accountId],
+    references: [financeAccounts.accountId],
+  }),
+}));
+
+export const statementsRelations = relations(statements, ({ one }) => ({
+  account: one(financeAccounts, {
+    fields: [statements.accountId],
+    references: [financeAccounts.accountId],
+  }),
+}));
+
+export const financeTransactionsRelations = relations(financeTransactions, ({ one, many }) => ({
+  space: one(appSpaces, {
+    fields: [financeTransactions.spaceId],
+    references: [appSpaces.spaceId],
+  }),
+  account: one(financeAccounts, {
+    fields: [financeTransactions.accountId],
+    references: [financeAccounts.accountId],
+  }),
+  category: one(financeCategories, {
+    fields: [financeTransactions.categoryId],
+    references: [financeCategories.categoryId],
+  }),
+  createdBy: one(appUsers, {
+    fields: [financeTransactions.createdByUserId],
+    references: [appUsers.userId],
+  }),
+  payablePayments: many(financePayablePayments),
+  receivablePayments: many(financeReceivablePayments),
+  loanPayments: many(financeLoanPayments),
+}));
+
+export const financePayablesRelations = relations(financePayables, ({ one, many }) => ({
+  space: one(appSpaces, {
+    fields: [financePayables.spaceId],
+    references: [appSpaces.spaceId],
+  }),
+  category: one(financeCategories, {
+    fields: [financePayables.categoryId],
+    references: [financeCategories.categoryId],
+  }),
+  payablePayments: many(financePayablePayments),
+  linkedTask: one(crmTasks, {
+    fields: [financePayables.payableId],
+    references: [crmTasks.linkedPayableId],
+  }),
+}));
+
+export const financeReceivablesRelations = relations(financeReceivables, ({ one, many }) => ({
+  space: one(appSpaces, {
+    fields: [financeReceivables.spaceId],
+    references: [appSpaces.spaceId],
+  }),
+  category: one(financeCategories, {
+    fields: [financeReceivables.categoryId],
+    references: [financeCategories.categoryId],
+  }),
+  receivablePayments: many(financeReceivablePayments),
+}));
+
+export const financePayablePaymentsRelations = relations(financePayablePayments, ({ one }) => ({
+  payment: one(financeTransactions, {
+    fields: [financePayablePayments.paymentId],
+    references: [financeTransactions.transactionId],
+  }),
+  payable: one(financePayables, {
+    fields: [financePayablePayments.payableId],
+    references: [financePayables.payableId],
+  }),
+}));
+
+export const financeReceivablePaymentsRelations = relations(financeReceivablePayments, ({ one }) => ({
+  payment: one(financeTransactions, {
+    fields: [financeReceivablePayments.paymentId],
+    references: [financeTransactions.transactionId],
+  }),
+  receivable: one(financeReceivables, {
+    fields: [financeReceivablePayments.receivableId],
+    references: [financeReceivables.receivableId],
+  }),
+}));
+
+export const financeRecurringBillsRelations = relations(financeRecurringBills, ({ one }) => ({
+  space: one(appSpaces, {
+    fields: [financeRecurringBills.spaceId],
+    references: [appSpaces.spaceId],
+  }),
+  category: one(financeCategories, {
+    fields: [financeRecurringBills.categoryId],
+    references: [financeCategories.categoryId],
+  }),
+}));
+
+export const financeLoansRelations = relations(financeLoans, ({ one, many }) => ({
+  space: one(appSpaces, {
+    fields: [financeLoans.spaceId],
+    references: [appSpaces.spaceId],
+  }),
+  loanPayments: many(financeLoanPayments),
+}));
+
+export const financeLoanPaymentsRelations = relations(financeLoanPayments, ({ one }) => ({
+  payment: one(financeTransactions, {
+    fields: [financeLoanPayments.paymentId],
+    references: [financeTransactions.transactionId],
+  }),
+  loan: one(financeLoans, {
+    fields: [financeLoanPayments.loanId],
+    references: [financeLoans.loanId],
+  }),
+}));
+
+// =============================================================================
+// FINANCE SCHEMA INSERT SCHEMAS
+// =============================================================================
+
+export const insertFinanceCategorySchema = createInsertSchema(financeCategories).omit({
+  categoryId: true,
+});
+
+export const insertFinanceTransactionSchema = createInsertSchema(financeTransactions).omit({
+  transactionId: true,
+});
+
+export const insertFinancePayableSchema = createInsertSchema(financePayables).omit({
+  payableId: true,
+});
+
+export const insertFinancePayablePaymentSchema = createInsertSchema(financePayablePayments);
+
+export const insertFinanceReceivableSchema = createInsertSchema(financeReceivables).omit({
+  receivableId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFinanceReceivablePaymentSchema = createInsertSchema(financeReceivablePayments);
+
+export const insertFinanceRecurringBillSchema = createInsertSchema(financeRecurringBills).omit({
+  recurringBillId: true,
+});
+
+export const insertFinanceLoanSchema = createInsertSchema(financeLoans).omit({
+  loanId: true,
+});
+
+export const insertFinanceLoanPaymentSchema = createInsertSchema(financeLoanPayments);
+
+export const insertFinanceAccountSchema = createInsertSchema(financeAccounts).omit({
+  accountId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCreditCardDetailsSchema = createInsertSchema(creditCardDetails).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertStatementSchema = createInsertSchema(statements).omit({
+  statementId: true,
+  createdAt: true,
+});
+
+// =============================================================================
+// FINANCE SCHEMA TYPES
+// =============================================================================
+
+export type FinanceCategory = typeof financeCategories.$inferSelect;
+export type InsertFinanceCategory = z.infer<typeof insertFinanceCategorySchema>;
+
+export type FinanceAccount = typeof financeAccounts.$inferSelect;
+export type InsertFinanceAccount = z.infer<typeof insertFinanceAccountSchema>;
+
+export type FinanceTransaction = typeof financeTransactions.$inferSelect;
+export type InsertFinanceTransaction = z.infer<typeof insertFinanceTransactionSchema>;
+
+export type FinancePayable = typeof financePayables.$inferSelect;
+export type InsertFinancePayable = z.infer<typeof insertFinancePayableSchema>;
+
+export type FinancePayablePayment = typeof financePayablePayments.$inferSelect;
+export type InsertFinancePayablePayment = z.infer<typeof insertFinancePayablePaymentSchema>;
+
+export type FinanceReceivable = typeof financeReceivables.$inferSelect;
+export type InsertFinanceReceivable = z.infer<typeof insertFinanceReceivableSchema>;
+
+export type FinanceReceivablePayment = typeof financeReceivablePayments.$inferSelect;
+export type InsertFinanceReceivablePayment = z.infer<typeof insertFinanceReceivablePaymentSchema>;
+
+export type FinanceRecurringBill = typeof financeRecurringBills.$inferSelect;
+export type InsertFinanceRecurringBill = z.infer<typeof insertFinanceRecurringBillSchema>;
+
+export type FinanceLoan = typeof financeLoans.$inferSelect;
+export type InsertFinanceLoan = z.infer<typeof insertFinanceLoanSchema>;
+
+export type FinanceLoanPayment = typeof financeLoanPayments.$inferSelect;
+export type InsertFinanceLoanPayment = z.infer<typeof insertFinanceLoanPaymentSchema>;
+
+export type CreditCardDetails = typeof creditCardDetails.$inferSelect;
+export type InsertCreditCardDetails = z.infer<typeof insertCreditCardDetailsSchema>;
+
+export type Statement = typeof statements.$inferSelect;
+
+// Unified Entity System Insert Schemas
+export const insertCrmGroupSchema = createInsertSchema(crmGroups).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrmEventSchema = createInsertSchema(crmEvents).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrmAccountSchema = createInsertSchema(crmAccounts).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrmVendorSchema = createInsertSchema(crmVendors).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrmNoteSchema = createInsertSchema(crmNotes).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrmDocumentSchema = createInsertSchema(crmDocuments).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Unified Entity System Type Definitions
+export type CrmContact = typeof crmContacts.$inferSelect;
+export type InsertCrmContact = z.infer<typeof insertCrmContactSchema>;
+
+export type CrmGroup = typeof crmGroups.$inferSelect;
+export type InsertCrmGroup = z.infer<typeof insertCrmGroupSchema>;
+
+export type CrmCompany = typeof crmCompanies.$inferSelect;
+export type InsertCrmCompany = z.infer<typeof insertCrmCompanySchema>;
+
+export type CrmObject = typeof crmObjects.$inferSelect;
+export type InsertCrmObject = z.infer<typeof insertCrmObjectSchema>;
+
+export type CrmProject = typeof crmProjects.$inferSelect;
+export type InsertCrmProject = z.infer<typeof insertCrmProjectSchema>;
+
+export type CrmEvent = typeof crmEvents.$inferSelect;
+export type InsertCrmEvent = z.infer<typeof insertCrmEventSchema>;
+
+export type CrmAccount = typeof crmAccounts.$inferSelect;
+export type InsertCrmAccount = z.infer<typeof insertCrmAccountSchema>;
+
+export type CrmVendor = typeof crmVendors.$inferSelect;
+export type InsertCrmVendor = z.infer<typeof insertCrmVendorSchema>;
+
+// Content Entity Types (Standard UUIDs)
+export type CrmTask = typeof crmTasks.$inferSelect;
+export type InsertCrmTask = z.infer<typeof insertCrmTaskSchema>;
+
+export type CrmNote = typeof crmNotes.$inferSelect;
+export type InsertCrmNote = z.infer<typeof insertCrmNoteSchema>;
+
+export type CrmDocument = typeof crmDocuments.$inferSelect;
+export type InsertCrmDocument = z.infer<typeof insertCrmDocumentSchema>;
+
+// Junction Tables
+export type EntityActivity = typeof entityActivities.$inferSelect;
+export type InsertEntityActivity = z.infer<typeof insertEntityActivitySchema>;
+
+export type EntityTag = typeof entityTags.$inferSelect;
+export type InsertEntityTag = z.infer<typeof insertEntityTagSchema>;
+
+// Unified Entity ID Type Union
+export type EntityId = 
+  | `cp_${string}` // Contacts (Persons)
+  | `cc_${string}` // Companies
+  | `cg_${string}` // Groups
+  | `co_${string}` // Objects
+  | `ca_${string}` // Financial Accounts
+  | `cv_${string}` // Vendors
+  | `cj_${string}` // Projects
+  | `ce_${string}`; // Events
+
+// Entity Activity Linking System
+export const insertEntityActivitySchema = createInsertSchema(entityActivities);
+export const insertEntityTagSchema = createInsertSchema(entityTags);
+
 export type InsertStatement = z.infer<typeof insertStatementSchema>;

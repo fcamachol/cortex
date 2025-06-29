@@ -1,0 +1,14 @@
+// =============================================================================
+// FINANCE SCHEMA MIGRATED TO CORTEX_FINANCE
+// =============================================================================
+// 
+// The old finance schema has been completely migrated to cortex_finance.
+// All finance functionality now uses the cortex_finance schema tables:
+// - cortex_finance.accounts
+// - cortex_finance.transactions  
+// - cortex_finance.bills_payable
+// - cortex_finance.bills_receivable
+// - cortex_finance.categories
+// - cortex_finance.budget_categories
+//
+// Legacy finance schema removed June 29, 2025.
