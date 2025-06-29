@@ -2307,7 +2307,7 @@ class DatabaseStorage {
                 whatsappInstanceName
             });
 
-            // Insert into cortex_entities.persons table
+            // Insert into cortex_entities.persons table with proper null handling
             const result = await db.execute(sql`
                 INSERT INTO cortex_entities.persons (
                     id, full_name, first_name, middle_name, last_name, 
@@ -2316,11 +2316,27 @@ class DatabaseStorage {
                     is_active, primary_whatsapp_jid, whatsapp_instance_name,
                     is_whatsapp_linked, created_at, updated_at, created_by
                 ) VALUES (
-                    ${personId}, ${fullName}, ${firstName}, ${middleName}, ${lastName},
-                    ${nickname}, ${title}, ${profession}, ${companyName}, ${dateOfBirth},
-                    ${gender}, ${relationship}, ${notes}, ${profilePictureUrl},
-                    true, ${primaryWhatsappJid}, ${whatsappInstanceName},
-                    ${isWhatsappLinked}, NOW(), NOW(), 'system'
+                    ${personId}, 
+                    ${fullName || ''}, 
+                    ${firstName || null}, 
+                    ${middleName || null}, 
+                    ${lastName || null},
+                    ${nickname || null}, 
+                    ${title || null}, 
+                    ${profession || null}, 
+                    ${companyName || null}, 
+                    ${dateOfBirth || null},
+                    ${gender || null}, 
+                    ${relationship || null}, 
+                    ${notes || null}, 
+                    ${profilePictureUrl || null},
+                    true, 
+                    ${primaryWhatsappJid || null}, 
+                    ${whatsappInstanceName || null},
+                    ${isWhatsappLinked || false}, 
+                    NOW(), 
+                    NOW(), 
+                    'system'
                 )
                 RETURNING *
             `);
