@@ -1,6 +1,7 @@
 import { db } from "./db"; // Your Drizzle ORM instance
 import { sql, eq, desc, asc, and, or, ilike } from "drizzle-orm";
 import { entityActivities } from "../shared/schema";
+import crypto from "crypto";
 
 import {
     // App Schema
@@ -2246,95 +2247,90 @@ class DatabaseStorage {
     // Complete Contact Methods (handles all block data)
     async createCompleteContact(contactData: any): Promise<any> {
         try {
-            // Extract block data
-            const { phones = [], emails = [], addresses = [], specialDates = [], interests = [], aliases = [], ...mainContactData } = contactData;
-            
-            // Create the main contact first
-            const contact = await this.createCrmContact(mainContactData);
-            
-            // Process phones (ensure Mobile label instead of WhatsApp)
-            for (const phone of phones) {
-                await this.addContactPhone({
-                    ...phone,
-                    label: phone.label === 'WhatsApp' ? 'Mobile' : phone.label,
-                    contactId: contact.contactId
-                });
-                
-                // If phone is marked as having WhatsApp, attempt to link
-                if (phone.isWhatsappLinked) {
-                    await this.linkContactToWhatsApp(contact.contactId, phone.phoneNumber);
-                }
-            }
-            
-            // Process emails
-            for (const email of emails) {
-                await this.addContactEmail({
-                    ...email,
-                    contactId: contact.contactId
-                });
-            }
-            
-            // Process addresses
-            for (const address of addresses) {
-                await this.addContactAddress({
-                    ...address,
-                    contactId: contact.contactId
-                });
-            }
-            
-            // Process special dates
-            for (const dateBlock of specialDates) {
-                if (dateBlock.day && dateBlock.month) {
-                    await this.addContactSpecialDate({
-                        contactId: contact.contactId,
-                        eventName: dateBlock.title || dateBlock.type || 'Special Date',
-                        eventDay: dateBlock.day,
-                        eventMonth: dateBlock.month,
-                        originalYear: dateBlock.year || null,
-                        reminderDaysBefore: dateBlock.reminderDays || 7
-                    });
-                }
-            }
-            
-            // Process interests
-            for (const interestBlock of interests) {
-                if (interestBlock.name && interestBlock.name.trim()) {
-                    // First ensure the interest exists in the master list
-                    let interest = await db.select().from(crmInterests)
-                        .where(eq(crmInterests.name, interestBlock.name.trim()))
-                        .limit(1);
-                    
-                    if (interest.length === 0) {
-                        // Create new interest in master list
-                        const [newInterest] = await db.insert(crmInterests)
-                            .values({ name: interestBlock.name.trim() })
-                            .returning();
-                        interest = [newInterest];
-                    }
-                    
-                    // Link interest to contact
-                    await db.insert(crmContactInterests)
-                        .values({
-                            contactId: contact.contactId,
-                            interestId: interest[0].interestId
-                        })
-                        .onConflictDoNothing();
-                }
-            }
-            
-            // Process aliases
-            for (const aliasBlock of aliases) {
-                if (aliasBlock.name && aliasBlock.name.trim()) {
-                    await this.addContactAlias({
-                        contactId: contact.contactId,
-                        alias: aliasBlock.name.trim()
-                    });
-                }
-            }
-            
-            return contact;
+            // Create contact in Cortex entities system
+            const cortexContact = await this.createCortexContact(contactData);
+            return cortexContact;
         } catch (error) {
             console.error('Error creating complete contact:', error);
+            throw error;
+        }
+    }
+
+    async createCortexContact(contactData: any): Promise<any> {
+        try {
+            // Generate Cortex person ID with cp_ prefix
+            const personId = `cp_${crypto.randomUUID().replace(/-/g, '')}`;
+            
+            // Extract main contact fields
+            const {
+                fullName,
+                firstName,
+                middleName,
+                lastName,
+                nickname,
+                title,
+                profession,
+                companyName,
+                dateOfBirth,
+                gender,
+                relationship,
+                notes,
+                profilePictureUrl,
+                phones = [],
+                emails = [],
+                addresses = [],
+                specialDates = [],
+                isWhatsappLinked = false,
+                primaryWhatsappJid = null,
+                whatsappInstanceName = null
+            } = contactData;
+
+            // Insert into cortex_entities.persons table
+            const result = await db.execute(sql`
+                INSERT INTO cortex_entities.persons (
+                    id, full_name, first_name, middle_name, last_name, 
+                    nickname, title, profession, company_name, date_of_birth,
+                    gender, relationship, notes, profile_picture_url,
+                    is_active, primary_whatsapp_jid, whatsapp_instance_name,
+                    is_whatsapp_linked, created_at, updated_at
+                ) VALUES (
+                    ${personId}, ${fullName}, ${firstName}, ${middleName}, ${lastName},
+                    ${nickname}, ${title}, ${profession}, ${companyName}, ${dateOfBirth},
+                    ${gender}, ${relationship}, ${notes}, ${profilePictureUrl},
+                    true, ${primaryWhatsappJid}, ${whatsappInstanceName},
+                    ${isWhatsappLinked}, NOW(), NOW()
+                )
+                RETURNING *
+            `);
+
+            console.log('Successfully created Cortex contact:', personId);
+
+            // For compatibility with existing frontend, return in expected format
+            return {
+                id: personId,
+                contactId: personId, // For compatibility
+                fullName,
+                firstName,
+                middleName,
+                lastName,
+                nickname,
+                title,
+                profession,
+                companyName,
+                dateOfBirth,
+                gender,
+                relationship,
+                notes,
+                profilePictureUrl,
+                isActive: true,
+                primaryWhatsappJid,
+                whatsappInstanceName,
+                isWhatsappLinked,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+        } catch (error) {
+            console.error('Error creating Cortex contact:', error);
             throw error;
         }
     }
