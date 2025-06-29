@@ -1160,7 +1160,7 @@ export default function ChatInterface({
                     <p className="text-sm">{message.content}</p>
                   )}
                   <div className={`flex items-center justify-end mt-1 space-x-1 ${
-                    message.isFromMe ? 'justify-end' : 'justify-start'
+                    getIsFromMe(message) ? 'justify-end' : 'justify-start'
                   }`}>
                     {/* Waiting reply checkbox - appears on hover */}
                     {(hoveredMessageId === (message.messageId || message.id)) && (
@@ -1202,7 +1202,7 @@ export default function ChatInterface({
                         minute: '2-digit' 
                       })}
                     </span>
-                    {message.isFromMe && (
+                    {getIsFromMe(message) && (
                       <div className="text-xs text-blue-500">
                         {message.status === 'read' ? '✓✓' : message.status === 'delivered' ? '✓✓' : '✓'}
                       </div>
