@@ -1,7 +1,7 @@
 import { db } from "./db"; // Your Drizzle ORM instance
 import { sql, eq, desc, asc, and, or, ilike } from "drizzle-orm";
 import { entityActivities } from "../shared/schema";
-import { pgTable, varchar, text, date, boolean, timestamp } from "drizzle-orm/pg-core";
+
 import {
     // App Schema
     appUsers, appWorkspaces, appSpaces, appWorkspaceMembers, appSpaceItems,
@@ -47,31 +47,7 @@ import {
     // Finance types: REMOVED - Migrated to cortex_finance (old schema was test data only)
 } from "../shared/schema"; // Assuming a single, final schema definition file
 
-// Cortex Entities Table Definition
-const cortexPersons = pgTable("persons", {
-    id: varchar("id", { length: 50 }).primaryKey(),
-    fullName: varchar("full_name", { length: 255 }),
-    firstName: varchar("first_name", { length: 100 }),
-    middleName: varchar("middle_name", { length: 100 }),
-    lastName: varchar("last_name", { length: 100 }),
-    nickname: varchar("nickname", { length: 100 }),
-    title: varchar("title", { length: 100 }),
-    profession: varchar("profession", { length: 200 }),
-    companyName: varchar("company_name", { length: 255 }),
-    dateOfBirth: date("date_of_birth"),
-    gender: varchar("gender", { length: 20 }),
-    relationship: varchar("relationship", { length: 100 }),
-    notes: text("notes"),
-    profilePictureUrl: varchar("profile_picture_url", { length: 500 }),
-    isActive: boolean("is_active").default(true),
-    primaryWhatsappJid: varchar("primary_whatsapp_jid", { length: 100 }),
-    whatsappInstanceName: varchar("whatsapp_instance_name", { length: 100 }),
-    isWhatsappLinked: boolean("is_whatsapp_linked").default(false),
-    whatsappLinkedAt: timestamp("whatsapp_linked_at"),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
-    createdBy: varchar("created_by", { length: 50 })
-}, { schema: "cortex_entities" });
+
 
 /**
  * @class DatabaseStorage
@@ -4405,6 +4381,72 @@ class DatabaseStorage {
                 .where(eq(taskMessageLinks.taskId, taskId));
         } catch (error) {
             console.error('Error deleting all task message links:', error);
+            throw error;
+        }
+    }
+
+    // =========================================================================
+    // CORTEX ENTITIES METHODS - New Unified Entity System
+    // =========================================================================
+
+    async getCortexPersons(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT 
+                    id,
+                    full_name,
+                    first_name,
+                    middle_name,
+                    last_name,
+                    nickname,
+                    title,
+                    profession,
+                    company_name,
+                    date_of_birth,
+                    gender,
+                    relationship,
+                    notes,
+                    profile_picture_url,
+                    is_active,
+                    primary_whatsapp_jid,
+                    whatsapp_instance_name,
+                    is_whatsapp_linked,
+                    whatsapp_linked_at,
+                    created_at,
+                    updated_at,
+                    created_by
+                FROM cortex_entities.persons
+                WHERE is_active = true
+                ORDER BY full_name
+            `);
+            
+            return result.rows.map((person: any) => ({
+                id: person.id,
+                contactId: person.id, // For compatibility
+                fullName: person.full_name,
+                firstName: person.first_name,
+                middleName: person.middle_name,
+                lastName: person.last_name,
+                nickname: person.nickname,
+                title: person.title,
+                profession: person.profession,
+                companyName: person.company_name,
+                dateOfBirth: person.date_of_birth,
+                gender: person.gender,
+                relationship: person.relationship,
+                notes: person.notes,
+                profilePictureUrl: person.profile_picture_url,
+                isActive: person.is_active,
+                primaryWhatsappJid: person.primary_whatsapp_jid,
+                whatsappInstanceName: person.whatsapp_instance_name,
+                isWhatsappLinked: person.is_whatsapp_linked,
+                whatsappLinkedAt: person.whatsapp_linked_at,
+                createdAt: person.created_at,
+                updatedAt: person.updated_at,
+                createdBy: person.created_by
+            }));
+        } catch (error) {
+            console.error('Error fetching Cortex persons:', error);
             throw error;
         }
     }
