@@ -278,7 +278,7 @@ class DatabaseStorage {
     async getTasks(userId?: string): Promise<any[]> {
         try {
             const result = await db.execute(sql`
-                SELECT *, name as title FROM cortex_projects.tasks
+                SELECT * FROM cortex_projects.tasks
                 ORDER BY created_at DESC
             `);
             return result.rows;
@@ -319,10 +319,14 @@ class DatabaseStorage {
         try {
             const result = await db.execute(sql`
                 SELECT DISTINCT c.chat_id, c.instance_name, c.last_message_timestamp, 
-                       c.unread_count, c.is_group, c.is_archived,
+                       c.unread_count, c.is_archived, c.type,
                        CASE 
-                         WHEN c.is_group = true THEN g.group_name
-                         ELSE cont.contact_name
+                         WHEN c.chat_id LIKE '%@g.us' THEN true
+                         ELSE false
+                       END as is_group,
+                       CASE 
+                         WHEN c.chat_id LIKE '%@g.us' THEN COALESCE(g.group_name, c.chat_id)
+                         ELSE COALESCE(cont.push_name, cont.jid, c.chat_id)
                        END as name
                 FROM whatsapp.chats c
                 LEFT JOIN whatsapp.groups g ON c.chat_id = g.group_jid AND c.instance_name = g.instance_name
