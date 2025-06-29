@@ -8,7 +8,8 @@ import { nanoid } from 'nanoid';
 import { WebhookController } from './webhook-controller';
 import { SseManager } from './sse-manager';
 import { getEvolutionApi } from './evolution-api';
-import { BillToTaskService } from './bill-task-service';
+// DISABLED: BillToTaskService temporarily disabled after finance schema cleanup
+// import { BillToTaskService } from './bill-task-service';
 import { ScheduledJobsService } from './scheduled-jobs';
 import { webhookReliability } from './webhook-reliability';
 import { messageRecovery } from './message-recovery-system';
@@ -2325,17 +2326,16 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const payable = await storage.createPayable(req.body);
       
-      // Automatically create a companion task for the bill
-      try {
-        await BillToTaskService.createTaskForBill(payable.payableId, {
-          instanceId: req.body.instanceId || 'default-instance',
-          userId: payable.userId, // Use user_id instead of space_id
-          createdByUserId: req.body.createdByUserId,
-        });
-      } catch (taskError) {
-        console.error('Error creating companion task for bill:', taskError);
-        // Don't fail the bill creation if task creation fails
-      }
+      // DISABLED: Companion task creation temporarily disabled after finance schema cleanup
+      // try {
+      //   await BillToTaskService.createTaskForBill(payable.payableId, {
+      //     instanceId: req.body.instanceId || 'default-instance',
+      //     userId: payable.userId,
+      //     createdByUserId: req.body.createdByUserId,
+      //   });
+      // } catch (taskError) {
+      //   console.error('Error creating companion task for bill:', taskError);
+      // }
       
       res.json(payable);
     } catch (error) {
@@ -2354,8 +2354,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(400).json({ error: 'Payment amount must be greater than 0' });
       }
       
-      const result = await BillToTaskService.applyPaymentToBill(payableId, parseFloat(paymentAmount));
-      res.json(result);
+      // DISABLED: Payment processing temporarily disabled after finance schema cleanup
+      // const result = await BillToTaskService.applyPaymentToBill(payableId, parseFloat(paymentAmount));
+      res.status(501).json({ error: 'Payment processing temporarily disabled' });
     } catch (error) {
       console.error('Error applying payment to bill:', error);
       res.status(500).json({ error: 'Failed to apply payment to bill' });
@@ -2379,13 +2380,12 @@ export async function registerRoutes(app: Express): Promise<void> {
       const payableId = parseInt(req.params.payableId);
       const payable = await storage.updatePayable(payableId, req.body);
       
-      // Update the companion task
-      try {
-        await BillToTaskService.updateTaskForBill(payableId);
-      } catch (taskError) {
-        console.error('Error updating companion task for bill:', taskError);
-        // Don't fail the payable update if task update fails
-      }
+      // DISABLED: Companion task update temporarily disabled after finance schema cleanup
+      // try {
+      //   await BillToTaskService.updateTaskForBill(payableId);
+      // } catch (taskError) {
+      //   console.error('Error updating companion task for bill:', taskError);
+      // }
       
       res.json(payable);
     } catch (error) {
@@ -3107,17 +3107,17 @@ export async function registerRoutes(app: Express): Promise<void> {
   // CREDIT CARD MANAGEMENT ENDPOINTS
   // =============================================================================
 
-  // Create credit card details for an account
-  app.post('/api/finance/credit-cards', async (req: Request, res: Response) => {
-    try {
-      const creditCardData = insertCreditCardDetailsSchema.parse(req.body);
-      const creditCard = await storage.createCreditCardDetails(creditCardData);
-      res.json(creditCard);
-    } catch (error) {
-      console.error('Error creating credit card:', error);
-      res.status(500).json({ error: 'Failed to create credit card' });
-    }
-  });
+  // DISABLED: Credit card routes temporarily disabled after finance schema cleanup
+  // app.post('/api/finance/credit-cards', async (req: Request, res: Response) => {
+  //   try {
+  //     const creditCardData = insertCreditCardDetailsSchema.parse(req.body);
+  //     const creditCard = await storage.createCreditCardDetails(creditCardData);
+  //     res.json(creditCard);
+  //   } catch (error) {
+  //     console.error('Error creating credit card:', error);
+  //     res.status(500).json({ error: 'Failed to create credit card' });
+  //   }
+  // });
 
   // Get credit card details for an account
   app.get('/api/finance/credit-cards/:accountId', async (req: Request, res: Response) => {
@@ -3157,16 +3157,17 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // Create a new statement (for monthly statement generation)
-  app.post('/api/finance/statements', async (req: Request, res: Response) => {
-    try {
-      const statementData = insertStatementSchema.parse(req.body);
-      const statement = await storage.createStatement(statementData);
-      res.json(statement);
-    } catch (error) {
-      console.error('Error creating statement:', error);
-      res.status(500).json({ error: 'Failed to create statement' });
-    }
-  });
+  // DISABLED: Statement routes temporarily disabled after finance schema cleanup
+  // app.post('/api/finance/statements', async (req: Request, res: Response) => {
+  //   try {
+  //     const statementData = insertStatementSchema.parse(req.body);
+  //     const statement = await storage.createStatement(statementData);
+  //     res.json(statement);
+  //   } catch (error) {
+  //     console.error('Error creating statement:', error);
+  //     res.status(500).json({ error: 'Failed to create statement' });
+  //   }
+  // });
 
   // Get latest statement for a credit card
   app.get('/api/finance/statements/:accountId/latest', async (req: Request, res: Response) => {
