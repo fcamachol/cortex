@@ -207,14 +207,14 @@ export default function ChatInterface({
     if (!chatId || !conversations.length) return null;
     
     return instanceId 
-      ? conversations.find(conv => conv.chatId === chatId && conv.instanceId === instanceId)
-      : conversations.find(conv => conv.chatId === chatId);
+      ? conversations.find(conv => (conv.chat_id || conv.chatId) === chatId && (conv.instanceid || conv.instanceId) === instanceId)
+      : conversations.find(conv => (conv.chat_id || conv.chatId) === chatId);
   }, [chatId, instanceId, conversations]);
   
   // Use the conversation's instanceId if we found one, otherwise use the parsed instanceId - stabilized with useMemo
   const finalInstanceId = useMemo(() => {
-    return conversation?.instanceId || instanceId;
-  }, [conversation?.instanceId, instanceId]);
+    return (conversation?.instanceid || conversation?.instanceId) || instanceId;
+  }, [conversation?.instanceid, conversation?.instanceId, instanceId]);
 
   const { data: rawMessages = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/whatsapp/chat-messages`, conversationId, finalInstanceId],
