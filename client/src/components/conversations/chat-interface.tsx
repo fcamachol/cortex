@@ -987,16 +987,16 @@ export default function ChatInterface({
                 ) : conversationChatId ? (
                   <ClickableContactName
                     senderJid={conversationChatId}
-                  displayName={getConversationDisplayName(conversation)}
-                  instanceId={finalInstanceId}
-                  pushName={conversation.displayName || conversation.name}
-                  variant="header"
-                />
-              ) : (
-                <h2 className="font-semibold text-gray-900 dark:text-gray-100">
-                  {conversation ? getConversationDisplayName(conversation) : 'Unknown Contact'}
-                </h2>
-              );
+                    displayName={getConversationDisplayName(conversation)}
+                    instanceId={finalInstanceId}
+                    pushName={conversation.displayName || conversation.name}
+                    variant="header"
+                  />
+                ) : (
+                  <h2 className="font-semibold text-gray-900 dark:text-gray-100">
+                    {conversation ? getConversationDisplayName(conversation) : 'Unknown Contact'}
+                  </h2>
+                );
               })()}
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {conversation?.status || 'Online'}
@@ -1012,7 +1012,7 @@ export default function ChatInterface({
               </PopoverTrigger>
               <PopoverContent className="w-96 p-0" align="end">
                 <ContactTasksAndEvents
-                  contactJid={conversation.chatId}
+                  contactJid={conversation ? (conversation.chat_id || conversation.chatId) : ''}
                   contactName={conversation ? getConversationDisplayName(conversation) : 'Unknown Contact'}
                   instanceId={instanceId}
                 />
