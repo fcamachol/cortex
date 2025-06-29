@@ -9,7 +9,7 @@ export const crmSchema = pgSchema("crm");
 export const appSchema = pgSchema("app");
 export const actionsSchema = pgSchema("actions");
 export const calendarSchema = pgSchema("calendar");
-export const financeSchema = pgSchema("finance");
+// export const financeSchema = pgSchema("finance"); // REMOVED - Migrated to cortex_finance
 
 // Enums for App schema
 export const workspaceRoleEnum = appSchema.enum("workspace_role", ["admin", "member", "viewer"]);
@@ -24,17 +24,8 @@ export const providerTypeEnum = calendarSchema.enum("provider_type", ["google", 
 export const syncStatusTypeEnum = calendarSchema.enum("sync_status_type", ["active", "revoked", "error", "pending"]);
 export const attendeeResponseStatusEnum = calendarSchema.enum("attendee_response_status", ["needsAction", "declined", "tentative", "accepted"]);
 
-// Enums for Finance schema
-export const transactionTypeEnum = financeSchema.enum("transaction_type", ["income", "expense"]);
-export const payableStatusEnum = financeSchema.enum("payable_status", ["unpaid", "partially_paid", "paid", "overdue"]);
-export const receivableStatusEnum = financeSchema.enum("receivable_status", ["draft", "sent", "partially_paid", "paid", "overdue"]);
-export const loanStatusEnum = financeSchema.enum("loan_status", ["active", "paid_off", "in_arrears"]);
-export const interestPeriodTypeEnum = financeSchema.enum("interest_period_type", ["daily", "weekly", "monthly", "annually"]);
-// Temporarily commented out due to existing enum in database
-// export const accountTypeEnum = financeSchema.enum("account_type", [
-//   "checking", "savings", "credit_card", "investment", "loan", "mortgage", 
-//   "business", "cash", "crypto", "retirement", "other"
-// ]);
+// Enums for Finance schema - MIGRATED TO CORTEX_FINANCE
+// Legacy enums removed - use cortex_finance schema enums instead
 
 // Enums for WhatsApp schema
 export const chatTypeEnum = whatsappSchema.enum("chat_type", ["individual", "group"]);
@@ -1792,7 +1783,7 @@ export const crmTasksLegacy = crmSchema.table("tasks_legacy", {
   contactName: varchar("contact_name", { length: 255 }),
   originalMessageContent: text("original_message_content"),
   createdByUserId: uuid("created_by_user_id"),
-  linkedPayableId: integer("linked_payable_id").references(() => financePayables.payableId), // Link to bill/payable
+  // linkedPayableId: integer("linked_payable_id").references(() => financePayables.payableId), // Link to bill/payable - REMOVED: finance schema migrated
   entityId: varchar("entity_id", { length: 50 }), // Unified entity ID (cp_, cg_, cc_, co_)
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
