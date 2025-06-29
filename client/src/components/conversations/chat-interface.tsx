@@ -142,20 +142,26 @@ export default function ChatInterface({
 
   // Helper function to get display name for conversation
   const getConversationDisplayName = (conv: any) => {
-    if (conv.chatId.includes('@g.us')) {
+    if (!conv) return 'Unknown';
+    
+    // Support both database field names (chat_id) and camelCase (chatId)
+    const chatId = conv.chat_id || conv.chatId;
+    if (!chatId) return 'Unknown';
+    
+    if (chatId.includes('@g.us')) {
       // For groups, prioritize the conversation's own name/title first
-      if (conv.name && conv.name !== conv.chatId && conv.name !== 'Group') {
+      if (conv.name && conv.name !== chatId && conv.name !== 'Group') {
         return conv.name;
       }
-      if (conv.title && conv.title !== conv.chatId && conv.title !== 'Group') {
+      if (conv.title && conv.title !== chatId && conv.title !== 'Group') {
         return conv.title;
       }
-      if (conv.displayName && conv.displayName !== conv.chatId && conv.displayName !== 'Group') {
+      if (conv.displayName && conv.displayName !== chatId && conv.displayName !== 'Group') {
         return conv.displayName;
       }
       
       // Try to find group contact with proper name
-      const contact = contacts.find((c: any) => c.jid === conv.chatId);
+      const contact = contacts.find((c: any) => c.jid === chatId);
       if (contact && contact.pushName && contact.pushName !== 'Group') {
         return contact.pushName;
       }
@@ -164,16 +170,16 @@ export default function ChatInterface({
       }
       
       // Fallback to group identifier
-      const groupId = conv.chatId.replace('@g.us', '').split('-')[0];
+      const groupId = chatId.replace('@g.us', '').split('-')[0];
       return `Group ${formatPhoneNumber(groupId)}`;
     } else {
       // For individuals, use contact name if available
-      const contact = contacts.find((c: any) => c.jid === conv.chatId);
+      const contact = contacts.find((c: any) => c.jid === chatId);
       if (contact && (contact.pushName || contact.verifiedName)) {
         return contact.pushName || contact.verifiedName;
       }
       // Fallback to formatted phone number if no contact name
-      const phoneNumber = conv.chatId.replace('@s.whatsapp.net', '');
+      const phoneNumber = chatId.replace('@s.whatsapp.net', '');
       return formatPhoneNumber(phoneNumber);
     }
   };
@@ -968,17 +974,19 @@ export default function ChatInterface({
               })()}
             </div>
             <div>
-              {conversation && conversation.chatId.includes('@g.us') ? (
-                <ClickableGroupName
-                  groupJid={conversation.chatId}
-                  displayName={getConversationDisplayName(conversation)}
-                  instanceId={finalInstanceId}
-                  subject={conversation.displayName || conversation.name || conversation.title}
-                  variant="header"
-                />
-              ) : conversation && !conversation.chatId.includes('@g.us') ? (
-                <ClickableContactName
-                  senderJid={conversation.chatId}
+              {conversation && (() => {
+                const conversationChatId = conversation.chat_id || conversation.chatId;
+                return conversationChatId && conversationChatId.includes('@g.us') ? (
+                  <ClickableGroupName
+                    groupJid={conversationChatId}
+                    displayName={getConversationDisplayName(conversation)}
+                    instanceId={finalInstanceId}
+                    subject={conversation.displayName || conversation.name || conversation.title}
+                    variant="header"
+                  />
+                ) : conversationChatId ? (
+                  <ClickableContactName
+                    senderJid={conversationChatId}
                   displayName={getConversationDisplayName(conversation)}
                   instanceId={finalInstanceId}
                   pushName={conversation.displayName || conversation.name}
@@ -988,7 +996,8 @@ export default function ChatInterface({
                 <h2 className="font-semibold text-gray-900 dark:text-gray-100">
                   {conversation ? getConversationDisplayName(conversation) : 'Unknown Contact'}
                 </h2>
-              )}
+              );
+              })()}
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {conversation?.status || 'Online'}
               </p>
