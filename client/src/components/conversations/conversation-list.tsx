@@ -535,29 +535,33 @@ export default function ConversationList({
 
   const filteredConversations = conversations
     .filter((conv: any) => {
+      // Get normalized field values once at the top
+      const normalizedChatId = conv.chat_id || conv.chatId;
+      const normalizedInstanceId = conv.instanceid || conv.instanceId;
+      
       // Skip status broadcasts
-      if (conv.chatId === 'status@broadcast') {
+      if (normalizedChatId === 'status@broadcast') {
         return false;
       }
       
       // Skip internal CMC conversation IDs that don't have actual messages
-      if (conv.chatId && conv.chatId.startsWith('cmc')) {
+      if (normalizedChatId && normalizedChatId.startsWith('cmc')) {
         return false;
       }
       
       // Only show conversations with actual WhatsApp JIDs (phone numbers or groups)
-      if (conv.chatId && !conv.chatId.includes('@')) {
+      if (normalizedChatId && !normalizedChatId.includes('@')) {
         return false;
       }
       
       // Skip hidden chats (internal archiving)
-      const chatKey = `${conv.instanceId}:${conv.chatId}`;
+      const chatKey = `${normalizedInstanceId}:${normalizedChatId}`;
       if (hiddenChats.has(chatKey)) {
         return false;
       }
       
       // Instance filter
-      if (selectedInstance !== 'all' && conv.instanceId !== selectedInstance) {
+      if (selectedInstance !== 'all' && normalizedInstanceId !== selectedInstance) {
         return false;
       }
       
@@ -568,7 +572,7 @@ export default function ConversationList({
       if (activeFilter === 'favorites' && !conv.favorite) {
         return false;
       }
-      if (activeFilter === 'groups' && !conv.chatId?.includes('@g.us')) {
+      if (activeFilter === 'groups' && !normalizedChatId?.includes('@g.us')) {
         return false;
       }
       
@@ -579,10 +583,10 @@ export default function ConversationList({
       
       // Search by chat ID (phone number for individuals) or group name
       const searchTerm = searchQuery.toLowerCase();
-      const chatId = conv.chatId?.toLowerCase() || '';
+      const searchChatId = normalizedChatId?.toLowerCase() || '';
       const displayName = getConversationDisplayName(conv).toLowerCase();
       
-      return chatId.includes(searchTerm) || displayName.includes(searchTerm);
+      return searchChatId.includes(searchTerm) || displayName.includes(searchTerm);
     })
     .sort((a: any, b: any) => {
       // Get latest messages (including drafts)
@@ -741,12 +745,12 @@ export default function ConversationList({
           </div>
         ) : (
           filteredConversations.map((conversation: any) => {
-            const conversationKey = `${conversation.instanceId}:${conversation.chatId}`;
+            const conversationKey = `${conversation.instanceid || conversation.instanceId}:${conversation.chat_id || conversation.chatId}`;
             const isSelected = selectedConversation === conversationKey;
             
             return (
               <div
-                key={`${conversation.instanceId}-${conversation.chatId}`}
+                key={`${conversation.instanceid || conversation.instanceId}-${conversation.chat_id || conversation.chatId}`}
                 className={`whatsapp-conversation-item ${
                   isSelected ? 'active' : ''
                 } relative group`}

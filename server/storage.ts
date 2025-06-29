@@ -331,11 +331,14 @@ class DatabaseStorage {
                        CASE 
                          WHEN c.chat_id LIKE '%@g.us' THEN COALESCE(g.subject, c.chat_id)
                          ELSE COALESCE(cont.push_name, cont.jid, c.chat_id)
-                       END as displayName,
-                       c.chat_id as chatId,
-                       c.instance_name as instanceId,
-                       c.instance_name as instanceName,
-                       c.type as type
+                       END as displayname,
+                       c.chat_id as chatid,
+                       c.instance_name as instanceid,
+                       c.instance_name as instancename,
+                       c.type,
+                       c.last_message_timestamp as lastmessagetimestamp,
+                       c.unread_count as unreadcount,
+                       c.is_archived as isarchived
                 FROM whatsapp.chats c
                 LEFT JOIN whatsapp.groups g ON c.chat_id = g.group_jid AND c.instance_name = g.instance_name
                 LEFT JOIN whatsapp.contacts cont ON c.chat_id = cont.jid AND c.instance_name = cont.instance_name
