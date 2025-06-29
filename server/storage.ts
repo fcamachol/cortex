@@ -43,9 +43,14 @@ class DatabaseStorage {
 
     async getWhatsappConversations(instanceName: string): Promise<any[]> {
         try {
+            // First check if is_group column exists, otherwise determine from chat_id pattern
             const result = await db.execute(sql`
                 SELECT DISTINCT c.chat_id, c.instance_name, c.last_message_timestamp, 
-                       c.unread_count, c.status, c.is_group, c.is_archived
+                       c.unread_count, c.is_archived, c.type,
+                       CASE 
+                         WHEN c.chat_id LIKE '%@g.us' THEN true
+                         ELSE false
+                       END as is_group
                 FROM whatsapp.chats c
                 WHERE c.instance_name = ${instanceName}
                 ORDER BY c.last_message_timestamp DESC NULLS LAST
@@ -303,6 +308,97 @@ class DatabaseStorage {
         } catch (error) {
             console.error('Error updating task:', error);
             throw error;
+        }
+    }
+
+    // =============================
+    // WHATSAPP CONVERSATION METHODS
+    // =============================
+    
+    async getConversationsWithLatestMessages(userId: string): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT DISTINCT c.chat_id, c.instance_name, c.last_message_timestamp, 
+                       c.unread_count, c.is_group, c.is_archived,
+                       CASE 
+                         WHEN c.is_group = true THEN g.group_name
+                         ELSE cont.contact_name
+                       END as name
+                FROM whatsapp.chats c
+                LEFT JOIN whatsapp.groups g ON c.chat_id = g.group_jid AND c.instance_name = g.instance_name
+                LEFT JOIN whatsapp.contacts cont ON c.chat_id = cont.jid AND c.instance_name = cont.instance_name
+                ORDER BY c.last_message_timestamp DESC NULLS LAST
+                LIMIT 50
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching conversations with latest messages:', error);
+            return [];
+        }
+    }
+
+    async getWhatsappMessages(userId: string, instanceName: string, chatId: string, limit: number = 50): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT m.*, mm.local_path as media_path
+                FROM whatsapp.messages m
+                LEFT JOIN whatsapp.message_media mm ON m.message_id = mm.message_id AND m.instance_name = mm.instance_name
+                WHERE m.instance_name = ${instanceName} AND m.chat_id = ${chatId}
+                ORDER BY m.timestamp DESC
+                LIMIT ${limit}
+            `);
+            return result.rows.reverse(); // Return in chronological order
+        } catch (error) {
+            console.error('Error fetching WhatsApp messages:', error);
+            return [];
+        }
+    }
+
+    async getWhatsappMessageById(messageId: string, instanceName: string): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                SELECT m.*, mm.local_path as media_path
+                FROM whatsapp.messages m
+                LEFT JOIN whatsapp.message_media mm ON m.message_id = mm.message_id AND m.instance_name = mm.instance_name
+                WHERE m.message_id = ${messageId} AND m.instance_name = ${instanceName}
+            `);
+            return result.rows[0] || null;
+        } catch (error) {
+            console.error('Error fetching WhatsApp message by ID:', error);
+            return null;
+        }
+    }
+
+    // =============================
+    // COMPANIES/UPCOMING DATES STUBS
+    // =============================
+    
+    async getCompanies(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_entities.companies ORDER BY company_name
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching companies:', error);
+            return [];
+        }
+    }
+
+    async getUpcomingDates(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT p.first_name, p.last_name, pd.event_name, pd.event_day, pd.event_month
+                FROM cortex_entities.persons p
+                JOIN cortex_entities.person_special_dates pd ON p.id = pd.person_id
+                WHERE pd.event_month = EXTRACT(MONTH FROM CURRENT_DATE)
+                   OR pd.event_month = EXTRACT(MONTH FROM CURRENT_DATE + INTERVAL '1 month')
+                ORDER BY pd.event_month, pd.event_day
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching upcoming dates:', error);
+            return [];
         }
     }
 
