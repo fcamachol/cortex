@@ -286,8 +286,8 @@ export const whatsappInstancesRelations = relations(whatsappInstances, ({ many }
 
 export const whatsappContactsRelations = relations(whatsappContacts, ({ one, many }) => ({
   instance: one(whatsappInstances, {
-    fields: [whatsappContacts.instanceName],
-    references: [whatsappInstances.instanceName],
+    fields: [whatsappContacts.instanceId],
+    references: [whatsappInstances.instanceId],
   }),
   chats: many(whatsappChats),
   sentMessages: many(whatsappMessages),
@@ -296,12 +296,12 @@ export const whatsappContactsRelations = relations(whatsappContacts, ({ one, man
 
 export const whatsappChatsRelations = relations(whatsappChats, ({ one, many }) => ({
   instance: one(whatsappInstances, {
-    fields: [whatsappChats.instanceName],
-    references: [whatsappInstances.instanceName],
+    fields: [whatsappChats.instanceId],
+    references: [whatsappInstances.instanceId],
   }),
   contact: one(whatsappContacts, {
-    fields: [whatsappChats.chatId, whatsappChats.instanceName],
-    references: [whatsappContacts.jid, whatsappContacts.instanceName],
+    fields: [whatsappChats.chatId, whatsappChats.instanceId],
+    references: [whatsappContacts.jid, whatsappContacts.instanceId],
   }),
   messages: many(whatsappMessages),
   labels: many(whatsappChatLabels),
@@ -310,16 +310,16 @@ export const whatsappChatsRelations = relations(whatsappChats, ({ one, many }) =
 
 export const whatsappMessagesRelations = relations(whatsappMessages, ({ one, many }) => ({
   instance: one(whatsappInstances, {
-    fields: [whatsappMessages.instanceName],
-    references: [whatsappInstances.instanceName],
+    fields: [whatsappMessages.instanceId],
+    references: [whatsappInstances.instanceId],
   }),
   chat: one(whatsappChats, {
-    fields: [whatsappMessages.chatId, whatsappMessages.instanceName],
-    references: [whatsappChats.chatId, whatsappChats.instanceName],
+    fields: [whatsappMessages.chatId, whatsappMessages.instanceId],
+    references: [whatsappChats.chatId, whatsappChats.instanceId],
   }),
   sender: one(whatsappContacts, {
-    fields: [whatsappMessages.senderJid, whatsappMessages.instanceName],
-    references: [whatsappContacts.jid, whatsappContacts.instanceName],
+    fields: [whatsappMessages.senderJid, whatsappMessages.instanceId],
+    references: [whatsappContacts.jid, whatsappContacts.instanceId],
   }),
   editHistory: many(whatsappMessageEditHistory),
   media: many(whatsappMessageMedia),
@@ -1783,7 +1783,7 @@ export const crmTasksLegacy = crmSchema.table("tasks_legacy", {
   contactName: varchar("contact_name", { length: 255 }),
   originalMessageContent: text("original_message_content"),
   createdByUserId: uuid("created_by_user_id"),
-  // linkedPayableId: Removed - old finance schema was test data only
+  // linkedPayableId: integer("linked_payable_id").references(() => financePayables.payableId), // Link to bill/payable - REMOVED: finance schema migrated
   entityId: varchar("entity_id", { length: 50 }), // Unified entity ID (cp_, cg_, cc_, co_)
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -1995,7 +1995,10 @@ export const crmTasksRelations = relations(crmTasks, ({ one }) => ({
     fields: [crmTasks.userId],
     references: [appUsers.userId],
   }),
-  // linkedPayable: Removed - old finance schema was test data only
+  linkedPayable: one(financePayables, {
+    fields: [crmTasks.linkedPayableId],
+    references: [financePayables.payableId],
+  }),
 }));
 
 // =========================================================================
@@ -2292,12 +2295,3 @@ export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
 export type CalendarAttendee = typeof calendarAttendees.$inferSelect;
 export type InsertCalendarAttendee = z.infer<typeof insertCalendarAttendeeSchema>;
 
-// =============================================================================
-// FINANCE SCHEMA MIGRATED TO CORTEX_FINANCE 
-// =============================================================================
-// 
-// The old finance schema has been completely removed (was test data only).
-// All finance functionality now uses the cortex_finance schema tables.
-// Legacy finance schema removed June 29, 2025.
-
-// export type InsertStatement = z.infer<typeof insertStatementSchema>; // Removed - old finance schema

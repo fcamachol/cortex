@@ -21,10 +21,7 @@ import {
     crmCompanyMembers, crmContactGroups, crmContactGroupMembers, crmContactRelationships, crmGroups,
     taskEntities, taskMessageLinks,
     type TaskMessageLink, type InsertTaskMessageLink,
-    // Finance Schema
-    financeAccounts, financeTransactions, financePayables, financeReceivables, financeCategories,
-    financeRecurringBills, financeLoans, financeLoanPayments, financePayablePayments, financeReceivablePayments,
-    creditCardDetails, statements,
+    // Finance Schema - REMOVED: Migrated to cortex_finance (old schema was test data only)
     // Type Imports
     type AppUser, type InsertAppUser,
     type WhatsappInstance, type InsertWhatsappInstance,
