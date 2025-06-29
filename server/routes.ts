@@ -207,7 +207,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/api/whatsapp/conversations/:userId', async (req: Request, res: Response) => {
     try {
       const { userId } = req.params;
-      const conversations = await storage.getWhatsappConversations(userId);
+      const conversations = await storage.getConversationsWithLatestMessages(userId);
       res.json(conversations);
     } catch (error) {
       console.error('Error fetching conversations:', error);
