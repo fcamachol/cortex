@@ -83,16 +83,26 @@ export function ContactFormBlocks({ onSuccess, ownerUserId, spaceId, isEditMode 
   // Fetch existing contact details in edit mode
   useEffect(() => {
     if (isEditMode && contactId) {
+      console.log('ContactFormBlocks: Starting edit mode fetch for contactId:', contactId);
       const fetchContactDetails = async () => {
         try {
           // Force fresh data by adding timestamp to bypass cache
           const response = await fetch(`/api/crm/contacts/${contactId}/details?t=${Date.now()}`)
             .then(res => res.json());
-          console.log('Contact details response (fresh):', response);
+          console.log('ContactFormBlocks: Contact details response:', response);
+          
+          // Always set basic contact info if available
+          if (response) {
+            if (response.fullName) setContactName(response.fullName);
+            if (response.profession) setProfession(response.profession);
+            if (response.companyName || response.company) setCompany(response.companyName || response.company);
+            if (response.notes) setDescription(response.notes);
+            if (response.tags) setTags(response.tags);
+          }
           
           // If response is empty or null, return early
           if (!response || Object.keys(response).length === 0) {
-            console.log('Empty response, skipping block creation');
+            console.log('ContactFormBlocks: Empty response, skipping block creation');
             return;
           }
           
