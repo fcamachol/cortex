@@ -760,8 +760,8 @@ export default function ConversationList({
                   if (conversation.unreadCount > 0) {
                     try {
                       markUnreadMutation.mutate({
-                        chatId: conversation.chatId,
-                        instanceId: conversation.instanceId,
+                        chatId: conversation.chat_id || conversation.chatId,
+                        instanceId: conversation.instanceid || conversation.instanceId,
                         unread: false
                       });
                     } catch (error) {
@@ -785,13 +785,13 @@ export default function ConversationList({
                     </AvatarFallback>
                   </Avatar>
                   {/* Unread message indicator - small green dot */}
-                  {conversation.unreadCount > 0 && !hiddenChats.has(`${conversation.instanceId}:${conversation.chatId}`) && (
+                  {conversation.unreadCount > 0 && !hiddenChats.has(`${conversation.instanceid || conversation.instanceId}:${conversation.chat_id || conversation.chatId}`) && (
                     <div className="absolute -top-1 -left-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-900"></div>
                   )}
                   
                   {/* Instance indicator circle */}
-                  {conversation.instanceId && (() => {
-                    const indicator = getInstanceIndicator(conversation.instanceId);
+                  {(conversation.instanceid || conversation.instanceId) && (() => {
+                    const indicator = getInstanceIndicator(conversation.instanceid || conversation.instanceId);
                     return (
                       <div 
                         className={`absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center ${
