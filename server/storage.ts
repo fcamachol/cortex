@@ -1744,21 +1744,9 @@ class DatabaseStorage {
         }
     }
 
-    // DISABLED: async updateReceivable(receivableId: number, data: Partial<InsertFinanceReceivable>): Promise<FinanceReceivable> {
-        try {
-            const [receivable] = await db
-                .update(financeReceivables)
-                .set({
-                    ...data,
-                    updatedAt: new Date(),
-                })
-                .where(eq(financeReceivables.receivableId, receivableId))
-                .returning();
-            return receivable;
-        } catch (error) {
-            console.error('Error updating receivable:', error);
-            throw error;
-        }
+    async updateReceivable(receivableId: number, data: any): Promise<any> {
+        // DISABLED: Finance functionality temporarily disabled during schema migration
+        throw new Error('Finance functionality temporarily disabled during schema migration');
     }
 
     async deleteReceivable(receivableId: number): Promise<void> {
