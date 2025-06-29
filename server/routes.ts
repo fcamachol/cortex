@@ -2751,18 +2751,15 @@ export async function registerRoutes(app: Express): Promise<void> {
   // COMPREHENSIVE CONTACTS & CRM API ROUTES - 360-Degree Network Intelligence
   // =========================================================================
 
-  // Core Contact Routes
+  // Core Contact Routes - Updated for Cortex entities
   app.get('/api/crm/contacts', async (req: Request, res: Response) => {
     try {
-      const { ownerUserId } = req.query;
-      if (!ownerUserId) {
-        return res.status(400).json({ error: 'ownerUserId is required' });
-      }
-      const contacts = await storage.getCrmContacts(ownerUserId as string);
+      // Temporarily redirect to Cortex entities while keeping same endpoint
+      const contacts = await storage.getCortexPersons();
       res.json(contacts);
     } catch (error) {
-      console.error('Error fetching CRM contacts:', error);
-      res.status(500).json({ error: 'Failed to fetch CRM contacts' });
+      console.error('Error fetching Cortex contacts:', error);
+      res.status(500).json({ error: 'Failed to fetch contacts' });
     }
   });
 

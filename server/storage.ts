@@ -1,6 +1,7 @@
 import { db } from "./db"; // Your Drizzle ORM instance
 import { sql, eq, desc, asc, and, or, ilike } from "drizzle-orm";
 import { entityActivities } from "../shared/schema";
+import { pgTable, varchar, text, date, boolean, timestamp } from "drizzle-orm/pg-core";
 import {
     // App Schema
     appUsers, appWorkspaces, appSpaces, appWorkspaceMembers, appSpaceItems,
@@ -45,6 +46,32 @@ import {
     type DriveSpaceActivity, type InsertDriveSpaceActivity,
     // Finance types: REMOVED - Migrated to cortex_finance (old schema was test data only)
 } from "../shared/schema"; // Assuming a single, final schema definition file
+
+// Cortex Entities Table Definition
+const cortexPersons = pgTable("persons", {
+    id: varchar("id", { length: 50 }).primaryKey(),
+    fullName: varchar("full_name", { length: 255 }),
+    firstName: varchar("first_name", { length: 100 }),
+    middleName: varchar("middle_name", { length: 100 }),
+    lastName: varchar("last_name", { length: 100 }),
+    nickname: varchar("nickname", { length: 100 }),
+    title: varchar("title", { length: 100 }),
+    profession: varchar("profession", { length: 200 }),
+    companyName: varchar("company_name", { length: 255 }),
+    dateOfBirth: date("date_of_birth"),
+    gender: varchar("gender", { length: 20 }),
+    relationship: varchar("relationship", { length: 100 }),
+    notes: text("notes"),
+    profilePictureUrl: varchar("profile_picture_url", { length: 500 }),
+    isActive: boolean("is_active").default(true),
+    primaryWhatsappJid: varchar("primary_whatsapp_jid", { length: 100 }),
+    whatsappInstanceName: varchar("whatsapp_instance_name", { length: 100 }),
+    isWhatsappLinked: boolean("is_whatsapp_linked").default(false),
+    whatsappLinkedAt: timestamp("whatsapp_linked_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+    createdBy: varchar("created_by", { length: 50 })
+}, { schema: "cortex_entities" });
 
 /**
  * @class DatabaseStorage
