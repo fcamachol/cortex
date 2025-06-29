@@ -197,6 +197,18 @@ export default function ChatInterface({
     return formatPhoneNumber(senderJid.replace('@s.whatsapp.net', ''));
   };
 
+  // Helper function to determine if message is from current user with field mapping support
+  const getIsFromMe = (message: any): boolean => {
+    if (!message) return false;
+    
+    // Try different field variations
+    return message.isFromMe || 
+           message.is_from_me || 
+           message.fromMe || 
+           message.from_me || 
+           false;
+  };
+
   // Parse the composite conversation identifier (instanceId:chatId) - stabilized with useMemo
   const { instanceId, chatId } = useMemo(() => {
     if (!conversationId) return { instanceId: null, chatId: null };
@@ -1059,7 +1071,7 @@ export default function ChatInterface({
             messages.map((message: any, index: number) => (
               <div
                 key={message.messageId || message.id || `message-${index}`}
-                className={`flex ${message.isFromMe ? 'justify-end' : 'justify-start'} relative group`}
+                className={`flex ${getIsFromMe(message) ? 'justify-end' : 'justify-start'} relative group`}
                 onMouseEnter={() => setHoveredMessageId(message.messageId || message.id)}
                 onMouseLeave={() => setHoveredMessageId(null)}
               >
@@ -1077,14 +1089,14 @@ export default function ChatInterface({
               
                 <div
                   className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg relative ${
-                    message.isFromMe
+                    getIsFromMe(message)
                       ? 'whatsapp-message-sent'
                       : 'whatsapp-message-received'
                   } ${message.isPending ? 'opacity-70' : ''}`}
                 >
 
                   {/* Sender name for group chats */}
-                  {(conversation?.type === 'group' || conversation?.chatId?.includes('@g.us')) && !message.isFromMe && message.senderJid && (
+                  {(conversation?.type === 'group' || conversation?.chatId?.includes('@g.us')) && !getIsFromMe(message) && message.senderJid && (
                     <ClickableContactName
                       senderJid={message.senderJid}
                       displayName={getSenderDisplayName(message.senderJid)}
@@ -1117,7 +1129,7 @@ export default function ChatInterface({
                           {(() => {
                             const quotedMsg = messages.find(m => m.messageId === message.quotedMessageId);
                             if (quotedMsg) {
-                              return quotedMsg.isFromMe ? 'You' : getSenderDisplayName(quotedMsg.senderJid);
+                              return getIsFromMe(quotedMsg) ? 'You' : getSenderDisplayName(quotedMsg.senderJid);
                             }
                             return 'Unknown';
                           })()}
@@ -1137,7 +1149,7 @@ export default function ChatInterface({
                     <div className="space-y-2">
                       <AudioPlayer 
                         src={`/api/whatsapp/media/${message.instanceId}/${message.messageId}`}
-                        variant={message.isFromMe ? 'sent' : 'received'}
+                        variant={getIsFromMe(message) ? 'sent' : 'received'}
                         className="w-full"
                       />
                       {message.content && message.content !== '[Audio]' && (
