@@ -2867,7 +2867,9 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post('/api/crm/contacts/complete', async (req: Request, res: Response) => {
     try {
       const contactData = req.body;
+      console.log('Complete contact creation - data:', JSON.stringify(contactData, null, 2));
       const contact = await storage.createCompleteContact(contactData);
+      console.log('Complete contact created:', contact);
       res.json(contact);
     } catch (error) {
       console.error('Error creating complete contact:', error);
@@ -2879,7 +2881,8 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const { contactId } = req.params;
       const contactData = req.body;
-      const contact = await storage.updateCompleteContact(parseInt(contactId), contactData);
+      console.log('Complete contact update - contactId:', contactId, 'data:', contactData);
+      const contact = await storage.updateCompleteContact(contactId, contactData);
       res.json(contact);
     } catch (error) {
       console.error('Error updating complete contact:', error);
