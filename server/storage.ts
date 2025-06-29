@@ -1354,8 +1354,8 @@ class DatabaseStorage {
         const parentTaskStr = taskData.parentTaskId ? `'${taskData.parentTaskId}'` : 'NULL';
         
         const result = await db.execute(sql.raw(`
-            INSERT INTO crm.tasks (
-                id, user_id, title, description, status, priority, due_date, parent_task_id, tags
+            INSERT INTO cortex_projects.tasks (
+                id, user_id, name, description, status, priority, due_date, parent_task_id, tags
             ) VALUES (
                 '${taskId}', 
                 '${taskData.userId}', 
@@ -1726,9 +1726,11 @@ class DatabaseStorage {
         }
     }
 
-    async createReceivable(data: InsertFinanceReceivable): Promise<FinanceReceivable> {
+    async createReceivable(data: any): Promise<any> {
         try {
-            const [receivable] = await db
+            // TODO: Update to use Cortex finance schema
+            throw new Error('Finance functionality temporarily disabled during schema migration');
+            /* const [receivable] = await db
                 .insert(financeReceivables)
                 .values({
                     ...data,
@@ -1742,7 +1744,7 @@ class DatabaseStorage {
         }
     }
 
-    async updateReceivable(receivableId: number, data: Partial<InsertFinanceReceivable>): Promise<FinanceReceivable> {
+    // DISABLED: async updateReceivable(receivableId: number, data: Partial<InsertFinanceReceivable>): Promise<FinanceReceivable> {
         try {
             const [receivable] = await db
                 .update(financeReceivables)
