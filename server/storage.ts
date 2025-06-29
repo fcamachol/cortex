@@ -2205,14 +2205,16 @@ class DatabaseStorage {
     }
 
     async getCrmContactWithFullDetails(contactId: string | number): Promise<any | null> {
-        // Get the main contact
-        const contact = await this.getCrmContactById(contactId);
-        if (!contact) return null;
-
         // Check if this is a Cortex contact and get related data accordingly
         if (typeof contactId === 'string' && contactId.startsWith('cp_')) {
+            const contact = await this.getCortexPersonById(contactId);
+            if (!contact) return null;
             return await this.getCortexContactWithFullDetails(contactId, contact);
         }
+
+        // Legacy CRM contact
+        const contact = await this.getCrmContactById(contactId);
+        if (!contact) return null;
 
         // Legacy CRM contact - get all related data in parallel with error handling
         const [phones, emails, addresses, aliases, specialDates, interests, companies, groups, relationships] = await Promise.all([

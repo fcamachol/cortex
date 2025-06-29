@@ -2767,7 +2767,11 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const { contactId } = req.params;
       console.log('Fetching contact details for ID:', contactId);
-      const contact = await storage.getCrmContactWithFullDetails(parseInt(contactId));
+      
+      // Handle both Cortex IDs (strings starting with cp_) and legacy numeric IDs
+      const parsedContactId = contactId.startsWith('cp_') ? contactId : parseInt(contactId);
+      const contact = await storage.getCrmContactWithFullDetails(parsedContactId);
+      
       console.log('Contact details retrieved:', contact);
       if (!contact) {
         return res.status(404).json({ error: 'Contact not found' });
@@ -2783,7 +2787,8 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/api/crm/contacts/:contactId/tasks', async (req: Request, res: Response) => {
     try {
       const { contactId } = req.params;
-      const tasks = await storage.getRelatedTasksForContact(parseInt(contactId));
+      const parsedContactId = contactId.startsWith('cp_') ? contactId : parseInt(contactId);
+      const tasks = await storage.getRelatedTasksForContact(parsedContactId);
       res.json(tasks);
     } catch (error) {
       console.error('Error fetching related tasks for contact:', error);
@@ -2794,7 +2799,8 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/api/crm/contacts/:contactId/events', async (req: Request, res: Response) => {
     try {
       const { contactId } = req.params;
-      const events = await storage.getRelatedEventsForContact(parseInt(contactId));
+      const parsedContactId = contactId.startsWith('cp_') ? contactId : parseInt(contactId);
+      const events = await storage.getRelatedEventsForContact(parsedContactId);
       res.json(events);
     } catch (error) {
       console.error('Error fetching related events for contact:', error);
@@ -2805,7 +2811,8 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/api/crm/contacts/:contactId/finance', async (req: Request, res: Response) => {
     try {
       const { contactId } = req.params;
-      const financeRecords = await storage.getRelatedFinanceForContact(parseInt(contactId));
+      const parsedContactId = contactId.startsWith('cp_') ? contactId : parseInt(contactId);
+      const financeRecords = await storage.getRelatedFinanceForContact(parsedContactId);
       res.json(financeRecords);
     } catch (error) {
       console.error('Error fetching related finance records for contact:', error);
