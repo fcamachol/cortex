@@ -17,17 +17,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import {
   insertFinanceTransactionSchema,
-  insertFinancePayableSchema,
-  insertFinanceReceivableSchema,
-  insertFinanceRecurringBillSchema,
-  insertFinanceLoanSchema,
-  insertFinanceAccountSchema,
   insertCrmCompanySchema,
-  insertCreditCardDetailsSchema,
-  insertStatementSchema,
 } from "@shared/schema";
-import fs from 'fs';
-import path from 'path';
 import { spawn } from 'child_process';
 import { promises as fsPromises } from 'fs';
 import { lookup } from 'mime-types';
