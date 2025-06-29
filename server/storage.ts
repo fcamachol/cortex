@@ -354,15 +354,26 @@ class DatabaseStorage {
 
     async getWhatsappMessages(userId: string, instanceName: string, chatId: string, limit: number = 50): Promise<any[]> {
         try {
+            // Optimized query - fetch only message data first without complex joins
             const result = await db.execute(sql`
-                SELECT m.*, mm.file_local_path as media_path
-                FROM whatsapp.messages m
-                LEFT JOIN whatsapp.message_media mm ON m.message_id = mm.message_id AND m.instance_name = mm.instance_name
-                WHERE m.instance_name = ${instanceName} AND m.chat_id = ${chatId}
-                ORDER BY m.timestamp DESC
+                SELECT message_id, instance_name, chat_id, sender_jid, from_me, 
+                       message_type, content, timestamp, quoted_message_id, 
+                       is_forwarded, is_starred, raw_api_payload
+                FROM whatsapp.messages 
+                WHERE instance_name = ${instanceName} AND chat_id = ${chatId}
+                ORDER BY timestamp DESC
                 LIMIT ${limit}
             `);
-            return result.rows.reverse(); // Return in chronological order
+            
+            const messages = result.rows.reverse(); // Return in chronological order
+            
+            // Add basic media path for media messages if needed (without complex join)
+            return messages.map(msg => ({
+                ...msg,
+                media_path: msg.message_type === 'audio' || msg.message_type === 'image' || msg.message_type === 'document' 
+                    ? `/api/whatsapp/media/${msg.instance_name}/${msg.message_id}` 
+                    : null
+            }));
         } catch (error) {
             console.error('Error fetching WhatsApp messages:', error);
             return [];

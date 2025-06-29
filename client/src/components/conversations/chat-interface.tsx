@@ -238,14 +238,15 @@ export default function ChatInterface({
     queryKey: [`/api/whatsapp/chat-messages`, conversationId, finalInstanceId],
     queryFn: async () => {
       if (!chatId || !finalInstanceId) return [];
-      const response = await fetch(`/api/whatsapp/chat-messages?chatId=${encodeURIComponent(chatId)}&instanceId=${finalInstanceId}&userId=${userId}&limit=100`);
+      const response = await fetch(`/api/whatsapp/chat-messages?chatId=${encodeURIComponent(chatId)}&instanceId=${finalInstanceId}&userId=${userId}&limit=50`);
       if (!response.ok) throw new Error('Failed to fetch messages');
       const data = await response.json();
       return data.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     },
     enabled: !!chatId && chatId !== 'undefined' && !!finalInstanceId,
     refetchInterval: false, // Disable polling - use SSE for real-time updates
-    staleTime: 0, // Force fresh data to pick up media objects
+    staleTime: 30000, // Cache for 30 seconds to improve performance
+    gcTime: 300000, // Keep cached data for 5 minutes
   });
 
   // Set up Server-Sent Events for real-time message updates - stabilized with ref
