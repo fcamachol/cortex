@@ -51,7 +51,7 @@ interface ContactFormBlocksProps {
   ownerUserId: string;
   spaceId?: number;
   isEditMode?: boolean;
-  contactId?: number;
+  contactId?: number | string;
   onDelete?: () => void;
   initialData?: {
     fullName?: string;
