@@ -355,7 +355,7 @@ class DatabaseStorage {
     async getWhatsappMessages(userId: string, instanceName: string, chatId: string, limit: number = 50): Promise<any[]> {
         try {
             const result = await db.execute(sql`
-                SELECT m.*, mm.local_file_path as media_path
+                SELECT m.*, mm.file_local_path as media_path
                 FROM whatsapp.messages m
                 LEFT JOIN whatsapp.message_media mm ON m.message_id = mm.message_id AND m.instance_name = mm.instance_name
                 WHERE m.instance_name = ${instanceName} AND m.chat_id = ${chatId}
