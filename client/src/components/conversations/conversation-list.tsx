@@ -523,7 +523,7 @@ export default function ConversationList({
         content: conversation.lastMessageContent,
         fromMe: conversation.lastMessageFromMe,
         messageType: conversation.lastMessageType,
-        timestamp: conversation.actualLastMessageTime || conversation.lastMessageTimestamp
+        timestamp: conversation.actualLastMessageTime || conversation.lastMessageTimestamp || conversation.last_message_timestamp || conversation.lastmessagetimestamp
       };
     }
     
@@ -605,8 +605,8 @@ export default function ConversationList({
       if (!aHasDraft && bHasDraft) return 1;
       
       // Sort by most recent message timestamp (newest first)
-      const aTime = aLatestMessage?.timestamp || a.lastMessageAt || a.updatedAt || 0;
-      const bTime = bLatestMessage?.timestamp || b.lastMessageAt || b.updatedAt || 0;
+      const aTime = aLatestMessage?.timestamp || a.lastMessageAt || a.lastMessageTimestamp || a.last_message_timestamp || a.lastmessagetimestamp || a.updatedAt || 0;
+      const bTime = bLatestMessage?.timestamp || b.lastMessageAt || b.lastMessageTimestamp || b.last_message_timestamp || b.lastmessagetimestamp || b.updatedAt || 0;
       return new Date(bTime).getTime() - new Date(aTime).getTime();
     });
 
@@ -825,7 +825,7 @@ export default function ConversationList({
                       <span className={`text-xs ${conversation.unreadCount > 0 ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
                         {(() => {
                           const latestMessage = getLatestMessage(conversation);
-                          const timestamp = latestMessage?.timestamp || conversation.actualLastMessageTime || conversation.lastMessageTimestamp;
+                          const timestamp = latestMessage?.timestamp || conversation.actualLastMessageTime || conversation.lastMessageTimestamp || conversation.last_message_timestamp || conversation.lastmessagetimestamp;
                           return timestamp ? formatConversationTimestamp(timestamp) : '';
                         })()}
                       </span>
@@ -1029,7 +1029,7 @@ export default function ConversationList({
                           </>
                         );
                       }
-                      return conversation.lastMessageTimestamp ? 'Tap to view messages' : 'No messages yet';
+                      return (conversation.lastMessageTimestamp || conversation.last_message_timestamp || conversation.lastmessagetimestamp) ? 'Tap to view messages' : 'No messages yet';
                     })()}
                   </p>
                   <div className="flex items-center mt-2">
