@@ -43,15 +43,7 @@ import {
     type DriveSpaceItem, type InsertDriveSpaceItem,
     type DriveSpaceShareLink, type InsertDriveSpaceShareLink,
     type DriveSpaceActivity, type InsertDriveSpaceActivity,
-    type FinanceAccount, type InsertFinanceAccount,
-    type FinanceTransaction, type InsertFinanceTransaction,
-    type FinancePayable, type InsertFinancePayable,
-    type FinanceReceivable, type InsertFinanceReceivable,
-    type FinanceCategory, type InsertFinanceCategory,
-    type FinanceRecurringBill, type InsertFinanceRecurringBill,
-    type FinanceLoan, type InsertFinanceLoan,
-    type CreditCardDetails, type InsertCreditCardDetails,
-    type Statement, type InsertStatement
+    // Finance types: REMOVED - Migrated to cortex_finance (old schema was test data only)
 } from "../shared/schema"; // Assuming a single, final schema definition file
 
 /**

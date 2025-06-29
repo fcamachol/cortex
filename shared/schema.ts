@@ -268,12 +268,12 @@ export const whatsappDrafts = whatsappSchema.table("drafts", {
 export const whatsappWaitingReply = whatsappSchema.table("waiting_reply", {
   id: serial("id").primaryKey(),
   messageId: varchar("message_id", { length: 255 }).notNull().unique(),
-  instanceId: varchar("instance_id", { length: 100 }).notNull(),
+  instanceName: varchar("instance_name", { length: 100 }).notNull(),
   chatId: varchar("chat_id", { length: 100 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
-  messageInstanceIdx: index("waiting_reply_message_instance_idx").on(table.messageId, table.instanceId),
-  chatInstanceIdx: index("waiting_reply_chat_instance_idx").on(table.chatId, table.instanceId),
+  messageInstanceIdx: index("waiting_reply_message_instance_idx").on(table.messageId, table.instanceName),
+  chatInstanceIdx: index("waiting_reply_chat_instance_idx").on(table.chatId, table.instanceName),
 }));
 
 // Relations
@@ -330,16 +330,16 @@ export const whatsappMessagesRelations = relations(whatsappMessages, ({ one, man
 
 export const whatsappMessageDeletionsRelations = relations(whatsappMessageDeletions, ({ one }) => ({
   message: one(whatsappMessages, {
-    fields: [whatsappMessageDeletions.messageId, whatsappMessageDeletions.instanceId],
-    references: [whatsappMessages.messageId, whatsappMessages.instanceId],
+    fields: [whatsappMessageDeletions.messageId, whatsappMessageDeletions.instanceName],
+    references: [whatsappMessages.messageId, whatsappMessages.instanceName],
   }),
   instance: one(whatsappInstances, {
-    fields: [whatsappMessageDeletions.instanceId],
-    references: [whatsappInstances.instanceId],
+    fields: [whatsappMessageDeletions.instanceName],
+    references: [whatsappInstances.instanceName],
   }),
   chat: one(whatsappChats, {
-    fields: [whatsappMessageDeletions.chatId, whatsappMessageDeletions.instanceId],
-    references: [whatsappChats.chatId, whatsappChats.instanceId],
+    fields: [whatsappMessageDeletions.chatId, whatsappMessageDeletions.instanceName],
+    references: [whatsappChats.chatId, whatsappChats.instanceName],
   }),
 }));
 

@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { financePayables, crmTasks } from "@shared/schema";
+import { cortexBills, crmTasks } from "@shared/schema";
 import { eq, and, lt } from "drizzle-orm";
 
 export interface BillToTaskOptions {
