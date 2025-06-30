@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, ChevronsUpDown, User, Building2 } from "lucide-react";
+import { Check, ChevronDown, User, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Vendor {
@@ -25,6 +24,8 @@ interface VendorSelectProps {
 
 export function VendorSelect({ value, onValueChange, placeholder = "Select vendor...", className }: VendorSelectProps) {
   const [open, setOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: vendors = [] } = useQuery({
     queryKey: ['/api/finance/vendors'],
@@ -39,83 +40,97 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
   });
 
   const selectedVendor = vendors.find(vendor => vendor.id === value);
+  
+  // Filter vendors based on search
+  const filteredVendors = vendors.filter(vendor =>
+    vendor.name.toLowerCase().includes(searchValue.toLowerCase()) ||
+    (vendor.description && vendor.description.toLowerCase().includes(searchValue.toLowerCase()))
+  );
 
-  const handleSelect = (vendorId: string) => {
-    console.log('Vendor selected:', vendorId);
-    onValueChange(vendorId);
+  const handleSelect = (vendor: Vendor) => {
+    console.log('Vendor selected:', vendor.id);
+    onValueChange(vendor.id);
+    setSearchValue(vendor.name);
     setOpen(false);
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchValue(e.target.value);
+    if (!open) {
+      setOpen(true);
+    }
+  };
+
+  const handleInputFocus = () => {
+    setOpen(true);
+  };
+
+  // Reset search value when value changes externally
+  useEffect(() => {
+    if (selectedVendor) {
+      setSearchValue(selectedVendor.name);
+    } else {
+      setSearchValue("");
+    }
+  }, [selectedVendor]);
+
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={true}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn("w-full justify-between", className)}
-          type="button"
-        >
-          {selectedVendor ? (
-            <div className="flex items-center gap-2">
-              {selectedVendor.type === 'contact' ? (
-                <User className="h-4 w-4 text-blue-500" />
-              ) : (
-                <Building2 className="h-4 w-4 text-green-500" />
-              )}
-              <span>{selectedVendor.name}</span>
-              {selectedVendor.description && (
-                <span className="text-sm text-muted-foreground">({selectedVendor.description})</span>
-              )}
-            </div>
-          ) : (
-            placeholder
-          )}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Search vendors..." />
-          <CommandList>
-            <CommandEmpty>
-              No vendors found.
-            </CommandEmpty>
-            {vendors.length > 0 && (
-              <CommandGroup>
-                {vendors.map((vendor) => (
-                  <CommandItem
-                    key={vendor.id}
-                    value={vendor.name}
-                    onSelect={() => handleSelect(vendor.id)}
-                    className="cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2 w-full">
-                      {vendor.type === 'contact' ? (
-                        <User className="h-4 w-4 text-blue-500" />
-                      ) : (
-                        <Building2 className="h-4 w-4 text-green-500" />
-                      )}
-                      <div className="flex flex-col">
-                        <span className="font-medium">{vendor.name}</span>
-                        {vendor.description && (
-                          <span className="text-sm text-muted-foreground">{vendor.description}</span>
-                        )}
-                      </div>
-                      <Check
-                        className={cn(
-                          "ml-auto h-4 w-4",
-                          value === vendor.id ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+    <div className="relative">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <div className="relative">
+            <Input
+              ref={inputRef}
+              value={searchValue}
+              onChange={handleInputChange}
+              onFocus={handleInputFocus}
+              placeholder={placeholder}
+              className={cn("pr-10", className)}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+              onClick={() => setOpen(!open)}
+              type="button"
+            >
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          </div>
+        </PopoverTrigger>
+        <PopoverContent className="w-[400px] p-2" align="start">
+          <div className="max-h-[200px] overflow-y-auto">
+            {filteredVendors.length === 0 ? (
+              <div className="p-2 text-sm text-muted-foreground">
+                No vendors found.
+              </div>
+            ) : (
+              filteredVendors.map((vendor) => (
+                <div
+                  key={vendor.id}
+                  className="flex items-center gap-2 p-2 hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer"
+                  onClick={() => handleSelect(vendor)}
+                >
+                  {vendor.type === 'contact' ? (
+                    <User className="h-4 w-4 text-blue-500" />
+                  ) : (
+                    <Building2 className="h-4 w-4 text-green-500" />
+                  )}
+                  <div className="flex flex-col flex-1">
+                    <span className="font-medium">{vendor.name}</span>
+                    {vendor.description && (
+                      <span className="text-sm text-muted-foreground">{vendor.description}</span>
+                    )}
+                  </div>
+                  {value === vendor.id && (
+                    <Check className="h-4 w-4 text-primary" />
+                  )}
+                </div>
+              ))
             )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
