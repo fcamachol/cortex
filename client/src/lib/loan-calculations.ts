@@ -17,6 +17,7 @@ interface MoratoryCalculationParams {
   termMonths: number;
   paymentFrequency: string;
   daysOverdue: number;
+  monthlyPayment?: number;
 }
 
 /**
@@ -34,6 +35,7 @@ export function calculateCustomMoratoryInterest(
       termMonths: params.termMonths,
       paymentFrequency: params.paymentFrequency,
       daysOverdue: params.daysOverdue,
+      monthlyPayment: params.monthlyPayment || 0,
       Math: Math, // Allow Math functions
     };
 

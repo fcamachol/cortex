@@ -221,15 +221,13 @@ export function LoanDetailModal({ open, onClose, loan, onEdit }: LoanDetailModal
                               interestRate: (loan.interest_rate || loan.interestRate || 0) / 100,
                               termMonths: loan.term_months || loan.termMonths || 12,
                               paymentFrequency: loan.payment_frequency || loan.paymentFrequency || 'monthly',
-                              daysOverdue: 30
+                              daysOverdue: 30,
+                              monthlyPayment: calculateMonthlyPayment()
                             };
                             
-                            // Use the actual monthly payment calculation from above
-                            const actualMonthlyPayment = calculateMonthlyPayment();
-                            const dailyPenalty = actualMonthlyPayment / 30;
-                            
-                            // For the test calculation, use simple daily penalty: (monthly payment / 30) * days overdue
-                            const result = dailyPenalty * 30;
+                            // Use the custom formula to calculate the moratory interest
+                            const customFormula = loan.custom_formula || loan.customFormula || 'return (monthlyPayment / 30) * daysOverdue;';
+                            const result = calculateCustomMoratoryInterest(customFormula, testParams);
                             
                             return (
                               <div className="space-y-2">
