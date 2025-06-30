@@ -45,10 +45,17 @@ export function CreditCardList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: creditCards = [], isLoading } = useQuery({
+  const { data: creditCards = [], isLoading, error } = useQuery({
     queryKey: ["/api/finance/credit-cards"],
-    queryFn: () => apiRequest("GET", "/api/finance/credit-cards")
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/finance/credit-cards");
+      // Ensure response is always an array
+      return Array.isArray(response) ? response : [];
+    }
   });
+
+  // Ensure creditCards is always an array
+  const safeCreditCards = Array.isArray(creditCards) ? creditCards : [];
 
   const deleteMutation = useMutation({
     mutationFn: async (cardId: string) => {
@@ -133,7 +140,7 @@ export function CreditCardList() {
       </div>
 
       {/* Credit Cards Grid */}
-      {creditCards.length === 0 ? (
+      {safeCreditCards.length === 0 ? (
         <Card className="p-8 text-center">
           <CreditCard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">No Credit Cards Yet</h3>
@@ -149,7 +156,7 @@ export function CreditCardList() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {creditCards.map((card: CreditCardData) => {
+          {safeCreditCards.map((card: CreditCardData) => {
             const utilization = calculateUtilization(card.current_balance, card.credit_limit);
             const utilizationColor = getUtilizationColor(utilization);
             
