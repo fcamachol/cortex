@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -47,6 +47,7 @@ const billFormSchema = z.object({
   is_recurring: z.boolean().default(false),
   recurrence_type: z.enum(["monthly", "quarterly", "annual", "weekly", "biweekly", "custom"]).optional(),
   recurrence_interval: z.number().min(1).optional(),
+  recurrence_start_date: z.date().optional(),
   recurrence_end_date: z.date().optional(),
   auto_pay_enabled: z.boolean().default(false),
   auto_pay_account_id: z.string().optional(),
@@ -76,6 +77,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
       is_recurring: false,
       recurrence_type: undefined,
       recurrence_interval: 1,
+      recurrence_start_date: undefined,
       recurrence_end_date: undefined,
       auto_pay_enabled: false,
       auto_pay_account_id: undefined,
@@ -91,8 +93,12 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
 
       const requestData = {
         ...data,
-        bill_date: data.bill_date.toISOString().split('T')[0],
-        due_date: data.due_date.toISOString().split('T')[0],
+        // For recurring bills, nullify exact dates and only use day/month
+        bill_date: data.is_recurring ? null : data.bill_date.toISOString().split('T')[0],
+        due_date: data.is_recurring ? null : data.due_date.toISOString().split('T')[0],
+        recurrence_start_date: data.recurrence_start_date 
+          ? data.recurrence_start_date.toISOString().split('T')[0] 
+          : undefined,
         recurrence_end_date: data.recurrence_end_date 
           ? data.recurrence_end_date.toISOString().split('T')[0] 
           : undefined,
@@ -137,6 +143,19 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
       console.error("Error creating bill:", error);
     },
   });
+
+  // Watch for changes in is_recurring to handle date behavior
+  const isRecurring = form.watch("is_recurring");
+  
+  useEffect(() => {
+    if (isRecurring) {
+      // When recurring is enabled, set recurrence start date to the current bill date
+      const currentBillDate = form.getValues("bill_date");
+      if (currentBillDate && !form.getValues("recurrence_start_date")) {
+        form.setValue("recurrence_start_date", currentBillDate);
+      }
+    }
+  }, [isRecurring, form]);
 
   const onSubmit = (data: BillFormData) => {
     createBillMutation.mutate(data);
