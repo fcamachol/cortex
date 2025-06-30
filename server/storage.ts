@@ -1074,13 +1074,9 @@ class DatabaseStorage {
 
     async updateActionRule(ruleId: string, updates: any): Promise<any> {
         try {
-            console.log('updateActionRule - input updates:', JSON.stringify(updates, null, 2));
-            
             // Handle PostgreSQL array field properly
             const allowedUserIds = updates.allowed_user_ids || [];
             const allowedUserIdsArray = Array.isArray(allowedUserIds) ? allowedUserIds : [];
-            
-            console.log('updateActionRule - processed allowedUserIdsArray:', allowedUserIdsArray);
             
             // Check for undefined/null values that might cause SQL issues
             const updateData = {
@@ -1093,8 +1089,6 @@ class DatabaseStorage {
                 trigger_permission: updates.trigger_permission || 'me',
                 allowed_user_ids: allowedUserIdsArray
             };
-            
-            console.log('updateActionRule - final updateData:', JSON.stringify(updateData, null, 2));
             
             // Use raw SQL to handle all fields including extra ones not in schema
             const result = await db.execute(sql`
