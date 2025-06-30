@@ -1,0 +1,367 @@
+-- SIMPLIFIED RECURRING BILLS APPROACH
+-- Just extend existing bills_payable with recurrence fields
+
+-- ================================
+-- EXTEND EXISTING BILLS_PAYABLE
+-- ================================
+
+-- Add recurrence fields to existing bills_payable table
+ALTER TABLE cortex_finance.bills_payable 
+ADD COLUMN IF NOT EXISTS is_recurring BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE cortex_finance.bills_payable 
+ADD COLUMN IF NOT EXISTS recurrence_type VARCHAR(20) CHECK (
+    recurrence_type IN ('monthly', 'quarterly', 'annual', 'weekly', 'biweekly', 'custom')
+);
+
+ALTER TABLE cortex_finance.bills_payable 
+ADD COLUMN IF NOT EXISTS recurrence_interval INTEGER DEFAULT 1;
+
+ALTER TABLE cortex_finance.bills_payable 
+ADD COLUMN IF NOT EXISTS recurrence_end_date DATE;
+
+ALTER TABLE cortex_finance.bills_payable 
+ADD COLUMN IF NOT EXISTS next_due_date DATE;
+
+ALTER TABLE cortex_finance.bills_payable 
+ADD COLUMN IF NOT EXISTS parent_bill_id UUID REFERENCES cortex_finance.bills_payable(id);
+
+ALTER TABLE cortex_finance.bills_payable 
+ADD COLUMN IF NOT EXISTS instance_number INTEGER DEFAULT 1;
+
+ALTER TABLE cortex_finance.bills_payable 
+ADD COLUMN IF NOT EXISTS auto_pay_enabled BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE cortex_finance.bills_payable 
+ADD COLUMN IF NOT EXISTS auto_pay_account_id VARCHAR(50) REFERENCES cortex_finance.accounts(id);
+
+-- ================================
+-- SAME FOR BILLS_RECEIVABLE
+-- ================================
+
+ALTER TABLE cortex_finance.bills_receivable 
+ADD COLUMN IF NOT EXISTS is_recurring BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE cortex_finance.bills_receivable 
+ADD COLUMN IF NOT EXISTS recurrence_type VARCHAR(20) CHECK (
+    recurrence_type IN ('monthly', 'quarterly', 'annual', 'weekly', 'biweekly', 'custom')
+);
+
+ALTER TABLE cortex_finance.bills_receivable 
+ADD COLUMN IF NOT EXISTS recurrence_interval INTEGER DEFAULT 1;
+
+ALTER TABLE cortex_finance.bills_receivable 
+ADD COLUMN IF NOT EXISTS recurrence_end_date DATE;
+
+ALTER TABLE cortex_finance.bills_receivable 
+ADD COLUMN IF NOT EXISTS next_due_date DATE;
+
+ALTER TABLE cortex_finance.bills_receivable 
+ADD COLUMN IF NOT EXISTS parent_bill_id UUID REFERENCES cortex_finance.bills_receivable(id);
+
+ALTER TABLE cortex_finance.bills_receivable 
+ADD COLUMN IF NOT EXISTS instance_number INTEGER DEFAULT 1;
+
+-- ================================
+-- SIMPLE BILL GENERATION FUNCTION
+-- ================================
+
+-- Generate next instance of a recurring bill
+CREATE OR REPLACE FUNCTION generate_next_recurring_bill(parent_bill_id UUID)
+RETURNS UUID AS $$
+DECLARE
+    parent_bill cortex_finance.bills_payable%ROWTYPE;
+    new_bill_id UUID;
+    next_date DATE;
+BEGIN
+    -- Get parent bill details
+    SELECT * INTO parent_bill 
+    FROM cortex_finance.bills_payable 
+    WHERE id = parent_bill_id AND is_recurring = TRUE;
+    
+    IF NOT FOUND THEN
+        RETURN NULL;
+    END IF;
+    
+    -- Calculate next due date
+    CASE parent_bill.recurrence_type
+        WHEN 'monthly' THEN
+            next_date := parent_bill.next_due_date + (parent_bill.recurrence_interval || ' months')::INTERVAL;
+        WHEN 'quarterly' THEN
+            next_date := parent_bill.next_due_date + (parent_bill.recurrence_interval * 3 || ' months')::INTERVAL;
+        WHEN 'annual' THEN
+            next_date := parent_bill.next_due_date + (parent_bill.recurrence_interval || ' years')::INTERVAL;
+        WHEN 'weekly' THEN
+            next_date := parent_bill.next_due_date + (parent_bill.recurrence_interval || ' weeks')::INTERVAL;
+        ELSE
+            next_date := parent_bill.next_due_date + INTERVAL '1 month'; -- Default
+    END CASE;
+    
+    -- Check if we should still generate (not past end date)
+    IF parent_bill.recurrence_end_date IS NOT NULL AND next_date > parent_bill.recurrence_end_date THEN
+        RETURN NULL;
+    END IF;
+    
+    -- Create next bill instance
+    INSERT INTO cortex_finance.bills_payable (
+        bill_number,
+        vendor_entity_id,
+        amount,
+        bill_date,
+        due_date,
+        description,
+        project_entity_id,
+        account_entity_id,
+        created_by_entity_id,
+        is_recurring,
+        recurrence_type,
+        recurrence_interval,
+        recurrence_end_date,
+        next_due_date,
+        parent_bill_id,
+        instance_number,
+        auto_pay_enabled,
+        auto_pay_account_id,
+        category,
+        subcategory
+    ) VALUES (
+        parent_bill.bill_number || '-' || (parent_bill.instance_number + 1),
+        parent_bill.vendor_entity_id,
+        parent_bill.amount,
+        next_date,
+        next_date,
+        parent_bill.description || ' - Instance ' || (parent_bill.instance_number + 1),
+        parent_bill.project_entity_id,
+        parent_bill.account_entity_id,
+        parent_bill.created_by_entity_id,
+        FALSE, -- New instance is not recurring itself
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        parent_bill_id,
+        parent_bill.instance_number + 1,
+        parent_bill.auto_pay_enabled,
+        parent_bill.auto_pay_account_id,
+        parent_bill.category,
+        parent_bill.subcategory
+    ) RETURNING id INTO new_bill_id;
+    
+    -- Update parent bill's next due date and instance number
+    UPDATE cortex_finance.bills_payable 
+    SET next_due_date = next_date,
+        instance_number = instance_number + 1
+    WHERE id = parent_bill_id;
+    
+    -- Auto-pay if enabled
+    IF parent_bill.auto_pay_enabled AND parent_bill.auto_pay_account_id IS NOT NULL THEN
+        -- Create transaction for auto-payment
+        INSERT INTO cortex_finance.transactions (
+            amount,
+            transaction_type,
+            description,
+            transaction_date,
+            from_account_entity_id,
+            vendor_entity_id,
+            bill_payable_id,
+            transaction_source
+        ) VALUES (
+            -ABS(parent_bill.amount),
+            'expense',
+            'Auto-pay: ' || parent_bill.description,
+            next_date,
+            parent_bill.auto_pay_account_id,
+            parent_bill.vendor_entity_id,
+            new_bill_id,
+            'automated'
+        );
+        
+        -- Mark bill as paid
+        UPDATE cortex_finance.bills_payable 
+        SET status = 'paid',
+            amount_paid = amount,
+            paid_date = next_date
+        WHERE id = new_bill_id;
+    END IF;
+    
+    RETURN new_bill_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ================================
+-- EXAMPLES OF RECURRING BILLS
+-- ================================
+
+-- Example 1: Monthly rent (recurring bill)
+/*
+INSERT INTO cortex_finance.bills_payable (
+    bill_number,
+    vendor_entity_id,
+    amount,
+    bill_date,
+    due_date,
+    description,
+    is_recurring,
+    recurrence_type,
+    recurrence_interval,
+    next_due_date,
+    auto_pay_enabled,
+    auto_pay_account_id,
+    category
+) VALUES (
+    'RENT-2025-001',
+    'landlord_entity_id',
+    2500.00,
+    '2025-01-01',
+    '2025-01-01',
+    'Monthly office rent',
+    TRUE,
+    'monthly',
+    1,
+    '2025-02-01',
+    TRUE,
+    'checking_account_id',
+    'Rent'
+);
+*/
+
+-- Example 2: Quarterly tuition (recurring bill)
+/*
+INSERT INTO cortex_finance.bills_payable (
+    bill_number,
+    vendor_entity_id,
+    amount,
+    bill_date,
+    due_date,
+    description,
+    is_recurring,
+    recurrence_type,
+    recurrence_interval,
+    next_due_date,
+    recurrence_end_date,
+    auto_pay_enabled,
+    category
+) VALUES (
+    'TUITION-2025-Q1',
+    'university_entity_id',
+    8000.00,
+    '2025-01-15',
+    '2025-01-15',
+    'MBA Program Tuition',
+    TRUE,
+    'quarterly',
+    1,
+    '2025-04-15',
+    '2026-01-15', -- End after 4 quarters
+    FALSE, -- Manual payment
+    'Education'
+);
+*/
+
+-- ================================
+-- HELPFUL VIEWS
+-- ================================
+
+-- View of all recurring bill templates (parent bills)
+CREATE VIEW cortex_finance.recurring_bill_templates AS
+SELECT 
+    bp.*,
+    COUNT(instances.id) as instances_created,
+    MAX(instances.due_date) as last_instance_date
+FROM cortex_finance.bills_payable bp
+LEFT JOIN cortex_finance.bills_payable instances ON bp.id = instances.parent_bill_id
+WHERE bp.is_recurring = TRUE
+  AND bp.parent_bill_id IS NULL -- Only parent bills, not instances
+GROUP BY bp.id;
+
+-- View of upcoming recurring bills
+CREATE VIEW cortex_finance.upcoming_recurring_bills AS
+SELECT 
+    parent.id as template_id,
+    parent.description as recurring_description,
+    parent.amount,
+    parent.vendor_entity_id,
+    parent.next_due_date,
+    parent.recurrence_type,
+    parent.auto_pay_enabled,
+    CASE 
+        WHEN parent.next_due_date < CURRENT_DATE THEN 'overdue'
+        WHEN parent.next_due_date = CURRENT_DATE THEN 'due_today'
+        WHEN parent.next_due_date <= CURRENT_DATE + INTERVAL '7 days' THEN 'due_this_week'
+        WHEN parent.next_due_date <= CURRENT_DATE + INTERVAL '30 days' THEN 'due_this_month'
+        ELSE 'future'
+    END as urgency
+FROM cortex_finance.bills_payable parent
+WHERE parent.is_recurring = TRUE 
+  AND parent.parent_bill_id IS NULL
+  AND (parent.recurrence_end_date IS NULL OR parent.next_due_date <= parent.recurrence_end_date)
+ORDER BY parent.next_due_date;
+
+-- View of all bill instances (recurring + one-time)
+CREATE VIEW cortex_finance.all_bills_with_recurrence AS
+SELECT 
+    bp.*,
+    CASE 
+        WHEN bp.is_recurring = TRUE AND bp.parent_bill_id IS NULL THEN 'recurring_template'
+        WHEN bp.parent_bill_id IS NOT NULL THEN 'recurring_instance'
+        ELSE 'one_time'
+    END as bill_type,
+    parent.description as template_description
+FROM cortex_finance.bills_payable bp
+LEFT JOIN cortex_finance.bills_payable parent ON bp.parent_bill_id = parent.id;
+
+-- ================================
+-- AUTOMATION FUNCTION
+-- ================================
+
+-- Daily job to generate due recurring bills
+CREATE OR REPLACE FUNCTION process_daily_recurring_bills()
+RETURNS INTEGER AS $$
+DECLARE
+    template_record RECORD;
+    bills_generated INTEGER := 0;
+BEGIN
+    -- Find all recurring bill templates that need new instances
+    FOR template_record IN 
+        SELECT id 
+        FROM cortex_finance.bills_payable 
+        WHERE is_recurring = TRUE 
+          AND parent_bill_id IS NULL
+          AND next_due_date <= CURRENT_DATE + INTERVAL '7 days' -- Generate a week ahead
+          AND (recurrence_end_date IS NULL OR next_due_date <= recurrence_end_date)
+    LOOP
+        -- Generate next bill instance
+        IF generate_next_recurring_bill(template_record.id) IS NOT NULL THEN
+            bills_generated := bills_generated + 1;
+        END IF;
+    END LOOP;
+    
+    RETURN bills_generated;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ================================
+-- CLEAN UP UNNECESSARY TABLES
+-- ================================
+
+-- We can now drop the complex recurring_payments tables since bills handle everything
+/*
+DROP TABLE IF EXISTS cortex_finance.recurring_payment_instances CASCADE;
+DROP TABLE IF EXISTS cortex_finance.recurring_payments CASCADE;
+DROP TABLE IF EXISTS cortex_finance.subscriptions CASCADE;
+DROP TABLE IF EXISTS cortex_finance.payment_forecasts CASCADE;
+DROP TABLE IF EXISTS cortex_finance.payment_reminders CASCADE;
+*/
+
+-- ================================
+-- INDEXES FOR PERFORMANCE
+-- ================================
+
+CREATE INDEX idx_bills_payable_recurring ON cortex_finance.bills_payable(is_recurring, next_due_date) 
+    WHERE is_recurring = TRUE;
+
+CREATE INDEX idx_bills_payable_parent ON cortex_finance.bills_payable(parent_bill_id) 
+    WHERE parent_bill_id IS NOT NULL;
+
+CREATE INDEX idx_bills_payable_auto_pay ON cortex_finance.bills_payable(auto_pay_enabled, next_due_date) 
+    WHERE auto_pay_enabled = TRUE;
