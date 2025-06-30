@@ -21,26 +21,20 @@ import {
   TrendingUp,
   DollarSign,
   Percent,
-  RefreshCw
+  RefreshCw,
+  AlertTriangle
 } from "lucide-react";
 import { CreditCardFormTrigger } from "./CreditCardForm";
-
-interface CreditCardData {
-  id: string;
-  card_name: string;
-  bank_name: string;
-  last_4_digits: string;
-  current_balance: string | number;
-  credit_limit: string | number;
-  available_credit: string | number;
-  apr: string | number;
-  statement_closing_day: number;
-  payment_due_days_after_statement: number;
-  currency: string;
-  is_active: boolean;
-  notes?: string;
-  created_at: string;
-}
+import { 
+  CreditCardData,
+  calculateDebt,
+  calculateUtilization,
+  formatCurrency,
+  getUtilizationStatus,
+  getPaymentDueDate,
+  formatDate,
+  getCardStatus
+} from "@/lib/credit-card-utils";
 
 export function CreditCardList() {
   const { toast } = useToast();
@@ -87,28 +81,8 @@ export function CreditCardList() {
     }
   };
 
-  const formatCurrency = (amount: string | number, currency: string = "MXN") => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: currency
-    }).format(Number(amount));
-  };
-
   const formatPercentage = (rate: string | number) => {
     return `${(Number(rate) * 100).toFixed(2)}%`;
-  };
-
-  const getUtilizationColor = (utilization: number) => {
-    if (utilization >= 90) return "text-red-600 dark:text-red-400";
-    if (utilization >= 70) return "text-yellow-600 dark:text-yellow-400";
-    return "text-green-600 dark:text-green-400";
-  };
-
-  const calculateUtilization = (currentBalance: string | number, creditLimit: string | number) => {
-    const balance = Number(currentBalance);
-    const limit = Number(creditLimit);
-    const utilization = (Math.abs(balance) / limit) * 100;
-    return Math.min(utilization, 100);
   };
 
   if (isLoading) {
@@ -170,7 +144,10 @@ export function CreditCardList() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {safeCreditCards.map((card: CreditCardData) => {
             const utilization = calculateUtilization(card.current_balance, card.credit_limit);
-            const utilizationColor = getUtilizationColor(utilization);
+            const utilizationStatus = getUtilizationStatus(utilization);
+            const debt = calculateDebt(card.current_balance);
+            const cardStatus = getCardStatus(card.current_balance, card.credit_limit);
+            const paymentDueDate = getPaymentDueDate(card.statement_closing_day, card.payment_due_days_after_statement);
             
             return (
               <Card key={card.id} className="overflow-hidden">
@@ -210,13 +187,25 @@ export function CreditCardList() {
                 </CardHeader>
 
                 <CardContent className="p-4 space-y-4">
-                  {/* Current Balance */}
+                  {/* Current Balance / Debt */}
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Current Balance</span>
-                    <span className={`font-semibold ${card.current_balance < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                      {formatCurrency(card.current_balance, card.currency)}
+                    <span className="text-sm text-muted-foreground">
+                      {debt > 0 ? 'Current Debt' : 'Current Balance'}
+                    </span>
+                    <span className={`font-semibold ${cardStatus.color}`}>
+                      {formatCurrency(debt > 0 ? debt : card.current_balance, card.currency)}
                     </span>
                   </div>
+                  
+                  {/* Debt Warning */}
+                  {debt > 0 && (
+                    <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                      <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                      <span className="text-sm text-red-700 dark:text-red-300">
+                        Over limit by {formatCurrency(debt - Math.abs(Number(card.current_balance)), card.currency)}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Credit Limit & Available Credit */}
                   <div className="space-y-2">
