@@ -58,13 +58,18 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
   // Mutation for creating new contacts/companies
   const createContactMutation = useMutation({
     mutationFn: async (data: { name: string }) => {
-      return apiRequest(`/api/cortex/entities/persons`, {
+      const response = await fetch('/api/cortex/entities/persons', {
         method: 'POST',
-        body: {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           name: data.name,
           userId: "7804247f-3ae8-4eb2-8c6d-2c44f967ad42"
-        }
+        })
       });
+      if (!response.ok) throw new Error('Failed to create contact');
+      return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/finance/vendors'] });
@@ -76,13 +81,18 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
 
   const createCompanyMutation = useMutation({
     mutationFn: async (data: { name: string }) => {
-      return apiRequest(`/api/cortex/entities/companies`, {
+      const response = await fetch('/api/cortex/entities/companies', {
         method: 'POST',
-        body: {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           name: data.name,
           userId: "7804247f-3ae8-4eb2-8c6d-2c44f967ad42"
-        }
+        })
       });
+      if (!response.ok) throw new Error('Failed to create company');
+      return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/finance/vendors'] });
