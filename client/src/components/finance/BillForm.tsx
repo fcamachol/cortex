@@ -28,7 +28,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon, Repeat, DollarSign } from "lucide-react";
+import { CalendarIcon, Repeat, DollarSign, Calendar as CalendarDays } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
@@ -85,6 +85,45 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
       auto_pay_account_id: undefined,
     },
   });
+
+  // Function to calculate the next bill date based on recurrence settings
+  const calculateNextBillDate = (): Date | null => {
+    const recurrenceType = form.watch("recurrence_type");
+    const recurrenceStartDate = form.watch("recurrence_start_date");
+    const recurrenceInterval = form.watch("recurrence_interval") || 1;
+    
+    if (!recurrenceType || !recurrenceStartDate) {
+      return null;
+    }
+
+    const startDate = new Date(recurrenceStartDate);
+    const nextDate = new Date(startDate);
+
+    switch (recurrenceType) {
+      case "weekly":
+        nextDate.setDate(nextDate.getDate() + (7 * recurrenceInterval));
+        break;
+      case "biweekly":
+        nextDate.setDate(nextDate.getDate() + (14 * recurrenceInterval));
+        break;
+      case "monthly":
+        nextDate.setMonth(nextDate.getMonth() + recurrenceInterval);
+        break;
+      case "quarterly":
+        nextDate.setMonth(nextDate.getMonth() + (3 * recurrenceInterval));
+        break;
+      case "annual":
+        nextDate.setFullYear(nextDate.getFullYear() + recurrenceInterval);
+        break;
+      case "custom":
+        nextDate.setDate(nextDate.getDate() + recurrenceInterval);
+        break;
+      default:
+        return null;
+    }
+
+    return nextDate;
+  };
 
   const createBillMutation = useMutation({
     mutationFn: async (data: BillFormData) => {
@@ -533,6 +572,24 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
                   </FormItem>
                 )}
               />
+
+              {/* Next Bill Date Display */}
+              <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="flex items-center space-x-2 mb-2">
+                  <CalendarDays className="h-4 w-4 text-blue-600" />
+                  <h4 className="font-medium text-blue-900 dark:text-blue-100">Next Bill Date</h4>
+                </div>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
+                  {calculateNextBillDate() ? (
+                    <>Next bill will be generated on: <strong>{format(calculateNextBillDate()!, "PPP")}</strong></>
+                  ) : (
+                    "Select recurrence type and start date to see next bill date"
+                  )}
+                </p>
+                <div className="text-xs text-blue-600 dark:text-blue-400">
+                  This date is automatically calculated based on your recurrence settings
+                </div>
+              </div>
 
               <div className="border-t pt-4">
                 <div className="flex items-center space-x-2 mb-3">
