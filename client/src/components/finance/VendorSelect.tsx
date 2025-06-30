@@ -41,6 +41,15 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
           role="combobox"
           aria-expanded={open}
           className={cn("w-full justify-between", className)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen(!open);
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+          }}
+          type="button"
         >
           {selectedVendor ? (
             <div className="flex items-center gap-2">
@@ -62,7 +71,7 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent className="w-full p-0 z-[9999]" align="start">
         <Command>
           <CommandInput placeholder="Search vendors..." />
           <CommandList>
@@ -75,10 +84,12 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
                   <CommandItem
                     key={vendor.id}
                     value={vendor.name}
-                    onSelect={() => {
+                    onSelect={(currentValue) => {
+                      console.log('Selected vendor:', vendor.id, vendor.name);
                       onValueChange(vendor.id);
                       setOpen(false);
                     }}
+                    className="cursor-pointer"
                   >
                     <div className="flex items-center gap-2 w-full">
                       {vendor.type === 'contact' ? (

@@ -401,7 +401,7 @@ class DatabaseStorage {
     async getCompanies(): Promise<any[]> {
         try {
             const result = await db.execute(sql`
-                SELECT * FROM cortex_entities.companies ORDER BY company_name
+                SELECT * FROM cortex_entities.companies ORDER BY name
             `);
             return result.rows;
         } catch (error) {
