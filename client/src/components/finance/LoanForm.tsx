@@ -41,9 +41,12 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Demo userId - matches what's used throughout the app
+  const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
+
   // Fetch contacts for linking
   const { data: contacts = [] } = useQuery({
-    queryKey: ["/api/contacts"],
+    queryKey: ["/api/contacts", userId],
     enabled: open, // Only fetch when dialog is open
   });
 
@@ -150,8 +153,8 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
                         <SelectContent>
                           <SelectItem value="none">No contact linked</SelectItem>
                           {contacts.map((contact: any) => (
-                            <SelectItem key={contact.contactId} value={contact.contactId.toString()}>
-                              {contact.displayName || contact.phoneNumber}
+                            <SelectItem key={contact.id} value={contact.id.toString()}>
+                              {contact.name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim()}
                             </SelectItem>
                           ))}
                         </SelectContent>
