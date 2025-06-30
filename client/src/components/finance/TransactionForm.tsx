@@ -1,238 +1,440 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { z } from "zod";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
+import { CalendarIcon, Calculator, Info } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import { X } from "lucide-react";
+import { insertTransactionSchema, type Account, type InsertTransaction } from "@shared/finance-schema";
+import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
-const transactionSchema = z.object({
-  type: z.enum(["income", "expense"], {
-    required_error: "Please select a transaction type",
+// Extended schema for form validation
+const transactionFormSchema = insertTransactionSchema.extend({
+  transactionDate: z.date({
+    required_error: "Transaction date is required.",
   }),
-  amount: z.string().min(1, "Amount is required").transform((val) => parseFloat(val)),
-  description: z.string().min(1, "Description is required"),
-  category: z.string().min(1, "Category is required"),
-  date: z.string().min(1, "Date is required"),
-  notes: z.string().optional(),
 });
 
-type TransactionFormData = z.infer<typeof transactionSchema>;
+type TransactionFormData = z.infer<typeof transactionFormSchema>;
 
 interface TransactionFormProps {
-  open: boolean;
-  onClose: () => void;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
-export function TransactionForm({ open, onClose }: TransactionFormProps) {
+// Simplified transaction logic: Income = Credit, Everything else = Debit, Credit cards inverted
+const TRANSACTION_TYPES = {
+  expense: "Expense - Money going out",
+  income: "Income - Money coming in", 
+  transfer: "Transfer - Move money between accounts",
+  adjustment: "Adjustment - Correction or reconciliation"
+};
+
+export function TransactionForm({ onSuccess, onCancel }: TransactionFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [selectedTransactionType, setSelectedTransactionType] = useState<string>("");
 
   const form = useForm<TransactionFormData>({
-    resolver: zodResolver(transactionSchema),
+    resolver: zodResolver(transactionFormSchema),
     defaultValues: {
-      type: "expense",
-      amount: 0,
+      amount: "0.00",
+      transactionType: "expense",
       description: "",
+      transactionDate: new Date(),
       category: "",
-      date: new Date().toISOString().split('T')[0],
-      notes: "",
+      subcategory: "",
+      debitAccountEntityId: "",
+      creditAccountEntityId: "",
+      vendorEntityId: "",
+      projectEntityId: "",
+      transactionSource: "manual",
+      reference: "",
+      reconciled: false,
+      createdByEntityId: "7804247f-3ae8-4eb2-8c6d-2c44f967ad42", // Hardcoded user ID
     },
   });
 
-  const createTransaction = useMutation({
+  // Fetch accounts for dropdowns
+  const { data: accounts = [] } = useQuery<Account[]>({
+    queryKey: ["/api/cortex/finance/accounts"],
+  });
+
+  // Separate accounts by type for better UX
+  const bankAccounts = accounts.filter(acc => 
+    ["checking", "savings", "cash"].includes(acc.accountType)
+  );
+  const creditCardAccounts = accounts.filter(acc => 
+    acc.accountType === "credit_card"
+  );
+  const expenseAccounts = accounts.filter(acc => 
+    acc.accountType === "expense"
+  );
+  const incomeAccounts = accounts.filter(acc => 
+    acc.accountType === "income"
+  );
+  const allPaymentAccounts = accounts.filter(acc => 
+    ["checking", "savings", "cash", "credit_card"].includes(acc.accountType)
+  );
+
+  const createTransactionMutation = useMutation({
     mutationFn: async (data: TransactionFormData) => {
-      return apiRequest("POST", "/api/finance/transactions", data);
+      const payload = {
+        ...data,
+        transactionDate: data.transactionDate.toISOString().split('T')[0],
+      };
+      
+      const response = await apiRequest("/api/cortex/finance/transactions", {
+        method: "POST",
+        body: payload,
+      });
+      return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/finance/transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/finance/overview"] });
       toast({
         title: "Success",
-        description: "Transaction created successfully",
+        description: "Transaction created successfully.",
       });
-      form.reset();
-      onClose();
+      queryClient.invalidateQueries({ queryKey: ["/api/cortex/finance/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cortex/finance/accounts"] }); // Refresh balances
+      onSuccess?.();
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to create transaction",
+        description: error.message || "Failed to create transaction.",
         variant: "destructive",
       });
     },
   });
 
   const onSubmit = (data: TransactionFormData) => {
-    createTransaction.mutate(data);
+    createTransactionMutation.mutate(data);
   };
 
-  const categories = [
-    "Food & Dining",
-    "Transportation",
-    "Shopping",
-    "Entertainment",
-    "Bills & Utilities",
-    "Healthcare",
-    "Education",
-    "Travel",
-    "Business",
-    "Investment",
-    "Salary",
-    "Freelance",
-    "Other Income",
-    "Other Expense",
-  ];
+  const transactionType = form.watch("transactionType");
+  const debitAccount = form.watch("debitAccountEntityId");
+  const creditAccount = form.watch("creditAccountEntityId");
+  
+  // Get account details for validation
+  const debitAccountDetails = accounts.find(acc => acc.id === debitAccount);
+  const creditAccountDetails = accounts.find(acc => acc.id === creditAccount);
+
+  // Simplified accounting logic: Income = Credit, Everything else = Debit, Credit cards inverted
+  const getAccountingLogic = () => {
+    if (transactionType === "income") {
+      return {
+        primaryAccount: "credit", // Income goes to credit side
+        paymentAccount: "debit", // Bank account gets debited (money comes in)
+        description: "Income: Credit income account, Debit bank account"
+      };
+    } else {
+      return {
+        primaryAccount: "debit", // Expenses/transfers go to debit side  
+        paymentAccount: "credit", // Bank/credit card gets credited (money goes out)
+        description: "Expense: Debit expense account, Credit payment account"
+      };
+    }
+  };
+
+  const validateAccounting = () => {
+    if (!debitAccount || !creditAccount) return null;
+    
+    const logic = getAccountingLogic();
+    
+    // Check credit card inversion
+    if (creditAccountDetails?.accountType === "credit_card") {
+      if (transactionType === "expense") {
+        return { type: "success", message: "✓ Credit card expense: Debit expense, Credit credit card (increases balance)" };
+      }
+    }
+    
+    if (debitAccountDetails?.accountType === "credit_card") {
+      if (transactionType === "income" || transactionType === "transfer") {
+        return { type: "success", message: "✓ Credit card payment: Debit credit card (reduces balance)" };
+      }
+    }
+
+    return { type: "info", message: logic.description };
+  };
+
+  const accountingValidation = validateAccounting();
+
+  // Get accounts based on simplified logic
+  const getAccountsForField = (fieldType: "debit" | "credit") => {
+    if (transactionType === "income") {
+      if (fieldType === "debit") {
+        return allPaymentAccounts; // Bank accounts that receive money
+      } else {
+        return incomeAccounts; // Income accounts to be credited
+      }
+    } else { // expense, transfer, adjustment
+      if (fieldType === "debit") {
+        return transactionType === "expense" ? expenseAccounts : allPaymentAccounts;
+      } else {
+        return allPaymentAccounts; // Payment accounts that give money
+      }
+    }
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Add New Transaction</DialogTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-4 top-4"
-            onClick={onClose}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </DialogHeader>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* Transaction Type Selection */}
+        <FormField
+          control={form.control}
+          name="transactionType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Transaction Type</FormLabel>
+              <Select onValueChange={(value) => {
+                field.onChange(value);
+                setSelectedTransactionType(value);
+                // Clear account selections when type changes
+                form.setValue("debitAccountEntityId", "");
+                form.setValue("creditAccountEntityId", "");
+              }} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select transaction type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {Object.entries(TRANSACTION_TYPES).map(([key, description]) => (
+                    <SelectItem key={key} value={key}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{key.charAt(0).toUpperCase() + key.slice(1)}</span>
+                        <span className="text-xs text-muted-foreground">{description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Transaction Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+        {/* Description */}
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Enter transaction description..."
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          {/* Amount */}
+          <FormField
+            control={form.control}
+            name="amount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Amount</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Transaction Date */}
+          <FormField
+            control={form.control}
+            name="transactionDate"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Transaction Date</FormLabel>
+                <Popover modal={true}>
+                  <PopoverTrigger asChild>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? (
+                          format(field.value, "PPP")
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="income">Income</SelectItem>
-                      <SelectItem value="expense">Expense</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      {...field}
-                      onChange={(e) => field.onChange(e.target.value)}
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 calendar-popover-max-z" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                      initialFocus
                     />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
+        {/* Double-Entry Accounting Section */}
+        <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+          <div className="flex items-center gap-2">
+            <Calculator className="h-4 w-4" />
+            <h4 className="text-sm font-medium">Double-Entry Accounting</h4>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            {/* Debit Account */}
             <FormField
               control={form.control}
-              name="description"
+              name="debitAccountEntityId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter transaction description" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category</FormLabel>
+                  <FormLabel>Debit Account</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder="Select debit account" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
+                      {getAccountsForField("debit").map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          <div className="flex flex-col">
+                            <span>{account.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {account.accountType} • Balance: ${account.balance}
+                            </span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <div className="text-xs text-muted-foreground">
+                    Account that receives the debit entry
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
+            {/* Credit Account */}
             <FormField
               control={form.control}
-              name="date"
+              name="creditAccountEntityId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
+                  <FormLabel>Credit Account</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select credit account" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {getAccountsForField("credit").map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          <div className="flex flex-col">
+                            <span>{account.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {account.accountType} • Balance: ${account.balance}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="text-xs text-muted-foreground">
+                    Account that receives the credit entry
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
             />
+          </div>
 
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Additional notes..."
-                      className="resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          {/* Accounting Logic Validation */}
+          {accountingValidation && (
+            <Alert className={accountingValidation.type === "success" ? "border-green-200 bg-green-50" : "border-yellow-200 bg-yellow-50"}>
+              <Info className="h-4 w-4" />
+              <AlertDescription className="text-sm">
+                {accountingValidation.message}
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
 
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={createTransaction.isPending}>
-                {createTransaction.isPending ? "Creating..." : "Create Transaction"}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+        <div className="grid grid-cols-2 gap-4">
+          {/* Category */}
+          <FormField
+            control={form.control}
+            name="category"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Category</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., Office Supplies" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Reference */}
+          <FormField
+            control={form.control}
+            name="reference"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Reference</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., Check #1234" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="flex justify-end space-x-2">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={createTransactionMutation.isPending}>
+            {createTransactionMutation.isPending ? "Creating..." : "Create Transaction"}
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }

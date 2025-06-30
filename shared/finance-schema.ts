@@ -112,7 +112,7 @@ export const cortexAccounts = cortexFinanceSchema.table("accounts", {
   activeIdx: index("accounts_active_idx").on(table.isActive),
 }));
 
-// Transactions table
+// Transactions table with proper double-entry accounting
 export const cortexTransactions = cortexFinanceSchema.table("transactions", {
   id: uuid("id").primaryKey().defaultRandom(),
   amount: numeric("amount", { precision: 15, scale: 2 }).notNull(),
@@ -121,25 +121,34 @@ export const cortexTransactions = cortexFinanceSchema.table("transactions", {
   transactionDate: date("transaction_date").notNull(),
   category: varchar("category", { length: 100 }),
   subcategory: varchar("subcategory", { length: 100 }),
-  fromAccountEntityId: varchar("from_account_entity_id", { length: 50 }), // FK to accounts
-  toAccountEntityId: varchar("to_account_entity_id", { length: 50 }), // FK to accounts
+  
+  // Double-entry accounting: every transaction has debit and credit accounts
+  debitAccountEntityId: varchar("debit_account_entity_id", { length: 50 }).notNull(), // Account being debited
+  creditAccountEntityId: varchar("credit_account_entity_id", { length: 50 }).notNull(), // Account being credited
+  
   vendorEntityId: varchar("vendor_entity_id", { length: 50 }), // FK to cortex_entities
   projectEntityId: varchar("project_entity_id", { length: 50 }), // FK to cortex_entities
   billPayableId: uuid("bill_payable_id").references(() => cortexBillsPayable.id),
   billReceivableId: uuid("bill_receivable_id").references(() => cortexBillsReceivable.id),
   transactionSource: varchar("transaction_source", { length: 50 }).default("manual").notNull(), // manual, automated, import
   reference: varchar("reference", { length: 255 }),
+  
+  // For reconciliation
+  reconciled: boolean("reconciled").default(false).notNull(),
+  reconciledDate: date("reconciled_date"),
+  
   createdByEntityId: varchar("created_by_entity_id", { length: 50 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   typeIdx: index("transactions_type_idx").on(table.transactionType),
   dateIdx: index("transactions_date_idx").on(table.transactionDate),
-  fromAccountIdx: index("transactions_from_account_idx").on(table.fromAccountEntityId),
-  toAccountIdx: index("transactions_to_account_idx").on(table.toAccountEntityId),
+  debitAccountIdx: index("transactions_debit_account_idx").on(table.debitAccountEntityId),
+  creditAccountIdx: index("transactions_credit_account_idx").on(table.creditAccountEntityId),
   vendorIdx: index("transactions_vendor_idx").on(table.vendorEntityId),
   billPayableIdx: index("transactions_bill_payable_idx").on(table.billPayableId),
   billReceivableIdx: index("transactions_bill_receivable_idx").on(table.billReceivableId),
+  reconciledIdx: index("transactions_reconciled_idx").on(table.reconciled),
 }));
 
 // =====================================================

@@ -492,4 +492,195 @@ router.get('/groups/whatsapp-link-status/:jid', async (req, res) => {
   }
 });
 
+// ================================
+// FINANCE TRANSACTIONS ROUTES
+// ================================
+
+// Get all transactions
+router.get('/finance/transactions', async (req, res) => {
+  try {
+    const userId = req.user?.id || "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
+    
+    const transactions = await storage.query(`
+      SELECT 
+        t.*,
+        da.name as debit_account_name,
+        da.account_type as debit_account_type,
+        ca.name as credit_account_name,
+        ca.account_type as credit_account_type
+      FROM cortex_finance.transactions t
+      LEFT JOIN cortex_finance.accounts da ON t.debit_account_entity_id = da.id
+      LEFT JOIN cortex_finance.accounts ca ON t.credit_account_entity_id = ca.id
+      WHERE t.created_by_entity_id = $1
+      ORDER BY t.transaction_date DESC, t.created_at DESC
+    `, [userId]);
+
+    res.json(transactions.rows);
+  } catch (error) {
+    console.error('Error fetching transactions:', error);
+    res.status(500).json({ error: 'Failed to fetch transactions' });
+  }
+});
+
+// Create new transaction
+router.post('/finance/transactions', async (req, res) => {
+  try {
+    const userId = req.user?.id || "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
+    const transactionData = {
+      ...req.body,
+      created_by_entity_id: userId
+    };
+
+    const result = await storage.query(`
+      INSERT INTO cortex_finance.transactions (
+        amount, transaction_type, description, transaction_date,
+        category, subcategory, debit_account_entity_id, credit_account_entity_id,
+        vendor_entity_id, project_entity_id, bill_payable_id, bill_receivable_id,
+        transaction_source, reference, reconciled, reconciled_date,
+        created_by_entity_id
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+      ) RETURNING *
+    `, [
+      transactionData.amount,
+      transactionData.transactionType,
+      transactionData.description,
+      transactionData.transactionDate,
+      transactionData.category,
+      transactionData.subcategory,
+      transactionData.debitAccountEntityId,
+      transactionData.creditAccountEntityId,
+      transactionData.vendorEntityId,
+      transactionData.projectEntityId,
+      transactionData.billPayableId,
+      transactionData.billReceivableId,
+      transactionData.transactionSource || 'manual',
+      transactionData.reference,
+      transactionData.reconciled || false,
+      transactionData.reconciledDate,
+      transactionData.created_by_entity_id
+    ]);
+
+    // Update account balances based on transaction
+    await updateAccountBalances(
+      transactionData.debitAccountEntityId,
+      transactionData.creditAccountEntityId,
+      parseFloat(transactionData.amount)
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating transaction:', error);
+    res.status(500).json({ error: 'Failed to create transaction' });
+  }
+});
+
+// Helper function to update account balances
+async function updateAccountBalances(debitAccountId: string, creditAccountId: string, amount: number) {
+  try {
+    // For debit account: increase balance (assets increase with debits)
+    // For credit account: decrease balance (assets decrease with credits, liabilities increase with credits)
+    
+    // Get account types first
+    const accountsInfo = await storage.query(`
+      SELECT id, account_type, balance FROM cortex_finance.accounts 
+      WHERE id IN ($1, $2)
+    `, [debitAccountId, creditAccountId]);
+
+    for (const account of accountsInfo.rows) {
+      let balanceChange = 0;
+      
+      if (account.id === debitAccountId) {
+        // Debit side
+        if (['checking', 'savings', 'cash', 'expense'].includes(account.account_type)) {
+          balanceChange = amount; // Assets and expenses increase with debits
+        } else if (['credit_card', 'loan'].includes(account.account_type)) {
+          balanceChange = -amount; // Liabilities decrease with debits (paying down debt)
+        }
+      } else if (account.id === creditAccountId) {
+        // Credit side
+        if (['checking', 'savings', 'cash'].includes(account.account_type)) {
+          balanceChange = -amount; // Assets decrease with credits
+        } else if (['credit_card', 'loan'].includes(account.account_type)) {
+          balanceChange = amount; // Liabilities increase with credits (charging card, borrowing)
+        } else if (account.account_type === 'income') {
+          balanceChange = amount; // Income increases with credits
+        }
+      }
+
+      // Update the balance
+      await storage.query(`
+        UPDATE cortex_finance.accounts 
+        SET balance = balance + $1,
+            updated_at = NOW()
+        WHERE id = $2
+      `, [balanceChange, account.id]);
+    }
+  } catch (error) {
+    console.error('Error updating account balances:', error);
+    // Don't throw here to avoid breaking transaction creation
+  }
+}
+
+// Get all accounts
+router.get('/finance/accounts', async (req, res) => {
+  try {
+    const userId = req.user?.id || "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
+    
+    const accounts = await storage.query(`
+      SELECT * FROM cortex_finance.accounts
+      WHERE created_by_entity_id = $1 AND is_active = true
+      ORDER BY account_type, name
+    `, [userId]);
+
+    res.json(accounts.rows);
+  } catch (error) {
+    console.error('Error fetching accounts:', error);
+    res.status(500).json({ error: 'Failed to fetch accounts' });
+  }
+});
+
+// Create new account
+router.post('/finance/accounts', async (req, res) => {
+  try {
+    const userId = req.user?.id || "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
+    
+    // Generate account entity ID with ca_ prefix
+    const accountId = `ca_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+    
+    const accountData = {
+      ...req.body,
+      id: accountId,
+      created_by_entity_id: userId
+    };
+
+    const result = await storage.query(`
+      INSERT INTO cortex_finance.accounts (
+        id, name, account_type, account_number, bank_name, 
+        balance, currency, is_active, description, 
+        contact_entity_id, created_by_entity_id
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+      ) RETURNING *
+    `, [
+      accountData.id,
+      accountData.name,
+      accountData.accountType,
+      accountData.accountNumber,
+      accountData.bankName,
+      accountData.balance || '0.00',
+      accountData.currency || 'USD',
+      accountData.isActive !== false,
+      accountData.description,
+      accountData.contactEntityId,
+      accountData.created_by_entity_id
+    ]);
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating account:', error);
+    res.status(500).json({ error: 'Failed to create account' });
+  }
+});
+
 export default router;
