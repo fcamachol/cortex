@@ -68,6 +68,7 @@ export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
 
   // State for moratory interests section
   const [showMoratoryInterests, setShowMoratoryInterests] = useState(false);
+  const [showCustomFormula, setShowCustomFormula] = useState(false);
 
 
 
@@ -112,8 +113,8 @@ export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
           purpose: editingLoan.purpose || "",
           collateral: editingLoan.collateral || "",
           notes: editingLoan.notes || "",
-          lenderContactId: editingLoan.lender_contact_id || "",
-          borrowerContactId: editingLoan.borrower_contact_id || "",
+          lenderContactId: editingLoan.lender_entity_id || "",
+          borrowerContactId: editingLoan.borrower_entity_id || "",
           hasMoratoryInterest: editingLoan.has_moratory_interest || false,
           moratoryRate: editingLoan.moratory_rate?.toString() || "0",
           moratoryRateType: editingLoan.moratory_rate_type || "monthly",
