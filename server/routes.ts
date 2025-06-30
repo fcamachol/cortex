@@ -22,6 +22,7 @@ import {
 import {
   insertCortexBillSchema,
 } from "@shared/cortex-schema";
+import cortexRoutes from './cortex-routes';
 import { spawn } from 'child_process';
 import { promises as fsPromises } from 'fs';
 import { lookup } from 'mime-types';
@@ -3974,6 +3975,9 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.status(500).json({ error: 'Failed to check link status' });
     }
   });
+
+  // Mount Cortex API routes
+  app.use('/api/cortex', cortexRoutes);
 
   // Error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
