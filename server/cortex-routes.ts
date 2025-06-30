@@ -168,25 +168,39 @@ router.get('/spaces', async (req, res) => {
   try {
     const { workspaceId, parentSpaceId } = req.query;
     
-    let spaces;
-    if (workspaceId) {
-      if (parentSpaceId) {
-        spaces = await cortexFoundationStorage.getSpacesByParent(parentSpaceId as string);
-      } else {
-        spaces = await cortexFoundationStorage.getRootSpaces(workspaceId as string);
-      }
+    // Use raw SQL for now to bypass ORM issues
+    const { db } = await import('./db');
+    const { sql } = await import('drizzle-orm');
+    
+    let query;
+    if (workspaceId && parentSpaceId) {
+      query = sql`
+        SELECT * FROM cortex_foundation.spaces 
+        WHERE workspace_id = ${workspaceId} 
+        AND parent_space_id = ${parentSpaceId}
+        AND is_archived = false
+        ORDER BY display_order, name;
+      `;
+    } else if (workspaceId) {
+      query = sql`
+        SELECT * FROM cortex_foundation.spaces 
+        WHERE workspace_id = ${workspaceId} 
+        AND parent_space_id IS NULL
+        AND is_archived = false
+        ORDER BY display_order, name;
+      `;
     } else {
-      // For now, get all spaces. In production, this should be filtered by user access
-      const allWorkspaces = await cortexFoundationStorage.getWorkspacesByUser('cu_181de66a23864b2fac56779a82189691');
-      const allSpaces = [];
-      for (const workspace of allWorkspaces) {
-        const workspaceSpaces = await cortexFoundationStorage.getSpacesByWorkspace(workspace.id);
-        allSpaces.push(...workspaceSpaces);
-      }
-      spaces = allSpaces;
+      // Get all spaces for the default user
+      query = sql`
+        SELECT * FROM cortex_foundation.spaces 
+        WHERE owner_user_id = 'cu_181de66a23864b2fac56779a82189691'
+        AND is_archived = false
+        ORDER BY display_order, name;
+      `;
     }
     
-    res.json(spaces);
+    const result = await db.execute(query);
+    res.json(result.rows);
   } catch (error) {
     console.error('Error fetching spaces:', error);
     res.status(500).json({ error: 'Failed to fetch spaces' });
