@@ -42,31 +42,46 @@ export class AppToCortexMigration {
   }
 
   /**
-   * Phase 1: Create Cortex Foundation Schema and Tables
+   * Phase 1: Ensure Cortex Foundation Schema exists and is ready
    */
   private async createCortexFoundationSchema(): Promise<void> {
-    console.log("📋 Creating Cortex Foundation Schema...");
+    console.log("📋 Ensuring Cortex Foundation Schema is ready...");
 
-    // Create cortex_foundation schema
+    // Create cortex_foundation schema if it doesn't exist
     await this.db.execute(sql`CREATE SCHEMA IF NOT EXISTS cortex_foundation;`);
 
-    // Create entity ID generation function for prefixed UUIDs
-    await this.db.execute(sql`
-      CREATE OR REPLACE FUNCTION cortex_foundation.generate_entity_id(prefix TEXT)
-      RETURNS TEXT AS $$
-      BEGIN
-        RETURN prefix || '_' || REPLACE(gen_random_uuid()::text, '-', '');
-      END;
-      $$ LANGUAGE plpgsql;
+    // Check if entity ID generation function exists, create if not
+    const funcExists = await this.db.execute(sql`
+      SELECT EXISTS (
+        SELECT 1 
+        FROM pg_proc p 
+        JOIN pg_namespace n ON p.pronamespace = n.oid 
+        WHERE n.nspname = 'cortex_foundation' 
+        AND p.proname = 'generate_entity_id'
+      );
     `);
 
-    // Create enums
+    if (!funcExists.rows[0].exists) {
+      await this.db.execute(sql`
+        CREATE FUNCTION cortex_foundation.generate_entity_id(prefix TEXT)
+        RETURNS TEXT AS $$
+        BEGIN
+          RETURN prefix || '_' || REPLACE(gen_random_uuid()::text, '-', '');
+        END;
+        $$ LANGUAGE plpgsql;
+      `);
+      console.log("✅ Created entity ID generation function");
+    } else {
+      console.log("✅ Entity ID generation function already exists");
+    }
+
+    // Ensure enums exist
     await this.createFoundationEnums();
 
-    // Create foundation tables
+    // Ensure foundation tables exist
     await this.createFoundationTables();
 
-    console.log("✅ Cortex Foundation Schema created successfully");
+    console.log("✅ Cortex Foundation Schema is ready");
   }
 
   /**
@@ -128,7 +143,7 @@ export class AppToCortexMigration {
   private async createFoundationTables(): Promise<void> {
     // Foundation Users table
     await this.db.execute(sql`
-      CREATE TABLE cortex_foundation.users (
+      CREATE TABLE IF NOT EXISTS cortex_foundation.users (
         id VARCHAR(50) PRIMARY KEY DEFAULT cortex_foundation.generate_entity_id('cu'),
         email VARCHAR(255) NOT NULL UNIQUE,
         password_hash VARCHAR(255) NOT NULL,
@@ -160,7 +175,7 @@ export class AppToCortexMigration {
 
     // Foundation Workspaces table
     await this.db.execute(sql`
-      CREATE TABLE cortex_foundation.workspaces (
+      CREATE TABLE IF NOT EXISTS cortex_foundation.workspaces (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         name VARCHAR(255) NOT NULL,
         slug VARCHAR(100) NOT NULL UNIQUE,
@@ -183,7 +198,7 @@ export class AppToCortexMigration {
 
     // Foundation Spaces table
     await this.db.execute(sql`
-      CREATE TABLE cortex_foundation.spaces (
+      CREATE TABLE IF NOT EXISTS cortex_foundation.spaces (
         id VARCHAR(50) PRIMARY KEY DEFAULT cortex_foundation.generate_entity_id('cs'),
         workspace_id UUID NOT NULL REFERENCES cortex_foundation.workspaces(id),
         parent_space_id VARCHAR(50) REFERENCES cortex_foundation.spaces(id),
@@ -212,7 +227,7 @@ export class AppToCortexMigration {
 
     // Entity Relationships table (Universal linking system)
     await this.db.execute(sql`
-      CREATE TABLE cortex_foundation.entity_relationships (
+      CREATE TABLE IF NOT EXISTS cortex_foundation.entity_relationships (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         workspace_id UUID NOT NULL REFERENCES cortex_foundation.workspaces(id),
         source_entity_id VARCHAR(50) NOT NULL,
@@ -230,7 +245,7 @@ export class AppToCortexMigration {
 
     // Workspace Members table
     await this.db.execute(sql`
-      CREATE TABLE cortex_foundation.workspace_members (
+      CREATE TABLE IF NOT EXISTS cortex_foundation.workspace_members (
         workspace_id UUID NOT NULL REFERENCES cortex_foundation.workspaces(id),
         user_id VARCHAR(50) NOT NULL REFERENCES cortex_foundation.users(id),
         role cortex_foundation.member_role DEFAULT 'viewer',
@@ -246,7 +261,7 @@ export class AppToCortexMigration {
 
     // Space Members table
     await this.db.execute(sql`
-      CREATE TABLE cortex_foundation.space_members (
+      CREATE TABLE IF NOT EXISTS cortex_foundation.space_members (
         space_id VARCHAR(50) NOT NULL REFERENCES cortex_foundation.spaces(id),
         user_id VARCHAR(50) NOT NULL REFERENCES cortex_foundation.users(id),
         role cortex_foundation.member_role DEFAULT 'viewer',
@@ -262,7 +277,7 @@ export class AppToCortexMigration {
 
     // Entity Activities table (Activity tracking)
     await this.db.execute(sql`
-      CREATE TABLE cortex_foundation.entity_activities (
+      CREATE TABLE IF NOT EXISTS cortex_foundation.entity_activities (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         workspace_id UUID NOT NULL REFERENCES cortex_foundation.workspaces(id),
         entity_id VARCHAR(50) NOT NULL,
@@ -279,7 +294,7 @@ export class AppToCortexMigration {
 
     // Entity Tags table (Universal tagging system)
     await this.db.execute(sql`
-      CREATE TABLE cortex_foundation.entity_tags (
+      CREATE TABLE IF NOT EXISTS cortex_foundation.entity_tags (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         workspace_id UUID NOT NULL REFERENCES cortex_foundation.workspaces(id),
         entity_id VARCHAR(50) NOT NULL,
