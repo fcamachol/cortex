@@ -1,9 +1,13 @@
 import { useState, useRef, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Check, ChevronDown, User, Building2, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Check, ChevronDown, User, Building2, X, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiRequest } from "@/lib/queryClient";
 
 interface Vendor {
   id: string;
@@ -24,8 +28,12 @@ interface VendorSelectProps {
 export function VendorSelect({ value, onValueChange, placeholder = "Select vendor...", className }: VendorSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newEntityType, setNewEntityType] = useState<'contact' | 'company'>('contact');
+  const [newEntityName, setNewEntityName] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
 
   const { data: vendors = [] } = useQuery({
     queryKey: ['/api/finance/vendors'],
@@ -47,6 +55,43 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
     (vendor.description && vendor.description.toLowerCase().includes(searchValue.toLowerCase()))
   );
 
+  // Mutation for creating new contacts/companies
+  const createContactMutation = useMutation({
+    mutationFn: async (data: { name: string }) => {
+      return apiRequest(`/api/cortex/entities/persons`, {
+        method: 'POST',
+        body: {
+          name: data.name,
+          userId: "7804247f-3ae8-4eb2-8c6d-2c44f967ad42"
+        }
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/finance/vendors'] });
+      onValueChange(data.id);
+      setCreateDialogOpen(false);
+      setNewEntityName("");
+    }
+  });
+
+  const createCompanyMutation = useMutation({
+    mutationFn: async (data: { name: string }) => {
+      return apiRequest(`/api/cortex/entities/companies`, {
+        method: 'POST',
+        body: {
+          name: data.name,
+          userId: "7804247f-3ae8-4eb2-8c6d-2c44f967ad42"
+        }
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/finance/vendors'] });
+      onValueChange(data.id);
+      setCreateDialogOpen(false);
+      setNewEntityName("");
+    }
+  });
+
   const handleSelect = (vendor: Vendor) => {
     console.log('Vendor selected:', vendor.id, vendor.name);
     onValueChange(vendor.id);
@@ -67,6 +112,16 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
     setSearchValue("");
     onValueChange("");
     setOpen(false);
+  };
+
+  const handleCreateEntity = () => {
+    if (!newEntityName.trim()) return;
+    
+    if (newEntityType === 'contact') {
+      createContactMutation.mutate({ name: newEntityName.trim() });
+    } else {
+      createCompanyMutation.mutate({ name: newEntityName.trim() });
+    }
   };
 
   // Reset search value when value changes externally
@@ -101,7 +156,7 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
           onChange={handleInputChange}
           onFocus={handleInputFocus}
           placeholder={placeholder}
-          className={cn("pr-20", className)}
+          className={cn("pr-24", className)}
         />
         <div className="absolute right-0 top-0 h-full flex items-center">
           {selectedVendor && (
@@ -115,6 +170,80 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
               <X className="h-4 w-4 text-muted-foreground" />
             </Button>
           )}
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-full px-2 hover:bg-transparent"
+                type="button"
+              >
+                <Plus className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Create New Vendor</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="entity-type">Type</Label>
+                  <RadioGroup
+                    value={newEntityType}
+                    onValueChange={(value: 'contact' | 'company') => setNewEntityType(value)}
+                    className="flex gap-6 mt-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="contact" id="contact" />
+                      <Label htmlFor="contact" className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-blue-500" />
+                        Person
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="company" id="company" />
+                      <Label htmlFor="company" className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-green-500" />
+                        Company
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+                <div>
+                  <Label htmlFor="entity-name">Name</Label>
+                  <Input
+                    id="entity-name"
+                    value={newEntityName}
+                    onChange={(e) => setNewEntityName(e.target.value)}
+                    placeholder={`Enter ${newEntityType} name...`}
+                    className="mt-1"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleCreateEntity();
+                      }
+                    }}
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCreateDialogOpen(false)}
+                    type="button"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleCreateEntity}
+                    disabled={!newEntityName.trim() || createContactMutation.isPending || createCompanyMutation.isPending}
+                    type="button"
+                  >
+                    {(createContactMutation.isPending || createCompanyMutation.isPending) ? 'Creating...' : 'Create'}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Button
             variant="ghost"
             size="sm"
