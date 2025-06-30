@@ -11,7 +11,7 @@ import { LoanDetailModal } from "@/components/finance/LoanDetailModal";
 import { AccountForm } from "@/components/finance/AccountForm";
 import { AccountList } from "@/components/finance/AccountList";
 import { CreditCardForm } from "@/components/finance/CreditCardForm";
-import { BillsList } from "@/components/finance/BillsList";
+import { BillsManager } from "@/components/finance/BillsManager";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Receipt, CreditCard, Filter, Building2, Clock } from "lucide-react";
 
 // Payment calculation functions
@@ -366,7 +366,7 @@ export default function FinancePage() {
             </TabsContent>
 
             <TabsContent value="payables" className="space-y-4">
-              <BillsList />
+              <BillsManager />
             </TabsContent>
 
             <TabsContent value="loans" className="space-y-4">

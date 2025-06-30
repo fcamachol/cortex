@@ -183,20 +183,8 @@ class DatabaseStorage {
     }
 
     // =============================
-    // MINIMAL FINANCE STUBS
+    // MINIMAL FINANCE STUBS REMOVED - Full implementation added below
     // =============================
-    
-    async createReceivable(data: any): Promise<any> {
-        throw new Error('Finance functionality temporarily disabled during schema migration');
-    }
-
-    async updateReceivable(receivableId: number, data: any): Promise<any> {
-        throw new Error('Finance functionality temporarily disabled during schema migration');
-    }
-
-    async deleteReceivable(receivableId: number): Promise<void> {
-        throw new Error('Finance functionality temporarily disabled during schema migration');
-    }
 
     // =============================
     // MISSING METHODS STUBS (FOR LEGACY API COMPATIBILITY)
