@@ -17,9 +17,11 @@ import { db } from './db';
 import fs from 'fs/promises';
 import path from 'path';
 import {
-  insertFinanceTransactionSchema,
   insertCrmCompanySchema,
 } from "@shared/schema";
+import {
+  insertCortexBillSchema,
+} from "@shared/cortex-schema";
 import { spawn } from 'child_process';
 import { promises as fsPromises } from 'fs';
 import { lookup } from 'mime-types';

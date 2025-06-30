@@ -430,17 +430,8 @@ export const insertCortexBillSchema = createInsertSchema(cortexBills).omit({
   updatedAt: true,
 });
 
-export const insertCortexTransactionSchema = createInsertSchema(cortexTransactions).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertCortexAccountSchema = createInsertSchema(cortexAccounts).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+// Note: cortexTransactions and cortexAccounts are part of cortex_finance schema
+// They will be added when the full cortex_finance schema is imported
 
 // =====================================================
 // TYPE EXPORTS
@@ -463,9 +454,3 @@ export type InsertCortexDocument = z.infer<typeof insertCortexDocumentSchema>;
 
 export type CortexBill = typeof cortexBills.$inferSelect;
 export type InsertCortexBill = z.infer<typeof insertCortexBillSchema>;
-
-export type CortexTransaction = typeof cortexTransactions.$inferSelect;
-export type InsertCortexTransaction = z.infer<typeof insertCortexTransactionSchema>;
-
-export type CortexAccount = typeof cortexAccounts.$inferSelect;
-export type InsertCortexAccount = z.infer<typeof insertCortexAccountSchema>;
