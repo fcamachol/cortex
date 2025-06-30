@@ -24,20 +24,20 @@ async function simpleAppToCortexMigration() {
     console.log(`Cortex users: ${cortexUserCount.rows[0].count}`);
     console.log(`Cortex spaces: ${cortexSpaceCount.rows[0].count}`);
     
-    // Step 2: Create bridge table for user mapping
+    // Step 2: Create bridge table for user mapping (without foreign key constraints due to type incompatibility)
     console.log("🌉 Creating bridge tables...");
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS app.user_migration_bridge (
-        app_user_id INTEGER PRIMARY KEY REFERENCES app.users(user_id),
-        cortex_user_id VARCHAR(50) REFERENCES cortex_foundation.users(id),
+        app_user_id INTEGER PRIMARY KEY,
+        cortex_user_id VARCHAR(50),
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
     
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS app.space_migration_bridge (
-        app_space_id INTEGER PRIMARY KEY REFERENCES app.spaces(space_id),
-        cortex_space_id VARCHAR(50) REFERENCES cortex_foundation.spaces(id),
+        app_space_id INTEGER PRIMARY KEY,
+        cortex_space_id VARCHAR(50),
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
@@ -47,13 +47,13 @@ async function simpleAppToCortexMigration() {
     
     const appUsers = await db.execute(sql`
       SELECT * FROM app.users 
-      WHERE user_id NOT IN (SELECT app_user_id FROM app.user_migration_bridge WHERE app_user_id IS NOT NULL);
+      WHERE NOT EXISTS (SELECT 1 FROM app.user_migration_bridge WHERE app_user_id = users.user_id);
     `);
     
     let migratedUsers = 0;
     for (const user of appUsers.rows) {
       // Generate cortex user ID with cu_ prefix
-      const cortexUserId = `cu_${user.id.toString().padStart(10, '0')}_${Date.now().toString(36)}`;
+      const cortexUserId = `cu_${user.user_id.toString().padStart(10, '0')}_${Date.now().toString(36)}`;
       
       // Insert into cortex_foundation.users
       await db.execute(sql`
@@ -74,7 +74,7 @@ async function simpleAppToCortexMigration() {
       // Record mapping in bridge table
       await db.execute(sql`
         INSERT INTO app.user_migration_bridge (app_user_id, cortex_user_id)
-        VALUES (${user.id}, ${cortexUserId});
+        VALUES (${user.user_id}, ${cortexUserId});
       `);
       
       migratedUsers++;
@@ -88,7 +88,7 @@ async function simpleAppToCortexMigration() {
       SELECT s.*, umb.cortex_user_id 
       FROM app.spaces s
       LEFT JOIN app.user_migration_bridge umb ON s.creator_user_id = umb.app_user_id
-      WHERE s.space_id NOT IN (SELECT app_space_id FROM app.space_migration_bridge);
+      WHERE NOT EXISTS (SELECT 1 FROM app.space_migration_bridge WHERE app_space_id = s.space_id);
     `);
     
     let migratedSpaces = 0;
@@ -96,10 +96,10 @@ async function simpleAppToCortexMigration() {
       // Generate cortex space ID with cs_ prefix
       const cortexSpaceId = `cs_${space.space_id.toString().padStart(10, '0')}_${Date.now().toString(36)}`;
       
-      // Insert into cortex_foundation.spaces
+      // Insert into cortex_foundation.spaces using owner_user_id field
       await db.execute(sql`
         INSERT INTO cortex_foundation.spaces (
-          id, name, description, creator_user_id, 
+          id, name, description, owner_user_id, 
           space_type, privacy, is_archived, created_at, updated_at
         ) VALUES (
           ${cortexSpaceId},
