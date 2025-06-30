@@ -901,6 +901,140 @@ class DatabaseStorage {
     }
 
     // =============================
+    // ACTION TEMPLATES AND RULES METHODS
+    // =============================
+    
+    async getActionTemplates(): Promise<any[]> {
+        // Return predefined templates for cortex automation system
+        return [
+            {
+                templateId: "checkmark-task-creator",
+                templateName: "Task from Checkmark Reaction", 
+                description: "Create a task when someone reacts with ✅ to a message",
+                category: "task_management",
+                triggerType: "reaction",
+                actionType: "create_task",
+                defaultConfig: {
+                    triggerConditions: { reactions: ["✅"] },
+                    actionConfig: { 
+                        taskTitle: "Follow up on: {{message_content}}",
+                        priority: "medium",
+                        dueDate: "in_3_days"
+                    }
+                },
+                usageCount: 45,
+                rating: 4.8
+            },
+            {
+                templateId: "calendar-event-creator",
+                templateName: "Calendar Event from Date Reaction",
+                description: "Create calendar event when someone reacts with 📅 to a message",
+                category: "scheduling", 
+                triggerType: "reaction",
+                actionType: "create_event",
+                defaultConfig: {
+                    triggerConditions: { reactions: ["📅"] },
+                    actionConfig: {
+                        eventTitle: "Event: {{message_content}}",
+                        duration: 60,
+                        reminders: [15]
+                    }
+                },
+                usageCount: 32,
+                rating: 4.6
+            },
+            {
+                templateId: "note-creator", 
+                templateName: "Note from Document Reaction",
+                description: "Create a note when someone reacts with 📝 to a message",
+                category: "knowledge",
+                triggerType: "reaction", 
+                actionType: "create_note",
+                defaultConfig: {
+                    triggerConditions: { reactions: ["📝"] },
+                    actionConfig: {
+                        noteTitle: "Note: {{message_content}}",
+                        noteType: "general"
+                    }
+                },
+                usageCount: 28,
+                rating: 4.7
+            }
+        ];
+    }
+
+    async getActionRules(userId: string): Promise<any[]> {
+        try {
+            // Get rules from cortex_automation schema with WhatsApp instance and permission info
+            const query = sql`
+                SELECT 
+                    r.id,
+                    r.name,
+                    r.description,
+                    r.is_active,
+                    r.trigger_type,
+                    r.priority,
+                    r.created_by,
+                    r.space_id,
+                    r.whatsapp_instance_id,
+                    r.trigger_permission,
+                    r.allowed_user_ids,
+                    r.last_executed_at,
+                    r.execution_count,
+                    r.success_count,
+                    r.failure_count,
+                    r.created_at,
+                    r.updated_at,
+                    -- Get associated WhatsApp instance name
+                    (SELECT instance_name FROM whatsapp.instances WHERE id = r.whatsapp_instance_id) as instance_name,
+                    -- Get conditions
+                    COALESCE(
+                        ARRAY_AGG(
+                            json_build_object(
+                                'id', rc.id,
+                                'condition_type', rc.condition_type,
+                                'operator', rc.operator,
+                                'field_name', rc.field_name,
+                                'value', rc.value,
+                                'is_negated', rc.is_negated
+                            )
+                        ) FILTER (WHERE rc.id IS NOT NULL),
+                        ARRAY[]::json[]
+                    ) as conditions,
+                    -- Get actions
+                    COALESCE(
+                        ARRAY_AGG(
+                            json_build_object(
+                                'id', ra.id,
+                                'action_type', ra.action_type,
+                                'action_order', ra.action_order,
+                                'target_entity_id', ra.target_entity_id,
+                                'parameters', ra.parameters,
+                                'template_id', ra.template_id
+                            ) ORDER BY ra.action_order
+                        ) FILTER (WHERE ra.id IS NOT NULL),
+                        ARRAY[]::json[]
+                    ) as actions
+                FROM cortex_automation.rules r
+                LEFT JOIN cortex_automation.rule_conditions rc ON r.id = rc.rule_id
+                LEFT JOIN cortex_automation.rule_actions ra ON r.id = ra.rule_id
+                WHERE r.created_by = ${userId} OR r.trigger_permission = 'anyone'
+                GROUP BY r.id, r.name, r.description, r.is_active, r.trigger_type, r.priority, 
+                         r.created_by, r.space_id, r.whatsapp_instance_id, r.trigger_permission, 
+                         r.allowed_user_ids, r.last_executed_at, r.execution_count, r.success_count, 
+                         r.failure_count, r.created_at, r.updated_at
+                ORDER BY r.priority DESC, r.created_at DESC
+            `;
+            
+            const result = await db.execute(query);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching action rules from cortex_automation:', error);
+            return [];
+        }
+    }
+
+    // =============================
     // UTILITY METHODS
     // =============================
     
