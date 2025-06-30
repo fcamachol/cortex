@@ -1,11 +1,6 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, ChevronsUpDown, User, Building2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { User, Building2 } from "lucide-react";
 
 interface Vendor {
   id: string;
@@ -24,110 +19,47 @@ interface VendorSelectProps {
 }
 
 export function VendorSelect({ value, onValueChange, placeholder = "Select vendor...", className }: VendorSelectProps) {
-  const [open, setOpen] = useState(false);
-
-  const { data: vendors = [], isLoading } = useQuery<Vendor[]>({
+  const { data: vendors = [] } = useQuery({
     queryKey: ['/api/finance/vendors'],
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    select: (data: any[]) => data.map(item => ({
+      id: item.id,
+      name: item.name,
+      type: item.type as 'contact' | 'company',
+      description: item.description,
+      email: item.email,
+      phone: item.phone
+    }))
   });
 
-  const selectedVendor = vendors.find(vendor => vendor.id === value);
-
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
+  const handleValueChange = (selectedValue: string) => {
+    console.log('Vendor selection changed:', selectedValue);
+    onValueChange(selectedValue);
   };
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn("w-full justify-between", className)}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setOpen(!open);
-          }}
-          onMouseDown={(e) => {
-            e.preventDefault();
-          }}
-          type="button"
-        >
-          {selectedVendor ? (
+    <Select value={value} onValueChange={handleValueChange}>
+      <SelectTrigger className={className}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {vendors.map((vendor) => (
+          <SelectItem key={vendor.id} value={vendor.id}>
             <div className="flex items-center gap-2">
-              {selectedVendor.type === 'contact' ? (
-                <User className="h-4 w-4" />
+              {vendor.type === 'contact' ? (
+                <User className="h-4 w-4 text-blue-500" />
               ) : (
-                <Building2 className="h-4 w-4" />
+                <Building2 className="h-4 w-4 text-green-500" />
               )}
-              <span className="truncate">{selectedVendor.name}</span>
-              {selectedVendor.description && (
-                <span className="text-muted-foreground text-sm truncate">
-                  - {selectedVendor.description}
-                </span>
-              )}
+              <div className="flex flex-col">
+                <span className="font-medium">{vendor.name}</span>
+                {vendor.description && (
+                  <span className="text-sm text-muted-foreground">{vendor.description}</span>
+                )}
+              </div>
             </div>
-          ) : (
-            placeholder
-          )}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start" style={{ zIndex: 9999 }}>
-        <Command>
-          <CommandInput placeholder="Search vendors..." />
-          <CommandList>
-            <CommandEmpty>
-              {isLoading ? "Loading vendors..." : "No vendors found."}
-            </CommandEmpty>
-            {vendors.length > 0 && (
-              <CommandGroup>
-                {vendors.map((vendor) => (
-                  <CommandItem
-                    key={vendor.id}
-                    value={vendor.name}
-                    onSelect={(currentValue) => {
-                      console.log('Selected vendor:', vendor.id, vendor.name);
-                      onValueChange(vendor.id);
-                      setOpen(false);
-                    }}
-                    className="cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2 w-full">
-                      {vendor.type === 'contact' ? (
-                        <User className="h-4 w-4" />
-                      ) : (
-                        <Building2 className="h-4 w-4" />
-                      )}
-                      <div className="flex flex-col flex-1 min-w-0">
-                        <span className="font-medium truncate">{vendor.name}</span>
-                        {vendor.description && (
-                          <span className="text-sm text-muted-foreground truncate">
-                            {vendor.description}
-                          </span>
-                        )}
-                        {(vendor.email || vendor.phone) && (
-                          <span className="text-xs text-muted-foreground truncate">
-                            {[vendor.email, vendor.phone].filter(Boolean).join(' • ')}
-                          </span>
-                        )}
-                      </div>
-                      <Check
-                        className={cn(
-                          "ml-auto h-4 w-4",
-                          value === vendor.id ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
