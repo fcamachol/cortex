@@ -205,8 +205,7 @@ export type RecurrenceType = z.infer<typeof recurrenceTypeEnum>;
 // =====================================================
 
 export const TRANSACTION_TYPES = {
-  income: "Money coming in - creates credit entry",
-  expense: "Money going out - creates debit entry", 
-  transfer: "Moving money between accounts",
-  adjustment: "Correcting account balances"
+  expense: "Money going out - creates debit entry",
+  income: "Money coming in - creates credit entry", 
+  transfer: "Moving money between accounts"
 } as const;
