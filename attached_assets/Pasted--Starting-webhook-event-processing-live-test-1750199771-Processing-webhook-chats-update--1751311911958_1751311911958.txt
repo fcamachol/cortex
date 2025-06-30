@@ -1,0 +1,353 @@
+🔄 Starting webhook event processing...
+🎯 [live-test-1750199771] Processing webhook: chats-update -> chats.update [1751311849789-ze9ded21w]
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: CHATS.UPDATE              !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    RELIABILITY ID: 1751311849789-ze9ded21w   !!!
+!!!    DATA TYPE: object                      !!!
+!!!    RAW EVENT: chats-update                !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+🔍 Evolution API provided instanceName: live-test-1750199771
+📨 [live-test-1750199771] Translating event: chats.update
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: CHATS.UPDATE              !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    DATA TYPE: object                      !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍
+🔍                    CHAT MAPPING ANALYSIS                     🔍
+🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍
+🔍 INSTANCE NAME: live-test-1750199771
+🔍 RAW CHAT TYPE: object
+🔍 FULL RAW CHAT PAYLOAD:
+{
+    "remoteJid": "5215579188699@s.whatsapp.net",
+    "instanceId": "c5215849-bfb9-413c-aa94-dfa911c8310a"
+}
+🔍
+🔍 ID FIELD ANALYSIS:
+🔍   - rawChat.id: undefined
+🔍   - rawChat.remoteJid: 5215579188699@s.whatsapp.net
+🔍   - rawChat.chatId: undefined
+🔍   - rawChat.key?.remoteJid: undefined
+🔍   - rawChat.key: undefined
+🔍
+🔍 ALL CHAT PAYLOAD KEYS: [ 'remoteJid', 'instanceId' ]
+🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍
+🎯 EXTRACTED CHAT ID: 5215579188699@s.whatsapp.net
+🎯 CHAT ID TYPE: string
+🎯 INSTANCE NAME: live-test-1750199771
+🎯 INSTANCE NAME TYPE: string
+❌ [live-test-1750199771] Processing failed: TypeError: storage.getWhatsappContact is not a function
+    at Object.mapApiPayloadToWhatsappChat (/home/runner/workspace/server/whatsapp-api-adapter.ts:1736:51)
+    at Object.handleChatsUpsert (/home/runner/workspace/server/whatsapp-api-adapter.ts:419:42)
+    at Object.processIncomingEvent (/home/runner/workspace/server/whatsapp-api-adapter.ts:99:28)
+    at Object.handleIncomingEvent (/home/runner/workspace/server/webhook-controller.ts:61:31)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3537:5)
+POST /api/evolution/webhook/live-test-1750199771/messages-upsert 200 
+📥 Webhook event 1751311849791-pi0xf63yk captured for live-test-1750199771:chats-upsert
+🎯 [live-test-1750199771] Processing webhook: chats-upsert -> chats.upsert [1751311849791-pi0xf63yk]
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: CHATS.UPSERT              !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    RELIABILITY ID: 1751311849791-pi0xf63yk   !!!
+!!!    DATA TYPE: object                      !!!
+!!!    RAW EVENT: chats-upsert                !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+🔍 Evolution API provided instanceName: live-test-1750199771
+📨 [live-test-1750199771] Translating event: chats.upsert
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: CHATS.UPSERT              !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    DATA TYPE: object                      !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍
+🔍                    CHAT MAPPING ANALYSIS                     🔍
+🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍
+🔍 INSTANCE NAME: live-test-1750199771
+🔍 RAW CHAT TYPE: object
+🔍 FULL RAW CHAT PAYLOAD:
+{
+    "id": "cmc13toqj07nwry4qwywst4xt",
+    "name": "Fer"
+}
+🔍
+🔍 ID FIELD ANALYSIS:
+🔍   - rawChat.id: cmc13toqj07nwry4qwywst4xt
+🔍   - rawChat.remoteJid: undefined
+🔍   - rawChat.chatId: undefined
+🔍   - rawChat.key?.remoteJid: undefined
+🔍   - rawChat.key: undefined
+🔍
+🔍 ALL CHAT PAYLOAD KEYS: [ 'id', 'name' ]
+🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍
+🎯 EXTRACTED CHAT ID: cmc13toqj07nwry4qwywst4xt
+🎯 CHAT ID TYPE: string
+🎯 INSTANCE NAME: live-test-1750199771
+🎯 INSTANCE NAME TYPE: string
+🚨🚨🚨 MALFORMED CHAT ID DETECTED 🚨🚨🚨
+🚨 Malformed ID: "cmc13toqj07nwry4qwywst4xt"
+🚨 Length: 25
+🚨 Contains @: false
+🚨 Raw chat data causing malformation:
+{
+  "id": "cmc13toqj07nwry4qwywst4xt",
+  "name": "Fer"
+}
+🔧 Attempting to correct malformed chat ID: cmc13toqj07nwry4qwywst4xt
+⚠️ Evolution API internal ID detected: cmc13toqj07nwry4qwywst4xt
+⚠️ This requires API lookup to resolve to proper WhatsApp JID
+🔧 Attempting to find JID by contact name: "Fer"
+❌ Error finding contact by name: storage.findWhatsappContactsByName is not a function
+❌ Cannot resolve Evolution API internal ID: cmc13toqj07nwry4qwywst4xt
+❌ Could not find correct chat JID, skipping chat creation
+❌ All available fields in rawChat: [ 'id', 'name' ]
+❌❌❌ FAILED TO MAP CHAT 1 ❌❌❌
+❌ Original raw chat that failed mapping:
+{
+  "id": "cmc13toqj07nwry4qwywst4xt",
+  "name": "Fer"
+}
+❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌
+💾 Captured failed message for recovery: live-test-1750199771-1751311849822-s45z7vr88
+💾 [live-test-1750199771] Captured failed event for recovery: chats-update
+📥 Webhook event 1751311849824-cx2682nik captured for live-test-1750199771:messages-upsert
+🎯 [live-test-1750199771] Processing webhook: messages-upsert -> messages.upsert [1751311849824-cx2682nik]
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: MESSAGES.UPSERT           !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    RELIABILITY ID: 1751311849824-cx2682nik   !!!
+!!!    DATA TYPE: object                      !!!
+!!!    RAW EVENT: messages-upsert             !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+🔍 Evolution API provided instanceName: live-test-1750199771
+📨 [live-test-1750199771] Translating event: messages.upsert
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: MESSAGES.UPSERT           !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    DATA TYPE: object                      !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+🎯 About to process messages.upsert event for instance live-test-1750199771
+🎯 Routing to handleMessageUpsert for regular message
+🚀 [live-test-1750199771] handleMessageUpsert called with data type: object
+🚀 [live-test-1750199771] Data contains: key, pushName, status, message, messageType, messageTimestamp, instanceId, source
+🚀 [live-test-1750199771] Processing 1 messages
+🚀 [live-test-1750199771] First message structure: {
+  "key": {
+    "remoteJid": "5215579188699@s.whatsapp.net",
+    "fromMe": true,
+    "id": "3A1D4E11C4A4CB443FAA"
+  },
+  "pushName": "Fer",
+  "status": "SERVER_ACK",
+  "message": {
+    "conversation": "Test 40"
+  },
+  "messageType": "conversation",
+  "messageTimestamp": 1751311849,
+  "instanceId": "c5215849-bfb9-413c-aa94-dfa911c8310a",
+  "source": "ios"
+}
+🚀 [live-test-1750199771] First message has key: true
+🔄 [live-test-1750199771] Processing message 3A1D4E11C4A4CB443FAA
+🔄 [live-test-1750199771] Message has reaction: false
+🔄 [live-test-1750199771] Continuing with regular message processing
+🔧 [live-test-1750199771] About to map raw message to clean message
+❌ CRITICAL ERROR in handleMessageUpsert for 3A1D4E11C4A4CB443FAA: TypeError: storage.getWhatsappInstance is not a function
+    at detectFromMe (/home/runner/workspace/server/whatsapp-api-adapter.ts:1264:44)
+    at Object.mapApiPayloadToWhatsappMessage (/home/runner/workspace/server/whatsapp-api-adapter.ts:1298:39)
+    at Object.handleMessageUpsert (/home/runner/workspace/server/whatsapp-api-adapter.ts:222:49)
+    at Object.processIncomingEvent (/home/runner/workspace/server/whatsapp-api-adapter.ts:75:32)
+    at Object.handleIncomingEvent (/home/runner/workspace/server/webhook-controller.ts:61:31)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3537:5)
+❌ Error stack: TypeError: storage.getWhatsappInstance is not a function
+    at detectFromMe (/home/runner/workspace/server/whatsapp-api-adapter.ts:1264:44)
+    at Object.mapApiPayloadToWhatsappMessage (/home/runner/workspace/server/whatsapp-api-adapter.ts:1298:39)
+    at Object.handleMessageUpsert (/home/runner/workspace/server/whatsapp-api-adapter.ts:222:49)
+    at Object.processIncomingEvent (/home/runner/workspace/server/whatsapp-api-adapter.ts:75:32)
+    at Object.handleIncomingEvent (/home/runner/workspace/server/webhook-controller.ts:61:31)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3537:5)
+❌ Error details: {}
+🎯 Finished processing messages.upsert event
+✅ Webhook event 1751311849789-ze9ded21w processed successfully
+✅ Webhook event 1751311849791-pi0xf63yk processed successfully
+✅ Webhook event 1751311849824-cx2682nik processed successfully
+✅ Webhook event processing completed
+POST /api/evolution/webhook/live-test-1750199771/contacts-update 200 
+📥 Webhook event 1751311849905-1ulrvdiva captured for live-test-1750199771:contacts-update
+🔄 Starting webhook event processing...
+🎯 [live-test-1750199771] Processing webhook: contacts-update -> contacts.update [1751311849905-1ulrvdiva]
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: CONTACTS.UPDATE           !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    RELIABILITY ID: 1751311849905-1ulrvdiva   !!!
+!!!    DATA TYPE: object                      !!!
+!!!    RAW EVENT: contacts-update             !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+🔍 Evolution API provided instanceName: live-test-1750199771
+📨 [live-test-1750199771] Translating event: contacts.update
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: CONTACTS.UPDATE           !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    DATA TYPE: object                      !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+✅ Webhook event 1751311849905-1ulrvdiva processed successfully
+✅ Webhook event processing completed
+✅ [live-test-1750199771] Contact upserted: 5215579188699@s.whatsapp.net
+POST /api/evolution/webhook/live-test-1750199771/messages-update 200 
+📥 Webhook event 1751311850782-tmodhu6sz captured for live-test-1750199771:messages-update
+🔄 Starting webhook event processing...
+🎯 [live-test-1750199771] Processing webhook: messages-update -> messages.update [1751311850782-tmodhu6sz]
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: MESSAGES.UPDATE           !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    RELIABILITY ID: 1751311850782-tmodhu6sz   !!!
+!!!    DATA TYPE: object                      !!!
+!!!    RAW EVENT: messages-update             !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+🔍 Evolution API provided instanceName: live-test-1750199771
+📨 [live-test-1750199771] Translating event: messages.update
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: MESSAGES.UPDATE           !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    DATA TYPE: object                      !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+✅ Webhook event 1751311850782-tmodhu6sz processed successfully
+✅ Webhook event processing completed
+POST /api/evolution/webhook/live-test-1750199771/chats-upsert 200 
+📥 Webhook event 1751311850787-1p70tdcet captured for live-test-1750199771:chats-upsert
+🔄 Starting webhook event processing...
+🎯 [live-test-1750199771] Processing webhook: chats-upsert -> chats.upsert [1751311850787-1p70tdcet]
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: CHATS.UPSERT              !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    RELIABILITY ID: 1751311850787-1p70tdcet   !!!
+!!!    DATA TYPE: object                      !!!
+!!!    RAW EVENT: chats-upsert                !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+🔍 Evolution API provided instanceName: live-test-1750199771
+📨 [live-test-1750199771] Translating event: chats.upsert
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: CHATS.UPSERT              !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    DATA TYPE: object                      !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍
+🔍                    CHAT MAPPING ANALYSIS                     🔍
+🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍
+🔍 INSTANCE NAME: live-test-1750199771
+🔍 RAW CHAT TYPE: object
+🔍 FULL RAW CHAT PAYLOAD:
+{
+    "remoteJid": "5215579188699@s.whatsapp.net",
+    "instanceId": "c5215849-bfb9-413c-aa94-dfa911c8310a",
+    "name": "",
+    "unreadMessages": 0
+}
+🔍
+🔍 ID FIELD ANALYSIS:
+🔍   - rawChat.id: undefined
+🔍   - rawChat.remoteJid: 5215579188699@s.whatsapp.net
+🔍   - rawChat.chatId: undefined
+🔍   - rawChat.key?.remoteJid: undefined
+🔍   - rawChat.key: undefined
+🔍
+🔍 ALL CHAT PAYLOAD KEYS: [ 'remoteJid', 'instanceId', 'name', 'unreadMessages' ]
+🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍
+🎯 EXTRACTED CHAT ID: 5215579188699@s.whatsapp.net
+🎯 CHAT ID TYPE: string
+🎯 INSTANCE NAME: live-test-1750199771
+🎯 INSTANCE NAME TYPE: string
+❌ [live-test-1750199771] Processing failed: TypeError: storage.getWhatsappContact is not a function
+    at Object.mapApiPayloadToWhatsappChat (/home/runner/workspace/server/whatsapp-api-adapter.ts:1736:51)
+    at Object.handleChatsUpsert (/home/runner/workspace/server/whatsapp-api-adapter.ts:419:42)
+    at Object.processIncomingEvent (/home/runner/workspace/server/whatsapp-api-adapter.ts:99:28)
+    at Object.handleIncomingEvent (/home/runner/workspace/server/webhook-controller.ts:61:31)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3537:5)
+💾 Captured failed message for recovery: live-test-1750199771-1751311850796-diy9eank9
+💾 [live-test-1750199771] Captured failed event for recovery: chats-upsert
+✅ Webhook event 1751311850787-1p70tdcet processed successfully
+✅ Webhook event processing completed
+🔄 Attempting recovery for message: live-test-1750199771-1751311849822-s45z7vr88
+🔍 Evolution API provided instanceName: live-test-1750199771
+📨 [live-test-1750199771] Translating event: chats.upsert
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: CHATS.UPSERT              !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    DATA TYPE: object                      !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍
+🔍                    CHAT MAPPING ANALYSIS                     🔍
+🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍
+🔍 INSTANCE NAME: live-test-1750199771
+🔍 RAW CHAT TYPE: object
+🔍 FULL RAW CHAT PAYLOAD:
+{
+    "remoteJid": "5215579188699@s.whatsapp.net",
+    "instanceId": "c5215849-bfb9-413c-aa94-dfa911c8310a"
+}
+🔍
+🔍 ID FIELD ANALYSIS:
+🔍   - rawChat.id: undefined
+🔍   - rawChat.remoteJid: 5215579188699@s.whatsapp.net
+🔍   - rawChat.chatId: undefined
+🔍   - rawChat.key?.remoteJid: undefined
+🔍   - rawChat.key: undefined
+🔍
+🔍 ALL CHAT PAYLOAD KEYS: [ 'remoteJid', 'instanceId' ]
+🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍
+🎯 EXTRACTED CHAT ID: 5215579188699@s.whatsapp.net
+🎯 CHAT ID TYPE: string
+🎯 INSTANCE NAME: live-test-1750199771
+🎯 INSTANCE NAME TYPE: string
+❌ Failed to recover chat: TypeError: storage.getWhatsappContact is not a function
+    at Object.mapApiPayloadToWhatsappChat (/home/runner/workspace/server/whatsapp-api-adapter.ts:1736:51)
+    at Object.handleChatsUpsert (/home/runner/workspace/server/whatsapp-api-adapter.ts:419:42)
+    at Object.processIncomingEvent (/home/runner/workspace/server/whatsapp-api-adapter.ts:99:28)
+    at MessageRecoverySystem.recoverChat (/home/runner/workspace/server/message-recovery-system.ts:309:31)
+    at async MessageRecoverySystem.attemptMessageRecovery (/home/runner/workspace/server/message-recovery-system.ts:161:18)
+    at async MessageRecoverySystem.processFailedMessages (/home/runner/workspace/server/message-recovery-system.ts:93:29)
+🔄 Retry 1 scheduled for message: live-test-1750199771-1751311849822-s45z7vr88
+🔄 Attempting recovery for message: live-test-1750199771-1751311850796-diy9eank9
+🔍 Evolution API provided instanceName: live-test-1750199771
+📨 [live-test-1750199771] Translating event: chats.upsert
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: CHATS.UPSERT              !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    DATA TYPE: object                      !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍
+🔍                    CHAT MAPPING ANALYSIS                     🔍
+🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍
+🔍 INSTANCE NAME: live-test-1750199771
+🔍 RAW CHAT TYPE: object
+🔍 FULL RAW CHAT PAYLOAD:
+{
+    "remoteJid": "5215579188699@s.whatsapp.net",
+    "instanceId": "c5215849-bfb9-413c-aa94-dfa911c8310a",
+    "name": "",
+    "unreadMessages": 0
+}
+🔍
+🔍 ID FIELD ANALYSIS:
+🔍   - rawChat.id: undefined
+🔍   - rawChat.remoteJid: 5215579188699@s.whatsapp.net
+🔍   - rawChat.chatId: undefined
+🔍   - rawChat.key?.remoteJid: undefined
+🔍   - rawChat.key: undefined
+🔍
+🔍 ALL CHAT PAYLOAD KEYS: [ 'remoteJid', 'instanceId', 'name', 'unreadMessages' ]
+🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍🔍
+🎯 EXTRACTED CHAT ID: 5215579188699@s.whatsapp.net
+🎯 CHAT ID TYPE: string
+🎯 INSTANCE NAME: live-test-1750199771
+🎯 INSTANCE NAME TYPE: string
+❌ Failed to recover chat: TypeError: storage.getWhatsappContact is not a function
+    at Object.mapApiPayloadToWhatsappChat (/home/runner/workspace/server/whatsapp-api-adapter.ts:1736:51)
+    at Object.handleChatsUpsert (/home/runner/workspace/server/whatsapp-api-adapter.ts:419:42)
+    at Object.processIncomingEvent (/home/runner/workspace/server/whatsapp-api-adapter.ts:99:28)
+    at MessageRecoverySystem.recoverChat (/home/runner/workspace/server/message-recovery-system.ts:309:31)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async MessageRecoverySystem.attemptMessageRecovery (/home/runner/workspace/server/message-recovery-system.ts:161:18)
+    at async MessageRecoverySystem.processFailedMessages (/home/runner/workspace/server/message-recovery-system.ts:93:29)
+🔄 Retry 1 scheduled for message: live-test-1750199771-1751311850796-diy9eank9
