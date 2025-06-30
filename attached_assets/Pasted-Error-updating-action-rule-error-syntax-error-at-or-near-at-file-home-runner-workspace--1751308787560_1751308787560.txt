@@ -1,0 +1,94 @@
+Error updating action rule: error: syntax error at or near ","
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.updateActionRule (/home/runner/workspace/server/storage.ts:1082:28)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:1462:27) {
+  length: 90,
+  severity: 'ERROR',
+  code: '42601',
+  detail: undefined,
+  hint: undefined,
+  position: '98',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'scan.l',
+  line: '1244',
+  routine: 'scanner_yyerror'
+}
+Error updating action rule: error: syntax error at or near ","
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.updateActionRule (/home/runner/workspace/server/storage.ts:1082:28)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:1462:27) {
+  length: 90,
+  severity: 'ERROR',
+  code: '42601',
+  detail: undefined,
+  hint: undefined,
+  position: '98',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'scan.l',
+  line: '1244',
+  routine: 'scanner_yyerror'
+}
+PUT /api/actions/rules/0bf6b996-fcd6-4013-9281-6cb40bad87df 500 
+Error updating action rule: error: syntax error at or near ","
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.updateActionRule (/home/runner/workspace/server/storage.ts:1082:28)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:1462:27) {
+  length: 90,
+  severity: 'ERROR',
+  code: '42601',
+  detail: undefined,
+  hint: undefined,
+  position: '98',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'scan.l',
+  line: '1244',
+  routine: 'scanner_yyerror'
+}
+Error updating action rule: error: syntax error at or near ","
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.updateActionRule (/home/runner/workspace/server/storage.ts:1082:28)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:1462:27) {
+  length: 90,
+  severity: 'ERROR',
+  code: '42601',
+  detail: undefined,
+  hint: undefined,
+  position: '98',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'scan.l',
+  line: '1244',
+  routine: 'scanner_yyerror'
+}
+PUT /api/actions/rules/0bf6b996-fcd6-4013-9281-6cb40bad87df 500 

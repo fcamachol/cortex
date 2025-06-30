@@ -1459,7 +1459,49 @@ export async function registerRoutes(app: Express): Promise<void> {
       const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
       const { ruleId } = req.params;
       
-      const updatedRule = await storage.updateActionRule(ruleId, req.body);
+      // Map frontend fields to database fields
+      const {
+        ruleName,
+        description,
+        isActive,
+        triggerType,
+        performerFilter,
+        instanceFilterType,
+        selectedInstances,
+        triggerConditions,
+        actionConfig,
+        performerFilters
+      } = req.body;
+
+      // Handle WhatsApp instance logic
+      let whatsappInstanceId = null;
+      if (instanceFilterType === 'specific' && selectedInstances && selectedInstances.length > 0) {
+        // For specific instances, use the first selected instance
+        // TODO: In the future, we might want to support multiple instances per rule
+        whatsappInstanceId = selectedInstances[0];
+      } else if (instanceFilterType === 'all') {
+        // For "all instances", set to null (applies to all)
+        whatsappInstanceId = null;
+      }
+
+      // Map performer filter to trigger permission
+      let triggerPermission = 'anyone';
+      if (performerFilter === 'user_only') {
+        triggerPermission = 'me';
+      }
+
+      const updateData = {
+        name: ruleName,
+        description,
+        is_active: isActive,
+        trigger_type: triggerType,
+        priority: 1, // Default priority
+        whatsapp_instance_id: whatsappInstanceId,
+        trigger_permission: triggerPermission,
+        allowed_user_ids: []
+      };
+      
+      const updatedRule = await storage.updateActionRule(ruleId, updateData);
       
       if (!updatedRule) {
         return res.status(404).json({ error: 'Rule not found' });

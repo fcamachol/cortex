@@ -1075,21 +1075,44 @@ class DatabaseStorage {
 
     async updateActionRule(ruleId: string, updates: any): Promise<any> {
         try {
+            console.log('updateActionRule - input updates:', JSON.stringify(updates, null, 2));
+            
             // Handle PostgreSQL array field properly
             const allowedUserIds = updates.allowed_user_ids || [];
             const allowedUserIdsArray = Array.isArray(allowedUserIds) ? allowedUserIds : [];
             
+            console.log('updateActionRule - processed allowedUserIdsArray:', allowedUserIdsArray);
+            
+            // Check for undefined/null values that might cause SQL issues
+            const updateData = {
+                name: updates.name || 'Untitled Rule',
+                description: updates.description || '',
+                is_active: Boolean(updates.is_active),
+                trigger_type: updates.trigger_type || 'whatsapp_message',
+                priority: Number(updates.priority) || 0,
+                whatsapp_instance_id: updates.whatsapp_instance_id || null,
+                trigger_permission: updates.trigger_permission || 'me',
+                allowed_user_ids: allowedUserIdsArray
+            };
+            
+            console.log('updateActionRule - final updateData:', JSON.stringify(updateData, null, 2));
+            
+            // Create proper PostgreSQL array literal for empty arrays
+            const allowedUserIdsLiteral = updateData.allowed_user_ids.length === 0 
+                ? 'ARRAY[]::text[]' 
+                : `ARRAY[${updateData.allowed_user_ids.map(id => `'${id}'`).join(',')}]::text[]`;
+
             const result = await db.execute(sql`
                 UPDATE cortex_automation.rules 
                 SET 
-                    name = ${updates.name},
-                    description = ${updates.description},
-                    is_active = ${updates.is_active},
-                    trigger_type = ${updates.trigger_type},
-                    priority = ${updates.priority || 0},
-                    whatsapp_instance_id = ${updates.whatsapp_instance_id || null},
-                    trigger_permission = ${updates.trigger_permission || 'me'},
-                    allowed_user_ids = ${allowedUserIdsArray}::text[],
+                    name = ${updateData.name},
+                    description = ${updateData.description},
+                    is_active = ${updateData.is_active},
+                    trigger_type = ${updateData.trigger_type},
+                    priority = ${updateData.priority},
+                    whatsapp_instance_id = ${updateData.whatsapp_instance_id},
+                    trigger_permission = ${updateData.trigger_permission},
+                    allowed_user_ids = ${sql.raw(allowedUserIdsLiteral)},
                     updated_at = NOW()
                 WHERE id = ${ruleId}
                 RETURNING *
