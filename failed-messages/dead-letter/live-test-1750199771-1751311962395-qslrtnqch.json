@@ -18,7 +18,7 @@
     "apikey": "119FA240-45ED-46A7-AE13-5A1B7C909D7D"
   },
   "error": "storage.upsertWhatsappChat is not a function",
-  "retryCount": 0,
-  "lastRetry": 0,
+  "retryCount": 4,
+  "lastRetry": 1751312062089,
   "eventType": "chats-update"
 }
