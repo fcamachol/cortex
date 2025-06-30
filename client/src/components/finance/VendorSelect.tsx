@@ -102,41 +102,50 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
             </Button>
           </div>
         </PopoverTrigger>
-        <PopoverContent className="w-[400px] p-2" align="start">
-          <div className="max-h-[200px] overflow-y-auto">
+        <PopoverContent 
+          className="w-[400px] p-0" 
+          align="start"
+          onInteractOutside={(e) => {
+            // Prevent closing when clicking inside
+            if (e.target instanceof Element && e.target.closest('[data-vendor-option]')) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <div className="max-h-[200px] overflow-y-auto p-2">
             {filteredVendors.length === 0 ? (
               <div className="p-2 text-sm text-muted-foreground">
                 No vendors found.
               </div>
             ) : (
               filteredVendors.map((vendor) => (
-                <div
+                <button
                   key={vendor.id}
-                  className="flex items-center gap-2 p-2 hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleSelect(vendor);
-                  }}
+                  type="button"
+                  data-vendor-option
+                  className="w-full flex items-center gap-2 p-2 hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer text-left"
                   onMouseDown={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Mouse down on vendor:', vendor.name);
+                    handleSelect(vendor);
                   }}
                 >
                   {vendor.type === 'contact' ? (
-                    <User className="h-4 w-4 text-blue-500" />
+                    <User className="h-4 w-4 text-blue-500 flex-shrink-0" />
                   ) : (
-                    <Building2 className="h-4 w-4 text-green-500" />
+                    <Building2 className="h-4 w-4 text-green-500 flex-shrink-0" />
                   )}
-                  <div className="flex flex-col flex-1">
-                    <span className="font-medium">{vendor.name}</span>
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className="font-medium truncate">{vendor.name}</span>
                     {vendor.description && (
-                      <span className="text-sm text-muted-foreground">{vendor.description}</span>
+                      <span className="text-sm text-muted-foreground truncate">{vendor.description}</span>
                     )}
                   </div>
                   {value === vendor.id && (
-                    <Check className="h-4 w-4 text-primary" />
+                    <Check className="h-4 w-4 text-primary flex-shrink-0" />
                   )}
-                </div>
+                </button>
               ))
             )}
           </div>
