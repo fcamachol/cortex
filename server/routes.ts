@@ -1490,11 +1490,19 @@ export async function registerRoutes(app: Express): Promise<void> {
         triggerPermission = 'me';
       }
 
+      // Map frontend trigger types to database enum values
+      let dbTriggerType = triggerType;
+      if (triggerType === 'reaction' || triggerType === 'keyword' || triggerType === 'hashtag') {
+        dbTriggerType = 'whatsapp_message';
+      } else if (triggerType === 'time_based') {
+        dbTriggerType = 'schedule';
+      }
+
       const updateData = {
         name: ruleName,
         description,
         is_active: isActive,
-        trigger_type: triggerType,
+        trigger_type: dbTriggerType,
         priority: 1, // Default priority
         whatsapp_instance_id: whatsappInstanceId,
         trigger_permission: triggerPermission,

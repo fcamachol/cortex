@@ -1117,7 +1117,7 @@ class DatabaseStorage {
                 RETURNING *
             `);
                 
-            return result[0];
+            return result.rows[0];
         } catch (error) {
             console.error('Error updating action rule:', error);
             throw error;
