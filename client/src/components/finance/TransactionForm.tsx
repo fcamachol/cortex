@@ -13,7 +13,7 @@ import { CalendarIcon, Calculator, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import { insertTransactionSchema, type Account, type InsertTransaction } from "@shared/finance-schema";
+import { insertTransactionSchema, type Account, type InsertTransaction, TRANSACTION_TYPES } from "@shared/finance-schema";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -32,13 +32,7 @@ interface TransactionFormProps {
   onCancel?: () => void;
 }
 
-// Simplified transaction logic: Income = Credit, Everything else = Debit, Credit cards inverted
-const TRANSACTION_TYPES = {
-  expense: "Expense - Money going out",
-  income: "Income - Money coming in", 
-  transfer: "Transfer - Move money between accounts",
-  adjustment: "Adjustment - Correction or reconciliation"
-};
+// Using TRANSACTION_TYPES from shared schema with simplified double-entry logic
 
 export function TransactionForm({ onSuccess, onCancel }: TransactionFormProps) {
   const { toast } = useToast();

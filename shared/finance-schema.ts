@@ -199,3 +199,14 @@ export type Transaction = typeof cortexTransactions.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 
 export type RecurrenceType = z.infer<typeof recurrenceTypeEnum>;
+
+// =====================================================
+// TRANSACTION TYPES FOR SIMPLIFIED ACCOUNTING
+// =====================================================
+
+export const TRANSACTION_TYPES = {
+  income: "Money coming in - creates credit entry",
+  expense: "Money going out - creates debit entry", 
+  transfer: "Moving money between accounts",
+  adjustment: "Correcting account balances"
+} as const;
