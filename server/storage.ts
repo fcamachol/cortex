@@ -448,7 +448,7 @@ class DatabaseStorage {
             const result = await db.execute(sql`
                 SELECT id, first_name, last_name, 
                        CONCAT(first_name, ' ', last_name) as name,
-                       profession, company, description
+                       profession, company_name as company, notes as description
                 FROM cortex_entities.persons
                 ORDER BY first_name, last_name
             `);
@@ -466,7 +466,7 @@ class DatabaseStorage {
     async getLoans(): Promise<any[]> {
         try {
             const result = await db.execute(sql`
-                SELECT * FROM finance.loans
+                SELECT * FROM cortex_finance.loans
                 ORDER BY created_at DESC
             `);
             return result.rows;
@@ -479,7 +479,7 @@ class DatabaseStorage {
     async createLoan(loanData: any): Promise<any> {
         try {
             const result = await db.execute(sql`
-                INSERT INTO finance.loans (
+                INSERT INTO cortex_finance.loans (
                     lender_name, lender_entity_id, borrower_entity_id, 
                     principal_amount, interest_rate, term_months, 
                     payment_frequency, start_date, purpose, collateral,
