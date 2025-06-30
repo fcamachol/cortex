@@ -637,6 +637,14 @@ export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
                               </div>
                             </div>
                             <div>
+                              <p className="text-xs font-semibold">Daily penalty from monthly payment (Payment ÷ 30):</p>
+                              <div className="font-mono text-xs bg-gray-50 p-2 rounded border">
+                                const monthlyRate = interestRate / 12;
+                                const monthlyPayment = principalAmount * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / (Math.pow(1 + monthlyRate, termMonths) - 1);
+                                return (monthlyPayment / 30) * daysOverdue;
+                              </div>
+                            </div>
+                            <div>
                               <p className="text-xs font-semibold">Frequency-based penalty (2% per payment period):</p>
                               <div className="font-mono text-xs bg-gray-50 p-2 rounded border">
                                 const periodsPerYear = paymentFrequency === 'monthly' ? 12 : paymentFrequency === 'quarterly' ? 4 : 1;
