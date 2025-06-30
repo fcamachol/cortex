@@ -3710,6 +3710,15 @@ export async function registerRoutes(app: Express): Promise<void> {
       const { spaceId } = req.params;
       const { itemType } = req.query;
       
+      // Check if this is a Cortex Foundation space (starts with cs_)
+      if (spaceId.startsWith('cs_')) {
+        // For now, return empty array for Cortex Foundation spaces
+        // TODO: Implement proper Cortex Foundation space items
+        res.json([]);
+        return;
+      }
+      
+      // Legacy app schema space items (integer IDs)
       const items = await storage.getSpaceItems(parseInt(spaceId), itemType as string);
       res.json(items);
     } catch (error) {
@@ -3722,6 +3731,15 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const { spaceId } = req.params;
       
+      // Check if this is a Cortex Foundation space (starts with cs_)
+      if (spaceId.startsWith('cs_')) {
+        // Use Cortex Foundation storage for hierarchy
+        const hierarchy = await cortexFoundationStorage.getSpaceHierarchy(spaceId);
+        res.json(hierarchy);
+        return;
+      }
+      
+      // Legacy app schema space hierarchy (integer IDs)
       const hierarchy = await storage.getSpaceHierarchy(parseInt(spaceId));
       if (!hierarchy) {
         return res.status(404).json({ error: 'Space not found' });
