@@ -299,6 +299,22 @@ class DatabaseStorage {
         }
     }
 
+    async getSpaceTemplates(): Promise<any[]> {
+        try {
+            // Return predefined templates since templates are not yet in Cortex Foundation
+            return [
+                { id: 1, name: 'Project Management', description: 'Organize projects with tasks and milestones', category: 'work' },
+                { id: 2, name: 'Team Collaboration', description: 'Share docs and communicate with team', category: 'work' },
+                { id: 3, name: 'Personal Workspace', description: 'Manage personal tasks and notes', category: 'personal' },
+                { id: 4, name: 'Client Management', description: 'Track clients and relationships', category: 'business' },
+                { id: 5, name: 'Finance Tracking', description: 'Monitor budgets and expenses', category: 'business' }
+            ];
+        } catch (error) {
+            console.error('Error fetching space templates:', error);
+            return [];
+        }
+    }
+
     // =============================
     // MINIMAL FINANCE STUBS REMOVED - Full implementation added below
     // =============================
