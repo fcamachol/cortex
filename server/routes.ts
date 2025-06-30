@@ -360,7 +360,8 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/api/contacts/:userId', async (req: Request, res: Response) => {
     try {
       const { userId } = req.params;
-      const contacts = await storage.getWhatsappContacts(userId);
+      // Return CRM contacts for forms that need contact selection (like loans)
+      const contacts = await storage.getCortexPersons();
       res.json(contacts);
     } catch (error) {
       console.error('Error fetching contacts:', error);

@@ -440,6 +440,65 @@ class DatabaseStorage {
     }
 
     // =============================
+    // CORTEX PERSONS METHODS
+    // =============================
+    
+    async getCortexPersons(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT id, first_name, last_name, 
+                       CONCAT(first_name, ' ', last_name) as name,
+                       profession, company, description
+                FROM cortex_entities.persons
+                ORDER BY first_name, last_name
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching Cortex persons:', error);
+            return [];
+        }
+    }
+
+    // =============================
+    // FINANCE LOAN METHODS
+    // =============================
+    
+    async getLoans(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM finance.loans
+                ORDER BY created_at DESC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching loans:', error);
+            return [];
+        }
+    }
+    
+    async createLoan(loanData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO finance.loans (
+                    lender_name, lender_entity_id, borrower_entity_id, 
+                    principal_amount, interest_rate, term_months, 
+                    payment_frequency, start_date, purpose, collateral,
+                    interest_type, moratory_rate
+                ) VALUES (
+                    ${loanData.lender_name}, ${loanData.lender_entity_id}, ${loanData.borrower_entity_id},
+                    ${loanData.principal_amount}, ${loanData.interest_rate}, ${loanData.term_months},
+                    ${loanData.payment_frequency}, ${loanData.start_date}, ${loanData.purpose}, ${loanData.collateral},
+                    ${loanData.interest_type || 'simple'}, ${loanData.moratory_rate || 0}
+                ) RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating loan:', error);
+            throw error;
+        }
+    }
+
+    // =============================
     // UTILITY METHODS
     // =============================
     
