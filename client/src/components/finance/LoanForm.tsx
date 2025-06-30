@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { X } from "lucide-react";
@@ -35,6 +36,10 @@ const loanSchema = z.object({
   notes: z.string().optional(),
   lenderContactId: z.string().optional(),
   borrowerContactId: z.string().optional(),
+  // Moratory interests
+  hasMoratoryInterest: z.boolean().optional(),
+  moratoryRate: z.string().optional().transform((val) => val && val.trim() ? parseFloat(val) : undefined),
+  moratoryRateType: z.enum(["daily", "weekly", "monthly"]).optional(),
 });
 
 type LoanFormData = z.infer<typeof loanSchema>;
@@ -79,6 +84,9 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
       notes: "",
       lenderContactId: "",
       borrowerContactId: "",
+      hasMoratoryInterest: false,
+      moratoryRate: "0",
+      moratoryRateType: "monthly",
     },
   });
 
@@ -434,6 +442,90 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
                 </FormItem>
               )}
             />
+
+            {/* Moratory Interests Section */}
+            <div className="mt-6 border rounded-lg p-4">
+              <div className="flex items-center justify-between w-full">
+                <FormField
+                  control={form.control}
+                  name="hasMoratoryInterest"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center space-x-2">
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                          className="h-4 w-4"
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-medium cursor-pointer">
+                        Add Moratory Interests (Optional)
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+                {form.watch("hasMoratoryInterest") && (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                )}
+                {!form.watch("hasMoratoryInterest") && (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
+              
+              {form.watch("hasMoratoryInterest") && (
+                <div className="mt-4 space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Moratory interests are penalty charges applied to overdue payments.
+                  </p>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="moratoryRate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Moratory Interest Rate (%)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="0.00"
+                              {...field}
+                              onChange={(e) => field.onChange(e.target.value)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="moratoryRateType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Calculation Frequency</FormLabel>
+                          <FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select frequency" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="daily">Daily</SelectItem>
+                                <SelectItem value="weekly">Weekly</SelectItem>
+                                <SelectItem value="monthly">Monthly</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="flex justify-end space-x-2 pt-4">
               <Button type="button" variant="outline" onClick={onClose}>
