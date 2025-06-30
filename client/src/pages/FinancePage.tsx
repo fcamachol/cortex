@@ -111,6 +111,19 @@ export default function FinancePage() {
     setShowLoanDetail(false);
     setEditingLoan(selectedLoan);
   };
+
+  // Handler to refresh selected loan after update
+  const handleLoanUpdated = () => {
+    if (selectedLoan) {
+      // Find the updated loan from the loans data
+      const updatedLoan = loans.find((loan: any) => loan.id === selectedLoan.id);
+      if (updatedLoan) {
+        setSelectedLoan(updatedLoan);
+      }
+    }
+    setEditingLoan(null);
+  };
+
   const [showCreditCardForm, setShowCreditCardForm] = useState(false);
   const [dateFilter, setDateFilter] = useState("this-month");
   const [editingLoan, setEditingLoan] = useState<any>(null);
