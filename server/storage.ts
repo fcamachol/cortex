@@ -1005,7 +1005,7 @@ class DatabaseStorage {
                     COALESCE(
                         ARRAY_AGG(
                             json_build_object(
-                                'id', ra.id,
+                                'action_id', ra.id,
                                 'action_type', ra.action_type,
                                 'action_order', ra.action_order,
                                 'target_entity_id', ra.target_entity_id,
@@ -1040,6 +1040,10 @@ class DatabaseStorage {
     
     async createActionRule(ruleData: any): Promise<any> {
         try {
+            // Handle PostgreSQL array field properly
+            const allowedUserIds = ruleData.allowed_user_ids || [];
+            const allowedUserIdsArray = Array.isArray(allowedUserIds) ? allowedUserIds : [];
+            
             const result = await db.execute(sql`
                 INSERT INTO cortex_automation.rules (
                     name, description, is_active, trigger_type, priority, 
@@ -1049,7 +1053,7 @@ class DatabaseStorage {
                     ${ruleData.name}, ${ruleData.description}, ${ruleData.is_active || true},
                     ${ruleData.trigger_type}, ${ruleData.priority || 0},
                     ${ruleData.created_by}, ${ruleData.space_id}, ${ruleData.whatsapp_instance_id},
-                    ${ruleData.trigger_permission || 'me'}, ${JSON.stringify(ruleData.allowed_user_ids || [])}
+                    ${ruleData.trigger_permission || 'me'}, ${allowedUserIdsArray}::text[]
                 ) RETURNING *
             `);
             return result.rows[0];
@@ -1061,6 +1065,10 @@ class DatabaseStorage {
 
     async updateActionRule(ruleId: string, updates: any): Promise<any> {
         try {
+            // Handle PostgreSQL array field properly
+            const allowedUserIds = updates.allowed_user_ids || [];
+            const allowedUserIdsArray = Array.isArray(allowedUserIds) ? allowedUserIds : [];
+            
             const result = await db.execute(sql`
                 UPDATE cortex_automation.rules 
                 SET 
@@ -1071,6 +1079,7 @@ class DatabaseStorage {
                     priority = ${updates.priority || 0},
                     whatsapp_instance_id = ${updates.whatsapp_instance_id || null},
                     trigger_permission = ${updates.trigger_permission || 'me'},
+                    allowed_user_ids = ${allowedUserIdsArray}::text[],
                     updated_at = NOW()
                 WHERE id = ${ruleId}
                 RETURNING *

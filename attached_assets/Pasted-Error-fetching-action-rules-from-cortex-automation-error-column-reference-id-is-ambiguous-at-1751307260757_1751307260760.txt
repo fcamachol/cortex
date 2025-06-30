@@ -1,0 +1,98 @@
+Error fetching action rules from cortex_automation: error: column reference "id" is ambiguous
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.getActionRules (/home/runner/workspace/server/storage.ts:1029:28)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:1529:21) {
+  length: 108,
+  severity: 'ERROR',
+  code: '42702',
+  detail: undefined,
+  hint: undefined,
+  position: '762',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '831',
+  routine: 'scanRTEForColumn'
+}
+GET /api/actions/stats 304 
+GET /api/actions/whatsapp-instances 304 
+PUT /api/actions/rules/:ruleId - ruleId: cd9583f0-1234-5678-9abc-def012345678
+PUT /api/actions/rules/:ruleId - body: {
+  ruleName: 'Task from Check Mark Reaction',
+  description: 'Create personal tasks when user reacts with ✔️ to a whatsapp message',
+  triggerType: 'reaction',
+  actionType: 'create_task',
+  isActive: true,
+  cooldownMinutes: 0,
+  maxExecutionsPerDay: 100,
+  performerFilter: 'user_only',
+  instanceFilterType: 'all',
+  selectedInstances: [],
+  triggerConditions: { reactions: [ '✔️' ] },
+  actionConfig: { title: 'New tas from {{sender}}', description: '{{content}}' },
+  performerFilters: { allowedPerformers: [ 'user_only' ] },
+  instanceFilters: null
+}
+PUT /api/actions/rules/:ruleId - mapped body: {
+  name: 'Task from Check Mark Reaction',
+  description: 'Create personal tasks when user reacts with ✔️ to a whatsapp message',
+  is_active: true,
+  trigger_type: 'reaction',
+  trigger_permission: 'me',
+  priority: 0,
+  whatsapp_instance_id: null
+}
+Error updating action rule: error: invalid input value for enum cortex_automation.trigger_type: "reaction"
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.updateActionRule (/home/runner/workspace/server/storage.ts:1064:28)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:1585:27) {
+  length: 158,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $4 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+Error updating action rule: error: invalid input value for enum cortex_automation.trigger_type: "reaction"
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.updateActionRule (/home/runner/workspace/server/storage.ts:1064:28)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:1585:27) {
+  length: 158,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $4 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+PUT /api/actions/rules/cd9583f0-1234-5678-9abc-def012345678 500 

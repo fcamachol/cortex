@@ -1546,10 +1546,38 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post('/api/actions/rules', async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      
+      // Helper function to map frontend trigger types to backend enum values
+      function mapTriggerType(frontendType: string): string {
+        const mapping: Record<string, string> = {
+          'reaction': 'whatsapp_message',
+          'hashtag': 'whatsapp_message', 
+          'keyword': 'whatsapp_message',
+          'time_based': 'schedule',
+          'location': 'whatsapp_message',
+          'contact_group': 'whatsapp_message',
+          'whatsapp_message': 'whatsapp_message',
+          'schedule': 'schedule',
+          'entity_change': 'entity_change',
+          'manual': 'manual',
+          'webhook': 'webhook'
+        };
+        return mapping[frontendType] || 'whatsapp_message';
+      }
+      
       const ruleData = {
-        ...req.body,
-        userId: userId
+        name: req.body.ruleName || req.body.name,
+        description: req.body.description,
+        is_active: req.body.isActive !== undefined ? req.body.isActive : true,
+        trigger_type: mapTriggerType(req.body.triggerType || 'reaction'),
+        trigger_permission: req.body.performerFilter === 'user_only' ? 'me' : 'anyone',
+        priority: req.body.priority || 0,
+        whatsapp_instance_id: req.body.whatsapp_instance_id || null,
+        allowed_user_ids: req.body.allowed_user_ids || [],
+        created_by: userId
       };
+      
+      console.log('POST /api/actions/rules - creating rule:', ruleData);
       const rule = await storage.createActionRule(ruleData);
       res.status(201).json(rule);
     } catch (error) {
@@ -1570,15 +1598,34 @@ export async function registerRoutes(app: Express): Promise<void> {
       console.log('PUT /api/actions/rules/:ruleId - ruleId:', ruleId);
       console.log('PUT /api/actions/rules/:ruleId - body:', req.body);
       
+      // Helper function to map frontend trigger types to backend enum values
+      const mapTriggerType = (frontendType: string): string => {
+        const mapping: Record<string, string> = {
+          'reaction': 'whatsapp_message',
+          'hashtag': 'whatsapp_message', 
+          'keyword': 'whatsapp_message',
+          'time_based': 'schedule',
+          'location': 'whatsapp_message',
+          'contact_group': 'whatsapp_message',
+          'whatsapp_message': 'whatsapp_message',
+          'schedule': 'schedule',
+          'entity_change': 'entity_change',
+          'manual': 'manual',
+          'webhook': 'webhook'
+        };
+        return mapping[frontendType] || 'whatsapp_message';
+      };
+      
       // Map frontend field names to backend field names
       const mappedBody = {
         name: req.body.ruleName || req.body.name,
         description: req.body.description,
         is_active: req.body.isActive !== undefined ? req.body.isActive : req.body.is_active,
-        trigger_type: req.body.triggerType || req.body.trigger_type || 'whatsapp_message',
+        trigger_type: mapTriggerType(req.body.triggerType || req.body.trigger_type || 'reaction'),
         trigger_permission: req.body.performerFilter === 'user_only' ? 'me' : 'anyone',
         priority: req.body.priority || 0,
-        whatsapp_instance_id: req.body.whatsapp_instance_id || null
+        whatsapp_instance_id: req.body.whatsapp_instance_id || null,
+        allowed_user_ids: req.body.allowed_user_ids || []
       };
       
       console.log('PUT /api/actions/rules/:ruleId - mapped body:', mappedBody);
