@@ -31,6 +31,7 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { VendorSelect } from "./VendorSelect";
 
 const receivableFormSchema = z.object({
   invoice_number: z.string().min(1, "Invoice number is required"),
@@ -57,7 +58,7 @@ export function ReceivableForm({ onSuccess, onCancel }: ReceivableFormProps) {
     resolver: zodResolver(receivableFormSchema),
     defaultValues: {
       invoice_number: `INV-${Date.now()}`,
-      customer_entity_id: "cp_unknown_customer",
+      customer_entity_id: "",
       amount: 0,
       invoice_date: new Date(),
       due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
@@ -130,18 +131,13 @@ export function ReceivableForm({ onSuccess, onCancel }: ReceivableFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Customer</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select customer" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="cp_unknown_customer">Unknown Customer</SelectItem>
-                    <SelectItem value="cp_customer_1">Customer 1</SelectItem>
-                    <SelectItem value="cp_customer_2">Customer 2</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <VendorSelect
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Select customer..."
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
