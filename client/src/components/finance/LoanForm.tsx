@@ -91,16 +91,20 @@ export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
     },
   });
 
-  const createLoan = useMutation({
+  const saveLoan = useMutation({
     mutationFn: async (data: LoanFormData) => {
-      return apiRequest("POST", "/api/finance/loans", data);
+      if (editingLoan) {
+        return apiRequest("PUT", `/api/finance/loans/${editingLoan.id}`, data);
+      } else {
+        return apiRequest("POST", "/api/finance/loans", data);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/finance/loans"] });
       queryClient.invalidateQueries({ queryKey: ["/api/finance/overview"] });
       toast({
         title: "Success",
-        description: "Loan created successfully",
+        description: editingLoan ? "Loan updated successfully" : "Loan created successfully",
       });
       form.reset();
       onClose();
@@ -108,7 +112,7 @@ export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to create loan",
+        description: error.message || (editingLoan ? "Failed to update loan" : "Failed to create loan"),
         variant: "destructive",
       });
     },
@@ -125,7 +129,7 @@ export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
       lenderContactId: data.lenderContactId === "" ? null : data.lenderContactId,
       borrowerContactId: data.borrowerContactId === "" ? null : data.borrowerContactId,
     };
-    createLoan.mutate(processedData);
+    saveLoan.mutate(processedData);
   };
 
   const purposes = [
