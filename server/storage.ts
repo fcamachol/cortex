@@ -273,12 +273,28 @@ class DatabaseStorage {
     
     async getSpaces(userId?: string): Promise<any[]> {
         try {
+            // Use Cortex Foundation spaces instead of app.spaces
             const result = await db.execute(sql`
-                SELECT * FROM app.spaces ORDER BY space_name
+                SELECT 
+                    id,
+                    name,
+                    description,
+                    icon,
+                    color,
+                    parent_space_id,
+                    space_type as type,
+                    privacy,
+                    category,
+                    level,
+                    path,
+                    created_at,
+                    updated_at
+                FROM cortex_foundation.spaces 
+                ORDER BY name
             `);
             return result.rows;
         } catch (error) {
-            console.error('Error fetching spaces:', error);
+            console.error('Error fetching Cortex Foundation spaces:', error);
             throw error;
         }
     }
