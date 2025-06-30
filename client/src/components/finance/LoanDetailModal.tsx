@@ -164,7 +164,7 @@ export function LoanDetailModal({ open, onClose, loan, onEdit }: LoanDetailModal
           </Card>
 
           {/* Moratory Interest (if applicable) */}
-          {loan.has_moratory_interest && (
+          {(loan.has_moratory_interest || loan.hasMoratoryInterest) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -172,17 +172,34 @@ export function LoanDetailModal({ open, onClose, loan, onEdit }: LoanDetailModal
                   Moratory Interest
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Moratory Rate</p>
-                    <p className="text-lg font-semibold">{loan.moratory_rate}% {loan.moratory_rate_type}</p>
+                    <p className="text-lg font-semibold">
+                      {loan.moratory_rate || loan.moratoryRate}% {loan.moratory_rate_type || loan.moratoryRateType}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Status</p>
                     <Badge variant="secondary">Active</Badge>
                   </div>
                 </div>
+
+                {/* Custom Formula Section */}
+                {(loan.use_custom_formula || loan.useCustomFormula) && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Custom Formula</p>
+                    {(loan.custom_formula_description || loan.customFormulaDescription) && (
+                      <p className="text-sm mb-3 text-gray-700">
+                        {loan.custom_formula_description || loan.customFormulaDescription}
+                      </p>
+                    )}
+                    <div className="bg-white p-3 rounded border font-mono text-sm">
+                      {loan.custom_formula || loan.customFormula || "No formula specified"}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
