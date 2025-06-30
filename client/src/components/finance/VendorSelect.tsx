@@ -48,10 +48,14 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
   );
 
   const handleSelect = (vendor: Vendor) => {
-    console.log('Vendor selected:', vendor.id);
+    console.log('Vendor selected:', vendor.id, vendor.name);
     onValueChange(vendor.id);
     setSearchValue(vendor.name);
     setOpen(false);
+    // Blur the input to lose focus
+    if (inputRef.current) {
+      inputRef.current.blur();
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,7 +113,14 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
                 <div
                   key={vendor.id}
                   className="flex items-center gap-2 p-2 hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer"
-                  onClick={() => handleSelect(vendor)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSelect(vendor);
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                  }}
                 >
                   {vendor.type === 'contact' ? (
                     <User className="h-4 w-4 text-blue-500" />
