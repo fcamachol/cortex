@@ -11,6 +11,7 @@ import { LoanDetailModal } from "@/components/finance/LoanDetailModal";
 import { AccountForm } from "@/components/finance/AccountForm";
 import { AccountList } from "@/components/finance/AccountList";
 import { CreditCardForm } from "@/components/finance/CreditCardForm";
+import { BillsList } from "@/components/finance/BillsList";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Receipt, CreditCard, Filter, Building2, Clock } from "lucide-react";
 
 // Payment calculation functions
@@ -95,7 +96,6 @@ const calculateNextPaymentDate = (startDate: string, paymentDate: string | null,
 
 export default function FinancePage() {
   const [showTransactionForm, setShowTransactionForm] = useState(false);
-  const [showPayableForm, setShowPayableForm] = useState(false);
   const [showLoanForm, setShowLoanForm] = useState(false);
   const [showAccountForm, setShowAccountForm] = useState(false);
   const [showLoanDetail, setShowLoanDetail] = useState(false);
@@ -366,46 +366,7 @@ export default function FinancePage() {
             </TabsContent>
 
             <TabsContent value="payables" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium">Bills & Payables</h3>
-                <Button onClick={() => setShowPayableForm(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Bill
-                </Button>
-              </div>
-              
-              <Card>
-                <CardContent className="p-6">
-                  {payables.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground">No bills found.</p>
-                      <Button className="mt-4" onClick={() => setShowPayableForm(true)}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Your First Bill
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {payables.map((payable: any, index: number) => (
-                        <div key={index} className="flex justify-between items-center p-4 border rounded-lg">
-                          <div className="flex-1">
-                            <p className="font-medium">{payable.description || "Bill"}</p>
-                            <p className="text-sm text-muted-foreground">
-                              Due: {payable.dueDate || "Not specified"}
-                            </p>
-                          </div>
-                          <div className="flex items-center space-x-4">
-                            <Badge variant={payable.status === 'overdue' ? 'destructive' : 'secondary'}>
-                              {payable.status || "pending"}
-                            </Badge>
-                            <span className="text-lg font-medium">${payable.amount || "0.00"}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <BillsList />
             </TabsContent>
 
             <TabsContent value="loans" className="space-y-4">
