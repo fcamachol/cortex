@@ -686,6 +686,121 @@ class DatabaseStorage {
     }
 
     // =============================
+    // RECURRING BILLS METHODS
+    // =============================
+
+    async getRecurringBillTemplates(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_finance.recurring_bill_templates
+                ORDER BY next_due_date ASC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching recurring bill templates:', error);
+            return [];
+        }
+    }
+
+    async getUpcomingRecurringBills(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_finance.upcoming_recurring_bills
+                ORDER BY next_due_date ASC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching upcoming recurring bills:', error);
+            return [];
+        }
+    }
+
+    async generateNextRecurringBill(parentBillId: string): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                SELECT cortex_finance.generate_next_recurring_bill(${parentBillId}) as new_bill_id
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error generating next recurring bill:', error);
+            throw error;
+        }
+    }
+
+    async processRecurringBills(): Promise<number> {
+        try {
+            const result = await db.execute(sql`
+                SELECT cortex_finance.process_daily_recurring_bills() as bills_generated
+            `);
+            return result.rows[0].bills_generated || 0;
+        } catch (error) {
+            console.error('Error processing recurring bills:', error);
+            throw error;
+        }
+    }
+
+    async getAllBillsWithRecurrence(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_finance.all_bills_with_recurrence
+                ORDER BY bill_date DESC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching all bills with recurrence:', error);
+            return [];
+        }
+    }
+
+    async createRecurringPayable(payableData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO cortex_finance.bills_payable (
+                    bill_number, vendor_entity_id, amount, bill_date, due_date, description,
+                    is_recurring, recurrence_type, recurrence_interval, recurrence_end_date,
+                    next_due_date, auto_pay_enabled, auto_pay_account_id, category, subcategory,
+                    created_by_entity_id
+                ) VALUES (
+                    ${payableData.billNumber}, ${payableData.vendorEntityId}, ${payableData.amount},
+                    ${payableData.billDate}, ${payableData.dueDate}, ${payableData.description},
+                    ${payableData.isRecurring}, ${payableData.recurrenceType}, ${payableData.recurrenceInterval},
+                    ${payableData.recurrenceEndDate}, ${payableData.nextDueDate}, ${payableData.autoPayEnabled},
+                    ${payableData.autoPayAccountId}, ${payableData.category}, ${payableData.subcategory},
+                    ${payableData.createdByEntityId}
+                )
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating recurring payable:', error);
+            throw error;
+        }
+    }
+
+    async createRecurringReceivable(receivableData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO cortex_finance.bills_receivable (
+                    bill_number, customer_entity_id, amount, bill_date, due_date, description,
+                    is_recurring, recurrence_type, recurrence_interval, recurrence_end_date,
+                    next_due_date, category, subcategory, created_by_entity_id
+                ) VALUES (
+                    ${receivableData.billNumber}, ${receivableData.customerEntityId}, ${receivableData.amount},
+                    ${receivableData.billDate}, ${receivableData.dueDate}, ${receivableData.description},
+                    ${receivableData.isRecurring}, ${receivableData.recurrenceType}, ${receivableData.recurrenceInterval},
+                    ${receivableData.recurrenceEndDate}, ${receivableData.nextDueDate}, ${receivableData.category},
+                    ${receivableData.subcategory}, ${receivableData.createdByEntityId}
+                )
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating recurring receivable:', error);
+            throw error;
+        }
+    }
+
+    // =============================
     // UTILITY METHODS
     // =============================
     

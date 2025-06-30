@@ -2570,6 +2570,102 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // =============================================================================
+  // RECURRING BILLS API ROUTES - Automated recurring bill management
+  // =============================================================================
+
+  // Get recurring bill templates
+  app.get('/api/finance/recurring-bills', async (req: Request, res: Response) => {
+    try {
+      const templates = await storage.getRecurringBillTemplates();
+      res.json(templates || []);
+    } catch (error) {
+      console.error('Error fetching recurring bill templates:', error);
+      res.status(500).json({ error: 'Failed to fetch recurring bill templates' });
+    }
+  });
+
+  // Get upcoming recurring bills (next due bills)
+  app.get('/api/finance/recurring-bills/upcoming', async (req: Request, res: Response) => {
+    try {
+      const upcomingBills = await storage.getUpcomingRecurringBills();
+      res.json(upcomingBills || []);
+    } catch (error) {
+      console.error('Error fetching upcoming recurring bills:', error);
+      res.status(500).json({ error: 'Failed to fetch upcoming recurring bills' });
+    }
+  });
+
+  // Get all bills with recurrence information
+  app.get('/api/finance/bills-with-recurrence', async (req: Request, res: Response) => {
+    try {
+      const allBills = await storage.getAllBillsWithRecurrence();
+      res.json(allBills || []);
+    } catch (error) {
+      console.error('Error fetching bills with recurrence:', error);
+      res.status(500).json({ error: 'Failed to fetch bills with recurrence' });
+    }
+  });
+
+  // Create recurring payable
+  app.post('/api/finance/recurring-payables', async (req: Request, res: Response) => {
+    try {
+      const payableData = {
+        ...req.body,
+        createdByEntityId: req.body.createdByEntityId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42',
+        isRecurring: true
+      };
+      const payable = await storage.createRecurringPayable(payableData);
+      res.json(payable);
+    } catch (error) {
+      console.error('Error creating recurring payable:', error);
+      res.status(500).json({ error: 'Failed to create recurring payable' });
+    }
+  });
+
+  // Create recurring receivable
+  app.post('/api/finance/recurring-receivables', async (req: Request, res: Response) => {
+    try {
+      const receivableData = {
+        ...req.body,
+        createdByEntityId: req.body.createdByEntityId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42',
+        isRecurring: true
+      };
+      const receivable = await storage.createRecurringReceivable(receivableData);
+      res.json(receivable);
+    } catch (error) {
+      console.error('Error creating recurring receivable:', error);
+      res.status(500).json({ error: 'Failed to create recurring receivable' });
+    }
+  });
+
+  // Generate next instance of a recurring bill
+  app.post('/api/finance/recurring-bills/:parentBillId/generate', async (req: Request, res: Response) => {
+    try {
+      const { parentBillId } = req.params;
+      const newBill = await storage.generateNextRecurringBill(parentBillId);
+      res.json(newBill);
+    } catch (error) {
+      console.error('Error generating next recurring bill:', error);
+      res.status(500).json({ error: 'Failed to generate next recurring bill' });
+    }
+  });
+
+  // Process all due recurring bills (manual trigger)
+  app.post('/api/finance/recurring-bills/process', async (req: Request, res: Response) => {
+    try {
+      const billsGenerated = await storage.processRecurringBills();
+      res.json({ 
+        success: true, 
+        billsGenerated,
+        message: `Successfully generated ${billsGenerated} bills from recurring templates`
+      });
+    } catch (error) {
+      console.error('Error processing recurring bills:', error);
+      res.status(500).json({ error: 'Failed to process recurring bills' });
+    }
+  });
+
   // CRM Calendar Events - CRUD operations for CRM calendar events
   app.get('/api/crm/calendar-events', async (req, res) => {
     try {

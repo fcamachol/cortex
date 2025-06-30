@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Form,
   FormControl,
@@ -27,7 +28,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Repeat, DollarSign } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
@@ -41,7 +42,14 @@ const billFormSchema = z.object({
   bill_date: z.date(),
   due_date: z.date(),
   description: z.string().optional(),
-  status: z.enum(["draft", "pending", "paid", "unpaid", "overdue"]).default("draft"),
+  status: z.enum(["draft", "pending", "paid", "unpaid", "overdue"]).default("pending"),
+  // Recurring fields
+  is_recurring: z.boolean().default(false),
+  recurrence_type: z.enum(["monthly", "quarterly", "annual", "weekly", "biweekly", "custom"]).optional(),
+  recurrence_interval: z.number().min(1).optional(),
+  recurrence_end_date: z.date().optional(),
+  auto_pay_enabled: z.boolean().default(false),
+  auto_pay_account_id: z.string().optional(),
 });
 
 type BillFormData = z.infer<typeof billFormSchema>;
