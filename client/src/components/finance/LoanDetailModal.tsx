@@ -226,8 +226,11 @@ export function LoanDetailModal({ open, onClose, loan, onEdit }: LoanDetailModal
                             };
                             
                             // Use the custom formula to calculate the moratory interest
-                            const customFormula = loan.custom_formula || loan.customFormula || 'return (monthlyPayment / 30) * daysOverdue;';
+                            const customFormula = loan.custom_formula || loan.customFormula || '(monthlyPayment / 30) * daysOverdue';
                             const result = calculateCustomMoratoryInterest(customFormula, testParams);
+                            
+                            const monthlyPayment = testParams.monthlyPayment;
+                            const dailyPenalty = monthlyPayment / 30;
                             
                             return (
                               <div className="space-y-2">
@@ -236,8 +239,8 @@ export function LoanDetailModal({ open, onClose, loan, onEdit }: LoanDetailModal
                                 </p>
                                 <div className="text-xs text-gray-500 space-y-1">
                                   <p><strong>Calculation breakdown:</strong></p>
-                                  <p>• Monthly payment: {formatCurrency(actualMonthlyPayment)}</p>
-                                  <p>• Daily penalty: {formatCurrency(dailyPenalty)} ({formatCurrency(actualMonthlyPayment)}/30)</p>
+                                  <p>• Monthly payment: {formatCurrency(monthlyPayment)}</p>
+                                  <p>• Daily penalty: {formatCurrency(dailyPenalty)} ({formatCurrency(monthlyPayment)}/30)</p>
                                   <p>• For 30 days: {formatCurrency(dailyPenalty)} × 30 = {formatCurrency(result)}</p>
                                 </div>
                               </div>
