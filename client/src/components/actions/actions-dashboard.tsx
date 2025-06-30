@@ -52,7 +52,7 @@ export function ActionsDashboard() {
   });
 
   const toggleRuleMutation = useMutation({
-    mutationFn: (ruleId: string) => apiRequest(`/api/actions/rules/${ruleId}/toggle`, 'PATCH'),
+    mutationFn: (ruleId: string) => apiRequest('PATCH', `/api/actions/rules/${ruleId}/toggle`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/actions/rules'] });
       queryClient.invalidateQueries({ queryKey: ['/api/actions/stats'] });
@@ -64,7 +64,7 @@ export function ActionsDashboard() {
   });
 
   const deleteRuleMutation = useMutation({
-    mutationFn: (ruleId: string) => apiRequest(`/api/actions/rules/${ruleId}`, 'DELETE'),
+    mutationFn: (ruleId: string) => apiRequest('DELETE', `/api/actions/rules/${ruleId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/actions/rules'] });
       queryClient.invalidateQueries({ queryKey: ['/api/actions/stats'] });
