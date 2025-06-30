@@ -3630,7 +3630,8 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.delete('/api/spaces/:spaceId', async (req: Request, res: Response) => {
     try {
       const { spaceId } = req.params;
-      await storage.deleteSpace(parseInt(spaceId));
+      // Use Cortex Foundation storage for space deletion
+      await cortexFoundationStorage.deleteSpace(spaceId);
       res.json({ success: true });
     } catch (error) {
       console.error('Error deleting space:', error);

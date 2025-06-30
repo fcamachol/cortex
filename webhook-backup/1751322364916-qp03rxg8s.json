@@ -1,0 +1,56 @@
+{
+  "id": "1751322364916-qp03rxg8s",
+  "timestamp": "2025-06-30T22:26:04.916Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages-upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "live-test-1750199771",
+    "data": {
+      "key": {
+        "remoteJid": "120363258370173139@g.us",
+        "fromMe": false,
+        "id": "3F29C3F68E6C66835BD9",
+        "participant": "59899227036@s.whatsapp.net"
+      },
+      "pushName": "Santi Fernández Sapelli",
+      "status": "DELIVERY_ACK",
+      "message": {
+        "senderKeyDistributionMessage": {
+          "groupId": "120363258370173139@g.us",
+          "axolotlSenderKeyDistributionMessage": "Mwjd8cPzAhAAGiBXCmFaV9+nDppYYUQ+M0elvdH5bTerMQUO+t2JEmVGNCIhBRjSPXkarSsgo7Yh+r75eKcXKkN7W5yyx2x3haQKKKMz"
+        },
+        "messageContextInfo": {
+          "deviceListMetadata": {
+            "senderKeyHash": "+NpFCYHGuJbaRQ==",
+            "senderTimestamp": "1750027496",
+            "recipientKeyHash": "MBCozQX4V6vlWg==",
+            "recipientTimestamp": "1750702152"
+          },
+          "deviceListMetadataVersion": 2
+        },
+        "reactionMessage": {
+          "key": {
+            "remoteJid": "120363258370173139@g.us",
+            "fromMe": false,
+            "id": "0023D7097BD332092511F5B7CF07AA56",
+            "participant": "51992404464@s.whatsapp.net"
+          },
+          "text": "🤮",
+          "senderTimestampMs": "1751322362493"
+        }
+      },
+      "messageType": "reactionMessage",
+      "messageTimestamp": 1751322364,
+      "instanceId": "c5215849-bfb9-413c-aa94-dfa911c8310a",
+      "source": "unknown"
+    },
+    "destination": "https://cf94481b-abb0-462d-99ce-66c0beae05d0-00-25qqlo4pnl49g.worf.replit.dev/api/evolution/webhook/live-test-1750199771",
+    "date_time": "2025-06-30T19:26:04.892Z",
+    "sender": "15103165094@s.whatsapp.net",
+    "server_url": "https://evolution-api-evolution-api.vuswn0.easypanel.host",
+    "apikey": "119FA240-45ED-46A7-AE13-5A1B7C909D7D"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
