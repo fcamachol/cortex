@@ -338,10 +338,21 @@ class DatabaseStorage {
                        c.type,
                        c.last_message_timestamp as lastmessagetimestamp,
                        c.unread_count as unreadcount,
-                       c.is_archived as isarchived
+                       c.is_archived as isarchived,
+                       -- Get latest message content for preview
+                       m.content as lastMessageContent,
+                       m.from_me as lastMessageFromMe,
+                       m.message_type as lastMessageType
                 FROM whatsapp.chats c
                 LEFT JOIN whatsapp.groups g ON c.chat_id = g.group_jid AND c.instance_name = g.instance_name
                 LEFT JOIN whatsapp.contacts cont ON c.chat_id = cont.jid AND c.instance_name = cont.instance_name
+                LEFT JOIN LATERAL (
+                    SELECT content, from_me, message_type
+                    FROM whatsapp.messages 
+                    WHERE chat_id = c.chat_id AND instance_name = c.instance_name
+                    ORDER BY timestamp DESC 
+                    LIMIT 1
+                ) m ON true
                 ORDER BY c.last_message_timestamp DESC NULLS LAST
                 LIMIT 50
             `);

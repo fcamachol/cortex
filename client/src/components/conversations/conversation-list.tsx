@@ -517,12 +517,13 @@ export default function ConversationList({
       };
     }
     
-    // Use the lastMessageContent from the conversation data if available
-    if (conversation.lastMessageContent !== undefined && conversation.lastMessageContent !== null) {
+    // Use the lastMessageContent from the conversation data if available (handle both camelCase and lowercase variants)
+    const messageContent = conversation.lastMessageContent || conversation.lastmessagecontent;
+    if (messageContent !== undefined && messageContent !== null) {
       return {
-        content: conversation.lastMessageContent,
-        fromMe: conversation.lastMessageFromMe,
-        messageType: conversation.lastMessageType,
+        content: messageContent,
+        fromMe: conversation.lastMessageFromMe || conversation.lastmessagefromme,
+        messageType: conversation.lastMessageType || conversation.lastmessagetype,
         timestamp: conversation.actualLastMessageTime || conversation.lastMessageTimestamp || conversation.last_message_timestamp || conversation.lastmessagetimestamp
       };
     }
