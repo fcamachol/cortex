@@ -73,7 +73,7 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
       startDate: new Date().toISOString().split('T')[0],
       paymentDate: "",
       paymentFrequency: "monthly",
-      currency: "USD",
+      currency: "MXN",
       purpose: "",
       collateral: "",
       notes: "",
