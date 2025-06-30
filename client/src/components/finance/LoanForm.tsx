@@ -445,10 +445,13 @@ export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
               name="paymentDate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Payment Date (Optional)</FormLabel>
+                  <FormLabel>Final Payment Date (Optional)</FormLabel>
                   <FormControl>
                     <Input type="date" {...field} placeholder="Optional" />
                   </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    The date when the entire loan amount is due
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}
