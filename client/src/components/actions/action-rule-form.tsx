@@ -91,7 +91,7 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('PUT', `/api/actions/rules/${rule.ruleId}`, data),
+    mutationFn: (data: any) => apiRequest('PUT', `/api/actions/rules/${rule.id}`, data),
     onSuccess: () => {
       toast({
         title: "Rule updated",
@@ -105,7 +105,7 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   });
 
   const testMutation = useMutation({
-    mutationFn: (testContext: any) => apiRequest('POST', `/api/actions/rules/${rule?.ruleId}/test`, { testContext }),
+    mutationFn: (testContext: any) => apiRequest('POST', `/api/actions/rules/${rule?.id}/test`, { testContext }),
     onSuccess: async (result: Response) => {
       const data = await result.json();
       toast({

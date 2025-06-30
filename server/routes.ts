@@ -1562,9 +1562,27 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
       const { ruleId } = req.params;
+      
+      if (!ruleId || ruleId === 'undefined') {
+        return res.status(400).json({ error: 'Valid rule ID is required' });
+      }
+      
       console.log('PUT /api/actions/rules/:ruleId - ruleId:', ruleId);
       console.log('PUT /api/actions/rules/:ruleId - body:', req.body);
-      const updatedRule = await storage.updateActionRule(ruleId, req.body);
+      
+      // Map frontend field names to backend field names
+      const mappedBody = {
+        name: req.body.ruleName || req.body.name,
+        description: req.body.description,
+        is_active: req.body.isActive !== undefined ? req.body.isActive : req.body.is_active,
+        trigger_type: req.body.triggerType || req.body.trigger_type || 'whatsapp_message',
+        trigger_permission: req.body.performerFilter === 'user_only' ? 'me' : 'anyone',
+        priority: req.body.priority || 0,
+        whatsapp_instance_id: req.body.whatsapp_instance_id || null
+      };
+      
+      console.log('PUT /api/actions/rules/:ruleId - mapped body:', mappedBody);
+      const updatedRule = await storage.updateActionRule(ruleId, mappedBody);
       console.log('PUT /api/actions/rules/:ruleId - result:', updatedRule);
       res.json(updatedRule);
     } catch (error) {
