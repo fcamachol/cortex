@@ -483,17 +483,55 @@ class DatabaseStorage {
                     lender_name, lender_entity_id, borrower_entity_id, 
                     principal_amount, interest_rate, interest_rate_type, term_months, 
                     payment_frequency, start_date, payment_date, purpose, collateral,
-                    interest_type, moratory_rate, notes, currency
+                    interest_type, moratory_rate, moratory_rate_type, notes, currency, user_id,
+                    use_custom_formula, custom_formula, custom_formula_description
                 ) VALUES (
                     ${loanData.lenderName}, ${loanData.lenderContactId || null}, ${loanData.borrowerContactId || null},
                     ${loanData.principalAmount}, ${loanData.interestRate}, ${loanData.interestRateType || 'monthly'}, ${loanData.termMonths || null},
                     ${loanData.paymentFrequency}, ${loanData.startDate}, ${loanData.paymentDate || null}, ${loanData.purpose}, ${loanData.collateral || null},
-                    ${loanData.interestType || 'simple'}, ${loanData.moratoryRate || 0}, ${loanData.notes || null}, ${loanData.currency || 'USD'}
+                    ${loanData.interestType || 'simple'}, ${loanData.moratoryRate || 0}, ${loanData.moratoryRateType || 'monthly'}, ${loanData.notes || null}, ${loanData.currency || 'USD'}, 
+                    '7804247f-3ae8-4eb2-8c6d-2c44f967ad42',
+                    ${loanData.useCustomFormula || false}, ${loanData.customFormula || null}, ${loanData.customFormulaDescription || null}
                 ) RETURNING *
             `);
             return result.rows[0];
         } catch (error) {
             console.error('Error creating loan:', error);
+            throw error;
+        }
+    }
+
+    async updateLoan(loanId: string, loanData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                UPDATE cortex_finance.loans SET
+                    lender_name = ${loanData.lenderName},
+                    lender_entity_id = ${loanData.lenderContactId || null},
+                    borrower_entity_id = ${loanData.borrowerContactId || null},
+                    principal_amount = ${loanData.principalAmount},
+                    interest_rate = ${loanData.interestRate},
+                    interest_rate_type = ${loanData.interestRateType || 'monthly'},
+                    term_months = ${loanData.termMonths || null},
+                    payment_frequency = ${loanData.paymentFrequency},
+                    start_date = ${loanData.startDate},
+                    payment_date = ${loanData.paymentDate || null},
+                    purpose = ${loanData.purpose},
+                    collateral = ${loanData.collateral || null},
+                    interest_type = ${loanData.interestType || 'simple'},
+                    moratory_rate = ${loanData.moratoryRate || 0},
+                    moratory_rate_type = ${loanData.moratoryRateType || 'monthly'},
+                    notes = ${loanData.notes || null},
+                    currency = ${loanData.currency || 'USD'},
+                    use_custom_formula = ${loanData.useCustomFormula || false},
+                    custom_formula = ${loanData.customFormula || null},
+                    custom_formula_description = ${loanData.customFormulaDescription || null},
+                    updated_at = NOW()
+                WHERE loan_id = ${loanId}
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error updating loan:', error);
             throw error;
         }
     }

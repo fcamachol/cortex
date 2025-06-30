@@ -2468,6 +2468,17 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Update loan
+  app.put('/api/finance/loans/:id', async (req: Request, res: Response) => {
+    try {
+      const loan = await storage.updateLoan(req.params.id, req.body);
+      res.json(loan);
+    } catch (error) {
+      console.error('Error updating loan:', error);
+      res.status(500).json({ error: 'Failed to update loan' });
+    }
+  });
+
   // Get accounts
   app.get('/api/finance/accounts', async (req: Request, res: Response) => {
     try {

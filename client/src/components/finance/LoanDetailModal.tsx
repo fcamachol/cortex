@@ -164,7 +164,7 @@ export function LoanDetailModal({ open, onClose, loan, onEdit }: LoanDetailModal
           </Card>
 
           {/* Moratory Interest (if applicable) */}
-          {(loan.has_moratory_interest || loan.hasMoratoryInterest) && (
+          {(loan.moratory_rate > 0 || loan.moratoryRate > 0) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -187,7 +187,7 @@ export function LoanDetailModal({ open, onClose, loan, onEdit }: LoanDetailModal
                 </div>
 
                 {/* Custom Formula Section */}
-                {(loan.use_custom_formula || loan.useCustomFormula) && (
+                {(loan.custom_formula || loan.customFormula) && (
                   <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                     <p className="text-sm font-medium text-muted-foreground mb-2">Custom Formula</p>
                     {(loan.custom_formula_description || loan.customFormulaDescription) && (
