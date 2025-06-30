@@ -179,8 +179,8 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
                         <SelectContent>
                           <SelectItem value="none">No contact linked</SelectItem>
                           {contacts.map((contact: any) => (
-                            <SelectItem key={contact.contactId} value={contact.contactId.toString()}>
-                              {contact.displayName || contact.phoneNumber}
+                            <SelectItem key={contact.id} value={contact.id.toString()}>
+                              {contact.name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim()}
                             </SelectItem>
                           ))}
                         </SelectContent>
