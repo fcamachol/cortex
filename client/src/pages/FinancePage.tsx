@@ -10,7 +10,72 @@ import { LoanForm } from "@/components/finance/LoanForm";
 import { AccountForm } from "@/components/finance/AccountForm";
 import { AccountList } from "@/components/finance/AccountList";
 import { CreditCardForm } from "@/components/finance/CreditCardForm";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Receipt, CreditCard, Filter, Building2 } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Receipt, CreditCard, Filter, Building2, Clock } from "lucide-react";
+
+// Payment calculation functions
+const calculateMonthlyPayment = (principal: number, interestRate: number, termMonths: number, interestRateType: string) => {
+  if (!termMonths || termMonths === 0) {
+    // Interest-only payment for unlimited term loans
+    const monthlyRate = getMonthlyInterestRate(interestRate, interestRateType);
+    return principal * monthlyRate;
+  }
+  
+  const monthlyRate = getMonthlyInterestRate(interestRate, interestRateType);
+  if (monthlyRate === 0) return principal / termMonths;
+  
+  return principal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / (Math.pow(1 + monthlyRate, termMonths) - 1);
+};
+
+const getMonthlyInterestRate = (rate: number, type: string) => {
+  const annualRate = rate / 100;
+  switch (type) {
+    case 'daily': return annualRate / 365 * 30.44; // Average days per month
+    case 'weekly': return annualRate / 52 * 4.33; // Average weeks per month
+    case 'monthly': return annualRate / 12;
+    default: return annualRate / 12;
+  }
+};
+
+const calculateNextPaymentDate = (startDate: string, paymentDate: string | null, paymentFrequency: string) => {
+  const today = new Date();
+  let nextDate = new Date();
+  
+  if (paymentDate) {
+    // Use specific payment date
+    const paymentDay = new Date(paymentDate).getDate();
+    nextDate.setDate(paymentDay);
+    
+    // If payment day has passed this month, move to next month
+    if (nextDate <= today) {
+      nextDate.setMonth(nextDate.getMonth() + 1);
+    }
+  } else {
+    // Use start date as reference
+    const startDateObj = new Date(startDate);
+    const dayOfMonth = startDateObj.getDate();
+    
+    nextDate.setDate(dayOfMonth);
+    if (nextDate <= today) {
+      nextDate.setMonth(nextDate.getMonth() + 1);
+    }
+  }
+  
+  // Adjust based on payment frequency
+  switch (paymentFrequency) {
+    case 'quarterly':
+      // Next quarter
+      const currentQuarter = Math.floor(nextDate.getMonth() / 3);
+      nextDate.setMonth((currentQuarter + 1) * 3);
+      break;
+    case 'annually':
+      // Next year
+      nextDate.setFullYear(nextDate.getFullYear() + 1);
+      break;
+    // Monthly is default - no adjustment needed
+  }
+  
+  return nextDate;
+};
 
 export default function FinancePage() {
   const [showTransactionForm, setShowTransactionForm] = useState(false);
@@ -321,25 +386,58 @@ export default function FinancePage() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {loans.map((loan: any, index: number) => (
-                        <div key={index} className="flex justify-between items-center p-4 border rounded-lg">
-                          <div className="flex-1">
-                            <p className="font-medium">{loan.lender_name || "Loan"}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {loan.interest_rate || "0"}% {loan.interest_rate_type || "monthly"} interest • {loan.term_months || "unlimited"} months
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Purpose: {loan.purpose || "Not specified"}
-                            </p>
+                      {loans.map((loan: any, index: number) => {
+                        const principal = Number(loan.principal_amount || 0);
+                        const rate = Number(loan.interest_rate || 0);
+                        const termMonths = Number(loan.term_months || 0);
+                        const rateType = loan.interest_rate_type || "monthly";
+                        const paymentFreq = loan.payment_frequency || "monthly";
+                        
+                        // Calculate payment amount
+                        const monthlyPayment = calculateMonthlyPayment(principal, rate, termMonths, rateType);
+                        
+                        // Calculate next payment date
+                        const nextPayment = calculateNextPaymentDate(
+                          loan.start_date || new Date().toISOString().split('T')[0],
+                          loan.payment_date,
+                          paymentFreq
+                        );
+                        
+                        return (
+                          <div key={index} className="flex justify-between items-center p-4 border rounded-lg">
+                            <div className="flex-1">
+                              <p className="font-medium">{loan.lender_name || "Loan"}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {rate.toFixed(4)}% {rateType} interest • {termMonths || "unlimited"} months
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Purpose: {loan.purpose || "Working Capital"}
+                              </p>
+                              
+                              {/* Next Payment Date */}
+                              <div className="flex items-center gap-2 mt-2">
+                                <Clock className="h-3 w-3 text-muted-foreground" />
+                                <p className="text-xs text-muted-foreground">
+                                  Next payment: {nextPayment.toLocaleDateString('en-US', { 
+                                    month: 'short', 
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-medium">${Math.round(monthlyPayment).toLocaleString()}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {paymentFreq} payments
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                of ${principal.toLocaleString()} total
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-lg font-medium">${Number(loan.principal_amount || 0).toLocaleString()}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {loan.payment_frequency || "monthly"} payments
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
