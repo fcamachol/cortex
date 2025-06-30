@@ -565,6 +565,112 @@ class DatabaseStorage {
         }
     }
 
+    async updatePayable(id: string, payableData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                UPDATE cortex_finance.bills_payable 
+                SET 
+                    bill_number = ${payableData.bill_number},
+                    vendor_entity_id = ${payableData.vendor_entity_id},
+                    description = ${payableData.description},
+                    amount = ${payableData.amount},
+                    bill_date = ${payableData.bill_date},
+                    due_date = ${payableData.due_date},
+                    status = ${payableData.status},
+                    updated_at = NOW()
+                WHERE id = ${id}
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error updating payable:', error);
+            throw error;
+        }
+    }
+
+    async deletePayable(id: string): Promise<void> {
+        try {
+            await db.execute(sql`
+                DELETE FROM cortex_finance.bills_payable WHERE id = ${id}
+            `);
+        } catch (error) {
+            console.error('Error deleting payable:', error);
+            throw error;
+        }
+    }
+
+    async getReceivables(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_finance.bills_receivable 
+                ORDER BY due_date DESC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching receivables:', error);
+            return [];
+        }
+    }
+
+    async createReceivable(receivableData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO cortex_finance.bills_receivable (
+                    invoice_number, customer_entity_id, description, amount, 
+                    invoice_date, due_date, status, created_by_entity_id
+                ) VALUES (
+                    ${receivableData.invoice_number || `INV-${Date.now()}`},
+                    ${receivableData.customer_entity_id || 'cp_unknown_customer'},
+                    ${receivableData.description || ''},
+                    ${receivableData.amount || 0},
+                    ${receivableData.invoice_date || new Date().toISOString().split('T')[0]},
+                    ${receivableData.due_date || new Date().toISOString().split('T')[0]},
+                    ${receivableData.status || 'draft'},
+                    ${'7804247f-3ae8-4eb2-8c6d-2c44f967ad42'}
+                )
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating receivable:', error);
+            throw error;
+        }
+    }
+
+    async updateReceivable(id: string, receivableData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                UPDATE cortex_finance.bills_receivable 
+                SET 
+                    invoice_number = ${receivableData.invoice_number},
+                    customer_entity_id = ${receivableData.customer_entity_id},
+                    description = ${receivableData.description},
+                    amount = ${receivableData.amount},
+                    invoice_date = ${receivableData.invoice_date},
+                    due_date = ${receivableData.due_date},
+                    status = ${receivableData.status},
+                    updated_at = NOW()
+                WHERE id = ${id}
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error updating receivable:', error);
+            throw error;
+        }
+    }
+
+    async deleteReceivable(id: string): Promise<void> {
+        try {
+            await db.execute(sql`
+                DELETE FROM cortex_finance.bills_receivable WHERE id = ${id}
+            `);
+        } catch (error) {
+            console.error('Error deleting receivable:', error);
+            throw error;
+        }
+    }
+
     async getLoans(): Promise<any[]> {
         try {
             const result = await db.execute(sql`

@@ -30,81 +30,80 @@ import {
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-const billFormSchema = z.object({
-  bill_number: z.string().min(1, "Bill number is required"),
-  vendor_entity_id: z.string().min(1, "Vendor is required"),
+const receivableFormSchema = z.object({
+  invoice_number: z.string().min(1, "Invoice number is required"),
+  customer_entity_id: z.string().min(1, "Customer is required"),
   amount: z.number().min(0, "Amount must be positive"),
-  bill_date: z.date(),
+  invoice_date: z.date(),
   due_date: z.date(),
   description: z.string().optional(),
-  status: z.enum(["draft", "pending", "paid", "unpaid", "overdue"]).default("draft"),
+  status: z.enum(["draft", "sent", "paid", "unpaid", "overdue"]).default("draft"),
 });
 
-type BillFormData = z.infer<typeof billFormSchema>;
+type ReceivableFormData = z.infer<typeof receivableFormSchema>;
 
-interface BillFormProps {
+interface ReceivableFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-export function BillForm({ onSuccess, onCancel }: BillFormProps) {
+export function ReceivableForm({ onSuccess, onCancel }: ReceivableFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const form = useForm<BillFormData>({
-    resolver: zodResolver(billFormSchema),
+  const form = useForm<ReceivableFormData>({
+    resolver: zodResolver(receivableFormSchema),
     defaultValues: {
-      bill_number: `BILL-${Date.now()}`,
-      vendor_entity_id: "cv_unknown_vendor",
+      invoice_number: `INV-${Date.now()}`,
+      customer_entity_id: "cp_unknown_customer",
       amount: 0,
-      bill_date: new Date(),
+      invoice_date: new Date(),
       due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       description: "",
       status: "draft",
     },
   });
 
-  const createBillMutation = useMutation({
-    mutationFn: async (data: BillFormData) => {
-      const response = await fetch("/api/finance/payables", {
+  const createReceivableMutation = useMutation({
+    mutationFn: async (data: ReceivableFormData) => {
+      const response = await fetch("/api/finance/receivables", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           ...data,
-          bill_date: data.bill_date.toISOString().split('T')[0],
+          invoice_date: data.invoice_date.toISOString().split('T')[0],
           due_date: data.due_date.toISOString().split('T')[0],
         }),
       });
       if (!response.ok) {
-        throw new Error("Failed to create bill");
+        throw new Error("Failed to create receivable");
       }
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/finance/payables"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/finance/receivables"] });
       toast({
         title: "Success",
-        description: "Bill created successfully",
+        description: "Invoice created successfully",
       });
       onSuccess?.();
     },
     onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to create bill",
+        description: "Failed to create invoice",
         variant: "destructive",
       });
-      console.error("Error creating bill:", error);
+      console.error("Error creating receivable:", error);
     },
   });
 
-  const onSubmit = (data: BillFormData) => {
-    createBillMutation.mutate(data);
+  const onSubmit = (data: ReceivableFormData) => {
+    createReceivableMutation.mutate(data);
   };
 
   return (
@@ -113,10 +112,10 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="bill_number"
+            name="invoice_number"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Bill Number</FormLabel>
+                <FormLabel>Invoice Number</FormLabel>
                 <FormControl>
                   <Input {...field} />
                 </FormControl>
@@ -127,20 +126,20 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
 
           <FormField
             control={form.control}
-            name="vendor_entity_id"
+            name="customer_entity_id"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Vendor</FormLabel>
+                <FormLabel>Customer</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select vendor" />
+                      <SelectValue placeholder="Select customer" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="cv_unknown_vendor">Unknown Vendor</SelectItem>
-                    <SelectItem value="cv_supplier_1">Supplier 1</SelectItem>
-                    <SelectItem value="cv_supplier_2">Supplier 2</SelectItem>
+                    <SelectItem value="cp_unknown_customer">Unknown Customer</SelectItem>
+                    <SelectItem value="cp_customer_1">Customer 1</SelectItem>
+                    <SelectItem value="cp_customer_2">Customer 2</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -183,7 +182,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="sent">Sent</SelectItem>
                     <SelectItem value="unpaid">Unpaid</SelectItem>
                     <SelectItem value="paid">Paid</SelectItem>
                     <SelectItem value="overdue">Overdue</SelectItem>
@@ -198,10 +197,10 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="bill_date"
+            name="invoice_date"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Bill Date</FormLabel>
+                <FormLabel>Invoice Date</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -286,7 +285,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <Textarea {...field} placeholder="Bill description..." />
+                <Textarea {...field} placeholder="Invoice description..." />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -299,8 +298,8 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
               Cancel
             </Button>
           )}
-          <Button type="submit" disabled={createBillMutation.isPending}>
-            {createBillMutation.isPending ? "Creating..." : "Create Bill"}
+          <Button type="submit" disabled={createReceivableMutation.isPending}>
+            {createReceivableMutation.isPending ? "Creating..." : "Create Invoice"}
           </Button>
         </div>
       </form>
