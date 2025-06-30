@@ -50,6 +50,7 @@ const billFormSchema = z.object({
   recurrence_start_date: z.date().optional(),
   recurrence_end_date: z.date().optional(),
   auto_pay_enabled: z.boolean().default(false),
+  days_to_pay: z.number().min(1).optional(),
   auto_pay_account_id: z.string().optional(),
 });
 
@@ -80,6 +81,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
       recurrence_start_date: undefined,
       recurrence_end_date: undefined,
       auto_pay_enabled: false,
+      days_to_pay: undefined,
       auto_pay_account_id: undefined,
     },
   });
@@ -244,7 +246,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <FormField
             control={form.control}
             name="bill_date"
@@ -274,7 +276,17 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
                     <Calendar
                       mode="single"
                       selected={field.value}
-                      onSelect={field.onChange}
+                      onSelect={(date) => {
+                        field.onChange(date);
+                        
+                        // Auto-calculate due date when bill_date changes and days_to_pay is set
+                        const daysToPay = form.getValues("days_to_pay");
+                        if (date && daysToPay) {
+                          const dueDate = new Date(date);
+                          dueDate.setDate(dueDate.getDate() + daysToPay);
+                          form.setValue("due_date", dueDate);
+                        }
+                      }}
                       disabled={(date) =>
                         date > new Date() || date < new Date("1900-01-01")
                       }
@@ -282,6 +294,41 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
                     />
                   </PopoverContent>
                 </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="days_to_pay"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Days to Pay</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="365"
+                    placeholder="e.g., 20"
+                    {...field}
+                    onChange={(e) => {
+                      const days = parseInt(e.target.value) || undefined;
+                      field.onChange(days);
+                      
+                      // Auto-calculate due date when days_to_pay changes
+                      if (days && form.getValues("bill_date")) {
+                        const billDate = form.getValues("bill_date");
+                        const dueDate = new Date(billDate);
+                        dueDate.setDate(dueDate.getDate() + days);
+                        form.setValue("due_date", dueDate);
+                      }
+                    }}
+                  />
+                </FormControl>
+                <div className="text-xs text-muted-foreground">
+                  Days between bill and due date
+                </div>
                 <FormMessage />
               </FormItem>
             )}

@@ -37,6 +37,7 @@ export const cortexBillsPayable = cortexFinanceSchema.table("bills_payable", {
   instanceNumber: integer("instance_number").default(1),
   autoPayEnabled: boolean("auto_pay_enabled").default(false).notNull(),
   autoPayAccountId: varchar("auto_pay_account_id", { length: 50 }), // FK to accounts
+  daysToPay: integer("days_to_pay"), // Number of days between bill date and due date
   
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -77,6 +78,7 @@ export const cortexBillsReceivable = cortexFinanceSchema.table("bills_receivable
   nextDueDate: date("next_due_date"),
   parentBillId: uuid("parent_bill_id").references(() => cortexBillsReceivable.id),
   instanceNumber: integer("instance_number").default(1),
+  daysToPay: integer("days_to_pay"), // Number of days between bill date and due date
   
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
