@@ -1038,6 +1038,92 @@ class DatabaseStorage {
     // UTILITY METHODS
     // =============================
     
+    async createActionRule(ruleData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO cortex_automation.rules (
+                    name, description, is_active, trigger_type, priority, 
+                    created_by, space_id, whatsapp_instance_id, trigger_permission,
+                    allowed_user_ids
+                ) VALUES (
+                    ${ruleData.name}, ${ruleData.description}, ${ruleData.is_active || true},
+                    ${ruleData.trigger_type}, ${ruleData.priority || 0},
+                    ${ruleData.created_by}, ${ruleData.space_id}, ${ruleData.whatsapp_instance_id},
+                    ${ruleData.trigger_permission || 'me'}, ${JSON.stringify(ruleData.allowed_user_ids || [])}
+                ) RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating action rule:', error);
+            throw error;
+        }
+    }
+
+    async updateActionRule(ruleId: string, updates: any): Promise<any> {
+        try {
+            // Convert allowed_user_ids to proper array format for PostgreSQL
+            const allowedUserIds = updates.allowed_user_ids || [];
+            const allowedUserIdsArray = Array.isArray(allowedUserIds) ? allowedUserIds : [];
+            
+            const result = await db.execute(sql`
+                UPDATE cortex_automation.rules 
+                SET 
+                    name = ${updates.name},
+                    description = ${updates.description},
+                    is_active = ${updates.is_active},
+                    trigger_type = ${updates.trigger_type},
+                    priority = ${updates.priority || 0},
+                    whatsapp_instance_id = ${updates.whatsapp_instance_id || null},
+                    trigger_permission = ${updates.trigger_permission || 'me'},
+                    allowed_user_ids = ${allowedUserIdsArray},
+                    updated_at = NOW()
+                WHERE id = ${ruleId}
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error updating action rule:', error);
+            throw error;
+        }
+    }
+
+    async getActionRule(ruleId: string): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_automation.rules WHERE id = ${ruleId}
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error getting action rule:', error);
+            return null;
+        }
+    }
+
+    async deleteActionRule(ruleId: string): Promise<void> {
+        try {
+            await db.execute(sql`
+                DELETE FROM cortex_automation.rules WHERE id = ${ruleId}
+            `);
+        } catch (error) {
+            console.error('Error deleting action rule:', error);
+            throw error;
+        }
+    }
+
+    async getActionExecutions(ruleId?: string): Promise<any[]> {
+        try {
+            const query = ruleId 
+                ? sql`SELECT * FROM cortex_automation.rule_executions WHERE rule_id = ${ruleId} ORDER BY executed_at DESC`
+                : sql`SELECT * FROM cortex_automation.rule_executions ORDER BY executed_at DESC LIMIT 50`;
+            
+            const result = await db.execute(query);
+            return result.rows;
+        } catch (error) {
+            console.error('Error getting action executions:', error);
+            return [];
+        }
+    }
+
     normalizePhoneNumber(phone: string): string {
         // Basic phone normalization
         return phone.replace(/\D/g, '');
