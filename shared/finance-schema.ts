@@ -11,6 +11,7 @@ export const recurrenceTypeEnum = z.enum(['monthly', 'quarterly', 'annual', 'wee
 // Bills Payable with recurring functionality
 export const cortexBillsPayable = cortexFinanceSchema.table("bills_payable", {
   id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 200 }).notNull(), // Bill name/title
   billNumber: varchar("bill_number", { length: 100 }),
   vendorEntityId: varchar("vendor_entity_id", { length: 50 }), // FK to cortex_entities
   amount: numeric("amount", { precision: 15, scale: 2 }).notNull(),
@@ -54,6 +55,7 @@ export const cortexBillsPayable = cortexFinanceSchema.table("bills_payable", {
 // Bills Receivable with recurring functionality
 export const cortexBillsReceivable = cortexFinanceSchema.table("bills_receivable", {
   id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 200 }).notNull(), // Bill name/title
   billNumber: varchar("bill_number", { length: 100 }),
   customerEntityId: varchar("customer_entity_id", { length: 50 }), // FK to cortex_entities
   amount: numeric("amount", { precision: 15, scale: 2 }).notNull(),
