@@ -353,7 +353,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
                 onClick={(e) => {
                   e.stopPropagation();
                   if (hasChildren || hasItems) {
-                    toggleExpanded(space.spaceId);
+                    toggleExpanded(space.id);
                   }
                 }}
               >
@@ -374,7 +374,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
 
               {/* Space Name */}
               <span className="flex-1 text-base font-medium truncate">
-                {space.spaceName}
+                {space.name}
               </span>
 
               {/* Item Count Badge */}
@@ -475,7 +475,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
                   >
                     <DropdownMenuItem onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedSpaceId(space.spaceId);
+                      setSelectedSpaceId(space.id);
                       setSelectedItemType('subspace');
                       setShowCreateItemDialog(true);
                     }}>
@@ -484,7 +484,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedSpaceId(space.spaceId);
+                      setSelectedSpaceId(space.id);
                       setSelectedItemType('project');
                       setShowCreateItemDialog(true);
                     }}>
@@ -493,7 +493,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedSpaceId(space.spaceId);
+                      setSelectedSpaceId(space.id);
                       setSelectedItemType('task');
                       setShowCreateItemDialog(true);
                     }}>
@@ -502,7 +502,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedSpaceId(space.spaceId);
+                      setSelectedSpaceId(space.id);
                       setSelectedItemType('file');
                       setShowCreateItemDialog(true);
                     }}>
@@ -511,7 +511,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedSpaceId(space.spaceId);
+                      setSelectedSpaceId(space.id);
                       setSelectedItemType('document');
                       setShowCreateItemDialog(true);
                     }}>
@@ -520,7 +520,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedSpaceId(space.spaceId);
+                      setSelectedSpaceId(space.id);
                       setSelectedItemType('note');
                       setShowCreateItemDialog(true);
                     }}>
@@ -529,7 +529,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedSpaceId(space.spaceId);
+                      setSelectedSpaceId(space.id);
                       setSelectedItemType('event');
                       setShowCreateItemDialog(true);
                     }}>
@@ -628,7 +628,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
                       size="sm"
                       className="h-6 text-xs hover:bg-gray-100 dark:hover:bg-gray-800"
                       onClick={() => {
-                        setSelectedSpaceId(space.spaceId);
+                        setSelectedSpaceId(space.id);
                         setSelectedItemType('task');
                         setShowCreateItemDialog(true);
                       }}
@@ -648,7 +648,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
                 style={{ marginLeft: `${4 + level * 6}px` }}
               >
                 {children.map((childSpace, childIndex) => (
-                  <div key={childSpace.spaceId}>
+                  <div key={childSpace.id}>
                     {renderSpace(childSpace, level + 1, childIndex)}
                   </div>
                 ))}
@@ -669,7 +669,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
                       className="flex items-center gap-2 px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer transition-colors"
                       onClick={() => {
                         // Navigate to specific item view
-                        setLocation(`/spaces/${space.spaceId}?item=${item.itemId}`);
+                        setLocation(`/spaces/${space.id}?item=${item.itemId}`);
                       }}
                     >
                       <IconComponent className="h-3 w-3 opacity-60" />
@@ -697,7 +697,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
                     className="h-6 w-full justify-start text-xs text-gray-500 hover:text-gray-700"
                     onClick={() => {
                       // Navigate to space with new item dialog
-                      setLocation(`/spaces/${space.spaceId}?new=true`);
+                      setLocation(`/spaces/${space.id}?new=true`);
                     }}
                   >
                     <Plus className="h-3 w-3 mr-1" />
