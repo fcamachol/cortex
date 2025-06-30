@@ -23,6 +23,7 @@ import {
   insertCortexBillSchema,
 } from "@shared/cortex-schema";
 import cortexRoutes from './cortex-routes';
+import { cortexFoundationStorage } from './cortex-foundation-storage';
 import { spawn } from 'child_process';
 import { promises as fsPromises } from 'fs';
 import { lookup } from 'mime-types';
@@ -3617,7 +3618,8 @@ export async function registerRoutes(app: Express): Promise<void> {
       const { spaceId } = req.params;
       const updates = req.body;
       
-      const updatedSpace = await storage.updateSpace(parseInt(spaceId), updates);
+      // Use Cortex Foundation storage for space updates
+      const updatedSpace = await cortexFoundationStorage.updateSpace(spaceId, updates);
       res.json(updatedSpace);
     } catch (error) {
       console.error('Error updating space:', error);
