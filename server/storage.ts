@@ -29,6 +29,16 @@ class DatabaseStorage {
         }
     }
 
+    async getInstanceById(instanceName: string): Promise<any | null> {
+        try {
+            const [instance] = await db.select().from(whatsappInstances).where(eq(whatsappInstances.instanceName, instanceName));
+            return instance || null;
+        } catch (error) {
+            console.error('Error fetching WhatsApp instance by name:', error);
+            return null;
+        }
+    }
+
     async getWhatsappContacts(instanceName: string): Promise<any[]> {
         try {
             const result = await db.select()
@@ -1012,7 +1022,7 @@ class DatabaseStorage {
                                 'parameters', ra.parameters,
                                 'template_id', ra.template_id
                             ) ORDER BY ra.action_order
-                        ) FILTER (WHERE ra.id IS NOT NULL),
+                        ) FILTER (WHERE ra.rule_id IS NOT NULL),
                         ARRAY[]::json[]
                     ) as actions
                 FROM cortex_automation.rules r

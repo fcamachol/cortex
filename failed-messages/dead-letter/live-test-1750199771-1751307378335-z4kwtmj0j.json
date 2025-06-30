@@ -19,7 +19,7 @@
     "apikey": "119FA240-45ED-46A7-AE13-5A1B7C909D7D"
   },
   "error": "storage.getInstanceById is not a function",
-  "retryCount": 3,
-  "lastRetry": 1751307483151,
+  "retryCount": 4,
+  "lastRetry": 1751307513151,
   "eventType": "contacts-update"
 }

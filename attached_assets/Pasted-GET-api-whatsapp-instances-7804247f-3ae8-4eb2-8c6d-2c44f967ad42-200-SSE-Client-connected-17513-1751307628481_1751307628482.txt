@@ -1,0 +1,69 @@
+GET /api/whatsapp/instances/7804247f-3ae8-4eb2-8c6d-2c44f967ad42 200 
+📡 SSE Client connected: 17513074766938mxuyi270ni
+📡 SSE Client connected: 17513074767035dosacvjk2t
+GET /api/whatsapp/conversations/7804247f-3ae8-4eb2-8c6d-2c44f967ad42 304 
+GET /api/contacts/7804247f-3ae8-4eb2-8c6d-2c44f967ad42 304 
+GET /api/whatsapp/waiting-reply/28AACF7E-8C0C-42D1-8139-E47418746C55 304 
+GET /api/whatsapp/waiting-reply/119FA240-45ED-46A7-AE13-5A1B7C909D7D 304 
+🔄 Attempting recovery for message: live-test-1750199771-1751307378335-z4kwtmj0j
+🔍 Evolution API provided instanceName: live-test-1750199771
+📨 [live-test-1750199771] Translating event: contacts.upsert
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: CONTACTS.UPSERT           !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    DATA TYPE: object                      !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+❌ Failed to recover contact: TypeError: storage.getInstanceById is not a function
+    at Object.mapApiPayloadToWhatsappContact (/home/runner/workspace/server/whatsapp-api-adapter.ts:1631:40)
+    at Object.handleContactsUpsert (/home/runner/workspace/server/whatsapp-api-adapter.ts:310:45)
+    at Object.processIncomingEvent (/home/runner/workspace/server/whatsapp-api-adapter.ts:91:28)
+    at MessageRecoverySystem.recoverContact (/home/runner/workspace/server/message-recovery-system.ts:280:31)
+    at async MessageRecoverySystem.attemptMessageRecovery (/home/runner/workspace/server/message-recovery-system.ts:156:18)
+    at async MessageRecoverySystem.processFailedMessages (/home/runner/workspace/server/message-recovery-system.ts:93:29)
+🔄 Retry 3 scheduled for message: live-test-1750199771-1751307378335-z4kwtmj0j
+📡 SSE Client connected: 175130749641250njiegp4ib
+📡 SSE Client connected: 1751307496413z3j0j5ttaog
+GET /api/spaces 304 
+GET /api/whatsapp/conversations/7804247f-3ae8-4eb2-8c6d-2c44f967ad42 304 
+GET /api/contacts/7804247f-3ae8-4eb2-8c6d-2c44f967ad42 304 
+GET /api/whatsapp/instances/7804247f-3ae8-4eb2-8c6d-2c44f967ad42 304 
+GET /api/whatsapp/waiting-reply/28AACF7E-8C0C-42D1-8139-E47418746C55 304 
+GET /api/whatsapp/waiting-reply/119FA240-45ED-46A7-AE13-5A1B7C909D7D 304 
+🔌 SSE Client disconnected: 175130749641250njiegp4ib
+🔌 SSE Client disconnected: 175130749641250njiegp4ib
+🔌 SSE Client disconnected: 175130749641250njiegp4ib
+🔌 SSE Client disconnected: 1751307496413z3j0j5ttaog
+🔌 SSE Client disconnected: 1751307496413z3j0j5ttaog
+🔌 SSE Client disconnected: 1751307496413z3j0j5ttaog
+🔄 Attempting recovery for message: live-test-1750199771-1751307378335-z4kwtmj0j
+🔍 Evolution API provided instanceName: live-test-1750199771
+📨 [live-test-1750199771] Translating event: contacts.upsert
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: CONTACTS.UPSERT           !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    DATA TYPE: object                      !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+❌ Failed to recover contact: TypeError: storage.getInstanceById is not a function
+    at Object.mapApiPayloadToWhatsappContact (/home/runner/workspace/server/whatsapp-api-adapter.ts:1631:40)
+    at Object.handleContactsUpsert (/home/runner/workspace/server/whatsapp-api-adapter.ts:310:45)
+    at Object.processIncomingEvent (/home/runner/workspace/server/whatsapp-api-adapter.ts:91:28)
+    at MessageRecoverySystem.recoverContact (/home/runner/workspace/server/message-recovery-system.ts:280:31)
+    at async MessageRecoverySystem.attemptMessageRecovery (/home/runner/workspace/server/message-recovery-system.ts:156:18)
+    at async MessageRecoverySystem.processFailedMessages (/home/runner/workspace/server/message-recovery-system.ts:93:29)
+🔄 Retry 4 scheduled for message: live-test-1750199771-1751307378335-z4kwtmj0j
+🔄 Attempting recovery for message: live-test-1750199771-1751307378335-z4kwtmj0j
+🔍 Evolution API provided instanceName: live-test-1750199771
+📨 [live-test-1750199771] Translating event: contacts.upsert
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!    WEBHOOK EVENT: CONTACTS.UPSERT           !!!
+!!!    INSTANCE: live-test-1750199771           !!!
+!!!    DATA TYPE: object                      !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+❌ Failed to recover contact: TypeError: storage.getInstanceById is not a function
+    at Object.mapApiPayloadToWhatsappContact (/home/runner/workspace/server/whatsapp-api-adapter.ts:1631:40)
+    at Object.handleContactsUpsert (/home/runner/workspace/server/whatsapp-api-adapter.ts:310:45)
+    at Object.processIncomingEvent (/home/runner/workspace/server/whatsapp-api-adapter.ts:91:28)
+    at MessageRecoverySystem.recoverContact (/home/runner/workspace/server/message-recovery-system.ts:280:31)
+    at async MessageRecoverySystem.attemptMessageRecovery (/home/runner/workspace/server/message-recovery-system.ts:156:18)
+    at async MessageRecoverySystem.processFailedMessages (/home/runner/workspace/server/message-recovery-system.ts:93:29)
+💀 Moved to dead letter queue: live-test-1750199771-1751307378335-z4kwtmj0j
