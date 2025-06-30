@@ -18,7 +18,10 @@ const loanSchema = z.object({
   lenderName: z.string().min(1, "Lender name is required"),
   principalAmount: z.string().min(1, "Principal amount is required").transform((val) => parseFloat(val)),
   interestRate: z.string().min(1, "Interest rate is required").transform((val) => parseFloat(val)),
-  termMonths: z.string().min(1, "Term in months is required").transform((val) => parseInt(val)),
+  interestRateType: z.enum(["daily", "weekly", "monthly"], {
+    required_error: "Please select interest rate type",
+  }),
+  termMonths: z.string().optional().transform((val) => val && val.trim() ? parseInt(val) : undefined),
   startDate: z.string().min(1, "Start date is required"),
   paymentFrequency: z.enum(["monthly", "quarterly", "annually"], {
     required_error: "Please select payment frequency",
@@ -59,9 +62,10 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
     resolver: zodResolver(loanSchema),
     defaultValues: {
       lenderName: "",
-      principalAmount: 0,
-      interestRate: 0,
-      termMonths: 12,
+      principalAmount: "0",
+      interestRate: "0",
+      interestRateType: "monthly",
+      termMonths: "",
       startDate: new Date().toISOString().split('T')[0],
       paymentFrequency: "monthly",
       purpose: "",
@@ -197,27 +201,27 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="principalAmount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Principal Amount</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.value)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="principalAmount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Principal Amount</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      {...field}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="interestRate"
@@ -237,6 +241,29 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="interestRateType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Interest Rate Type</FormLabel>
+                    <FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select rate type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -249,7 +276,7 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
                     <FormControl>
                       <Input
                         type="number"
-                        placeholder="12"
+                        placeholder="Optional"
                         {...field}
                         onChange={(e) => field.onChange(e.target.value)}
                       />
