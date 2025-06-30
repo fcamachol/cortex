@@ -453,34 +453,8 @@ export default function ConversationList({
     [instances]
   );
 
-  const { data: initialDrafts = [] } = useQuery({
-    queryKey: [`/api/whatsapp/drafts/all/${userId}`, instanceIdsKey],
-    queryFn: async () => {
-      if (instances.length === 0) return [];
-      try {
-        const draftsPromises = instances.map(async (instance: any) => {
-          const response = await fetch(`/api/whatsapp/drafts/${instance.instanceId}`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          });
-          if (response.ok) {
-            return response.json();
-          }
-          return [];
-        });
-        const draftsArrays = await Promise.all(draftsPromises);
-        return draftsArrays.flat();
-      } catch (error) {
-        console.error('Error loading all drafts:', error);
-        return [];
-      }
-    },
-    enabled: instances.length > 0,
-    refetchInterval: false,
-    staleTime: 60000
-  });
+  // Draft functionality removed for system optimization
+  const initialDrafts: any[] = [];
 
   // Initialize drafts from query - use ref to prevent loops
   const draftsInitialized = useRef(false);
