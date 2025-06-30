@@ -40,6 +40,9 @@ const loanSchema = z.object({
   hasMoratoryInterest: z.boolean().optional(),
   moratoryRate: z.string().optional().transform((val) => val && val.trim() ? parseFloat(val) : undefined),
   moratoryRateType: z.enum(["daily", "weekly", "monthly"]).optional(),
+  useCustomFormula: z.boolean().optional(),
+  customFormula: z.string().optional(),
+  customFormulaDescription: z.string().optional(),
 });
 
 type LoanFormData = z.infer<typeof loanSchema>;
@@ -118,6 +121,9 @@ export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
           hasMoratoryInterest: editingLoan.has_moratory_interest || false,
           moratoryRate: editingLoan.moratory_rate?.toString() || "0",
           moratoryRateType: editingLoan.moratory_rate_type || "monthly",
+          useCustomFormula: editingLoan.use_custom_formula || false,
+          customFormula: editingLoan.custom_formula || "",
+          customFormulaDescription: editingLoan.custom_formula_description || "",
         });
         // Set moratory interests section visibility based on loan data
         setShowMoratoryInterests(editingLoan.has_moratory_interest || false);
@@ -584,6 +590,79 @@ export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
                         </FormItem>
                       )}
                     />
+                  </div>
+                  
+                  {/* Custom Formula Section */}
+                  <div className="mt-6 border-t pt-4">
+                    <FormField
+                      control={form.control}
+                      name="useCustomFormula"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-2">
+                          <FormControl>
+                            <input
+                              type="checkbox"
+                              checked={field.value}
+                              onChange={(e) => field.onChange(e.target.checked)}
+                              className="h-4 w-4"
+                            />
+                          </FormControl>
+                          <FormLabel className="text-sm font-medium cursor-pointer">
+                            Use Custom Moratory Rate Formula
+                          </FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {form.watch("useCustomFormula") && (
+                      <div className="mt-4 space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                          Create a custom formula using existing loan information. You can use variables like:
+                          <br />
+                          <span className="font-mono text-xs bg-gray-100 px-1 rounded">principalAmount</span>, 
+                          <span className="font-mono text-xs bg-gray-100 px-1 rounded ml-1">interestRate</span>, 
+                          <span className="font-mono text-xs bg-gray-100 px-1 rounded ml-1">termMonths</span>
+                        </p>
+                        
+                        <FormField
+                          control={form.control}
+                          name="customFormulaDescription"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Formula Description</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="e.g., 2% of principal amount for first 30 days overdue"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="customFormula"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Custom Formula</FormLabel>
+                              <FormControl>
+                                <textarea
+                                  className="w-full min-h-[80px] p-2 border rounded-md text-sm font-mono"
+                                  placeholder="e.g., if (daysOverdue <= 30) { return principalAmount * 0.02; } else { return principalAmount * 0.05; }"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Available variables: principalAmount, interestRate, termMonths, daysOverdue
+                              </p>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
