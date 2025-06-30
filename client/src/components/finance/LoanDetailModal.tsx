@@ -207,12 +207,8 @@ export function LoanDetailModal({ open, onClose, loan, onEdit }: LoanDetailModal
                       <p><strong>Payment Frequency:</strong> {loan.payment_frequency || loan.paymentFrequency} payments</p>
                     </div>
                     
-                    {/* Formula Test Preview */}
-                    <div className="mt-4 p-3 bg-blue-50 rounded border">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calculator className="h-4 w-4 text-blue-600" />
-                        <span className="text-sm font-medium text-blue-800">Formula Test (30 days overdue)</span>
-                      </div>
+                    {/* Calculation Breakdown */}
+                    <div className="mt-4 p-3 bg-gray-50 rounded border">
                       <div className="text-sm text-gray-700">
                         {(() => {
                           try {
@@ -233,16 +229,11 @@ export function LoanDetailModal({ open, onClose, loan, onEdit }: LoanDetailModal
                             const dailyPenalty = monthlyPayment / 30;
                             
                             return (
-                              <div className="space-y-2">
-                                <p>
-                                  <strong>30 days overdue:</strong> {formatCurrency(result)}
-                                </p>
-                                <div className="text-xs text-gray-500 space-y-1">
-                                  <p><strong>Calculation breakdown:</strong></p>
-                                  <p>• Monthly payment: {formatCurrency(monthlyPayment)}</p>
-                                  <p>• Daily penalty: {formatCurrency(dailyPenalty)} ({formatCurrency(monthlyPayment)}/30)</p>
-                                  <p>• For 30 days: {formatCurrency(dailyPenalty)} × 30 = {formatCurrency(result)}</p>
-                                </div>
+                              <div className="space-y-1">
+                                <p><strong>Calculation breakdown:</strong></p>
+                                <p>• Monthly payment: {formatCurrency(monthlyPayment)}</p>
+                                <p>• Daily penalty: {formatCurrency(dailyPenalty)} ({formatCurrency(monthlyPayment)}/30)</p>
+                                <p>• For 30 days: {formatCurrency(dailyPenalty)} × 30 = {formatCurrency(result)}</p>
                               </div>
                             );
                           } catch (error) {
