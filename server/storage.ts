@@ -482,12 +482,12 @@ class DatabaseStorage {
                 INSERT INTO cortex_finance.loans (
                     lender_name, lender_entity_id, borrower_entity_id, 
                     principal_amount, interest_rate, interest_rate_type, term_months, 
-                    payment_frequency, start_date, purpose, collateral,
+                    payment_frequency, start_date, payment_date, purpose, collateral,
                     interest_type, moratory_rate, notes
                 ) VALUES (
                     ${loanData.lenderName}, ${loanData.lenderContactId || null}, ${loanData.borrowerContactId || null},
                     ${loanData.principalAmount}, ${loanData.interestRate}, ${loanData.interestRateType || 'monthly'}, ${loanData.termMonths || null},
-                    ${loanData.paymentFrequency}, ${loanData.startDate}, ${loanData.purpose}, ${loanData.collateral || null},
+                    ${loanData.paymentFrequency}, ${loanData.startDate}, ${loanData.paymentDate || null}, ${loanData.purpose}, ${loanData.collateral || null},
                     ${loanData.interestType || 'simple'}, ${loanData.moratoryRate || 0}, ${loanData.notes || null}
                 ) RETURNING *
             `);

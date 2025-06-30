@@ -23,6 +23,7 @@ const loanSchema = z.object({
   }),
   termMonths: z.string().optional().transform((val) => val && val.trim() ? parseInt(val) : undefined),
   startDate: z.string().min(1, "Start date is required"),
+  paymentDate: z.string().optional(),
   paymentFrequency: z.enum(["monthly", "quarterly", "annually"], {
     required_error: "Please select payment frequency",
   }),
@@ -67,6 +68,7 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
       interestRateType: "monthly",
       termMonths: "",
       startDate: new Date().toISOString().split('T')[0],
+      paymentDate: "",
       paymentFrequency: "monthly",
       purpose: "",
       collateral: "",
@@ -104,6 +106,7 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
     const processedData = {
       ...data,
       termMonths: data.termMonths === "" ? null : Number(data.termMonths),
+      paymentDate: data.paymentDate === "" ? null : data.paymentDate,
       collateral: data.collateral === "" ? null : data.collateral,
       notes: data.notes === "" ? null : data.notes,
       lenderContactId: data.lenderContactId === "" ? null : data.lenderContactId,
@@ -327,6 +330,20 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
                   <FormLabel>Start Date</FormLabel>
                   <FormControl>
                     <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="paymentDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Payment Date (Optional)</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} placeholder="Optional" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
