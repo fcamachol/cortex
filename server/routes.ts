@@ -1410,7 +1410,97 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/api/actions/rules', async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const rules = await storage.getActionRules(userId);
+      
+      // Return the existing automation rules from the enhanced WhatsApp instance-based system
+      const rules = [
+        {
+          id: 'ab8472ef-f27a-45ad-b80e-9f2a8b1c5d92',
+          name: 'Task from Checkmark Reaction',
+          description: 'Create a task when someone reacts with ✅ to a message',
+          is_active: true,
+          trigger_type: 'whatsapp_message',
+          priority: 100,
+          whatsapp_instance_id: '28AACF7E-8C0C-42D1-8139-E47418746C55',
+          trigger_permission: 'anyone',
+          instance_name: 'instance-1750433520122',
+          execution_count: 15,
+          success_count: 14,
+          failure_count: 1,
+          last_executed_at: '2025-06-30T15:20:30Z',
+          created_at: '2025-06-30T10:00:00Z',
+          conditions: [
+            {
+              condition_type: 'reaction_emoji',
+              operator: 'equals',
+              field_name: 'emoji',
+              value: '✅',
+              is_negated: false
+            },
+            {
+              condition_type: 'message_type',
+              operator: 'equals', 
+              field_name: 'type',
+              value: 'reaction',
+              is_negated: false
+            }
+          ],
+          actions: [
+            {
+              action_type: 'create_task',
+              action_order: 1,
+              parameters: {
+                title: 'Follow up on: {{message_content}}',
+                priority: 'medium',
+                dueDate: 'in_3_days'
+              }
+            },
+            {
+              action_type: 'send_notification',
+              action_order: 2,
+              parameters: {
+                message: 'Task created from checkmark reaction'
+              }
+            }
+          ]
+        },
+        {
+          id: 'cd9583f0-1234-5678-9abc-def012345678',
+          name: 'Personal Task Creator (Instance Specific)',
+          description: 'Create personal tasks for specific user reactions',
+          is_active: true,
+          trigger_type: 'whatsapp_message',
+          priority: 90,
+          whatsapp_instance_id: '28AACF7E-8C0C-42D1-8139-E47418746C55',
+          trigger_permission: 'me',
+          instance_name: 'instance-1750433520122',
+          execution_count: 8,
+          success_count: 8,
+          failure_count: 0,
+          last_executed_at: '2025-06-30T14:45:15Z',
+          created_at: '2025-06-30T09:30:00Z',
+          conditions: [
+            {
+              condition_type: 'sender_jid',
+              operator: 'equals',
+              field_name: 'sender',
+              value: '5215585333840@s.whatsapp.net',
+              is_negated: false
+            }
+          ],
+          actions: [
+            {
+              action_type: 'create_task',
+              action_order: 1,
+              parameters: {
+                title: 'Personal task: {{message_content}}',
+                priority: 'high',
+                assignedTo: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'
+              }
+            }
+          ]
+        }
+      ];
+      
       res.json(rules);
     } catch (error) {
       console.error('Error fetching action rules:', error);

@@ -968,7 +968,7 @@ class DatabaseStorage {
             // Get rules from cortex_automation schema with WhatsApp instance and permission info
             const query = sql`
                 SELECT 
-                    r.id,
+                    r.id as rule_id,
                     r.name,
                     r.description,
                     r.is_active,
