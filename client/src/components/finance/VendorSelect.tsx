@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, ChevronDown, User, Building2 } from "lucide-react";
+import { Check, ChevronDown, User, Building2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Vendor {
@@ -25,6 +24,7 @@ interface VendorSelectProps {
 export function VendorSelect({ value, onValueChange, placeholder = "Select vendor...", className }: VendorSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: vendors = [] } = useQuery({
@@ -52,67 +52,84 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
     onValueChange(vendor.id);
     setSearchValue(vendor.name);
     setOpen(false);
-    // Blur the input to lose focus
-    if (inputRef.current) {
-      inputRef.current.blur();
-    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchValue(e.target.value);
-    if (!open) {
-      setOpen(true);
-    }
+    setOpen(true);
   };
 
   const handleInputFocus = () => {
     setOpen(true);
   };
 
+  const handleClear = () => {
+    setSearchValue("");
+    onValueChange("");
+    setOpen(false);
+  };
+
   // Reset search value when value changes externally
   useEffect(() => {
     if (selectedVendor) {
       setSearchValue(selectedVendor.name);
-    } else {
+    } else if (!searchValue) {
       setSearchValue("");
     }
   }, [selectedVendor]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   return (
-    <div className="relative">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <div className="relative">
-            <Input
-              ref={inputRef}
-              value={searchValue}
-              onChange={handleInputChange}
-              onFocus={handleInputFocus}
-              placeholder={placeholder}
-              className={cn("pr-10", className)}
-            />
+    <div ref={containerRef} className="relative">
+      <div className="relative">
+        <Input
+          ref={inputRef}
+          value={searchValue}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          placeholder={placeholder}
+          className={cn("pr-20", className)}
+        />
+        <div className="absolute right-0 top-0 h-full flex items-center">
+          {selectedVendor && (
             <Button
               variant="ghost"
               size="sm"
-              className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-              onClick={() => setOpen(!open)}
+              className="h-full px-2 hover:bg-transparent"
+              onClick={handleClear}
               type="button"
             >
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              <X className="h-4 w-4 text-muted-foreground" />
             </Button>
-          </div>
-        </PopoverTrigger>
-        <PopoverContent 
-          className="w-[400px] p-0" 
-          align="start"
-          onInteractOutside={(e) => {
-            // Prevent closing when clicking inside
-            if (e.target instanceof Element && e.target.closest('[data-vendor-option]')) {
-              e.preventDefault();
-            }
-          }}
-        >
-          <div className="max-h-[200px] overflow-y-auto p-2">
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-full px-2 hover:bg-transparent"
+            onClick={() => setOpen(!open)}
+            type="button"
+          >
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          </Button>
+        </div>
+      </div>
+
+      {open && (
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border border-border rounded-md shadow-lg">
+          <div className="max-h-[200px] overflow-y-auto p-1">
             {filteredVendors.length === 0 ? (
               <div className="p-2 text-sm text-muted-foreground">
                 No vendors found.
@@ -122,14 +139,8 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
                 <button
                   key={vendor.id}
                   type="button"
-                  data-vendor-option
                   className="w-full flex items-center gap-2 p-2 hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer text-left"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Mouse down on vendor:', vendor.name);
-                    handleSelect(vendor);
-                  }}
+                  onClick={() => handleSelect(vendor)}
                 >
                   {vendor.type === 'contact' ? (
                     <User className="h-4 w-4 text-blue-500 flex-shrink-0" />
@@ -149,8 +160,8 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
               ))
             )}
           </div>
-        </PopoverContent>
-      </Popover>
+        </div>
+      )}
     </div>
   );
 }
