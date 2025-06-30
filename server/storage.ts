@@ -481,14 +481,14 @@ class DatabaseStorage {
             const result = await db.execute(sql`
                 INSERT INTO cortex_finance.loans (
                     lender_name, lender_entity_id, borrower_entity_id, 
-                    principal_amount, interest_rate, term_months, 
+                    principal_amount, interest_rate, interest_rate_type, term_months, 
                     payment_frequency, start_date, purpose, collateral,
-                    interest_type, moratory_rate
+                    interest_type, moratory_rate, notes
                 ) VALUES (
-                    ${loanData.lender_name}, ${loanData.lender_entity_id}, ${loanData.borrower_entity_id},
-                    ${loanData.principal_amount}, ${loanData.interest_rate}, ${loanData.term_months},
-                    ${loanData.payment_frequency}, ${loanData.start_date}, ${loanData.purpose}, ${loanData.collateral},
-                    ${loanData.interest_type || 'simple'}, ${loanData.moratory_rate || 0}
+                    ${loanData.lenderName}, ${loanData.lenderContactId || null}, ${loanData.borrowerContactId || null},
+                    ${loanData.principalAmount}, ${loanData.interestRate}, ${loanData.interestRateType || 'monthly'}, ${loanData.termMonths || null},
+                    ${loanData.paymentFrequency}, ${loanData.startDate}, ${loanData.purpose}, ${loanData.collateral || null},
+                    ${loanData.interestType || 'simple'}, ${loanData.moratoryRate || 0}, ${loanData.notes || null}
                 ) RETURNING *
             `);
             return result.rows[0];
