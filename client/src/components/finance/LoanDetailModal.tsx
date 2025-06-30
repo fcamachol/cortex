@@ -2,8 +2,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Edit3, Calendar, DollarSign, Clock, Percent, FileText } from "lucide-react";
+import { Edit3, Calendar, DollarSign, Clock, Percent, FileText, Calculator } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { calculateCustomMoratoryInterest, calculateStandardMoratoryInterest } from "@/lib/loan-calculations";
 
 interface LoanDetailModalProps {
   open: boolean;
@@ -197,6 +198,52 @@ export function LoanDetailModal({ open, onClose, loan, onEdit }: LoanDetailModal
                     )}
                     <div className="bg-white p-3 rounded border font-mono text-sm">
                       {loan.custom_formula || loan.customFormula || "No formula specified"}
+                    </div>
+                    <div className="mt-3 text-xs text-gray-600">
+                      <p><strong>Available Variables:</strong> principalAmount, interestRate, termMonths, daysOverdue, paymentFrequency</p>
+                      <p><strong>Payment Frequency:</strong> {loan.payment_frequency || loan.paymentFrequency} payments</p>
+                    </div>
+                    
+                    {/* Formula Test Preview */}
+                    <div className="mt-4 p-3 bg-blue-50 rounded border">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Calculator className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-800">Formula Test (30 days overdue)</span>
+                      </div>
+                      <div className="text-sm text-gray-700">
+                        {(() => {
+                          try {
+                            const testParams = {
+                              principalAmount: loan.principal_amount || loan.principalAmount || 0,
+                              interestRate: (loan.interest_rate || loan.interestRate || 0) / 100,
+                              termMonths: loan.term_months || loan.termMonths || 12,
+                              paymentFrequency: loan.payment_frequency || loan.paymentFrequency || 'monthly',
+                              daysOverdue: 30
+                            };
+                            
+                            const result = calculateCustomMoratoryInterest(
+                              loan.custom_formula || loan.customFormula,
+                              testParams
+                            );
+                            
+                            return (
+                              <p>
+                                <strong>30 days overdue:</strong> {formatCurrency(result)}
+                                <br />
+                                <span className="text-xs text-gray-500">
+                                  Based on {formatCurrency(testParams.principalAmount)} principal × {(testParams.interestRate * 100).toFixed(2)}% rate
+                                </span>
+                              </p>
+                            );
+                          } catch (error) {
+                            return (
+                              <p className="text-red-600">
+                                Formula error: {error instanceof Error ? error.message : 'Invalid formula'}
+                              </p>
+                            );
+                          }
+                        })()}
+                      </div>
                     </div>
                   </div>
                 )}

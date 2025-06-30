@@ -626,10 +626,23 @@ export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
                             <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">interestRate</span>
                             <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">termMonths</span>
                             <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">daysOverdue</span>
+                            <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">paymentFrequency</span>
                           </div>
-                          <p className="text-xs"><strong>Example:</strong> Daily rate from monthly interest:</p>
-                          <div className="font-mono text-xs bg-gray-50 p-2 rounded border">
-                            return principalAmount * (interestRate / 12 / 30) * daysOverdue;
+                          <p className="text-xs"><strong>Examples with frequency calculation:</strong></p>
+                          <div className="space-y-2">
+                            <div>
+                              <p className="text-xs font-semibold">Daily rate from monthly interest:</p>
+                              <div className="font-mono text-xs bg-gray-50 p-2 rounded border">
+                                return principalAmount * (interestRate / 12 / 30) * daysOverdue;
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold">Frequency-based penalty (2% per payment period):</p>
+                              <div className="font-mono text-xs bg-gray-50 p-2 rounded border">
+                                const periodsPerYear = paymentFrequency === 'monthly' ? 12 : paymentFrequency === 'quarterly' ? 4 : 1;
+                                return principalAmount * 0.02 * Math.ceil(daysOverdue / (365 / periodsPerYear));
+                              </div>
+                            </div>
                           </div>
                         </div>
                         
@@ -665,7 +678,10 @@ export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
                               </FormControl>
                               <FormMessage />
                               <p className="text-xs text-muted-foreground mt-1">
-                                Available variables: principalAmount, interestRate, termMonths, daysOverdue
+                                Available variables: principalAmount, interestRate, termMonths, daysOverdue, paymentFrequency
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Math functions available: Math.ceil, Math.floor, Math.min, Math.max, etc.
                               </p>
                             </FormItem>
                           )}
