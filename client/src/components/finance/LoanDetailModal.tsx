@@ -18,25 +18,45 @@ export function LoanDetailModal({ open, onClose, loan, onEdit }: LoanDetailModal
 
   // Calculate next payment date
   const getNextPaymentDate = () => {
-    if (!loan.payment_date) return "Not set";
+    // Use start_date as the basis for monthly calculations since payment_date is often null
+    const baseDate = loan.payment_date || loan.start_date;
+    if (!baseDate) return "Not set";
     
-    const paymentDate = new Date(loan.payment_date);
+    // Parse dates properly to avoid timezone issues
+    const parseDate = (dateString: string) => {
+      const [year, month, day] = dateString.split('-').map(Number);
+      return new Date(year, month - 1, day); // month is 0-indexed in JS
+    };
+    
+    const paymentDate = parseDate(baseDate);
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
     // If payment date is in the future, return it
     if (paymentDate > today) {
       return paymentDate.toLocaleDateString();
     }
     
-    // Calculate next payment based on frequency
+    // Calculate next payment based on frequency, preserving the day of month
     let nextPayment = new Date(paymentDate);
     
     switch (loan.payment_frequency) {
       case "monthly":
+        const originalDay = nextPayment.getDate();
         nextPayment.setMonth(nextPayment.getMonth() + 1);
+        
+        // Handle month-end edge cases (e.g., Jan 31 -> Feb 28/29)
+        if (nextPayment.getDate() !== originalDay) {
+          nextPayment.setDate(0); // Go to last day of previous month
+        }
         break;
       case "quarterly":
+        const originalDayQ = nextPayment.getDate();
         nextPayment.setMonth(nextPayment.getMonth() + 3);
+        
+        if (nextPayment.getDate() !== originalDayQ) {
+          nextPayment.setDate(0);
+        }
         break;
       case "annually":
         nextPayment.setFullYear(nextPayment.getFullYear() + 1);

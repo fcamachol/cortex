@@ -52,11 +52,18 @@ const formatCurrency = (amount: number, currency: string) => {
 };
 
 const calculateNextPaymentDate = (startDate: string, paymentDate: string | null, frequency: string) => {
-  const start = new Date(startDate);
+  // Parse dates properly to avoid timezone issues
+  const parseDate = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day); // month is 0-indexed in JS
+  };
+  
+  const start = parseDate(startDate);
   const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set to start of day for comparison
   
   // Use payment_date if available, otherwise use start_date
-  const baseDate = paymentDate ? new Date(paymentDate) : start;
+  const baseDate = paymentDate ? parseDate(paymentDate) : start;
   
   // If the base date is in the future, return it
   if (baseDate > today) {
@@ -68,14 +75,25 @@ const calculateNextPaymentDate = (startDate: string, paymentDate: string | null,
   
   switch (frequency) {
     case 'monthly':
-      // Add months until we get a future date
+      // Add months until we get a future date, preserving the day of month
       while (nextPayment <= today) {
+        const originalDay = nextPayment.getDate();
         nextPayment.setMonth(nextPayment.getMonth() + 1);
+        
+        // Handle month-end edge cases (e.g., Jan 31 -> Feb 28/29)
+        if (nextPayment.getDate() !== originalDay) {
+          nextPayment.setDate(0); // Go to last day of previous month
+        }
       }
       break;
     case 'quarterly':
       while (nextPayment <= today) {
+        const originalDay = nextPayment.getDate();
         nextPayment.setMonth(nextPayment.getMonth() + 3);
+        
+        if (nextPayment.getDate() !== originalDay) {
+          nextPayment.setDate(0);
+        }
       }
       break;
     case 'annually':
@@ -86,7 +104,12 @@ const calculateNextPaymentDate = (startDate: string, paymentDate: string | null,
     default:
       // Default to monthly
       while (nextPayment <= today) {
+        const originalDay = nextPayment.getDate();
         nextPayment.setMonth(nextPayment.getMonth() + 1);
+        
+        if (nextPayment.getDate() !== originalDay) {
+          nextPayment.setDate(0);
+        }
       }
   }
   
