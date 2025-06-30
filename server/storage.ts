@@ -996,7 +996,7 @@ class DatabaseStorage {
                     r.created_at,
                     r.updated_at,
                     -- Get associated WhatsApp instance name
-                    (SELECT instance_name FROM whatsapp.instances wi WHERE wi.id = r.whatsapp_instance_id) as instance_name,
+                    r.whatsapp_instance_id as instance_name,
                     -- Get conditions
                     COALESCE(
                         ARRAY_AGG(
