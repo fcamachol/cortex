@@ -232,7 +232,7 @@ export function AccountForm({ open, onClose, spaceId, account }: AccountFormProp
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select currency" />
+                          <SelectValue placeholder="MXN ($)" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
