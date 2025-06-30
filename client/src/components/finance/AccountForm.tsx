@@ -47,7 +47,7 @@ const accountSchema = z.object({
   institutionName: z.string().max(255).optional(),
   accountNumber: z.string().max(50).optional(),
   currentBalance: z.string().refine(val => !isNaN(parseFloat(val)), "Must be a valid number").optional(),
-  currency: z.string().default("USD"),
+  currency: z.string().default("MXN"),
   isActive: z.boolean().default(true),
   notes: z.string().optional()
 });
@@ -74,7 +74,7 @@ export function AccountForm({ open, onClose, spaceId, account }: AccountFormProp
       institutionName: account?.institutionName || "",
       accountNumber: account?.accountNumber || "",
       currentBalance: account?.currentBalance || "0.00",
-      currency: account?.currency || "USD",
+      currency: account?.currency || "MXN",
       isActive: account?.isActive ?? true,
       notes: account?.notes || ""
     }
@@ -84,8 +84,14 @@ export function AccountForm({ open, onClose, spaceId, account }: AccountFormProp
     mutationFn: async (data: AccountFormData) => {
       console.log("Mutation data received:", data);
       const payload = {
-        ...data,
-        currentBalance: parseFloat(data.currentBalance || "0")
+        name: data.accountName,
+        account_type: data.accountType,
+        institution_name: data.institutionName,
+        account_number: data.accountNumber,
+        current_balance: parseFloat(data.currentBalance || "0"),
+        currency: data.currency,
+        status: data.isActive ? "active" : "inactive",
+        description: data.notes
       };
       console.log("Payload being sent:", payload);
       
@@ -208,7 +214,7 @@ export function AccountForm({ open, onClose, spaceId, account }: AccountFormProp
                       <Input 
                         type="number" 
                         step="0.01" 
-                        placeholder="0.00" 
+                        placeholder="0.00 MXN" 
                         {...field} 
                       />
                     </FormControl>
