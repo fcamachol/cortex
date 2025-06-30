@@ -288,7 +288,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>Bill Date</FormLabel>
-                <Popover>
+                <Popover modal={true}>
                   <PopoverTrigger asChild>
                     <FormControl>
                       <Button
