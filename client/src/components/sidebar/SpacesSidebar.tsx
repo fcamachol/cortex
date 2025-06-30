@@ -14,16 +14,20 @@ import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautif
 import { apiRequest } from '@/lib/queryClient';
 
 interface Space {
-  spaceId: number;
-  spaceName: string;
+  id: string;
+  name: string;
   description?: string;
   icon?: string;
   color?: string;
   category?: string;
-  parentSpaceId?: number;
+  parent_space_id?: string;
+  type?: string;
+  privacy?: string;
+  level?: number;
+  path?: string;
   childSpaces?: Space[];
-  isArchived: boolean;
-  isFavorite: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface SpaceItem {
@@ -37,17 +41,17 @@ interface SpaceItem {
 
 interface SpacesSidebarProps {
   onSpaceSelect?: (space: Space) => void;
-  selectedSpaceId?: number;
+  selectedSpaceId?: string;
   onNavigateToSpaces?: () => void;
 }
 
 export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpaces }: SpacesSidebarProps) {
-  const [expandedSpaces, setExpandedSpaces] = useState<Set<number>>(new Set());
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['work', 'personal']));
+  const [expandedSpaces, setExpandedSpaces] = useState<Set<string>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['work', 'personal', 'business']));
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [parentSpaceId, setParentSpaceId] = useState<number | undefined>();
+  const [parentSpaceId, setParentSpaceId] = useState<string | undefined>();
   const [showCreateItemDialog, setShowCreateItemDialog] = useState(false);
-  const [selectedSpaceId_, setSelectedSpaceId] = useState<number | undefined>();
+  const [selectedSpaceId_, setSelectedSpaceId] = useState<string | undefined>();
   const [selectedItemType, setSelectedItemType] = useState<string>('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -62,7 +66,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
       if (Array.isArray(data)) return data;
       // If it's an object with categories, flatten to array but preserve childSpaces
       const flatSpaces = Object.values(data).flat();
-      console.log('Spaces with children:', flatSpaces.filter(s => s.childSpaces && s.childSpaces.length > 0).map(s => `${s.spaceName}: ${s.childSpaces.length} children`));
+      console.log('Spaces with children:', flatSpaces.filter(s => s.childSpaces && s.childSpaces.length > 0).map(s => `${s.name}: ${s.childSpaces.length} children`));
       return flatSpaces;
     }
   });
@@ -83,7 +87,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
     enabled: !!spaces && spaces.length > 0
   });
 
-  const toggleExpanded = (spaceId: number) => {
+  const toggleExpanded = (spaceId: string) => {
     const newExpanded = new Set(expandedSpaces);
     if (newExpanded.has(spaceId)) {
       newExpanded.delete(spaceId);
