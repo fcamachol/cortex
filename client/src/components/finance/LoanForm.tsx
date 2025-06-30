@@ -536,8 +536,8 @@ export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={createLoan.isPending}>
-                {createLoan.isPending ? "Creating..." : "Create Loan"}
+              <Button type="submit" disabled={saveLoan.isPending}>
+                {saveLoan.isPending ? (editingLoan ? "Updating..." : "Creating...") : (editingLoan ? "Update Loan" : "Create Loan")}
               </Button>
             </div>
           </form>
