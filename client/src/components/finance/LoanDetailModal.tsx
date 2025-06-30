@@ -224,12 +224,9 @@ export function LoanDetailModal({ open, onClose, loan, onEdit }: LoanDetailModal
                               daysOverdue: 30
                             };
                             
-                            // Calculate monthly payment for breakdown
-                            const monthlyRate = testParams.interestRate / 12;
-                            const monthlyPayment = testParams.principalAmount * 
-                              (monthlyRate * Math.pow(1 + monthlyRate, testParams.termMonths)) / 
-                              (Math.pow(1 + monthlyRate, testParams.termMonths) - 1);
-                            const dailyPenalty = monthlyPayment / 30;
+                            // Use the actual monthly payment calculation from above
+                            const actualMonthlyPayment = calculateMonthlyPayment();
+                            const dailyPenalty = actualMonthlyPayment / 30;
                             
                             const result = calculateCustomMoratoryInterest(
                               loan.custom_formula || loan.customFormula,
@@ -243,8 +240,8 @@ export function LoanDetailModal({ open, onClose, loan, onEdit }: LoanDetailModal
                                 </p>
                                 <div className="text-xs text-gray-500 space-y-1">
                                   <p><strong>Calculation breakdown:</strong></p>
-                                  <p>• Monthly payment: {formatCurrency(monthlyPayment)}</p>
-                                  <p>• Daily penalty: {formatCurrency(dailyPenalty)} ({formatCurrency(monthlyPayment)}/30)</p>
+                                  <p>• Monthly payment: {formatCurrency(actualMonthlyPayment)}</p>
+                                  <p>• Daily penalty: {formatCurrency(dailyPenalty)} ({formatCurrency(actualMonthlyPayment)}/30)</p>
                                   <p>• For 30 days: {formatCurrency(dailyPenalty)} × 30 = {formatCurrency(result)}</p>
                                 </div>
                               </div>
