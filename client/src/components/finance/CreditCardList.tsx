@@ -202,7 +202,7 @@ export function CreditCardList() {
                     <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
                       <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
                       <span className="text-sm text-red-700 dark:text-red-300">
-                        Over limit by {formatCurrency(debt - Math.abs(Number(card.current_balance)), card.currency)}
+                        Over limit by {formatCurrency(Math.abs(Number(card.current_balance)) - Number(card.credit_limit), card.currency)}
                       </span>
                     </div>
                   )}
