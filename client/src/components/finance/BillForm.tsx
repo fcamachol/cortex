@@ -72,22 +72,42 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
       bill_date: new Date(),
       due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       description: "",
-      status: "draft",
+      status: "pending",
+      is_recurring: false,
+      recurrence_type: undefined,
+      recurrence_interval: 1,
+      recurrence_end_date: undefined,
+      auto_pay_enabled: false,
+      auto_pay_account_id: undefined,
     },
   });
 
   const createBillMutation = useMutation({
     mutationFn: async (data: BillFormData) => {
-      const response = await fetch("/api/finance/payables", {
+      // Choose the appropriate endpoint based on whether it's recurring
+      const endpoint = data.is_recurring 
+        ? "/api/finance/recurring-payables" 
+        : "/api/finance/payables";
+
+      const requestData = {
+        ...data,
+        bill_date: data.bill_date.toISOString().split('T')[0],
+        due_date: data.due_date.toISOString().split('T')[0],
+        recurrence_end_date: data.recurrence_end_date 
+          ? data.recurrence_end_date.toISOString().split('T')[0] 
+          : undefined,
+        // Remove undefined values to clean up the request
+        recurrence_type: data.is_recurring ? data.recurrence_type : undefined,
+        recurrence_interval: data.is_recurring ? data.recurrence_interval : undefined,
+        auto_pay_account_id: data.auto_pay_enabled ? data.auto_pay_account_id : undefined,
+      };
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...data,
-          bill_date: data.bill_date.toISOString().split('T')[0],
-          due_date: data.due_date.toISOString().split('T')[0],
-        }),
+        body: JSON.stringify(requestData),
       });
       if (!response.ok) {
         throw new Error("Failed to create bill");
@@ -95,17 +115,23 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
       return response.json();
     },
     onSuccess: () => {
+      // Invalidate both payables and recurring bills queries
       queryClient.invalidateQueries({ queryKey: ["/api/finance/payables"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/finance/recurring-bills"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/finance/bills-with-recurrence"] });
+      
+      const billType = form.getValues("is_recurring") ? "recurring bill" : "bill";
       toast({
         title: "Success",
-        description: "Bill created successfully",
+        description: `${billType} created successfully`,
       });
       onSuccess?.();
     },
     onError: (error) => {
+      const billType = form.getValues("is_recurring") ? "recurring bill" : "bill";
       toast({
         title: "Error",
-        description: "Failed to create bill",
+        description: `Failed to create ${billType}`,
         variant: "destructive",
       });
       console.error("Error creating bill:", error);
@@ -281,6 +307,181 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
               </FormItem>
             )}
           />
+        </div>
+
+        {/* Recurring Bills Section */}
+        <div className="border rounded-lg p-4 space-y-4">
+          <div className="flex items-center space-x-2">
+            <Repeat className="h-5 w-5 text-blue-600" />
+            <h3 className="text-lg font-medium">Recurring Bill Settings</h3>
+          </div>
+          
+          <FormField
+            control={form.control}
+            name="is_recurring"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-base">Make this a recurring bill</FormLabel>
+                  <div className="text-sm text-muted-foreground">
+                    Automatically create new bills based on schedule
+                  </div>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {form.watch("is_recurring") && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="recurrence_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Recurrence Type</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select frequency" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="quarterly">Quarterly</SelectItem>
+                          <SelectItem value="annual">Annual</SelectItem>
+                          <SelectItem value="custom">Custom</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {form.watch("recurrence_type") === "custom" && (
+                  <FormField
+                    control={form.control}
+                    name="recurrence_interval"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Interval (days)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="1"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+
+              <FormField
+                control={form.control}
+                name="recurrence_end_date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>End Date (Optional)</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>No end date (continues indefinitely)</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date < new Date()}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="border-t pt-4">
+                <div className="flex items-center space-x-2 mb-3">
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                  <h4 className="font-medium">Auto-Pay Settings</h4>
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="auto_pay_enabled"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Enable Auto-Pay</FormLabel>
+                        <div className="text-sm text-muted-foreground">
+                          Automatically pay bills when due
+                        </div>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {form.watch("auto_pay_enabled") && (
+                  <FormField
+                    control={form.control}
+                    name="auto_pay_account_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment Account</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select account for auto-pay" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="account1">Main Checking Account</SelectItem>
+                            <SelectItem value="account2">Business Account</SelectItem>
+                            <SelectItem value="account3">Savings Account</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         <FormField

@@ -12,7 +12,8 @@ import { AccountForm } from "@/components/finance/AccountForm";
 import { AccountList } from "@/components/finance/AccountList";
 import { CreditCardForm } from "@/components/finance/CreditCardForm";
 import { BillsManager } from "@/components/finance/BillsManager";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Receipt, CreditCard, Filter, Building2, Clock } from "lucide-react";
+import { RecurringBillsManager } from "@/components/finance/RecurringBillsManager";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Receipt, CreditCard, Filter, Building2, Clock, Repeat } from "lucide-react";
 
 // Payment calculation functions
 const calculateMonthlyPayment = (principal: number, interestRate: number, termMonths: number, interestRateType: string) => {
@@ -263,10 +264,14 @@ export default function FinancePage() {
 
           {/* Main Content Tabs */}
           <Tabs defaultValue="dashboard" className="w-full">
-            <TabsList className="grid w-full grid-cols-7">
+            <TabsList className="grid w-full grid-cols-8">
               <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
               <TabsTrigger value="transactions">Transactions</TabsTrigger>
               <TabsTrigger value="payables">Bills</TabsTrigger>
+              <TabsTrigger value="recurring" className="flex items-center space-x-1">
+                <Repeat className="h-4 w-4" />
+                <span>Recurring</span>
+              </TabsTrigger>
               <TabsTrigger value="loans">Loans</TabsTrigger>
               <TabsTrigger value="accounts">Accounts</TabsTrigger>
               <TabsTrigger value="credit-cards">Credit Cards</TabsTrigger>
