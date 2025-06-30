@@ -2239,21 +2239,24 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Get financial dashboard data
   app.get('/api/finance/dashboard', async (req: Request, res: Response) => {
     try {
-      const [
-        totalIncome,
-        totalExpenses,
-        pendingBills,
-        activeLoans,
-        recentTransactions
-      ] = await Promise.all([
-        storage.getFinancialSummary('income'),
-        storage.getFinancialSummary('expense'),
-        storage.getPendingPayables(),
-        storage.getActiveLoans(),
-        storage.getRecentTransactions(10)
-      ]);
+      console.log('🏦 Fetching finance dashboard data...');
+      
+      const totalIncome = await storage.getFinancialSummary('income');
+      console.log('✅ Got income data:', totalIncome);
+      
+      const totalExpenses = await storage.getFinancialSummary('expense');
+      console.log('✅ Got expense data:', totalExpenses);
+      
+      const pendingBills = await storage.getPendingPayables();
+      console.log('✅ Got pending bills:', pendingBills);
+      
+      const activeLoans = await storage.getActiveLoans();
+      console.log('✅ Got active loans:', activeLoans);
+      
+      const recentTransactions = await storage.getRecentTransactions(10);
+      console.log('✅ Got recent transactions:', recentTransactions.length);
 
-      res.json({
+      const dashboardData = {
         totalIncome: totalIncome.total || 0,
         incomeChange: totalIncome.change || 0,
         totalExpenses: totalExpenses.total || 0,
@@ -2263,10 +2266,13 @@ export async function registerRoutes(app: Express): Promise<void> {
         activeLoans: activeLoans.count || 0,
         totalLoanBalance: activeLoans.total || 0,
         recentTransactions: recentTransactions || []
-      });
+      };
+      
+      console.log('🎯 Sending dashboard data:', Object.keys(dashboardData));
+      res.json(dashboardData);
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      res.status(500).json({ error: 'Failed to fetch dashboard data' });
+      console.error('❌ Error fetching dashboard data:', error);
+      res.status(500).json({ error: 'Failed to fetch dashboard data', details: error.message });
     }
   });
 

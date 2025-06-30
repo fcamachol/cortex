@@ -905,6 +905,103 @@ class DatabaseStorage {
         // Basic phone normalization
         return phone.replace(/\D/g, '');
     }
+
+    // =============================
+    // FINANCE METHODS
+    // =============================
+
+    async getFinancialSummary(type: 'income' | 'expense'): Promise<{ total: number; change: number }> {
+        try {
+            // Return placeholder data for now
+            if (type === 'income') {
+                return { total: 45000, change: 12.5 };
+            } else {
+                return { total: 32000, change: -8.2 };
+            }
+        } catch (error) {
+            console.error(`Error getting ${type} summary:`, error);
+            return { total: 0, change: 0 };
+        }
+    }
+
+    async getPendingPayables(): Promise<{ count: number; total: number }> {
+        try {
+            return { count: 5, total: 12500 };
+        } catch (error) {
+            console.error('Error getting pending payables:', error);
+            return { count: 0, total: 0 };
+        }
+    }
+
+    async getActiveLoans(): Promise<{ count: number; total: number }> {
+        try {
+            return { count: 2, total: 125000 };
+        } catch (error) {
+            console.error('Error getting active loans:', error);
+            return { count: 0, total: 0 };
+        }
+    }
+
+    async getRecentTransactions(limit: number = 10): Promise<any[]> {
+        try {
+            return [
+                {
+                    transactionId: 1,
+                    amount: 2500,
+                    type: 'income',
+                    description: 'Client Payment - Project ABC',
+                    transactionDate: '2025-06-30',
+                    categoryName: 'Revenue'
+                },
+                {
+                    transactionId: 2,
+                    amount: 850,
+                    type: 'expense',
+                    description: 'Office Supplies',
+                    transactionDate: '2025-06-29',
+                    categoryName: 'Operations'
+                },
+                {
+                    transactionId: 3,
+                    amount: 3200,
+                    type: 'income',
+                    description: 'Consulting Services',
+                    transactionDate: '2025-06-28',
+                    categoryName: 'Revenue'
+                }
+            ];
+        } catch (error) {
+            console.error('Error getting recent transactions:', error);
+            return [];
+        }
+    }
+
+    async getFinanceCategories(): Promise<any[]> {
+        try {
+            return [
+                { categoryId: 1, name: 'Revenue', type: 'income', parentId: null },
+                { categoryId: 2, name: 'Operations', type: 'expense', parentId: null },
+                { categoryId: 3, name: 'Marketing', type: 'expense', parentId: null },
+                { categoryId: 4, name: 'Travel', type: 'expense', parentId: null }
+            ];
+        } catch (error) {
+            console.error('Error getting finance categories:', error);
+            return [];
+        }
+    }
+
+    async createFinanceCategory(data: any): Promise<any> {
+        try {
+            return {
+                categoryId: Date.now(),
+                ...data,
+                createdAt: new Date()
+            };
+        } catch (error) {
+            console.error('Error creating finance category:', error);
+            throw error;
+        }
+    }
 }
 
 export const storage = new DatabaseStorage();
