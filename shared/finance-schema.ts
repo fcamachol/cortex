@@ -112,6 +112,20 @@ export const cortexAccounts = cortexFinanceSchema.table("accounts", {
   activeIdx: index("accounts_active_idx").on(table.isActive),
 }));
 
+// Credit Card Details - Additional information for credit card accounts
+export const cortexCreditCardDetails = cortexFinanceSchema.table("credit_card_details", {
+  accountId: varchar("account_id", { length: 50 }).primaryKey().references(() => cortexAccounts.id, { onDelete: "cascade" }),
+  creditLimit: numeric("credit_limit", { precision: 15, scale: 2 }).notNull(),
+  apr: numeric("apr", { precision: 6, scale: 4 }).notNull(), // Annual Percentage Rate (e.g., 24.99% stored as 0.2499)
+  statementClosingDay: integer("statement_closing_day").notNull(), // Day of month (1-31)
+  paymentDueDaysAfterStatement: integer("payment_due_days_after_statement").default(21).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  creditLimitIdx: index("credit_card_details_credit_limit_idx").on(table.creditLimit),
+  aprIdx: index("credit_card_details_apr_idx").on(table.apr),
+}));
+
 // Transactions table with proper double-entry accounting
 export const cortexTransactions = cortexFinanceSchema.table("transactions", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -178,6 +192,11 @@ export const insertAccountSchema = createInsertSchema(cortexAccounts).omit({
 
 export const insertTransactionSchema = createInsertSchema(cortexTransactions).omit({
   id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCreditCardDetailsSchema = createInsertSchema(cortexCreditCardDetails).omit({
   createdAt: true,
   updatedAt: true,
 });
