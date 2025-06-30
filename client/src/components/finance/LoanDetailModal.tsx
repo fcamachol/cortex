@@ -228,10 +228,8 @@ export function LoanDetailModal({ open, onClose, loan, onEdit }: LoanDetailModal
                             const actualMonthlyPayment = calculateMonthlyPayment();
                             const dailyPenalty = actualMonthlyPayment / 30;
                             
-                            const result = calculateCustomMoratoryInterest(
-                              loan.custom_formula || loan.customFormula,
-                              testParams
-                            );
+                            // For the test calculation, use simple daily penalty: (monthly payment / 30) * days overdue
+                            const result = dailyPenalty * 30;
                             
                             return (
                               <div className="space-y-2">
