@@ -100,7 +100,16 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
   });
 
   const onSubmit = (data: LoanFormData) => {
-    createLoan.mutate(data);
+    // Convert empty strings to null for optional fields
+    const processedData = {
+      ...data,
+      termMonths: data.termMonths === "" ? null : Number(data.termMonths),
+      collateral: data.collateral === "" ? null : data.collateral,
+      notes: data.notes === "" ? null : data.notes,
+      lenderContactId: data.lenderContactId === "" ? null : data.lenderContactId,
+      borrowerContactId: data.borrowerContactId === "" ? null : data.borrowerContactId,
+    };
+    createLoan.mutate(processedData);
   };
 
   const purposes = [
