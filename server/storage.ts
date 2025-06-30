@@ -17,6 +17,9 @@ import {
 // Import cortex automation schema
 import { automationRules } from '../shared/cortex-automations-schema';
 
+// Import finance schema
+import { cortexCreditCards } from '../shared/finance-schema';
+
 class DatabaseStorage {
     // =============================
     // WHATSAPP CORE METHODS
@@ -858,7 +861,11 @@ class DatabaseStorage {
                 WHERE is_active = true
                 ORDER BY card_name ASC
             `);
-            return result.rows;
+            console.log('Database result for credit cards:', result);
+            console.log('Result rows:', result.rows);
+            console.log('Result type:', typeof result);
+            console.log('Result keys:', Object.keys(result));
+            return result.rows || [];
         } catch (error) {
             console.error('Error fetching credit cards:', error);
             return [];

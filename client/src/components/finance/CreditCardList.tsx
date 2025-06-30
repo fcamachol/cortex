@@ -48,12 +48,6 @@ export function CreditCardList() {
 
   const { data: creditCards = [], isLoading, error, refetch } = useQuery({
     queryKey: ["/api/finance/credit-cards"],
-    queryFn: async () => {
-      const response = await apiRequest("GET", "/api/finance/credit-cards");
-      console.log("Credit Cards API Response:", response);
-      // Ensure response is always an array
-      return Array.isArray(response) ? response : [];
-    },
     staleTime: 0, // Always refetch
     gcTime: 0 // Don't cache
   });
