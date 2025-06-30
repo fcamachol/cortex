@@ -145,9 +145,9 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
 
   // Update space parent mutation
   const updateSpaceMutation = useMutation({
-    mutationFn: async ({ spaceId, newParentId }: { spaceId: number; newParentId?: number }) => {
+    mutationFn: async ({ spaceId, newParentId }: { spaceId: string; newParentId?: string }) => {
       const response = await apiRequest('PATCH', `/api/spaces/${spaceId}`, {
-        parentSpaceId: newParentId
+        parent_space_id: newParentId
       });
       return response.json();
     },
@@ -155,8 +155,8 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
       queryClient.invalidateQueries({ queryKey: ['/api/spaces'] });
       
       // Auto-expand parent space when a subspace is created
-      if (updatedSpace.parentSpaceId) {
-        setExpandedSpaces(prev => new Set([...prev, updatedSpace.parentSpaceId]));
+      if (updatedSpace.parent_space_id) {
+        setExpandedSpaces(prev => new Set([...prev, updatedSpace.parent_space_id]));
       }
       
       toast({
@@ -177,16 +177,16 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
     if (!result.destination) return;
 
     const { draggableId, destination } = result;
-    const spaceId = parseInt(draggableId.replace('space-', ''));
+    const spaceId = draggableId.replace('space-', '');
     
     // Extract parent ID from destination droppableId
-    let newParentId: number | undefined;
+    let newParentId: string | undefined;
     
     if (destination.droppableId.startsWith('space-children-')) {
-      newParentId = parseInt(destination.droppableId.replace('space-children-', ''));
+      newParentId = destination.droppableId.replace('space-children-', '');
     } else if (destination.droppableId.startsWith('space-')) {
       // Dropping onto a space makes it a child of that space
-      newParentId = parseInt(destination.droppableId.replace('space-', ''));
+      newParentId = destination.droppableId.replace('space-', '');
     } else if (destination.droppableId.startsWith('category-')) {
       // Dropping into category means making it a root space
       newParentId = undefined;
@@ -194,13 +194,13 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
 
     // Don't allow dropping a space into itself or its children
     const spacesArray = Array.isArray(spaces) ? spaces : Object.values(spaces || {}).flat();
-    const draggedSpace = spacesArray.find((s: Space) => s.spaceId === spaceId);
+    const draggedSpace = spacesArray.find((s: Space) => s.id === spaceId);
     
     if (draggedSpace && newParentId) {
-      const isDescendant = (parentId: number, checkId: number): boolean => {
-        const children = spacesArray.filter((s: Space) => s.parentSpaceId === parentId);
+      const isDescendant = (parentId: string, checkId: string): boolean => {
+        const children = spacesArray.filter((s: Space) => s.parent_space_id === parentId);
         return children.some((child: Space) => 
-          child.spaceId === checkId || isDescendant(child.spaceId, checkId)
+          child.id === checkId || isDescendant(child.id, checkId)
         );
       };
       
@@ -215,7 +215,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
     }
 
     // Check if the move actually changes anything
-    if (draggedSpace?.parentSpaceId === newParentId) {
+    if (draggedSpace?.parent_space_id === newParentId) {
       return; // No change needed
     }
 
