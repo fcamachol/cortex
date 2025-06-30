@@ -232,7 +232,7 @@ export function BillsManager() {
                   Create Bill
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto relative z-10">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Create New Bill</DialogTitle>
                 </DialogHeader>
@@ -259,7 +259,7 @@ export function BillsManager() {
                   Create Invoice
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto relative z-10">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Create New Invoice</DialogTitle>
                 </DialogHeader>

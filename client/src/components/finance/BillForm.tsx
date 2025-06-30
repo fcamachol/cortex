@@ -292,7 +292,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>Bill Date</FormLabel>
-                <Popover modal={false}>
+                <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
                       <Button
@@ -311,7 +311,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 z-[9999] pointer-events-auto" align="start">
+                  <PopoverContent className="w-auto p-0 z-50" align="start">
                     <Calendar
                       mode="single"
                       selected={field.value}
@@ -379,7 +379,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>Due Date</FormLabel>
-                <Popover modal={false}>
+                <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
                       <Button
@@ -398,7 +398,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 z-[9999] pointer-events-auto" align="start">
+                  <PopoverContent className="w-auto p-0 z-50" align="start">
                     <Calendar
                       mode="single"
                       selected={field.value}
@@ -499,7 +499,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Recurrence Start Date</FormLabel>
-                    <Popover modal={false}>
+                    <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
@@ -518,7 +518,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 z-[9999] pointer-events-auto" align="start">
+                      <PopoverContent className="w-auto p-0 z-50" align="start">
                         <Calendar
                           mode="single"
                           selected={field.value}
@@ -539,7 +539,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>End Date (Optional)</FormLabel>
-                    <Popover modal={false}>
+                    <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
@@ -558,7 +558,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 z-[9999] pointer-events-auto" align="start">
+                      <PopoverContent className="w-auto p-0 z-50" align="start">
                         <Calendar
                           mode="single"
                           selected={field.value}
