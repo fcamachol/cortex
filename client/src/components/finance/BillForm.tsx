@@ -32,6 +32,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { VendorSelect } from "./VendorSelect";
 
 const billFormSchema = z.object({
   bill_number: z.string().min(1, "Bill number is required"),
@@ -58,7 +59,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
     resolver: zodResolver(billFormSchema),
     defaultValues: {
       bill_number: `BILL-${Date.now()}`,
-      vendor_entity_id: "cv_unknown_vendor",
+      vendor_entity_id: "",
       amount: 0,
       bill_date: new Date(),
       due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
@@ -131,18 +132,13 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Vendor</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select vendor" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="cv_unknown_vendor">Unknown Vendor</SelectItem>
-                    <SelectItem value="cv_supplier_1">Supplier 1</SelectItem>
-                    <SelectItem value="cv_supplier_2">Supplier 2</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <VendorSelect
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Select vendor..."
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}

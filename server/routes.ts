@@ -2448,6 +2448,46 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Get vendors (contacts and companies for bill forms)
+  app.get('/api/finance/vendors', async (req: Request, res: Response) => {
+    try {
+      const [contacts, companies] = await Promise.all([
+        storage.getCortexPersons(),
+        storage.getCompanies()
+      ]);
+      
+      // Transform contacts to vendor format
+      const contactVendors = contacts.map(contact => ({
+        id: contact.id,
+        name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unnamed Contact',
+        type: 'contact',
+        description: contact.profession || contact.company || '',
+        email: contact.primary_email || '',
+        phone: contact.primary_phone || ''
+      }));
+      
+      // Transform companies to vendor format
+      const companyVendors = companies.map(company => ({
+        id: company.id,
+        name: company.company_name || 'Unnamed Company',
+        type: 'company',
+        description: company.business_type || '',
+        email: company.email || '',
+        phone: company.phone || ''
+      }));
+      
+      // Combine and sort by name
+      const allVendors = [...contactVendors, ...companyVendors]
+        .filter(vendor => vendor.name && vendor.name !== 'Unnamed Contact' && vendor.name !== 'Unnamed Company')
+        .sort((a, b) => a.name.localeCompare(b.name));
+      
+      res.json(allVendors);
+    } catch (error) {
+      console.error('Error fetching vendors:', error);
+      res.status(500).json({ error: 'Failed to fetch vendors' });
+    }
+  });
+
   // Get loans
   app.get('/api/finance/loans', async (req: Request, res: Response) => {
     try {
