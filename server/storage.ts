@@ -463,19 +463,6 @@ class DatabaseStorage {
     // FINANCE LOAN METHODS
     // =============================
     
-    async getLoans(): Promise<any[]> {
-        try {
-            const result = await db.execute(sql`
-                SELECT * FROM cortex_finance.loans
-                ORDER BY created_at DESC
-            `);
-            return result.rows;
-        } catch (error) {
-            console.error('Error fetching loans:', error);
-            return [];
-        }
-    }
-    
     async createLoan(loanData: any): Promise<any> {
         try {
             const result = await db.execute(sql`
@@ -533,6 +520,74 @@ class DatabaseStorage {
         } catch (error) {
             console.error('Error updating loan:', error);
             throw error;
+        }
+    }
+
+    // =============================
+    // CORTEX FINANCE METHODS
+    // =============================
+    
+    async getPayables(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_finance.bills_payable 
+                ORDER BY due_date DESC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching payables:', error);
+            return [];
+        }
+    }
+
+    async createPayable(payableData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO cortex_finance.bills_payable (
+                    bill_number, vendor_entity_id, description, amount, 
+                    bill_date, due_date, status, created_by_entity_id
+                ) VALUES (
+                    ${payableData.bill_number || `BILL-${Date.now()}`},
+                    ${payableData.vendor_entity_id || 'cv_unknown_vendor'},
+                    ${payableData.description || ''},
+                    ${payableData.amount || 0},
+                    ${payableData.bill_date || new Date().toISOString().split('T')[0]},
+                    ${payableData.due_date || new Date().toISOString().split('T')[0]},
+                    ${payableData.status || 'draft'},
+                    ${'7804247f-3ae8-4eb2-8c6d-2c44f967ad42'}
+                )
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating payable:', error);
+            throw error;
+        }
+    }
+
+    async getLoans(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_finance.loans 
+                ORDER BY start_date DESC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching loans:', error);
+            return [];
+        }
+    }
+
+    async getTransactions(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_finance.transactions 
+                ORDER BY transaction_date DESC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching transactions:', error);
+            return [];
         }
     }
 
