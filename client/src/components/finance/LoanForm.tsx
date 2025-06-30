@@ -47,9 +47,10 @@ type LoanFormData = z.infer<typeof loanSchema>;
 interface LoanFormProps {
   open: boolean;
   onClose: () => void;
+  editingLoan?: any;
 }
 
-export function LoanForm({ open, onClose }: LoanFormProps) {
+export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -70,23 +71,23 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
   const form = useForm<LoanFormData>({
     resolver: zodResolver(loanSchema),
     defaultValues: {
-      lenderName: "",
-      principalAmount: "0",
-      interestRate: "0",
-      interestRateType: "monthly",
-      termMonths: "",
-      startDate: new Date().toISOString().split('T')[0],
-      paymentDate: "",
-      paymentFrequency: "monthly",
-      currency: "MXN",
-      purpose: "",
-      collateral: "",
-      notes: "",
-      lenderContactId: "",
-      borrowerContactId: "",
-      hasMoratoryInterest: false,
-      moratoryRate: "0",
-      moratoryRateType: "monthly",
+      lenderName: editingLoan?.lender_name || "",
+      principalAmount: editingLoan?.principal_amount?.toString() || "0",
+      interestRate: editingLoan?.interest_rate?.toString() || "0",
+      interestRateType: editingLoan?.interest_rate_type || "monthly",
+      termMonths: editingLoan?.term_months?.toString() || "",
+      startDate: editingLoan?.start_date || new Date().toISOString().split('T')[0],
+      paymentDate: editingLoan?.payment_date || "",
+      paymentFrequency: editingLoan?.payment_frequency || "monthly",
+      currency: editingLoan?.currency || "MXN",
+      purpose: editingLoan?.purpose || "",
+      collateral: editingLoan?.collateral || "",
+      notes: editingLoan?.notes || "",
+      lenderContactId: editingLoan?.lender_contact_id || "",
+      borrowerContactId: editingLoan?.borrower_contact_id || "",
+      hasMoratoryInterest: editingLoan?.has_moratory_interest || false,
+      moratoryRate: editingLoan?.moratory_rate?.toString() || "0",
+      moratoryRateType: editingLoan?.moratory_rate_type || "monthly",
     },
   });
 

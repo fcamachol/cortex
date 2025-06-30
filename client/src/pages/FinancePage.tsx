@@ -99,6 +99,7 @@ export default function FinancePage() {
   const [showAccountForm, setShowAccountForm] = useState(false);
   const [showCreditCardForm, setShowCreditCardForm] = useState(false);
   const [dateFilter, setDateFilter] = useState("this-month");
+  const [editingLoan, setEditingLoan] = useState<any>(null);
 
   // Fetch financial overview
   const { data: overview = {} } = useQuery({
@@ -419,7 +420,11 @@ export default function FinancePage() {
                         );
                         
                         return (
-                          <div key={index} className="flex justify-between items-center p-4 border rounded-lg">
+                          <div 
+                            key={index} 
+                            className="flex justify-between items-center p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => setEditingLoan(loan)}
+                          >
                             <div className="flex-1">
                               <p className="font-medium">{loan.lender_name || "Loan"}</p>
                               <p className="text-sm text-muted-foreground">
@@ -551,6 +556,13 @@ export default function FinancePage() {
       <LoanForm 
         open={showLoanForm} 
         onClose={() => setShowLoanForm(false)} 
+      />
+
+      {/* Edit Loan Form Modal */}
+      <LoanForm 
+        open={!!editingLoan} 
+        onClose={() => setEditingLoan(null)} 
+        editingLoan={editingLoan}
       />
 
       {/* Account Form Modal */}
