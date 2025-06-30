@@ -33,8 +33,12 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
 
   const selectedVendor = vendors.find(vendor => vendor.id === value);
 
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+  };
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -71,7 +75,7 @@ export function VendorSelect({ value, onValueChange, placeholder = "Select vendo
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0 z-[9999]" align="start">
+      <PopoverContent className="w-full p-0" align="start" style={{ zIndex: 9999 }}>
         <Command>
           <CommandInput placeholder="Search vendors..." />
           <CommandList>
