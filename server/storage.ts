@@ -817,6 +817,9 @@ class DatabaseStorage {
                     r.priority,
                     r.created_by,
                     r.space_id,
+                    r.whatsapp_instance_id,
+                    r.trigger_permission,
+                    r.allowed_user_ids,
                     array_agg(
                         json_build_object(
                             'condition_type', rc.condition_type,
@@ -840,7 +843,7 @@ class DatabaseStorage {
                 LEFT JOIN cortex_automation.rule_actions ra ON r.id = ra.rule_id
                 WHERE r.trigger_type = ${triggerType}
                 AND (r.is_active IS NULL OR r.is_active = true)
-                GROUP BY r.id, r.name, r.description, r.is_active, r.trigger_type, r.priority, r.created_by, r.space_id
+                GROUP BY r.id, r.name, r.description, r.is_active, r.trigger_type, r.priority, r.created_by, r.space_id, r.whatsapp_instance_id, r.trigger_permission, r.allowed_user_ids
             `;
             
             const result = await db.execute(query);

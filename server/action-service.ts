@@ -71,7 +71,7 @@ export const ActionService = {
     },
 
     async triggerAction(instanceId: string, triggerType: string, triggerValue: string, context: any): Promise<void> {
-        console.log(`🧠 ActionService processing trigger: ${triggerType} -> ${triggerValue}`);
+        console.log(`🧠 ActionService processing trigger: ${triggerType} -> ${triggerValue} from instance: ${instanceId}`);
         
         try {
             // 1. Find matching action rules from cortex_automation schema
@@ -84,16 +84,29 @@ export const ActionService = {
                 return;
             }
 
-            // 2. Filter rules based on conditions matching the context
+            // 2. Filter rules based on instance permissions and conditions
             const matchingRules = potentialRules.filter(rule => {
+                // Check if rule applies to this WhatsApp instance
+                if (rule.whatsapp_instance_id && rule.whatsapp_instance_id !== instanceId) {
+                    console.log(`⏭️  Skipping rule "${rule.name}" - not for instance ${instanceId}`);
+                    return false;
+                }
+                
+                // Check user permissions for WhatsApp triggers
+                if (triggerType === 'whatsapp_message' && !this.checkUserPermissions(rule, context)) {
+                    console.log(`🔒 Skipping rule "${rule.name}" - user permission denied`);
+                    return false;
+                }
+                
+                // Check rule conditions
                 return this.checkRuleConditions(rule.conditions, context);
             });
 
-            console.log(`🎯 Found ${matchingRules.length} matching rules after condition filtering`);
+            console.log(`🎯 Found ${matchingRules.length} matching rules after filtering`);
 
             // 3. Process each matching rule
             for (const rule of matchingRules) {
-                console.log(`⚡ Executing action rule: ${rule.name}`);
+                console.log(`⚡ Executing action rule: ${rule.name} for instance: ${instanceId}`);
                 
                 // 4. Execute each action for this rule
                 if (rule.actions && rule.actions.length > 0) {
@@ -111,6 +124,33 @@ export const ActionService = {
             }
         } catch (error) {
             console.error(`❌ Error in triggerAction:`, error);
+        }
+    },
+
+    checkUserPermissions(rule: any, context: any): boolean {
+        // If no permission set, default to anyone can trigger
+        if (!rule.trigger_permission) {
+            return true;
+        }
+        
+        switch (rule.trigger_permission) {
+            case 'anyone':
+                return true;
+                
+            case 'me':
+                // Check if the sender is the rule creator (owner)
+                return context.senderJid === rule.created_by || context.reactorJid === rule.created_by;
+                
+            case 'users':
+                // Check if sender is in allowed users list
+                if (!rule.allowed_user_ids || rule.allowed_user_ids.length === 0) {
+                    return false;
+                }
+                const senderJid = context.senderJid || context.reactorJid;
+                return rule.allowed_user_ids.includes(senderJid);
+                
+            default:
+                return false;
         }
     },
 

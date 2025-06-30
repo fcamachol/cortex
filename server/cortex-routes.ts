@@ -683,4 +683,197 @@ router.post('/finance/accounts', async (req, res) => {
   }
 });
 
+// =====================================================
+// CORTEX AUTOMATION RULES (WhatsApp Instance & Permissions)
+// =====================================================
+
+// Get all automation rules with WhatsApp instance and permission info
+router.get('/automation/rules', async (req, res) => {
+  try {
+    const rules = await storage.query(`
+      SELECT 
+        r.id,
+        r.name,
+        r.description,
+        r.is_active,
+        r.trigger_type,
+        r.priority,
+        r.created_by,
+        r.space_id,
+        r.whatsapp_instance_id,
+        r.trigger_permission,
+        r.allowed_user_ids,
+        r.last_executed_at,
+        r.execution_count,
+        r.success_count,
+        r.failure_count,
+        r.created_at,
+        r.updated_at,
+        -- Get associated WhatsApp instance name
+        (SELECT instance_name FROM whatsapp.instances WHERE id = r.whatsapp_instance_id) as instance_name,
+        -- Get conditions
+        COALESCE(
+          ARRAY_AGG(
+            json_build_object(
+              'id', rc.id,
+              'condition_type', rc.condition_type,
+              'operator', rc.operator,
+              'field_name', rc.field_name,
+              'value', rc.value,
+              'is_negated', rc.is_negated
+            )
+          ) FILTER (WHERE rc.id IS NOT NULL),
+          ARRAY[]::json[]
+        ) as conditions,
+        -- Get actions
+        COALESCE(
+          ARRAY_AGG(
+            json_build_object(
+              'id', ra.id,
+              'action_type', ra.action_type,
+              'action_order', ra.action_order,
+              'target_entity_id', ra.target_entity_id,
+              'parameters', ra.parameters,
+              'template_id', ra.template_id
+            ) ORDER BY ra.action_order
+          ) FILTER (WHERE ra.id IS NOT NULL),
+          ARRAY[]::json[]
+        ) as actions
+      FROM cortex_automation.rules r
+      LEFT JOIN cortex_automation.rule_conditions rc ON r.id = rc.rule_id
+      LEFT JOIN cortex_automation.rule_actions ra ON r.id = ra.rule_id
+      GROUP BY r.id, r.name, r.description, r.is_active, r.trigger_type, r.priority, 
+               r.created_by, r.space_id, r.whatsapp_instance_id, r.trigger_permission, 
+               r.allowed_user_ids, r.last_executed_at, r.execution_count, r.success_count, 
+               r.failure_count, r.created_at, r.updated_at
+      ORDER BY r.priority DESC, r.created_at DESC
+    `);
+
+    res.json(rules.rows);
+  } catch (error) {
+    console.error('Error fetching automation rules:', error);
+    res.status(500).json({ error: 'Failed to fetch automation rules' });
+  }
+});
+
+// Create new automation rule with WhatsApp instance and permission settings
+router.post('/automation/rules', async (req, res) => {
+  try {
+    const userId = req.user?.id || 'dev-user-placeholder';
+    const {
+      name,
+      description,
+      triggerType,
+      whatsappInstanceId,
+      triggerPermission = 'anyone',
+      allowedUserIds,
+      conditions = [],
+      actions = []
+    } = req.body;
+
+    // Create the rule
+    const ruleResult = await storage.query(`
+      INSERT INTO cortex_automation.rules (
+        id, name, description, is_active, trigger_type, priority, created_by,
+        whatsapp_instance_id, trigger_permission, allowed_user_ids
+      ) VALUES (
+        gen_random_uuid(), $1, $2, true, $3, 100, $4, $5, $6, $7
+      ) RETURNING *
+    `, [name, description, triggerType, userId, whatsappInstanceId, triggerPermission, allowedUserIds]);
+
+    const rule = ruleResult.rows[0];
+
+    // Add conditions
+    for (const condition of conditions) {
+      await storage.query(`
+        INSERT INTO cortex_automation.rule_conditions (
+          rule_id, condition_type, operator, field_name, value, is_negated
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+      `, [rule.id, condition.conditionType, condition.operator, condition.fieldName, condition.value, condition.isNegated || false]);
+    }
+
+    // Add actions
+    for (let i = 0; i < actions.length; i++) {
+      const action = actions[i];
+      await storage.query(`
+        INSERT INTO cortex_automation.rule_actions (
+          rule_id, action_type, action_order, target_entity_id, parameters, template_id
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+      `, [rule.id, action.actionType, i + 1, action.targetEntityId, action.parameters, action.templateId]);
+    }
+
+    res.status(201).json({ 
+      message: 'Automation rule created successfully',
+      rule: rule
+    });
+  } catch (error) {
+    console.error('Error creating automation rule:', error);
+    res.status(500).json({ error: 'Failed to create automation rule' });
+  }
+});
+
+// Update automation rule WhatsApp instance and permission settings
+router.put('/automation/rules/:ruleId', async (req, res) => {
+  try {
+    const { ruleId } = req.params;
+    const {
+      name,
+      description,
+      isActive,
+      whatsappInstanceId,
+      triggerPermission,
+      allowedUserIds
+    } = req.body;
+
+    const result = await storage.query(`
+      UPDATE cortex_automation.rules
+      SET 
+        name = COALESCE($2, name),
+        description = COALESCE($3, description),
+        is_active = COALESCE($4, is_active),
+        whatsapp_instance_id = COALESCE($5, whatsapp_instance_id),
+        trigger_permission = COALESCE($6, trigger_permission),
+        allowed_user_ids = COALESCE($7, allowed_user_ids),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
+    `, [ruleId, name, description, isActive, whatsappInstanceId, triggerPermission, allowedUserIds]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Automation rule not found' });
+    }
+
+    res.json({
+      message: 'Automation rule updated successfully',
+      rule: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error updating automation rule:', error);
+    res.status(500).json({ error: 'Failed to update automation rule' });
+  }
+});
+
+// Get WhatsApp instances for rule configuration
+router.get('/automation/whatsapp-instances', async (req, res) => {
+  try {
+    const instances = await storage.query(`
+      SELECT 
+        id,
+        instance_name,
+        display_name,
+        status,
+        is_connected,
+        created_at
+      FROM whatsapp.instances
+      WHERE status = 'active'
+      ORDER BY instance_name
+    `);
+
+    res.json(instances.rows);
+  } catch (error) {
+    console.error('Error fetching WhatsApp instances:', error);
+    res.status(500).json({ error: 'Failed to fetch WhatsApp instances' });
+  }
+});
+
 export default router;
