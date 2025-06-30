@@ -619,13 +619,19 @@ export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
                     
                     {form.watch("useCustomFormula") && (
                       <div className="mt-4 space-y-4">
-                        <p className="text-sm text-muted-foreground">
-                          Create a custom formula using existing loan information. You can use variables like:
-                          <br />
-                          <span className="font-mono text-xs bg-gray-100 px-1 rounded">principalAmount</span>, 
-                          <span className="font-mono text-xs bg-gray-100 px-1 rounded ml-1">interestRate</span>, 
-                          <span className="font-mono text-xs bg-gray-100 px-1 rounded ml-1">termMonths</span>
-                        </p>
+                        <div className="text-sm text-muted-foreground space-y-2">
+                          <p>Create a custom formula using existing loan information. Available variables:</p>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">principalAmount</span>
+                            <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">interestRate</span>
+                            <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">termMonths</span>
+                            <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">daysOverdue</span>
+                          </div>
+                          <p className="text-xs"><strong>Example:</strong> Daily rate from monthly interest:</p>
+                          <div className="font-mono text-xs bg-gray-50 p-2 rounded border">
+                            return principalAmount * (interestRate / 12 / 30) * daysOverdue;
+                          </div>
+                        </div>
                         
                         <FormField
                           control={form.control}
