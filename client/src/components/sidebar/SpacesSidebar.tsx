@@ -224,23 +224,23 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
   };
 
   const buildHierarchy = (spaces: Space[]): Space[] => {
-    const spacesMap = new Map<number, Space>();
+    const spacesMap = new Map<string, Space>();
     const rootSpaces: Space[] = [];
 
     // Create map and initialize childSpaces
     spaces.forEach(space => {
-      spacesMap.set(space.spaceId, { ...space, childSpaces: [] });
+      spacesMap.set(space.id, { ...space, childSpaces: [] });
     });
 
     // Build hierarchy
     spaces.forEach(space => {
-      if (space.parentSpaceId) {
-        const parent = spacesMap.get(space.parentSpaceId);
+      if (space.parent_space_id) {
+        const parent = spacesMap.get(space.parent_space_id);
         if (parent) {
-          parent.childSpaces!.push(spacesMap.get(space.spaceId)!);
+          parent.childSpaces!.push(spacesMap.get(space.id)!);
         }
       } else {
-        rootSpaces.push(spacesMap.get(space.spaceId)!);
+        rootSpaces.push(spacesMap.get(space.id)!);
       }
     });
 
@@ -259,20 +259,20 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
     }
   };
 
-  const getSpaceItems = (spaceId: number) => {
+  const getSpaceItems = (spaceId: string) => {
     if (!spaceItems) return [];
     const items = spaceItems.filter((item: SpaceItem) => item.spaceId === spaceId);
     console.log(`Space ${spaceId} items:`, items);
     return items;
   };
 
-  const getChildSpaces = (parentSpaceId: number): Space[] => {
+  const getChildSpaces = (parentSpaceId: string): Space[] => {
     if (!spaces) return [];
     
     // Function to recursively find a space by ID in the nested structure
-    const findSpaceById = (spaceList: Space[], targetId: number): Space | null => {
+    const findSpaceById = (spaceList: Space[], targetId: string): Space | null => {
       for (const space of spaceList) {
-        if (space.spaceId === targetId) {
+        if (space.id === targetId) {
           return space;
         }
         if (space.childSpaces && space.childSpaces.length > 0) {
@@ -285,7 +285,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
     
     const parentSpace = findSpaceById(spaces, parentSpaceId);
     if (parentSpace && parentSpace.childSpaces && parentSpace.childSpaces.length > 0) {
-      console.log(`Found children for space ${parentSpaceId}:`, parentSpace.childSpaces.map(c => `${c.spaceName} (ID: ${c.spaceId})`));
+      console.log(`Found children for space ${parentSpaceId}:`, parentSpace.childSpaces.map(c => `${c.name} (ID: ${c.id})`));
       return parentSpace.childSpaces;
     }
     console.log(`No children found for space ${parentSpaceId}`);
@@ -293,23 +293,23 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
   };
 
   const renderSpace = (space: Space, level: number = 0, index: number = 0) => {
-    const children = getChildSpaces(space.spaceId);
+    const children = getChildSpaces(space.id);
     const hasChildren = children && children.length > 0;
-    const isExpanded = expandedSpaces.has(space.spaceId);
-    const isSelected = selectedSpaceId === space.spaceId;
-    const items = getSpaceItems(space.spaceId);
+    const isExpanded = expandedSpaces.has(space.id);
+    const isSelected = selectedSpaceId === space.id;
+    const items = getSpaceItems(space.id);
     const hasItems = items.length > 0;
     
-    console.log(`${'  '.repeat(level)}Space "${space.spaceName}" (ID: ${space.spaceId}, Level: ${level}, Category: ${space.category}):`, {
+    console.log(`${'  '.repeat(level)}Space "${space.name}" (ID: ${space.id}, Level: ${level}, Category: ${space.category}):`, {
       hasItems,
       hasChildren,
       itemsCount: items?.length || 0,
       childrenCount: children?.length || 0,
-      children: children?.map(c => c.spaceName) || []
+      children: children?.map(c => c.name) || []
     });
 
     return (
-      <Draggable key={space.spaceId} draggableId={`space-${space.spaceId}`} index={index}>
+      <Draggable key={space.id} draggableId={`space-${space.id}`} index={index}>
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
@@ -317,7 +317,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
             className="space-y-0.5"
           >
             {/* Make each space a drop target for folder-like behavior */}
-            <Droppable droppableId={`space-${space.spaceId}`} type="SPACE">
+            <Droppable droppableId={`space-${space.id}`} type="SPACE">
               {(dropProvided, dropSnapshot) => (
                 <div
                   ref={dropProvided.innerRef}
