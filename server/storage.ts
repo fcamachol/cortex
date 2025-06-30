@@ -526,7 +526,7 @@ class DatabaseStorage {
                     custom_formula = ${loanData.customFormula || null},
                     custom_formula_description = ${loanData.customFormulaDescription || null},
                     updated_at = NOW()
-                WHERE loan_id = ${loanId}
+                WHERE id = ${loanId}
                 RETURNING *
             `);
             return result.rows[0];
