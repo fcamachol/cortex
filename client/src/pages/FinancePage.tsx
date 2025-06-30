@@ -517,6 +517,10 @@ export default function FinancePage() {
               </Card>
             </TabsContent>
 
+            <TabsContent value="recurring" className="space-y-4">
+              <RecurringBillsManager />
+            </TabsContent>
+
             <TabsContent value="reports" className="space-y-4">
               <Card>
                 <CardHeader>
