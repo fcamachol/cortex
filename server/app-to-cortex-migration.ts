@@ -90,28 +90,28 @@ export class AppToCortexMigration {
   private async createFoundationEnums(): Promise<void> {
     // Plan type enum
     await this.db.execute(sql`
-      CREATE TYPE cortex_foundation.plan_type AS ENUM (
+      CREATE TYPE IF NOT EXISTS cortex_foundation.plan_type AS ENUM (
         'free', 'starter', 'professional', 'enterprise'
       );
     `);
 
     // Space type enum
     await this.db.execute(sql`
-      CREATE TYPE cortex_foundation.space_type AS ENUM (
+      CREATE TYPE IF NOT EXISTS cortex_foundation.space_type AS ENUM (
         'folder', 'workspace', 'project', 'team', 'personal', 'archive', 'template'
       );
     `);
 
     // Privacy enum
     await this.db.execute(sql`
-      CREATE TYPE cortex_foundation.privacy AS ENUM (
+      CREATE TYPE IF NOT EXISTS cortex_foundation.privacy AS ENUM (
         'private', 'public', 'restricted', 'shared'
       );
     `);
 
     // Relationship type enum
     await this.db.execute(sql`
-      CREATE TYPE cortex_foundation.relationship_type AS ENUM (
+      CREATE TYPE IF NOT EXISTS cortex_foundation.relationship_type AS ENUM (
         'related_to', 'belongs_to', 'contains', 'depends_on', 'blocks', 'references',
         'married_to', 'parent_of', 'child_of', 'sibling_of', 'friend_of', 'colleague_of',
         'manager_of', 'reports_to', 'works_for', 'founded', 'consultant_for',
@@ -123,14 +123,14 @@ export class AppToCortexMigration {
 
     // Member role enum
     await this.db.execute(sql`
-      CREATE TYPE cortex_foundation.member_role AS ENUM (
+      CREATE TYPE IF NOT EXISTS cortex_foundation.member_role AS ENUM (
         'owner', 'admin', 'editor', 'viewer', 'guest'
       );
     `);
 
     // Activity type enum
     await this.db.execute(sql`
-      CREATE TYPE cortex_foundation.activity_type AS ENUM (
+      CREATE TYPE IF NOT EXISTS cortex_foundation.activity_type AS ENUM (
         'created', 'updated', 'deleted', 'shared', 'moved', 'copied', 'commented',
         'assigned', 'unassigned', 'completed', 'reopened', 'archived', 'restored'
       );
