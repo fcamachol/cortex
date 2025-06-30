@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -66,30 +66,86 @@ export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
   // Type the contacts properly
   const typedContacts = Array.isArray(contacts) ? contacts as any[] : [];
 
+  // State for moratory interests section
+  const [showMoratoryInterests, setShowMoratoryInterests] = useState(false);
+
 
 
   const form = useForm<LoanFormData>({
     resolver: zodResolver(loanSchema),
     defaultValues: {
-      lenderName: editingLoan?.lender_name || "",
-      principalAmount: editingLoan?.principal_amount?.toString() || "0",
-      interestRate: editingLoan?.interest_rate?.toString() || "0",
-      interestRateType: editingLoan?.interest_rate_type || "monthly",
-      termMonths: editingLoan?.term_months?.toString() || "",
-      startDate: editingLoan?.start_date || new Date().toISOString().split('T')[0],
-      paymentDate: editingLoan?.payment_date || "",
-      paymentFrequency: editingLoan?.payment_frequency || "monthly",
-      currency: editingLoan?.currency || "MXN",
-      purpose: editingLoan?.purpose || "",
-      collateral: editingLoan?.collateral || "",
-      notes: editingLoan?.notes || "",
-      lenderContactId: editingLoan?.lender_contact_id || "",
-      borrowerContactId: editingLoan?.borrower_contact_id || "",
-      hasMoratoryInterest: editingLoan?.has_moratory_interest || false,
-      moratoryRate: editingLoan?.moratory_rate?.toString() || "0",
-      moratoryRateType: editingLoan?.moratory_rate_type || "monthly",
+      lenderName: "",
+      principalAmount: "0",
+      interestRate: "0",
+      interestRateType: "monthly",
+      termMonths: "",
+      startDate: new Date().toISOString().split('T')[0],
+      paymentDate: "",
+      paymentFrequency: "monthly",
+      currency: "MXN",
+      purpose: "",
+      collateral: "",
+      notes: "",
+      lenderContactId: "",
+      borrowerContactId: "",
+      hasMoratoryInterest: false,
+      moratoryRate: "0",
+      moratoryRateType: "monthly",
     },
   });
+
+  // Reset form when editingLoan changes or modal opens
+  useEffect(() => {
+    if (open) {
+      if (editingLoan) {
+        // Populate form with loan data for editing
+        form.reset({
+          lenderName: editingLoan.lender_name || "",
+          principalAmount: editingLoan.principal_amount?.toString() || "0",
+          interestRate: editingLoan.interest_rate?.toString() || "0",
+          interestRateType: editingLoan.interest_rate_type || "monthly",
+          termMonths: editingLoan.term_months?.toString() || "",
+          startDate: editingLoan.start_date || new Date().toISOString().split('T')[0],
+          paymentDate: editingLoan.payment_date || "",
+          paymentFrequency: editingLoan.payment_frequency || "monthly",
+          currency: editingLoan.currency || "MXN",
+          purpose: editingLoan.purpose || "",
+          collateral: editingLoan.collateral || "",
+          notes: editingLoan.notes || "",
+          lenderContactId: editingLoan.lender_contact_id || "",
+          borrowerContactId: editingLoan.borrower_contact_id || "",
+          hasMoratoryInterest: editingLoan.has_moratory_interest || false,
+          moratoryRate: editingLoan.moratory_rate?.toString() || "0",
+          moratoryRateType: editingLoan.moratory_rate_type || "monthly",
+        });
+        // Set moratory interests section visibility based on loan data
+        setShowMoratoryInterests(editingLoan.has_moratory_interest || false);
+      } else {
+        // Reset to default values for new loan
+        form.reset({
+          lenderName: "",
+          principalAmount: "0",
+          interestRate: "0",
+          interestRateType: "monthly",
+          termMonths: "",
+          startDate: new Date().toISOString().split('T')[0],
+          paymentDate: "",
+          paymentFrequency: "monthly",
+          currency: "MXN",
+          purpose: "",
+          collateral: "",
+          notes: "",
+          lenderContactId: "",
+          borrowerContactId: "",
+          hasMoratoryInterest: false,
+          moratoryRate: "0",
+          moratoryRateType: "monthly",
+        });
+        // Reset moratory interests section for new loans
+        setShowMoratoryInterests(false);
+      }
+    }
+  }, [open, editingLoan, form]);
 
   const saveLoan = useMutation({
     mutationFn: async (data: LoanFormData) => {
