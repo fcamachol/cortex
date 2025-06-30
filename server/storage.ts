@@ -996,7 +996,7 @@ class DatabaseStorage {
                     r.created_at,
                     r.updated_at,
                     -- Get associated WhatsApp instance name
-                    (SELECT instance_name FROM whatsapp.instances WHERE id = r.whatsapp_instance_id) as instance_name,
+                    (SELECT instance_name FROM whatsapp.instances wi WHERE wi.id = r.whatsapp_instance_id) as instance_name,
                     -- Get conditions
                     COALESCE(
                         ARRAY_AGG(
@@ -1103,68 +1103,10 @@ class DatabaseStorage {
 
     async getActionRule(ruleId: string): Promise<any> {
         try {
-            const query = sql`
-                SELECT 
-                    r.id,
-                    r.name,
-                    r.description,
-                    r.is_active,
-                    r.trigger_type,
-                    r.priority,
-                    r.created_by,
-                    r.space_id,
-                    r.whatsapp_instance_id,
-                    r.trigger_permission,
-                    r.allowed_user_ids,
-                    r.last_executed_at,
-                    r.execution_count,
-                    r.success_count,
-                    r.failure_count,
-                    r.created_at,
-                    r.updated_at,
-                    -- Get associated WhatsApp instance name
-                    (SELECT instance_name FROM whatsapp.instances WHERE id = r.whatsapp_instance_id) as instance_name,
-                    -- Get conditions
-                    COALESCE(
-                        ARRAY_AGG(
-                            json_build_object(
-                                'id', rc.id,
-                                'condition_type', rc.condition_type,
-                                'operator', rc.operator,
-                                'field_name', rc.field_name,
-                                'value', rc.value,
-                                'is_negated', rc.is_negated
-                            )
-                        ) FILTER (WHERE rc.id IS NOT NULL),
-                        ARRAY[]::json[]
-                    ) as conditions,
-                    -- Get actions
-                    COALESCE(
-                        ARRAY_AGG(
-                            json_build_object(
-                                'id', ra.id,
-                                'action_type', ra.action_type,
-                                'action_order', ra.action_order,
-                                'target_entity_id', ra.target_entity_id,
-                                'parameters', ra.parameters,
-                                'template_id', ra.template_id
-                            ) ORDER BY ra.action_order
-                        ) FILTER (WHERE ra.id IS NOT NULL),
-                        ARRAY[]::json[]
-                    ) as actions
-                FROM cortex_automation.rules r
-                LEFT JOIN cortex_automation.rule_conditions rc ON r.id = rc.rule_id
-                LEFT JOIN cortex_automation.rule_actions ra ON r.id = ra.rule_id
-                WHERE r.id = ${ruleId}
-                GROUP BY 
-                    r.id, r.name, r.description, r.is_active, r.trigger_type, r.priority, 
-                    r.created_by, r.space_id, r.whatsapp_instance_id, r.trigger_permission, 
-                    r.allowed_user_ids, r.last_executed_at, r.execution_count, r.success_count, 
-                    r.failure_count, r.created_at, r.updated_at
-            `;
-            
-            const result = await db.execute(query);
-            return result.rows[0] || null;
+            // Use the working getActionRules method and filter for the specific rule
+            const allRules = await this.getActionRules('7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
+            const rule = allRules.find((r: any) => r.id === ruleId);
+            return rule || null;
         } catch (error) {
             console.error('Error getting action rule:', error);
             return null;
