@@ -106,7 +106,7 @@ export function AccountList({ spaceId }: AccountListProps) {
 
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ accountId, isActive }: { accountId: number; isActive: boolean }) => {
-      return await apiRequest(`/api/finance/accounts/${accountId}`, "PUT", { isActive });
+      return await apiRequest("PUT", `/api/finance/accounts/${accountId}`, { status: isActive ? 'active' : 'inactive' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/finance/accounts"] });
@@ -145,8 +145,8 @@ export function AccountList({ spaceId }: AccountListProps) {
 
   const handleToggleActive = (account: any) => {
     toggleActiveMutation.mutate({
-      accountId: account.accountId,
-      isActive: !account.isActive
+      accountId: account.id,
+      isActive: account.status !== 'active'
     });
   };
 
@@ -155,9 +155,9 @@ export function AccountList({ spaceId }: AccountListProps) {
   };
 
   // Calculate totals
-  const activeAccounts = Array.isArray(accounts) ? accounts.filter((account: any) => account.isActive) : [];
+  const activeAccounts = Array.isArray(accounts) ? accounts.filter((account: any) => account.status === 'active') : [];
   const totalBalance = activeAccounts.reduce((sum: number, account: any) => {
-    return sum + parseFloat(account.currentBalance || "0");
+    return sum + parseFloat(account.current_balance || "0");
   }, 0);
 
   if (isLoading) {
@@ -193,13 +193,13 @@ export function AccountList({ spaceId }: AccountListProps) {
             </div>
             <div className="text-center p-4 border rounded-lg">
               <div className="text-2xl font-bold">
-                {activeAccounts.filter((a: any) => a.accountType === "checking" || a.accountType === "savings").length}
+                {activeAccounts.filter((a: any) => a.account_type === "checking" || a.account_type === "savings").length}
               </div>
               <div className="text-sm text-muted-foreground">Bank Accounts</div>
             </div>
             <div className="text-center p-4 border rounded-lg">
               <div className="text-2xl font-bold">
-                {activeAccounts.filter((a: any) => a.accountType === "credit_card").length}
+                {activeAccounts.filter((a: any) => a.account_type === "credit_card").length}
               </div>
               <div className="text-sm text-muted-foreground">Credit Cards</div>
             </div>
@@ -231,16 +231,16 @@ export function AccountList({ spaceId }: AccountListProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {accounts.map((account: any) => (
-                  <TableRow key={account.accountId}>
+                {accounts.map((account: any, index: number) => (
+                  <TableRow key={account.id || index}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        {getAccountIcon(account.accountType)}
+                        {getAccountIcon(account.account_type)}
                         <div>
-                          <div className="font-medium">{account.accountName}</div>
-                          {account.accountNumber && (
+                          <div className="font-medium">{account.name}</div>
+                          {account.account_number && (
                             <div className="text-sm text-muted-foreground">
-                              ****{account.accountNumber.slice(-4)}
+                              ****{account.account_number.slice(-4)}
                             </div>
                           )}
                         </div>
@@ -248,16 +248,16 @@ export function AccountList({ spaceId }: AccountListProps) {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {getAccountTypeLabel(account.accountType)}
+                        {getAccountTypeLabel(account.account_type)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{account.institutionName || "-"}</TableCell>
+                    <TableCell>{account.institution_name || "-"}</TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(account.currentBalance, account.currency)}
+                      {formatCurrency(account.current_balance, account.currency)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={account.isActive ? "default" : "secondary"}>
-                        {account.isActive ? "Active" : "Inactive"}
+                      <Badge variant={account.status === 'active' ? "default" : "secondary"}>
+                        {account.status === 'active' ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -273,7 +273,7 @@ export function AccountList({ spaceId }: AccountListProps) {
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleToggleActive(account)}>
-                            {account.isActive ? (
+                            {account.status === 'active' ? (
                               <>
                                 <EyeOff className="h-4 w-4 mr-2" />
                                 Deactivate
@@ -300,14 +300,14 @@ export function AccountList({ spaceId }: AccountListProps) {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete Account</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to delete "{account.accountName}"? 
+                                  Are you sure you want to delete "{account.name}"? 
                                   This action cannot be undone and will affect any linked transactions.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction
-                                  onClick={() => handleDelete(account.accountId)}
+                                  onClick={() => handleDelete(account.id)}
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
                                   Delete
