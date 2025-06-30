@@ -227,16 +227,13 @@ export function CreditCardList() {
                   <div className="space-y-1">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Utilization</span>
-                      <span className={`font-medium ${utilizationColor}`}>
-                        {utilization.toFixed(1)}%
+                      <span className={`font-medium ${utilizationStatus.color}`}>
+                        {utilization.toFixed(1)}% - {utilizationStatus.label}
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div 
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          utilization >= 90 ? 'bg-red-500' :
-                          utilization >= 70 ? 'bg-yellow-500' : 'bg-green-500'
-                        }`}
+                        className={`h-2 rounded-full transition-all duration-300 ${utilizationStatus.barColor}`}
                         style={{ width: `${Math.min(utilization, 100)}%` }}
                       ></div>
                     </div>
@@ -264,14 +261,27 @@ export function CreditCardList() {
                     </div>
                   </div>
 
+                  {/* Payment Due Date */}
+                  <div className="flex justify-between items-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                        Next Payment Due
+                      </span>
+                    </div>
+                    <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                      {formatDate(paymentDueDate)}
+                    </span>
+                  </div>
+
                   {/* Status Badge */}
                   <div className="flex justify-between items-center pt-2">
                     <Badge variant={card.is_active ? "default" : "secondary"}>
                       {card.is_active ? "Active" : "Inactive"}
                     </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      Due: {card.payment_due_days_after_statement} days after statement
-                    </span>
+                    <Badge variant={cardStatus.status === 'overlimit' ? 'destructive' : 'secondary'}>
+                      {cardStatus.label}
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>
