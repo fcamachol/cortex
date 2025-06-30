@@ -181,6 +181,67 @@ router.post('/contacts', async (req, res) => {
 });
 
 // =====================================================
+// CORTEX ENTITIES - VENDOR CREATION ENDPOINTS
+// =====================================================
+
+// Create new person entity (for VendorSelect)
+router.post('/entities/persons', async (req, res) => {
+  try {
+    const { name, userId } = req.body;
+    const { randomUUID } = await import('crypto');
+    const cortexPersonId = 'cp_' + randomUUID().replace(/-/g, '');
+
+    // Parse name into first and last
+    const nameParts = name.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    await storage.query(`
+      INSERT INTO cortex_entities.persons (
+        id, first_name, last_name, display_name, status, created_at, updated_at
+      ) VALUES (
+        $1, $2, $3, $4, 'active', NOW(), NOW()
+      )
+    `, [
+      cortexPersonId,
+      firstName,
+      lastName,
+      name
+    ]);
+
+    res.json({ id: cortexPersonId, name: name, type: 'person' });
+  } catch (error) {
+    console.error('Error creating Cortex person entity:', error);
+    res.status(500).json({ error: 'Failed to create person entity' });
+  }
+});
+
+// Create new company entity (for VendorSelect)
+router.post('/entities/companies', async (req, res) => {
+  try {
+    const { name, userId } = req.body;
+    const { randomUUID } = await import('crypto');
+    const cortexCompanyId = 'cc_' + randomUUID().replace(/-/g, '');
+
+    await storage.query(`
+      INSERT INTO cortex_entities.companies (
+        id, name, status, created_at, updated_at
+      ) VALUES (
+        $1, $2, 'active', NOW(), NOW()
+      )
+    `, [
+      cortexCompanyId,
+      name
+    ]);
+
+    res.json({ id: cortexCompanyId, name: name, type: 'company' });
+  } catch (error) {
+    console.error('Error creating Cortex company entity:', error);
+    res.status(500).json({ error: 'Failed to create company entity' });
+  }
+});
+
+// =====================================================
 // CORTEX TASKS (replaces /api/crm/tasks)
 // =====================================================
 
