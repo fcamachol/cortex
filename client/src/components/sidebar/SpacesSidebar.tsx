@@ -596,7 +596,7 @@ export function SpacesSidebar({ onSpaceSelect, selectedSpaceId, onNavigateToSpac
                           className="h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setLocation(`/spaces/${space.spaceId}?new=true`);
+                            setLocation(`/spaces/${space.id}?new=true`);
                           }}
                         >
                           <Plus className="h-3 w-3" />
