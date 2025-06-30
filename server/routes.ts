@@ -1443,7 +1443,20 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post('/api/actions/rules', async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const ruleData = { ...req.body, created_by: userId };
+      
+      // Map frontend camelCase to database snake_case
+      const ruleData = {
+        name: req.body.ruleName,
+        description: req.body.description,
+        is_active: req.body.isActive,
+        trigger_type: req.body.triggerType === 'reaction' ? 'whatsapp_message' : req.body.triggerType,
+        priority: req.body.priority || 0,
+        created_by: userId,
+        space_id: req.body.spaceId || null,
+        whatsapp_instance_id: req.body.whatsappInstanceId || null,
+        trigger_permission: req.body.performerFilter || 'me',
+        allowed_user_ids: req.body.allowedUserIds || []
+      };
       
       const rule = await storage.createActionRule(ruleData);
       res.status(201).json(rule);

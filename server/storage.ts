@@ -1053,9 +1053,14 @@ class DatabaseStorage {
     
     async createActionRule(ruleData: any): Promise<any> {
         try {
-            // Handle PostgreSQL array field properly
+            // Handle PostgreSQL array field properly - use direct SQL with proper array literal
             const allowedUserIds = ruleData.allowed_user_ids || [];
             const allowedUserIdsArray = Array.isArray(allowedUserIds) ? allowedUserIds : [];
+            
+            console.log('Creating rule with data:', ruleData);
+            
+            // Convert array to PostgreSQL array literal format
+            const arrayLiteral = `{${allowedUserIdsArray.map(id => `"${id}"`).join(',')}}`;
             
             const result = await db.execute(sql`
                 INSERT INTO cortex_automation.rules (
@@ -1066,7 +1071,7 @@ class DatabaseStorage {
                     ${ruleData.name}, ${ruleData.description}, ${ruleData.is_active || true},
                     ${ruleData.trigger_type}, ${ruleData.priority || 0},
                     ${ruleData.created_by}, ${ruleData.space_id}, ${ruleData.whatsapp_instance_id},
-                    ${ruleData.trigger_permission || 'me'}, ${allowedUserIdsArray}::text[]
+                    ${ruleData.trigger_permission || 'me'}, ${sql.raw(arrayLiteral + '::text[]')}
                 ) RETURNING *
             `);
             return result.rows[0];
