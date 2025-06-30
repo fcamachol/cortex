@@ -806,25 +806,47 @@ class DatabaseStorage {
     
     async getActionRulesByTrigger(triggerType: string, instanceId?: string): Promise<any[]> {
         try {
-            let query = sql`
-                SELECT * FROM actions.action_rules 
-                WHERE trigger_type = ${triggerType} 
-                AND is_active = true
+            // Get rules with their conditions and actions from cortex_automation schema
+            const query = sql`
+                SELECT 
+                    r.id,
+                    r.name,
+                    r.description,
+                    r.is_active,
+                    r.trigger_type,
+                    r.priority,
+                    r.created_by,
+                    r.space_id,
+                    array_agg(
+                        json_build_object(
+                            'condition_type', rc.condition_type,
+                            'operator', rc.operator,
+                            'field_name', rc.field_name,
+                            'value', rc.value,
+                            'is_negated', rc.is_negated
+                        )
+                    ) FILTER (WHERE rc.id IS NOT NULL) as conditions,
+                    array_agg(
+                        json_build_object(
+                            'action_type', ra.action_type,
+                            'action_order', ra.action_order,
+                            'target_entity_id', ra.target_entity_id,
+                            'parameters', ra.parameters,
+                            'template_id', ra.template_id
+                        ) ORDER BY ra.action_order
+                    ) FILTER (WHERE ra.id IS NOT NULL) as actions
+                FROM cortex_automation.rules r
+                LEFT JOIN cortex_automation.rule_conditions rc ON r.id = rc.rule_id
+                LEFT JOIN cortex_automation.rule_actions ra ON r.id = ra.rule_id
+                WHERE r.trigger_type = ${triggerType}
+                AND (r.is_active IS NULL OR r.is_active = true)
+                GROUP BY r.id, r.name, r.description, r.is_active, r.trigger_type, r.priority, r.created_by, r.space_id
             `;
-            
-            if (instanceId) {
-                query = sql`
-                    SELECT * FROM actions.action_rules 
-                    WHERE trigger_type = ${triggerType} 
-                    AND is_active = true
-                    AND (instance_filters IS NULL OR instance_filters::text LIKE ${`%${instanceId}%`})
-                `;
-            }
             
             const result = await db.execute(query);
             return result.rows;
         } catch (error) {
-            console.error('Error fetching action rules:', error);
+            console.error('Error fetching action rules from cortex_automation:', error);
             return [];
         }
     }
@@ -832,21 +854,25 @@ class DatabaseStorage {
     async saveActionExecution(executionData: any): Promise<any> {
         try {
             const result = await db.execute(sql`
-                INSERT INTO actions.action_executions (
-                    rule_id, trigger_context, execution_result, status, error_message, executed_at
+                INSERT INTO cortex_automation.rule_executions (
+                    rule_id, trigger_data, execution_result, status, error_message, 
+                    actions_executed, actions_failed, execution_time_ms, executed_at
                 ) VALUES (
                     ${executionData.ruleId}, 
                     ${JSON.stringify(executionData.triggerContext)}, 
                     ${JSON.stringify(executionData.executionResult)}, 
                     ${executionData.status}, 
-                    ${executionData.errorMessage}, 
+                    ${executionData.errorMessage},
+                    ${executionData.actionsExecuted || 1},
+                    ${executionData.actionsFailed || 0},
+                    ${executionData.executionTimeMs || 0},
                     NOW()
                 )
                 RETURNING *
             `);
             return result.rows[0];
         } catch (error) {
-            console.error('Error saving action execution:', error);
+            console.error('Error saving action execution to cortex_automation:', error);
             throw error;
         }
     }
