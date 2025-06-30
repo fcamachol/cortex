@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { CalendarIcon, Calculator, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,13 +29,15 @@ const transactionFormSchema = insertTransactionSchema.extend({
 type TransactionFormData = z.infer<typeof transactionFormSchema>;
 
 interface TransactionFormProps {
+  open: boolean;
+  onClose: () => void;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
 // Using TRANSACTION_TYPES from shared schema with simplified double-entry logic
 
-export function TransactionForm({ onSuccess, onCancel }: TransactionFormProps) {
+export function TransactionForm({ open, onClose, onSuccess, onCancel }: TransactionFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedTransactionType, setSelectedTransactionType] = useState<string>("");
@@ -102,6 +105,7 @@ export function TransactionForm({ onSuccess, onCancel }: TransactionFormProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/cortex/finance/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/cortex/finance/accounts"] }); // Refresh balances
       onSuccess?.();
+      onClose(); // Close the modal
     },
     onError: (error: any) => {
       toast({
@@ -182,8 +186,16 @@ export function TransactionForm({ onSuccess, onCancel }: TransactionFormProps) {
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Calculator className="h-5 w-5" />
+            Add Transaction
+          </DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {/* Transaction Type Selection */}
         <FormField
           control={form.control}
@@ -428,7 +440,9 @@ export function TransactionForm({ onSuccess, onCancel }: TransactionFormProps) {
             {createTransactionMutation.isPending ? "Creating..." : "Create Transaction"}
           </Button>
         </div>
-      </form>
-    </Form>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 }
