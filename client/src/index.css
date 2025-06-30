@@ -36,6 +36,12 @@
   --chat-border: hsl(210, 14%, 91%);
 }
 
+/* High priority calendar popover */
+.calendar-popover-max-z {
+  z-index: 99999 !important;
+  position: fixed !important;
+}
+
 .dark {
   --background: hsl(240, 10%, 3.9%);
   --foreground: hsl(0, 0%, 98%);
