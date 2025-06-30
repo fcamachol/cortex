@@ -30,6 +30,7 @@ export const cortexBillsPayable = cortexFinanceSchema.table("bills_payable", {
   isRecurring: boolean("is_recurring").default(false).notNull(),
   recurrenceType: varchar("recurrence_type", { length: 20 }), // monthly, quarterly, annual, weekly, biweekly, custom
   recurrenceInterval: integer("recurrence_interval").default(1),
+  recurrenceStartDate: date("recurrence_start_date"), // When the recurring pattern starts
   recurrenceEndDate: date("recurrence_end_date"),
   nextDueDate: date("next_due_date"),
   parentBillId: uuid("parent_bill_id").references(() => cortexBillsPayable.id),
@@ -71,6 +72,7 @@ export const cortexBillsReceivable = cortexFinanceSchema.table("bills_receivable
   isRecurring: boolean("is_recurring").default(false).notNull(),
   recurrenceType: varchar("recurrence_type", { length: 20 }), // monthly, quarterly, annual, weekly, biweekly, custom
   recurrenceInterval: integer("recurrence_interval").default(1),
+  recurrenceStartDate: date("recurrence_start_date"), // When the recurring pattern starts
   recurrenceEndDate: date("recurrence_end_date"),
   nextDueDate: date("next_due_date"),
   parentBillId: uuid("parent_bill_id").references(() => cortexBillsReceivable.id),
