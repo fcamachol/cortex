@@ -590,6 +590,7 @@ export default function FinancePage() {
         open={!!editingLoan} 
         onClose={() => setEditingLoan(null)} 
         editingLoan={editingLoan}
+        onSuccess={handleLoanUpdated}
       />
 
       {/* Loan Detail Modal */}

@@ -51,9 +51,10 @@ interface LoanFormProps {
   open: boolean;
   onClose: () => void;
   editingLoan?: any;
+  onSuccess?: () => void;
 }
 
-export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
+export function LoanForm({ open, onClose, editingLoan, onSuccess }: LoanFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -171,6 +172,10 @@ export function LoanForm({ open, onClose, editingLoan }: LoanFormProps) {
       });
       form.reset();
       onClose();
+      // Call the onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
     },
     onError: (error: Error) => {
       toast({
