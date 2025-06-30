@@ -20,7 +20,8 @@ import {
   Calendar,
   TrendingUp,
   DollarSign,
-  Percent
+  Percent,
+  RefreshCw
 } from "lucide-react";
 import { CreditCardFormTrigger } from "./CreditCardForm";
 
@@ -45,17 +46,26 @@ export function CreditCardList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: creditCards = [], isLoading, error } = useQuery({
+  const { data: creditCards = [], isLoading, error, refetch } = useQuery({
     queryKey: ["/api/finance/credit-cards"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/finance/credit-cards");
+      console.log("Credit Cards API Response:", response);
       // Ensure response is always an array
       return Array.isArray(response) ? response : [];
-    }
+    },
+    staleTime: 0, // Always refetch
+    gcTime: 0 // Don't cache
   });
 
   // Ensure creditCards is always an array
   const safeCreditCards = Array.isArray(creditCards) ? creditCards : [];
+  
+  console.log("Credit Cards Data:", creditCards);
+  console.log("Safe Credit Cards:", safeCreditCards);
+  console.log("Safe Credit Cards Length:", safeCreditCards.length);
+  console.log("Is Loading:", isLoading);
+  console.log("Error:", error);
 
   const deleteMutation = useMutation({
     mutationFn: async (cardId: string) => {
@@ -133,12 +143,18 @@ export function CreditCardList() {
             Manage your credit card accounts and track debt
           </p>
         </div>
-        <CreditCardFormTrigger>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Credit Card
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => refetch()}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
           </Button>
-        </CreditCardFormTrigger>
+          <CreditCardFormTrigger>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Credit Card
+            </Button>
+          </CreditCardFormTrigger>
+        </div>
       </div>
 
       {/* Credit Cards Grid */}
