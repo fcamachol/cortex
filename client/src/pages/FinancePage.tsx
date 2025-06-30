@@ -10,7 +10,7 @@ import { LoanForm } from "@/components/finance/LoanForm";
 import { LoanDetailModal } from "@/components/finance/LoanDetailModal";
 import { AccountForm } from "@/components/finance/AccountForm";
 import { AccountList } from "@/components/finance/AccountList";
-import { CreditCardForm } from "@/components/finance/CreditCardForm";
+import { CreditCardList } from "@/components/finance/CreditCardList";
 import { BillsManager } from "@/components/finance/BillsManager";
 import { RecurringBillsManager } from "@/components/finance/RecurringBillsManager";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Receipt, CreditCard, Filter, Building2, Clock, Repeat } from "lucide-react";
@@ -148,7 +148,7 @@ export default function FinancePage() {
     setEditingLoan(null);
   };
 
-  const [showCreditCardForm, setShowCreditCardForm] = useState(false);
+
   const [dateFilter, setDateFilter] = useState("this-month");
   const [editingLoan, setEditingLoan] = useState<any>(null);
 
@@ -498,46 +498,7 @@ export default function FinancePage() {
             </TabsContent>
 
             <TabsContent value="credit-cards" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-2xl font-bold">Credit Cards</h2>
-                  <p className="text-muted-foreground">
-                    Manage your credit cards with comprehensive tracking, statements, and payment history
-                  </p>
-                </div>
-                <Button onClick={() => setShowCreditCardForm(true)} className="gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Add Credit Card
-                </Button>
-              </div>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
-                    Credit Card Management
-                  </CardTitle>
-                  <CardDescription>
-                    Complete credit card lifecycle management with monthly statements and payment tracking
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8">
-                    <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Credit card management system ready.</p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Add your first credit card to start tracking statements, payments, and balances.
-                    </p>
-                    <Button 
-                      onClick={() => setShowCreditCardForm(true)} 
-                      className="mt-4 gap-2"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add Your First Credit Card
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <CreditCardList />
             </TabsContent>
 
             <TabsContent value="recurring" className="space-y-4">
