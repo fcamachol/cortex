@@ -696,7 +696,31 @@ export async function registerRoutes(app: Express): Promise<void> {
       spaceData.creatorUserId = spaceData.creatorUserId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
 
       console.log('Creating space with data:', spaceData);
-      const space = await storage.createSpace(spaceData);
+      
+      // Map the data to Cortex Foundation format
+      const cortexSpaceData = {
+        name: spaceData.spaceName,
+        description: spaceData.description || '',
+        parentSpaceId: null, // Root level space
+        spaceType: spaceData.spaceType || 'project',
+        category: spaceData.category || 'work',
+        privacy: spaceData.privacy || 'private',
+        ownerUserId: spaceData.creatorUserId,
+        color: spaceData.color || '#6366F1',
+        icon: spaceData.icon || '📁',
+        isStarred: spaceData.isFavorite || false,
+        isPinned: false,
+        isArchived: false,
+        sortOrder: 0,
+        level: 0,
+        path: null,
+        templateId: null,
+        isTemplate: false,
+        customFields: {}
+      };
+      
+      // Use Cortex Foundation storage for space creation
+      const space = await cortexFoundationStorage.createSpace(cortexSpaceData);
       res.status(201).json(space);
     } catch (error) {
       console.error('Error creating space:', error);
