@@ -1,0 +1,25 @@
+{
+  "id": "live-test-1750199771-1751301056002-ba2oiszwh",
+  "timestamp": 1751301056002,
+  "instanceId": "live-test-1750199771",
+  "originalPayload": {
+    "event": "contacts.update",
+    "instance": "live-test-1750199771",
+    "data": [
+      {
+        "remoteJid": "51992404464@s.whatsapp.net",
+        "profilePicUrl": null,
+        "instanceId": "c5215849-bfb9-413c-aa94-dfa911c8310a"
+      }
+    ],
+    "destination": "https://cf94481b-abb0-462d-99ce-66c0beae05d0-00-25qqlo4pnl49g.worf.replit.dev/api/evolution/webhook/live-test-1750199771",
+    "date_time": "2025-06-30T13:30:55.742Z",
+    "sender": "15103165094@s.whatsapp.net",
+    "server_url": "https://evolution-api-evolution-api.vuswn0.easypanel.host",
+    "apikey": "119FA240-45ED-46A7-AE13-5A1B7C909D7D"
+  },
+  "error": "storage.getInstanceById is not a function",
+  "retryCount": 4,
+  "lastRetry": 1751301206285,
+  "eventType": "contacts-update"
+}

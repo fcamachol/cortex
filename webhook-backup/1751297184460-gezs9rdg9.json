@@ -1,0 +1,25 @@
+{
+  "id": "1751297184460-gezs9rdg9",
+  "timestamp": "2025-06-30T15:26:24.460Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "connection-update",
+  "payload": {
+    "event": "connection.update",
+    "instance": "live-test-1750199771",
+    "data": {
+      "instance": "live-test-1750199771",
+      "wuid": "15103165094@s.whatsapp.net",
+      "profileName": "Fer",
+      "profilePictureUrl": "https://pps.whatsapp.net/v/t61.24694-24/491887463_754988636862096_7457513024442590405_n.jpg?ccb=11-4&oh=01_Q5Aa1wFke-YYGsOwYAtGBLPR9f_2zV82C83GqOYVsnwhG90m3g&oe=686FAC27&_nc_sid=5e03e0&_nc_cat=109",
+      "state": "open",
+      "statusReason": 200
+    },
+    "destination": "https://cf94481b-abb0-462d-99ce-66c0beae05d0-00-25qqlo4pnl49g.worf.replit.dev/api/evolution/webhook/live-test-1750199771",
+    "date_time": "2025-06-30T12:26:24.408Z",
+    "sender": "15103165094@s.whatsapp.net",
+    "server_url": "https://evolution-api-evolution-api.vuswn0.easypanel.host",
+    "apikey": "119FA240-45ED-46A7-AE13-5A1B7C909D7D"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

@@ -1,0 +1,21 @@
+{
+  "id": "1751297182918-ou2doe4u2",
+  "timestamp": "2025-06-30T15:26:22.918Z",
+  "instanceId": "final-mapping-test-1750625900",
+  "eventType": "connection.update",
+  "payload": {
+    "event": "connection.update",
+    "instance": "final-mapping-test-1750625900",
+    "data": {
+      "instance": "final-mapping-test-1750625900",
+      "state": "connecting",
+      "statusReason": 200
+    },
+    "destination": "https://cf94481b-abb0-462d-99ce-66c0beae05d0-00-25qqlo4pnl49g.worf.replit.dev/api/evolution/webhook/final-mapping-test-1750625900",
+    "date_time": "2025-06-30T12:26:22.429Z",
+    "server_url": "https://evolution-api-evolution-api.vuswn0.easypanel.host",
+    "apikey": "468240C7-8015-4853-96FA-43684D898412"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

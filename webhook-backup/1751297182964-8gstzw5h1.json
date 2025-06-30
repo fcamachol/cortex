@@ -1,0 +1,21 @@
+{
+  "id": "1751297182964-8gstzw5h1",
+  "timestamp": "2025-06-30T15:26:22.964Z",
+  "instanceId": "complete-working-test-1750625700",
+  "eventType": "connection.update",
+  "payload": {
+    "event": "connection.update",
+    "instance": "complete-working-test-1750625700",
+    "data": {
+      "instance": "complete-working-test-1750625700",
+      "state": "connecting",
+      "statusReason": 200
+    },
+    "destination": "https://cf94481b-abb0-462d-99ce-66c0beae05d0-00-25qqlo4pnl49g.worf.replit.dev/api/evolution/webhook/complete-working-test-1750625700",
+    "date_time": "2025-06-30T12:26:22.449Z",
+    "server_url": "https://evolution-api-evolution-api.vuswn0.easypanel.host",
+    "apikey": "EB886C06-311E-4AA9-9C8C-6508DACE6C19"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

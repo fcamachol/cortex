@@ -1,0 +1,20 @@
+{
+  "id": "1751298449755-qeaf6epfs",
+  "timestamp": "2025-06-30T15:47:29.755Z",
+  "instanceId": "corrected-mapping-test-1750625750",
+  "eventType": "qrcode.updated",
+  "payload": {
+    "event": "qrcode.updated",
+    "instance": "corrected-mapping-test-1750625750",
+    "data": {
+      "message": "QR code limit reached, please login again",
+      "statusCode": 500
+    },
+    "destination": "https://cf94481b-abb0-462d-99ce-66c0beae05d0-00-25qqlo4pnl49g.worf.replit.dev/api/evolution/webhook/corrected-mapping-test-1750625750",
+    "date_time": "2025-06-30T12:47:29.730Z",
+    "server_url": "https://evolution-api-evolution-api.vuswn0.easypanel.host",
+    "apikey": "CD770630-7CF7-411A-9F3C-45F3A478C7A2"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

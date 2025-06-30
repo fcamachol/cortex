@@ -801,6 +801,77 @@ class DatabaseStorage {
     }
 
     // =============================
+    // ACTION RULES METHODS
+    // =============================
+    
+    async getActionRulesByTrigger(triggerType: string, instanceId?: string): Promise<any[]> {
+        try {
+            let query = sql`
+                SELECT * FROM actions.action_rules 
+                WHERE trigger_type = ${triggerType} 
+                AND is_active = true
+            `;
+            
+            if (instanceId) {
+                query = sql`
+                    SELECT * FROM actions.action_rules 
+                    WHERE trigger_type = ${triggerType} 
+                    AND is_active = true
+                    AND (instance_filters IS NULL OR instance_filters::text LIKE ${`%${instanceId}%`})
+                `;
+            }
+            
+            const result = await db.execute(query);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching action rules:', error);
+            return [];
+        }
+    }
+    
+    async saveActionExecution(executionData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO actions.action_executions (
+                    rule_id, trigger_context, execution_result, status, error_message, executed_at
+                ) VALUES (
+                    ${executionData.ruleId}, 
+                    ${JSON.stringify(executionData.triggerContext)}, 
+                    ${JSON.stringify(executionData.executionResult)}, 
+                    ${executionData.status}, 
+                    ${executionData.errorMessage}, 
+                    NOW()
+                )
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error saving action execution:', error);
+            throw error;
+        }
+    }
+    
+    async createTaskMessageLink(linkData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO whatsapp.task_message_links (
+                    task_id, message_id, instance_id, link_type
+                ) VALUES (
+                    ${linkData.taskId}, 
+                    ${linkData.messageId}, 
+                    ${linkData.instanceId}, 
+                    ${linkData.linkType}
+                )
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating task-message link:', error);
+            throw error;
+        }
+    }
+
+    // =============================
     // UTILITY METHODS
     // =============================
     

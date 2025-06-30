@@ -1,0 +1,21 @@
+{
+  "id": "1751297393779-l3a6g36j2",
+  "timestamp": "2025-06-30T15:29:53.779Z",
+  "instanceId": "field-mapping-verified-1750626200",
+  "eventType": "connection.update",
+  "payload": {
+    "event": "connection.update",
+    "instance": "field-mapping-verified-1750626200",
+    "data": {
+      "instance": "field-mapping-verified-1750626200",
+      "state": "connecting",
+      "statusReason": 200
+    },
+    "destination": "https://cf94481b-abb0-462d-99ce-66c0beae05d0-00-25qqlo4pnl49g.worf.replit.dev/api/evolution/webhook/field-mapping-verified-1750626200",
+    "date_time": "2025-06-30T12:29:53.747Z",
+    "server_url": "https://evolution-api-evolution-api.vuswn0.easypanel.host",
+    "apikey": "00C7BF8F-2E0F-453D-A22C-3677E0790421"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
