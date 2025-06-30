@@ -424,6 +424,24 @@ export const insertCortexDocumentSchema = createInsertSchema(cortexDocuments).om
   updatedAt: true,
 });
 
+export const insertCortexBillSchema = createInsertSchema(cortexBills).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCortexTransactionSchema = createInsertSchema(cortexTransactions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCortexAccountSchema = createInsertSchema(cortexAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // =====================================================
 // TYPE EXPORTS
 // =====================================================
@@ -442,3 +460,12 @@ export type InsertCortexNote = z.infer<typeof insertCortexNoteSchema>;
 
 export type CortexDocument = typeof cortexDocuments.$inferSelect;
 export type InsertCortexDocument = z.infer<typeof insertCortexDocumentSchema>;
+
+export type CortexBill = typeof cortexBills.$inferSelect;
+export type InsertCortexBill = z.infer<typeof insertCortexBillSchema>;
+
+export type CortexTransaction = typeof cortexTransactions.$inferSelect;
+export type InsertCortexTransaction = z.infer<typeof insertCortexTransactionSchema>;
+
+export type CortexAccount = typeof cortexAccounts.$inferSelect;
+export type InsertCortexAccount = z.infer<typeof insertCortexAccountSchema>;
