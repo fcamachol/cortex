@@ -554,7 +554,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 z-50" align="start">
+                      <PopoverContent className="w-auto p-0 calendar-popover-max-z" align="start">
                         <Calendar
                           mode="single"
                           selected={field.value}
