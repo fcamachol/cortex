@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TransactionForm } from "@/components/finance/TransactionForm";
 import { LoanForm } from "@/components/finance/LoanForm";
+import { LoanDetailModal } from "@/components/finance/LoanDetailModal";
 import { AccountForm } from "@/components/finance/AccountForm";
 import { AccountList } from "@/components/finance/AccountList";
 import { CreditCardForm } from "@/components/finance/CreditCardForm";
@@ -97,6 +98,19 @@ export default function FinancePage() {
   const [showPayableForm, setShowPayableForm] = useState(false);
   const [showLoanForm, setShowLoanForm] = useState(false);
   const [showAccountForm, setShowAccountForm] = useState(false);
+  const [showLoanDetail, setShowLoanDetail] = useState(false);
+  const [selectedLoan, setSelectedLoan] = useState<any>(null);
+
+  // Handlers for loan detail modal
+  const handleLoanClick = (loan: any) => {
+    setSelectedLoan(loan);
+    setShowLoanDetail(true);
+  };
+
+  const handleEditLoanFromDetail = () => {
+    setShowLoanDetail(false);
+    setEditingLoan(selectedLoan);
+  };
   const [showCreditCardForm, setShowCreditCardForm] = useState(false);
   const [dateFilter, setDateFilter] = useState("this-month");
   const [editingLoan, setEditingLoan] = useState<any>(null);
@@ -423,7 +437,7 @@ export default function FinancePage() {
                           <div 
                             key={index} 
                             className="flex justify-between items-center p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                            onClick={() => setEditingLoan(loan)}
+                            onClick={() => handleLoanClick(loan)}
                           >
                             <div className="flex-1">
                               <p className="font-medium">{loan.lender_name || "Loan"}</p>
@@ -563,6 +577,14 @@ export default function FinancePage() {
         open={!!editingLoan} 
         onClose={() => setEditingLoan(null)} 
         editingLoan={editingLoan}
+      />
+
+      {/* Loan Detail Modal */}
+      <LoanDetailModal
+        open={showLoanDetail}
+        onClose={() => setShowLoanDetail(false)}
+        loan={selectedLoan}
+        onEdit={handleEditLoanFromDetail}
       />
 
       {/* Account Form Modal */}
