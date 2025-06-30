@@ -693,7 +693,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       spaceData.spaceName = spaceName;
       
       // In a real app, get userId from authentication
-      spaceData.creatorUserId = spaceData.creatorUserId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      spaceData.creatorUserId = spaceData.creatorUserId || 'cu_181de66a23864b2fac56779a82189691';
 
       console.log('Creating space with data:', spaceData);
       
