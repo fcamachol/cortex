@@ -54,6 +54,67 @@ class DatabaseStorage {
         }
     }
 
+    async upsertWhatsappContact(contact: any): Promise<any> {
+        try {
+            // Check if contact already exists with a valid push name
+            const existingContact = await db.select()
+                .from(whatsappContacts)
+                .where(
+                    and(
+                        eq(whatsappContacts.jid, contact.jid),
+                        eq(whatsappContacts.instanceName, contact.instanceName)
+                    )
+                )
+                .limit(1);
+
+            const existing = existingContact[0];
+            
+            // Build the update object dynamically to avoid undefined values
+            const updateSet: any = {};
+            
+            // Only update push name if the new one is better than existing
+            if (contact.pushName && contact.pushName !== contact.jid) {
+                // If no existing name, or existing name is just the JID, use new name
+                if (!existing?.pushName || existing.pushName === existing.jid || existing.pushName === '') {
+                    updateSet.pushName = contact.pushName;
+                }
+                // If new name is more specific (not just phone number), prefer it
+                else if (contact.pushName.length > 10 && !/^\d+$/.test(contact.pushName)) {
+                    updateSet.pushName = contact.pushName;
+                }
+            }
+            
+            if (contact.profilePictureUrl) updateSet.profilePictureUrl = contact.profilePictureUrl;
+            if (contact.verifiedName) updateSet.verifiedName = contact.verifiedName;
+            if (typeof contact.isBusiness === 'boolean') updateSet.isBusiness = contact.isBusiness;
+            if (typeof contact.isBlocked === 'boolean') updateSet.isBlocked = contact.isBlocked;
+            
+            // Always update the timestamp
+            updateSet.lastUpdatedAt = new Date();
+
+            // If no meaningful updates, just ensure we have something to update
+            if (Object.keys(updateSet).length === 1) {
+                // Only timestamp, force at least one field update
+                if (!updateSet.pushName && contact.pushName) {
+                    updateSet.pushName = contact.pushName;
+                }
+            }
+
+            const [result] = await db.insert(whatsappContacts)
+                .values(contact)
+                .onConflictDoUpdate({
+                    target: [whatsappContacts.jid, whatsappContacts.instanceName],
+                    set: updateSet
+                })
+                .returning();
+            
+            return result;
+        } catch (error) {
+            console.error('Error upserting WhatsApp contact:', error);
+            throw error;
+        }
+    }
+
     async getWhatsappConversations(instanceName: string): Promise<any[]> {
         try {
             // First check if is_group column exists, otherwise determine from chat_id pattern
@@ -389,6 +450,35 @@ class DatabaseStorage {
         } catch (error) {
             console.error('Error fetching WhatsApp messages:', error);
             return [];
+        }
+    }
+
+    async upsertWhatsappMessage(message: any): Promise<any> {
+        try {
+            const [result] = await db.insert(whatsappMessages)
+                .values(message)
+                .onConflictDoUpdate({
+                    target: [whatsappMessages.messageId, whatsappMessages.instanceName],
+                    set: {
+                        content: message.content,
+                        messageType: message.messageType,
+                        fromMe: message.fromMe,
+                        timestamp: message.timestamp,
+                        senderJid: message.senderJid,
+                        quotedMessageId: message.quotedMessageId,
+                        forwardingScore: message.forwardingScore,
+                        isForwarded: message.isForwarded,
+                        isStarred: message.isStarred,
+                        rawApiPayload: message.rawApiPayload,
+                        updatedAt: new Date()
+                    }
+                })
+                .returning();
+            
+            return result;
+        } catch (error) {
+            console.error('Error upserting WhatsApp message:', error);
+            throw error;
         }
     }
 
