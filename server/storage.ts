@@ -1404,6 +1404,85 @@ class DatabaseStorage {
             throw error;
         }
     }
+
+    // =============================
+    // FINANCE ACCOUNTS METHODS
+    // =============================
+
+    async getFinanceAccounts(userId: string): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_finance.accounts 
+                ORDER BY name ASC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching finance accounts:', error);
+            return [];
+        }
+    }
+
+    async createFinanceAccount(data: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO cortex_finance.accounts (
+                    id, name, account_type, current_balance, currency, description, 
+                    status, institution_name, account_number, owner_entity_id
+                ) VALUES (
+                    ${data.id || 'ca_' + Date.now().toString()}, 
+                    ${data.name}, 
+                    ${data.account_type || 'checking'}, 
+                    ${data.current_balance || 0}, 
+                    ${data.currency || 'MXN'}, 
+                    ${data.description || ''}, 
+                    ${data.status || 'active'}, 
+                    ${data.institution_name || ''}, 
+                    ${data.account_number || ''},
+                    ${data.owner_entity_id || 'default-entity'}
+                )
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating finance account:', error);
+            throw error;
+        }
+    }
+
+    async updateFinanceAccount(accountId: number, data: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                UPDATE cortex_finance.accounts 
+                SET 
+                    name = ${data.name},
+                    account_type = ${data.account_type},
+                    current_balance = ${data.current_balance || data.balance},
+                    currency = ${data.currency},
+                    description = ${data.description},
+                    status = ${data.status},
+                    institution_name = ${data.institution_name},
+                    account_number = ${data.account_number},
+                    updated_at = NOW()
+                WHERE id = ${accountId.toString()}
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error updating finance account:', error);
+            throw error;
+        }
+    }
+
+    async deleteFinanceAccount(accountId: number): Promise<void> {
+        try {
+            await db.execute(sql`
+                DELETE FROM cortex_finance.accounts WHERE id = ${accountId.toString()}
+            `);
+        } catch (error) {
+            console.error('Error deleting finance account:', error);
+            throw error;
+        }
+    }
 }
 
 export const storage = new DatabaseStorage();
