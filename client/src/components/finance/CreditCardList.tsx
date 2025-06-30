@@ -29,10 +29,10 @@ interface CreditCardData {
   card_name: string;
   bank_name: string;
   last_4_digits: string;
-  current_balance: number;
-  credit_limit: number;
-  available_credit: number;
-  apr: number;
+  current_balance: string | number;
+  credit_limit: string | number;
+  available_credit: string | number;
+  apr: string | number;
   statement_closing_day: number;
   payment_due_days_after_statement: number;
   currency: string;
@@ -83,15 +83,15 @@ export function CreditCardList() {
     }
   };
 
-  const formatCurrency = (amount: number, currency: string = "MXN") => {
+  const formatCurrency = (amount: string | number, currency: string = "MXN") => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: currency
-    }).format(amount);
+    }).format(Number(amount));
   };
 
-  const formatPercentage = (rate: number) => {
-    return `${(rate * 100).toFixed(2)}%`;
+  const formatPercentage = (rate: string | number) => {
+    return `${(Number(rate) * 100).toFixed(2)}%`;
   };
 
   const getUtilizationColor = (utilization: number) => {
@@ -100,8 +100,10 @@ export function CreditCardList() {
     return "text-green-600 dark:text-green-400";
   };
 
-  const calculateUtilization = (currentBalance: number, creditLimit: number) => {
-    const utilization = (Math.abs(currentBalance) / creditLimit) * 100;
+  const calculateUtilization = (currentBalance: string | number, creditLimit: string | number) => {
+    const balance = Number(currentBalance);
+    const limit = Number(creditLimit);
+    const utilization = (Math.abs(balance) / limit) * 100;
     return Math.min(utilization, 100);
   };
 
