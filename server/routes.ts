@@ -2790,6 +2790,68 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // =============================================================================
+  // CREDIT CARDS API ROUTES - Dedicated credit card management
+  // =============================================================================
+
+  // Get credit cards
+  app.get('/api/finance/credit-cards', async (req: Request, res: Response) => {
+    try {
+      const creditCards = await storage.getCreditCards();
+      res.json(creditCards || []);
+    } catch (error) {
+      console.error('Error fetching credit cards:', error);
+      res.status(500).json({ error: 'Failed to fetch credit cards' });
+    }
+  });
+
+  // Create credit card
+  app.post('/api/finance/credit-cards', async (req: Request, res: Response) => {
+    try {
+      const creditCard = await storage.createCreditCard(req.body);
+      res.json(creditCard);
+    } catch (error) {
+      console.error('Error creating credit card:', error);
+      res.status(500).json({ error: 'Failed to create credit card' });
+    }
+  });
+
+  // Update credit card
+  app.put('/api/finance/credit-cards/:id', async (req: Request, res: Response) => {
+    try {
+      const creditCard = await storage.updateCreditCard(req.params.id, req.body);
+      res.json(creditCard);
+    } catch (error) {
+      console.error('Error updating credit card:', error);
+      res.status(500).json({ error: 'Failed to update credit card' });
+    }
+  });
+
+  // Delete credit card
+  app.delete('/api/finance/credit-cards/:id', async (req: Request, res: Response) => {
+    try {
+      await storage.deleteCreditCard(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting credit card:', error);
+      res.status(500).json({ error: 'Failed to delete credit card' });
+    }
+  });
+
+  // Get credit card by ID
+  app.get('/api/finance/credit-cards/:id', async (req: Request, res: Response) => {
+    try {
+      const creditCard = await storage.getCreditCardById(req.params.id);
+      if (!creditCard) {
+        return res.status(404).json({ error: 'Credit card not found' });
+      }
+      res.json(creditCard);
+    } catch (error) {
+      console.error('Error fetching credit card:', error);
+      res.status(500).json({ error: 'Failed to fetch credit card' });
+    }
+  });
+
+  // =============================================================================
   // RECURRING BILLS API ROUTES - Automated recurring bill management
   // =============================================================================
 

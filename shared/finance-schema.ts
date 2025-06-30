@@ -112,18 +112,32 @@ export const cortexAccounts = cortexFinanceSchema.table("accounts", {
   activeIdx: index("accounts_active_idx").on(table.isActive),
 }));
 
-// Credit Card Details - Additional information for credit card accounts
-export const cortexCreditCardDetails = cortexFinanceSchema.table("credit_card_details", {
-  accountId: varchar("account_id", { length: 50 }).primaryKey().references(() => cortexAccounts.id, { onDelete: "cascade" }),
+// Credit Cards - Dedicated table for credit card accounts
+export const cortexCreditCards = cortexFinanceSchema.table("credit_cards", {
+  id: varchar("id", { length: 50 }).primaryKey(), // cc_ prefixed entity ID
+  cardName: varchar("card_name", { length: 200 }).notNull(),
+  bankName: varchar("bank_name", { length: 200 }).notNull(),
+  last4Digits: varchar("last_4_digits", { length: 4 }).notNull(),
+  currentBalance: numeric("current_balance", { precision: 15, scale: 2 }).default("0.00").notNull(), // Negative = debt
   creditLimit: numeric("credit_limit", { precision: 15, scale: 2 }).notNull(),
+  availableCredit: numeric("available_credit", { precision: 15, scale: 2 }).notNull(), // creditLimit + currentBalance (since balance is negative)
   apr: numeric("apr", { precision: 6, scale: 4 }).notNull(), // Annual Percentage Rate (e.g., 24.99% stored as 0.2499)
   statementClosingDay: integer("statement_closing_day").notNull(), // Day of month (1-31)
   paymentDueDaysAfterStatement: integer("payment_due_days_after_statement").default(21).notNull(),
+  currency: varchar("currency", { length: 3 }).default("MXN").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  notes: text("notes"),
+  contactEntityId: varchar("contact_entity_id", { length: 50 }), // FK to cortex_entities
+  createdByEntityId: varchar("created_by_entity_id", { length: 50 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
-  creditLimitIdx: index("credit_card_details_credit_limit_idx").on(table.creditLimit),
-  aprIdx: index("credit_card_details_apr_idx").on(table.apr),
+  cardNameIdx: index("credit_cards_card_name_idx").on(table.cardName),
+  bankNameIdx: index("credit_cards_bank_name_idx").on(table.bankName),
+  creditLimitIdx: index("credit_cards_credit_limit_idx").on(table.creditLimit),
+  aprIdx: index("credit_cards_apr_idx").on(table.apr),
+  activeIdx: index("credit_cards_active_idx").on(table.isActive),
+  balanceIdx: index("credit_cards_balance_idx").on(table.currentBalance),
 }));
 
 // Transactions table with proper double-entry accounting
@@ -196,7 +210,7 @@ export const insertTransactionSchema = createInsertSchema(cortexTransactions).om
   updatedAt: true,
 });
 
-export const insertCreditCardDetailsSchema = createInsertSchema(cortexCreditCardDetails).omit({
+export const insertCreditCardSchema = createInsertSchema(cortexCreditCards).omit({
   createdAt: true,
   updatedAt: true,
 });
@@ -216,6 +230,9 @@ export type InsertAccount = z.infer<typeof insertAccountSchema>;
 
 export type Transaction = typeof cortexTransactions.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
+
+export type CreditCard = typeof cortexCreditCards.$inferSelect;
+export type InsertCreditCard = z.infer<typeof insertCreditCardSchema>;
 
 export type RecurrenceType = z.infer<typeof recurrenceTypeEnum>;
 

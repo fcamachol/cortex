@@ -5,186 +5,137 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { CreditCard, Building2, Calendar, Percent, DollarSign } from "lucide-react";
-import type { FinanceAccount, InsertFinanceAccount, InsertCreditCardDetails } from "@shared/schema";
+import { Plus, CreditCard } from "lucide-react";
 
-const creditCardFormSchema = z.object({
-  // Account Information
-  accountName: z.string().min(1, "Account name is required"),
-  institutionName: z.string().min(1, "Institution name is required"),
-  last4Digits: z.string().length(4, "Must be exactly 4 digits").regex(/^\d{4}$/, "Must contain only digits"),
-  currentBalance: z.string().min(1, "Current balance is required"),
-  currency: z.string().default("USD"),
-  notes: z.string().optional(),
-  
-  // Credit Card Specific Details
-  creditLimit: z.string().min(1, "Credit limit is required"),
-  apr: z.string().min(1, "APR is required"),
-  statementClosingDay: z.string().min(1, "Statement closing day is required"),
-  paymentDueDaysAfterStatement: z.string().default("21"),
+const creditCardSchema = z.object({
+  cardName: z.string().min(1, "Card name is required").max(200),
+  bankName: z.string().min(1, "Bank/Institution is required").max(200),
+  last4Digits: z.string().min(4, "Last 4 digits required").max(4, "Only 4 digits").regex(/^\d{4}$/, "Must be 4 digits"),
+  currentBalance: z.string().refine(val => !isNaN(parseFloat(val)), "Must be a valid number"),
+  creditLimit: z.string().refine(val => !isNaN(parseFloat(val)) && parseFloat(val) > 0, "Must be a positive number"),
+  apr: z.string().refine(val => !isNaN(parseFloat(val)) && parseFloat(val) >= 0, "Must be a positive number"),
+  statementClosingDay: z.string().refine(val => {
+    const num = parseInt(val);
+    return !isNaN(num) && num >= 1 && num <= 31;
+  }, "Must be between 1 and 31"),
+  paymentDueDaysAfterStatement: z.string().refine(val => {
+    const num = parseInt(val);
+    return !isNaN(num) && num >= 1 && num <= 60;
+  }, "Must be between 1 and 60 days"),
+  currency: z.string().default("MXN"),
+  isActive: z.boolean().default(true),
+  notes: z.string().optional()
 });
 
-type CreditCardFormData = z.infer<typeof creditCardFormSchema>;
+type CreditCardFormData = z.infer<typeof creditCardSchema>;
 
 interface CreditCardFormProps {
-  spaceId: number;
-  onSuccess?: () => void;
-  editingAccount?: FinanceAccount;
+  open: boolean;
+  onClose: () => void;
+  creditCard?: any; // For editing existing credit cards
 }
 
-export function CreditCardForm({ spaceId, onSuccess, editingAccount }: CreditCardFormProps) {
+export function CreditCardForm({ open, onClose, creditCard }: CreditCardFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<CreditCardFormData>({
-    resolver: zodResolver(creditCardFormSchema),
+    resolver: zodResolver(creditCardSchema),
     defaultValues: {
-      accountName: editingAccount?.accountName || "",
-      institutionName: editingAccount?.institutionName || "",
-      last4Digits: editingAccount?.last4Digits || "",
-      currentBalance: editingAccount?.currentBalance || "0.00",
-      currency: editingAccount?.currency || "USD",
-      notes: editingAccount?.notes || "",
-      creditLimit: "",
-      apr: "",
-      statementClosingDay: "",
-      paymentDueDaysAfterStatement: "21",
-    },
+      cardName: creditCard?.card_name || "",
+      bankName: creditCard?.bank_name || "",
+      last4Digits: creditCard?.last_4_digits || "",
+      currentBalance: creditCard?.current_balance?.toString() || "0.00",
+      creditLimit: creditCard?.credit_limit?.toString() || "",
+      apr: creditCard?.apr?.toString() || "",
+      statementClosingDay: creditCard?.statement_closing_day?.toString() || "",
+      paymentDueDaysAfterStatement: creditCard?.payment_due_days_after_statement?.toString() || "21",
+      currency: creditCard?.currency || "MXN",
+      isActive: creditCard?.is_active ?? true,
+      notes: creditCard?.notes || ""
+    }
   });
 
-  const createAccountMutation = useMutation({
-    mutationFn: async (data: InsertFinanceAccount) => {
-      return await apiRequest("POST", "/api/finance/accounts", data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/finance/accounts"] });
-    },
-  });
-
-  const createCreditCardMutation = useMutation({
-    mutationFn: async (data: InsertCreditCardDetails) => {
-      return await apiRequest("POST", "/api/finance/credit-cards", data);
+  const createMutation = useMutation({
+    mutationFn: async (data: CreditCardFormData) => {
+      const payload = {
+        card_name: data.cardName,
+        bank_name: data.bankName,
+        last_4_digits: data.last4Digits,
+        current_balance: parseFloat(data.currentBalance),
+        credit_limit: parseFloat(data.creditLimit),
+        apr: parseFloat(data.apr) / 100, // Convert percentage to decimal
+        statement_closing_day: parseInt(data.statementClosingDay),
+        payment_due_days_after_statement: parseInt(data.paymentDueDaysAfterStatement),
+        currency: data.currency,
+        is_active: data.isActive,
+        notes: data.notes
+      };
+      
+      if (creditCard) {
+        return await apiRequest("PUT", `/api/finance/credit-cards/${creditCard.id}`, payload);
+      } else {
+        return await apiRequest("POST", "/api/finance/credit-cards", payload);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/finance/credit-cards"] });
-    },
-  });
-
-  const updateAccountMutation = useMutation({
-    mutationFn: async ({ accountId, data }: { accountId: number; data: Partial<InsertFinanceAccount> }) => {
-      return await apiRequest("PUT", `/api/finance/accounts/${accountId}`, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/finance/accounts"] });
-    },
-  });
-
-  const onSubmit = async (data: CreditCardFormData) => {
-    try {
-      setIsSubmitting(true);
-
-      if (editingAccount) {
-        // Update existing account
-        await updateAccountMutation.mutateAsync({
-          accountId: editingAccount.accountId,
-          data: {
-            accountName: data.accountName,
-            institutionName: data.institutionName,
-            last4Digits: data.last4Digits,
-            currentBalance: data.currentBalance,
-            currency: data.currency,
-            notes: data.notes,
-          },
-        });
-      } else {
-        // Create new credit card account
-        const accountData: InsertFinanceAccount = {
-          spaceId,
-          accountName: data.accountName,
-          accountType: "credit_card" as const,
-          institutionName: data.institutionName,
-          last4Digits: data.last4Digits,
-          currentBalance: data.currentBalance,
-          currency: data.currency,
-          isActive: true,
-          notes: data.notes,
-        };
-
-        const newAccount = await createAccountMutation.mutateAsync(accountData);
-
-        // Create credit card details
-        const creditCardData: InsertCreditCardDetails = {
-          accountId: newAccount.accountId,
-          creditLimit: data.creditLimit,
-          apr: data.apr,
-          statementClosingDay: parseInt(data.statementClosingDay),
-          paymentDueDaysAfterStatement: parseInt(data.paymentDueDaysAfterStatement),
-        };
-
-        await createCreditCardMutation.mutateAsync(creditCardData);
-      }
-
       toast({
         title: "Success",
-        description: editingAccount 
-          ? "Credit card updated successfully" 
-          : "Credit card created successfully",
+        description: creditCard ? "Credit card updated successfully" : "Credit card created successfully"
       });
-
       form.reset();
-      onSuccess?.();
-    } catch (error) {
-      console.error("Error saving credit card:", error);
+      onClose();
+    },
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: editingAccount 
-          ? "Failed to update credit card" 
-          : "Failed to create credit card",
-        variant: "destructive",
+        description: error.message || "Failed to save credit card",
+        variant: "destructive"
       });
-    } finally {
-      setIsSubmitting(false);
     }
+  });
+
+  const onSubmit = (data: CreditCardFormData) => {
+    createMutation.mutate(data);
   };
 
   // Generate day options for statement closing day
   const dayOptions = Array.from({ length: 31 }, (_, i) => i + 1);
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CreditCard className="h-5 w-5" />
-          {editingAccount ? "Edit Credit Card" : "Add Credit Card"}
-        </CardTitle>
-        <CardDescription>
-          {editingAccount 
-            ? "Update your credit card information" 
-            : "Create a new credit card account for tracking purchases and statements"}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            {creditCard ? "Edit Credit Card" : "Add Credit Card"}
+          </DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Create a new credit card account for tracking purchases and statements
+          </p>
+        </DialogHeader>
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Account Information Section */}
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                <Building2 className="h-4 w-4" />
-                Account Information
+              <div className="flex items-center gap-2 mb-4">
+                <CreditCard className="h-4 w-4" />
+                <h3 className="text-sm font-medium">Account Information</h3>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="accountName"
+                  name="cardName"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Card Name *</FormLabel>
@@ -198,7 +149,7 @@ export function CreditCardForm({ spaceId, onSuccess, editingAccount }: CreditCar
 
                 <FormField
                   control={form.control}
-                  name="institutionName"
+                  name="bankName"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Bank/Institution *</FormLabel>
@@ -229,13 +180,18 @@ export function CreditCardForm({ spaceId, onSuccess, editingAccount }: CreditCar
                   name="currentBalance"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-1">
-                        <DollarSign className="h-3 w-3" />
-                        Current Balance *
-                      </FormLabel>
+                      <FormLabel>$ Current Balance *</FormLabel>
                       <FormControl>
-                        <Input placeholder="0.00" type="number" step="0.01" {...field} />
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          placeholder="0.00" 
+                          {...field} 
+                        />
                       </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Negative values represent debt (e.g., -500.00)
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -244,92 +200,95 @@ export function CreditCardForm({ spaceId, onSuccess, editingAccount }: CreditCar
             </div>
 
             {/* Credit Card Details Section */}
-            {!editingAccount && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  <Percent className="h-4 w-4" />
-                  Credit Card Details
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="creditLimit"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-1">
-                          <DollarSign className="h-3 w-3" />
-                          Credit Limit *
-                        </FormLabel>
-                        <FormControl>
-                          <Input placeholder="5000.00" type="number" step="0.01" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="apr"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-1">
-                          <Percent className="h-3 w-3" />
-                          APR (%) *
-                        </FormLabel>
-                        <FormControl>
-                          <Input placeholder="24.99" type="number" step="0.01" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="statementClosingDay"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          Statement Closing Day *
-                        </FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select day" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {dayOptions.map((day) => (
-                              <SelectItem key={day} value={day.toString()}>
-                                {day}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="paymentDueDaysAfterStatement"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Days Until Payment Due</FormLabel>
-                        <FormControl>
-                          <Input placeholder="21" type="number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-sm">%</span>
+                <h3 className="text-sm font-medium">Credit Card Details</h3>
               </div>
-            )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="creditLimit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>$ Credit Limit *</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          placeholder="5000.00" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="apr"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>% APR (%) *</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          placeholder="24.99" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="statementClosingDay"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Statement Closing Day *</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select day" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {dayOptions.map((day) => (
+                            <SelectItem key={day} value={day.toString()}>
+                              {day}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="paymentDueDaysAfterStatement"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Days Until Payment Due</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="21" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
 
             {/* Notes Section */}
             <FormField
@@ -339,10 +298,10 @@ export function CreditCardForm({ spaceId, onSuccess, editingAccount }: CreditCar
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
-                    <Textarea
+                    <Textarea 
                       placeholder="Any additional notes about this credit card..."
-                      className="min-h-[100px]"
-                      {...field}
+                      rows={3}
+                      {...field} 
                     />
                   </FormControl>
                   <FormMessage />
@@ -350,19 +309,44 @@ export function CreditCardForm({ spaceId, onSuccess, editingAccount }: CreditCar
               )}
             />
 
-            {/* Submit Button */}
-            <div className="flex justify-end gap-2">
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {isSubmitting ? "Saving..." : editingAccount ? "Update Credit Card" : "Create Credit Card"}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createMutation.isPending}>
+                {createMutation.isPending ? "Saving..." : creditCard ? "Update Credit Card" : "Create Credit Card"}
               </Button>
             </div>
           </form>
         </Form>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface CreditCardFormTriggerProps {
+  creditCard?: any;
+  children?: React.ReactNode;
+}
+
+export function CreditCardFormTrigger({ creditCard, children }: CreditCardFormTriggerProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <div onClick={() => setOpen(true)} className="cursor-pointer">
+        {children || (
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Credit Card
+          </Button>
+        )}
+      </div>
+      <CreditCardForm 
+        open={open} 
+        onClose={() => setOpen(false)} 
+        creditCard={creditCard}
+      />
+    </>
   );
 }

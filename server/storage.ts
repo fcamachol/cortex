@@ -848,6 +848,123 @@ class DatabaseStorage {
     }
 
     // =============================
+    // CREDIT CARDS METHODS
+    // =============================
+
+    async getCreditCards(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_finance.credit_cards 
+                WHERE is_active = true
+                ORDER BY card_name ASC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching credit cards:', error);
+            return [];
+        }
+    }
+
+    async createCreditCard(creditCardData: any): Promise<any> {
+        try {
+            // Generate ID with cc_ prefix for credit cards
+            const creditCardId = `cc_${Date.now()}`;
+            
+            // Calculate available credit
+            const availableCredit = creditCardData.credit_limit - Math.abs(creditCardData.current_balance || 0);
+            
+            const result = await db.execute(sql`
+                INSERT INTO cortex_finance.credit_cards (
+                    id, card_name, bank_name, last_4_digits, current_balance, 
+                    credit_limit, available_credit, apr, statement_closing_day, 
+                    payment_due_days_after_statement, currency, is_active, notes, 
+                    created_by_entity_id
+                ) VALUES (
+                    ${creditCardId}, 
+                    ${creditCardData.card_name}, 
+                    ${creditCardData.bank_name}, 
+                    ${creditCardData.last_4_digits}, 
+                    ${creditCardData.current_balance || 0}, 
+                    ${creditCardData.credit_limit}, 
+                    ${availableCredit}, 
+                    ${creditCardData.apr}, 
+                    ${creditCardData.statement_closing_day}, 
+                    ${creditCardData.payment_due_days_after_statement || 21}, 
+                    ${creditCardData.currency || 'MXN'}, 
+                    ${creditCardData.is_active !== false}, 
+                    ${creditCardData.notes || null}, 
+                    ${'default-user-id'}
+                )
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating credit card:', error);
+            throw error;
+        }
+    }
+
+    async updateCreditCard(id: string, creditCardData: any): Promise<any> {
+        try {
+            // Calculate available credit if credit limit or balance changed
+            let availableCredit = null;
+            if (creditCardData.credit_limit !== undefined || creditCardData.current_balance !== undefined) {
+                const creditLimit = creditCardData.credit_limit;
+                const currentBalance = creditCardData.current_balance || 0;
+                availableCredit = creditLimit - Math.abs(currentBalance);
+            }
+
+            const result = await db.execute(sql`
+                UPDATE cortex_finance.credit_cards SET
+                    card_name = COALESCE(${creditCardData.card_name}, card_name),
+                    bank_name = COALESCE(${creditCardData.bank_name}, bank_name),
+                    last_4_digits = COALESCE(${creditCardData.last_4_digits}, last_4_digits),
+                    current_balance = COALESCE(${creditCardData.current_balance}, current_balance),
+                    credit_limit = COALESCE(${creditCardData.credit_limit}, credit_limit),
+                    available_credit = COALESCE(${availableCredit}, available_credit),
+                    apr = COALESCE(${creditCardData.apr}, apr),
+                    statement_closing_day = COALESCE(${creditCardData.statement_closing_day}, statement_closing_day),
+                    payment_due_days_after_statement = COALESCE(${creditCardData.payment_due_days_after_statement}, payment_due_days_after_statement),
+                    currency = COALESCE(${creditCardData.currency}, currency),
+                    is_active = COALESCE(${creditCardData.is_active}, is_active),
+                    notes = COALESCE(${creditCardData.notes}, notes),
+                    updated_at = NOW()
+                WHERE id = ${id}
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error updating credit card:', error);
+            throw error;
+        }
+    }
+
+    async deleteCreditCard(id: string): Promise<void> {
+        try {
+            await db.execute(sql`
+                UPDATE cortex_finance.credit_cards 
+                SET is_active = false, updated_at = NOW()
+                WHERE id = ${id}
+            `);
+        } catch (error) {
+            console.error('Error deleting credit card:', error);
+            throw error;
+        }
+    }
+
+    async getCreditCardById(id: string): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_finance.credit_cards WHERE id = ${id}
+            `);
+            return result.rows[0] || null;
+        } catch (error) {
+            console.error('Error fetching credit card:', error);
+            throw error;
+        }
+    }
+
+    // =============================
     // RECURRING BILLS METHODS
     // =============================
 
