@@ -48,46 +48,49 @@ const formatCurrency = (amount: number, currency: string) => {
   return `${symbol}${Math.round(amount).toLocaleString()}`;
 };
 
-const calculateNextPaymentDate = (startDate: string, paymentDate: string | null, paymentFrequency: string) => {
+const calculateNextPaymentDate = (startDate: string, paymentDate: string | null, frequency: string) => {
+  const start = new Date(startDate);
   const today = new Date();
-  let nextDate = new Date();
   
-  if (paymentDate) {
-    // Use specific payment date
-    const paymentDay = new Date(paymentDate).getDate();
-    nextDate.setDate(paymentDay);
-    
-    // If payment day has passed this month, move to next month
-    if (nextDate <= today) {
-      nextDate.setMonth(nextDate.getMonth() + 1);
-    }
-  } else {
-    // Use start date as reference
-    const startDateObj = new Date(startDate);
-    const dayOfMonth = startDateObj.getDate();
-    
-    nextDate.setDate(dayOfMonth);
-    if (nextDate <= today) {
-      nextDate.setMonth(nextDate.getMonth() + 1);
-    }
+  // Use payment_date if available, otherwise use start_date
+  const baseDate = paymentDate ? new Date(paymentDate) : start;
+  
+  // If the base date is in the future, return it
+  if (baseDate > today) {
+    return baseDate;
   }
   
-  // Adjust based on payment frequency
-  switch (paymentFrequency) {
+  // Calculate the next payment date based on frequency
+  const nextPayment = new Date(baseDate);
+  
+  switch (frequency) {
+    case 'monthly':
+      // Add months until we get a future date
+      while (nextPayment <= today) {
+        nextPayment.setMonth(nextPayment.getMonth() + 1);
+      }
+      break;
     case 'quarterly':
-      // Next quarter
-      const currentQuarter = Math.floor(nextDate.getMonth() / 3);
-      nextDate.setMonth((currentQuarter + 1) * 3);
+      while (nextPayment <= today) {
+        nextPayment.setMonth(nextPayment.getMonth() + 3);
+      }
       break;
     case 'annually':
-      // Next year
-      nextDate.setFullYear(nextDate.getFullYear() + 1);
+      while (nextPayment <= today) {
+        nextPayment.setFullYear(nextPayment.getFullYear() + 1);
+      }
       break;
-    // Monthly is default - no adjustment needed
+    default:
+      // Default to monthly
+      while (nextPayment <= today) {
+        nextPayment.setMonth(nextPayment.getMonth() + 1);
+      }
   }
   
-  return nextDate;
+  return nextPayment;
 };
+
+
 
 export default function FinancePage() {
   const [showTransactionForm, setShowTransactionForm] = useState(false);
@@ -439,12 +442,12 @@ export default function FinancePage() {
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-lg font-medium">${Math.round(monthlyPayment).toLocaleString()}</p>
+                              <p className="text-lg font-medium">{formatCurrency(monthlyPayment, loan.currency || 'USD')}</p>
                               <p className="text-sm text-muted-foreground">
                                 {paymentFreq} payments
                               </p>
                               <p className="text-xs text-muted-foreground mt-1">
-                                of ${principal.toLocaleString()} total
+                                of {formatCurrency(principal, loan.currency || 'USD')} total
                               </p>
                             </div>
                           </div>

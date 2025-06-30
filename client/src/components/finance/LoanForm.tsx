@@ -27,6 +27,9 @@ const loanSchema = z.object({
   paymentFrequency: z.enum(["monthly", "quarterly", "annually"], {
     required_error: "Please select payment frequency",
   }),
+  currency: z.enum(["USD", "MXN"], {
+    required_error: "Please select currency",
+  }),
   purpose: z.string().min(1, "Purpose is required"),
   collateral: z.string().optional(),
   notes: z.string().optional(),
@@ -70,6 +73,7 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
       startDate: new Date().toISOString().split('T')[0],
       paymentDate: "",
       paymentFrequency: "monthly",
+      currency: "USD",
       purpose: "",
       collateral: "",
       notes: "",
@@ -213,25 +217,49 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="principalAmount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Principal Amount</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      {...field}
-                      onChange={(e) => field.onChange(e.target.value)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="principalAmount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Principal Amount</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.value)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="currency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Currency</FormLabel>
+                    <FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select currency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="USD">USD ($)</SelectItem>
+                          <SelectItem value="MXN">MXN ($)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <FormField
