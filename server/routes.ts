@@ -3982,6 +3982,50 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Test endpoint for cortex_automation integration
+  app.post('/api/test-reaction-automation', async (req: Request, res: Response) => {
+    try {
+      const { instanceId, messageId, emoji, reactorJid, content } = req.body;
+      
+      console.log('🧪 Testing cortex_automation integration...');
+      
+      // Import ActionService here to avoid circular dependencies
+      const { ActionService } = await import('./action-service');
+      
+      // Simulate a reaction event
+      const reactionData = {
+        messageId,
+        instanceName: instanceId,
+        reactorJid,
+        reactionEmoji: emoji,
+        timestamp: new Date()
+      };
+      
+      console.log('🧪 Simulating reaction:', reactionData);
+      
+      // Process the reaction through ActionService
+      await ActionService.processReaction(reactionData);
+      
+      res.json({ 
+        success: true, 
+        message: 'Reaction automation test completed',
+        testData: {
+          instanceId,
+          messageId,
+          emoji,
+          reactorJid,
+          content
+        }
+      });
+    } catch (error) {
+      console.error('Error in reaction automation test:', error);
+      res.status(500).json({ 
+        error: 'Test failed', 
+        message: error.message 
+      });
+    }
+  });
+
   // Mount Cortex API routes
   app.use('/api/cortex', cortexRoutes);
 

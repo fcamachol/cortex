@@ -54,14 +54,16 @@ export const ActionService = {
             const originalMessage = await storage.getWhatsappMessageById(cleanReaction.messageId, cleanReaction.instanceName);
             console.log(`🔍 Retrieved message for reaction: ${cleanReaction.messageId}`, originalMessage?.content?.substring(0, 50));
             
-            // Trigger action logic based on reaction
-            await this.triggerAction(cleanReaction.instanceName, 'reaction', cleanReaction.reactionEmoji || '', {
+            // Trigger action logic based on reaction using cortex_automation schema
+            await this.triggerAction(cleanReaction.instanceName, 'whatsapp_message', cleanReaction.reactionEmoji || '', {
                 messageId: cleanReaction.messageId,
                 reactorJid: cleanReaction.reactorJid,
                 chatId: originalMessage?.chatId || await this.getChatIdFromMessage(cleanReaction.messageId, cleanReaction.instanceName),
                 content: originalMessage?.content || '',
                 senderJid: originalMessage?.senderJid || '',
-                timestamp: cleanReaction.timestamp
+                timestamp: cleanReaction.timestamp,
+                eventType: 'reaction',
+                emoji: cleanReaction.reactionEmoji || ''
             });
         } catch (error) {
             console.error(`❌ Error processing reaction:`, error);
@@ -72,43 +74,67 @@ export const ActionService = {
         console.log(`🧠 ActionService processing trigger: ${triggerType} -> ${triggerValue}`);
         
         try {
-            // 1. Find matching action rules from the database
-            const matchingRules = await storage.getActionRulesByTrigger(triggerType, triggerValue, instanceId);
+            // 1. Find matching action rules from cortex_automation schema
+            const potentialRules = await storage.getActionRulesByTrigger(triggerType);
             
-            console.log(`🔍 Debug: Found ${matchingRules.length} rules for ${triggerType}:${triggerValue}:${instanceId}`);
-            console.log(`🔍 Rules data:`, matchingRules);
+            console.log(`🔍 Found ${potentialRules.length} potential rules for ${triggerType}`);
             
-            // Debug: Check individual rule field access
-            if (matchingRules.length > 0) {
-                const firstRule = matchingRules[0];
-                console.log(`🔍 Rule field debug:`, {
-                    ruleName: firstRule.ruleName,
-                    actionType: firstRule.actionType,
-                    keys: Object.keys(firstRule)
-                });
-            }
-            
-            if (matchingRules.length === 0) {
-                console.log(`📭 No matching action rules found for ${triggerType}: ${triggerValue}`);
+            if (potentialRules.length === 0) {
+                console.log(`📭 No action rules found for ${triggerType}`);
                 return;
             }
 
-            // 2. Process each matching rule
+            // 2. Filter rules based on conditions matching the context
+            const matchingRules = potentialRules.filter(rule => {
+                return this.checkRuleConditions(rule.conditions, context);
+            });
+
+            console.log(`🎯 Found ${matchingRules.length} matching rules after condition filtering`);
+
+            // 3. Process each matching rule
             for (const rule of matchingRules) {
-                console.log(`⚡ Executing action rule: ${rule.ruleName} (${rule.actionType})`);
+                console.log(`⚡ Executing action rule: ${rule.name}`);
                 
-                // 3. Execute the specific action based on rule configuration
-                await this.executeAction(rule.actionType, rule.actionConfig, {
-                    instanceId,
-                    triggerType,
-                    triggerValue,
-                    context,
-                    rule
-                });
+                // 4. Execute each action for this rule
+                if (rule.actions && rule.actions.length > 0) {
+                    for (const action of rule.actions) {
+                        await this.executeAction(action.action_type, action.parameters, {
+                            instanceId,
+                            triggerType,
+                            triggerValue,
+                            context,
+                            rule,
+                            action
+                        });
+                    }
+                }
             }
         } catch (error) {
             console.error(`❌ Error in triggerAction:`, error);
         }
+    },
+
+    checkRuleConditions(conditions: any[], context: any): boolean {
+        if (!conditions || conditions.length === 0) {
+            return true; // No conditions means rule applies to all
+        }
+
+        // For now, implement simple condition checking
+        // This can be expanded to handle complex condition groups later
+        for (const condition of conditions) {
+            if (condition.condition_type === 'message_event' && condition.field_name === 'event_type') {
+                if (condition.operator === 'equals' && condition.value !== context.eventType) {
+                    return false;
+                }
+            }
+            if (condition.condition_type === 'reaction_emoji' && condition.field_name === 'emoji') {
+                if (condition.operator === 'equals' && condition.value !== context.emoji) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     },
 
     async executeAction(actionType: string, config: any, triggerContext: any): Promise<void> {
