@@ -324,15 +324,18 @@ export default function FinancePage() {
                       {loans.map((loan: any, index: number) => (
                         <div key={index} className="flex justify-between items-center p-4 border rounded-lg">
                           <div className="flex-1">
-                            <p className="font-medium">{loan.description || "Loan"}</p>
+                            <p className="font-medium">{loan.lender_name || "Loan"}</p>
                             <p className="text-sm text-muted-foreground">
-                              {loan.interestRate || "0"}% interest • {loan.termMonths || "0"} months
+                              {loan.interest_rate || "0"}% {loan.interest_rate_type || "monthly"} interest • {loan.term_months || "unlimited"} months
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Purpose: {loan.purpose || "Not specified"}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-medium">${loan.currentBalance || "0.00"}</p>
+                            <p className="text-lg font-medium">${Number(loan.principal_amount || 0).toLocaleString()}</p>
                             <p className="text-sm text-muted-foreground">
-                              of ${loan.principalAmount || "0.00"}
+                              {loan.payment_frequency || "monthly"} payments
                             </p>
                           </div>
                         </div>
