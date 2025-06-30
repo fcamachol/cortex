@@ -13,47 +13,9 @@ const router = Router();
 // CORTEX CONTACTS (replaces /api/crm/contacts)
 // =====================================================
 
-// Get all contacts from Cortex entities.persons
-router.get('/contacts', async (req, res) => {
-  try {
-    const userId = req.user?.id || 'dev-user-placeholder';
-    
-    const contacts = await storage.query(`
-      SELECT 
-        p.id as contact_id,
-        p.first_name,
-        p.last_name,
-        p.display_name as full_name,
-        p.profession,
-        p.description as notes,
-        p.avatar as profile_picture_url,
-        p.status,
-        p.created_at,
-        p.updated_at,
-        -- Get primary phone
-        (SELECT phone_number FROM cortex_entities.person_phones WHERE person_id = p.id AND is_primary = true LIMIT 1) as primary_phone,
-        -- Get primary email  
-        (SELECT email_address FROM cortex_entities.person_emails WHERE person_id = p.id AND is_primary = true LIMIT 1) as primary_email,
-        -- Get WhatsApp linking info
-        (SELECT is_whatsapp_linked FROM cortex_entities.person_phones WHERE person_id = p.id AND is_whatsapp_linked = true LIMIT 1) as is_whatsapp_linked,
-        -- Get tags
-        COALESCE(
-          ARRAY_AGG(DISTINCT t.name) FILTER (WHERE t.name IS NOT NULL),
-          ARRAY[]::text[]
-        ) as tags
-      FROM cortex_entities.persons p
-      LEFT JOIN cortex_entities.entity_tags et ON et.entity_id = p.id
-      LEFT JOIN cortex_entities.tags t ON t.id = et.tag_id
-      WHERE p.status = 'active'
-      GROUP BY p.id, p.first_name, p.last_name, p.display_name, p.profession, p.description, p.avatar, p.status, p.created_at, p.updated_at
-      ORDER BY p.created_at DESC
-    `);
-
-    res.json(contacts.rows);
-  } catch (error) {
-    console.error('Error fetching Cortex contacts:', error);
-    res.status(500).json({ error: 'Failed to fetch contacts' });
-  }
+// Simple test endpoint to verify cortex routes work
+router.get('/test', async (req, res) => {
+  res.json({ message: 'Cortex API is working', timestamp: new Date().toISOString() });
 });
 
 // Get contact by ID from Cortex entities.persons
