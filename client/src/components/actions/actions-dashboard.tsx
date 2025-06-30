@@ -13,17 +13,21 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 interface ActionRule {
-  ruleId: string;
-  ruleName: string;
+  id: string;
+  name: string;
   description?: string;
-  isActive: boolean;
-  triggerType: string;
-  actionType: string;
-  triggerConditions: any;
-  actionConfig: any;
-  totalExecutions: number;
-  lastExecutedAt?: string;
-  createdAt: string;
+  is_active: boolean;
+  trigger_type: string;
+  whatsapp_instance_id?: string;
+  trigger_permission?: string;
+  instance_name?: string;
+  execution_count?: number;
+  success_count?: number;
+  failure_count?: number;
+  last_executed_at?: string;
+  created_at: string;
+  conditions?: any[];
+  actions?: any[];
 }
 
 interface ActionStats {
@@ -223,11 +227,11 @@ export function ActionsDashboard() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-6">
               {Array.isArray(rules) && rules.map((rule: ActionRule) => (
-                <Card key={rule.ruleId} className="hover:shadow-md transition-shadow">
+                <Card key={rule.id} className="hover:shadow-md transition-shadow">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <CardTitle className="text-lg">{rule.ruleName}</CardTitle>
+                        <CardTitle className="text-lg">{rule.name}</CardTitle>
                         {rule.description && (
                           <CardDescription className="mt-1">
                             {rule.description}
@@ -235,44 +239,56 @@ export function ActionsDashboard() {
                         )}
                       </div>
                       <Switch
-                        checked={rule.isActive}
-                        onCheckedChange={() => toggleRuleMutation.mutate(rule.ruleId)}
+                        checked={rule.is_active}
+                        onCheckedChange={() => toggleRuleMutation.mutate(rule.id)}
                         disabled={toggleRuleMutation.isPending}
                       />
                     </div>
                     <div className="flex gap-2 mt-3">
                       <Badge 
                         variant="secondary" 
-                        className={`text-white ${getTriggerBadgeColor(rule.triggerType || 'unknown')}`}
+                        className={`text-white ${getTriggerBadgeColor(rule.trigger_type || 'unknown')}`}
                       >
-                        {formatTriggerType(rule.triggerType || 'unknown')}
+                        {formatTriggerType(rule.trigger_type || 'unknown')}
                       </Badge>
-                      <Badge 
-                        variant="secondary"
-                        className={`text-white ${getActionBadgeColor(rule.actionType || 'unknown')}`}
-                      >
-                        {formatActionType(rule.actionType || 'unknown')}
-                      </Badge>
+                      {rule.whatsapp_instance_id && (
+                        <Badge variant="outline" className="text-xs">
+                          Instance: {rule.instance_name || rule.whatsapp_instance_id.slice(0, 8)}
+                        </Badge>
+                      )}
+                      {rule.trigger_permission && (
+                        <Badge variant="outline" className="text-xs">
+                          Permission: {rule.trigger_permission}
+                        </Badge>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 text-sm text-muted-foreground">
                       <div className="flex justify-between">
                         <span>Executions:</span>
-                        <span className="font-medium">{rule.totalExecutions}</span>
+                        <span className="font-medium">{rule.execution_count || 0}</span>
                       </div>
-                      {rule.lastExecutedAt && (
+                      <div className="flex justify-between">
+                        <span>Success:</span>
+                        <span className="font-medium text-green-600">{rule.success_count || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Failures:</span>
+                        <span className="font-medium text-red-600">{rule.failure_count || 0}</span>
+                      </div>
+                      {rule.last_executed_at && (
                         <div className="flex justify-between">
                           <span>Last run:</span>
                           <span className="font-medium">
-                            {new Date(rule.lastExecutedAt).toLocaleDateString()}
+                            {new Date(rule.last_executed_at).toLocaleDateString()}
                           </span>
                         </div>
                       )}
                       <div className="flex justify-between">
                         <span>Created:</span>
                         <span className="font-medium">
-                          {new Date(rule.createdAt).toLocaleDateString()}
+                          {new Date(rule.created_at).toLocaleDateString()}
                         </span>
                       </div>
                     </div>
@@ -291,7 +307,7 @@ export function ActionsDashboard() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => deleteRuleMutation.mutate(rule.ruleId)}
+                        onClick={() => deleteRuleMutation.mutate(rule.id)}
                         disabled={deleteRuleMutation.isPending}
                         className="text-red-600 hover:text-red-700"
                       >
