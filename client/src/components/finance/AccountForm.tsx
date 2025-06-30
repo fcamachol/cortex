@@ -96,9 +96,9 @@ export function AccountForm({ open, onClose, spaceId, account }: AccountFormProp
       console.log("Payload being sent:", payload);
       
       if (account) {
-        return await apiRequest(`/api/finance/accounts/${account.accountId}`, "PUT", payload);
+        return await apiRequest("PUT", `/api/finance/accounts/${account.accountId}`, payload);
       } else {
-        return await apiRequest("/api/finance/accounts", "POST", payload);
+        return await apiRequest("POST", "/api/finance/accounts", payload);
       }
     },
     onSuccess: () => {
