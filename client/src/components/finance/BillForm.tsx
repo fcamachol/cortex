@@ -307,7 +307,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 z-50" align="start">
+                  <PopoverContent className="w-auto p-0" align="start" style={{ zIndex: 10000 }}>
                     <Calendar
                       mode="single"
                       selected={field.value}
@@ -394,7 +394,7 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 z-50" align="start">
+                  <PopoverContent className="w-auto p-0" align="start" style={{ zIndex: 10000 }}>
                     <Calendar
                       mode="single"
                       selected={field.value}
