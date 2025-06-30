@@ -1061,10 +1061,6 @@ class DatabaseStorage {
 
     async updateActionRule(ruleId: string, updates: any): Promise<any> {
         try {
-            // Convert allowed_user_ids to proper array format for PostgreSQL
-            const allowedUserIds = updates.allowed_user_ids || [];
-            const allowedUserIdsArray = Array.isArray(allowedUserIds) ? allowedUserIds : [];
-            
             const result = await db.execute(sql`
                 UPDATE cortex_automation.rules 
                 SET 
@@ -1075,7 +1071,6 @@ class DatabaseStorage {
                     priority = ${updates.priority || 0},
                     whatsapp_instance_id = ${updates.whatsapp_instance_id || null},
                     trigger_permission = ${updates.trigger_permission || 'me'},
-                    allowed_user_ids = ${allowedUserIdsArray},
                     updated_at = NOW()
                 WHERE id = ${ruleId}
                 RETURNING *
