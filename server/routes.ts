@@ -1668,16 +1668,13 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.patch('/api/actions/rules/:ruleId/toggle', async (req: AuthRequest, res: Response) => {
     try {
       const { ruleId } = req.params;
-      console.log('Toggle request for rule ID:', ruleId);
       const rule = await storage.getActionRule(ruleId);
-      console.log('Found rule:', rule ? 'Yes' : 'No', rule?.name);
       if (!rule) {
         return res.status(404).json({ error: 'Rule not found' });
       }
       const updatedRule = await storage.updateActionRule(ruleId, { 
         is_active: !rule.is_active 
       });
-      console.log('Updated rule is_active to:', !rule.is_active);
       res.json(updatedRule);
     } catch (error) {
       console.error('Error toggling action rule:', error);

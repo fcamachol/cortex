@@ -1122,20 +1122,13 @@ class DatabaseStorage {
 
     async getActionRule(ruleId: string): Promise<any> {
         try {
-            console.log('getActionRule called with ID:', ruleId);
-            // Simple query to test basic functionality first
             const query = sql`
                 SELECT * FROM cortex_automation.rules 
                 WHERE id = ${ruleId}
             `;
             
             const result = await db.execute(query);
-            console.log('Query result rows:', result.rows.length);
-            if (result.rows.length > 0) {
-                console.log('Found rule:', result.rows[0].name);
-                return result.rows[0];
-            }
-            return null;
+            return result.rows[0] || null;
         } catch (error) {
             console.error('Error getting action rule:', error);
             return null;

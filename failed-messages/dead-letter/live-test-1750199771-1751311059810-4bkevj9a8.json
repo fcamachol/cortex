@@ -19,7 +19,7 @@
     "apikey": "119FA240-45ED-46A7-AE13-5A1B7C909D7D"
   },
   "error": "storage.upsertWhatsappContact is not a function",
-  "retryCount": 3,
-  "lastRetry": 1751311121070,
+  "retryCount": 4,
+  "lastRetry": 1751311202763,
   "eventType": "contacts-update"
 }
