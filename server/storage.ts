@@ -483,12 +483,12 @@ class DatabaseStorage {
                     lender_name, lender_entity_id, borrower_entity_id, 
                     principal_amount, interest_rate, interest_rate_type, term_months, 
                     payment_frequency, start_date, payment_date, purpose, collateral,
-                    interest_type, moratory_rate, notes
+                    interest_type, moratory_rate, notes, currency
                 ) VALUES (
                     ${loanData.lenderName}, ${loanData.lenderContactId || null}, ${loanData.borrowerContactId || null},
                     ${loanData.principalAmount}, ${loanData.interestRate}, ${loanData.interestRateType || 'monthly'}, ${loanData.termMonths || null},
                     ${loanData.paymentFrequency}, ${loanData.startDate}, ${loanData.paymentDate || null}, ${loanData.purpose}, ${loanData.collateral || null},
-                    ${loanData.interestType || 'simple'}, ${loanData.moratoryRate || 0}, ${loanData.notes || null}
+                    ${loanData.interestType || 'simple'}, ${loanData.moratoryRate || 0}, ${loanData.notes || null}, ${loanData.currency || 'USD'}
                 ) RETURNING *
             `);
             return result.rows[0];

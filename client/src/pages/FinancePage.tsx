@@ -27,13 +27,25 @@ const calculateMonthlyPayment = (principal: number, interestRate: number, termMo
 };
 
 const getMonthlyInterestRate = (rate: number, type: string) => {
-  const annualRate = rate / 100;
   switch (type) {
-    case 'daily': return annualRate / 365 * 30.44; // Average days per month
-    case 'weekly': return annualRate / 52 * 4.33; // Average weeks per month
-    case 'monthly': return annualRate / 12;
-    default: return annualRate / 12;
+    case 'daily': 
+      // Daily rate: rate is daily percentage, convert to monthly
+      return (rate / 100) * 30.44; // Average days per month
+    case 'weekly': 
+      // Weekly rate: rate is weekly percentage, convert to monthly  
+      return (rate / 100) * 4.33; // Average weeks per month
+    case 'monthly': 
+      // Monthly rate: rate is already monthly percentage
+      return rate / 100;
+    default: 
+      // Default to monthly
+      return rate / 100;
   }
+};
+
+const formatCurrency = (amount: number, currency: string) => {
+  const symbol = currency === 'MXN' ? '$' : currency === 'USD' ? '$' : currency;
+  return `${symbol}${Math.round(amount).toLocaleString()}`;
 };
 
 const calculateNextPaymentDate = (startDate: string, paymentDate: string | null, paymentFrequency: string) => {
