@@ -1667,14 +1667,13 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.patch('/api/actions/rules/:ruleId/toggle', async (req: AuthRequest, res: Response) => {
     try {
-      const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
       const { ruleId } = req.params;
-      const rule = await storage.getActionRule(userId, ruleId);
+      const rule = await storage.getActionRule(ruleId);
       if (!rule) {
         return res.status(404).json({ error: 'Rule not found' });
       }
       const updatedRule = await storage.updateActionRule(ruleId, { 
-        isActive: !rule.isActive 
+        is_active: !rule.is_active 
       });
       res.json(updatedRule);
     } catch (error) {
