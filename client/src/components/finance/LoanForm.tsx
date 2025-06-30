@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -47,18 +47,13 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
   // Fetch contacts for linking
   const { data: contacts = [], isLoading: contactsLoading, error: contactsError } = useQuery({
     queryKey: [`/api/contacts/${userId}`],
-    enabled: true, // Always fetch to debug
+    enabled: open, // Only fetch when dialog is open
   });
 
   // Type the contacts properly
   const typedContacts = Array.isArray(contacts) ? contacts as any[] : [];
 
-  // Debug logging for contact dropdown
-  React.useEffect(() => {
-    if (!contactsLoading && typedContacts.length > 0) {
-      console.log(`✅ Contact dropdown loaded ${typedContacts.length} contacts:`, typedContacts.slice(0, 3));
-    }
-  }, [contactsLoading, typedContacts]);
+
 
   const form = useForm<LoanFormData>({
     resolver: zodResolver(loanSchema),
@@ -154,7 +149,7 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
                 name="lenderContactId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Lender Contact {typedContacts.length > 0 && `(${typedContacts.length} available)`}</FormLabel>
+                    <FormLabel>Lender Contact</FormLabel>
                     <FormControl>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger>
@@ -180,7 +175,7 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
                 name="borrowerContactId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Borrower Contact {typedContacts.length > 0 && `(${typedContacts.length} available)`}</FormLabel>
+                    <FormLabel>Borrower Contact</FormLabel>
                     <FormControl>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger>
