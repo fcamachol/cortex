@@ -45,10 +45,19 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
   const userId = "7804247f-3ae8-4eb2-8c6d-2c44f967ad42";
 
   // Fetch contacts for linking
-  const { data: contacts = [] } = useQuery({
+  const { data: contacts = [], isLoading: contactsLoading, error: contactsError } = useQuery({
     queryKey: ["/api/contacts", userId],
     enabled: open, // Only fetch when dialog is open
   });
+
+  // Type the contacts properly
+  const typedContacts = Array.isArray(contacts) ? contacts as any[] : [];
+
+  // Debug logging
+  console.log("Contacts loading:", contactsLoading);
+  console.log("Contacts error:", contactsError);
+  console.log("Contacts data:", contacts);
+  console.log("Contacts length:", typedContacts.length);
 
   const form = useForm<LoanFormData>({
     resolver: zodResolver(loanSchema),
@@ -152,7 +161,7 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">No contact linked</SelectItem>
-                          {contacts.map((contact: any) => (
+                          {typedContacts.map((contact: any) => (
                             <SelectItem key={contact.id} value={contact.id.toString()}>
                               {contact.name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim()}
                             </SelectItem>
@@ -178,7 +187,7 @@ export function LoanForm({ open, onClose }: LoanFormProps) {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">No contact linked</SelectItem>
-                          {contacts.map((contact: any) => (
+                          {typedContacts.map((contact: any) => (
                             <SelectItem key={contact.id} value={contact.id.toString()}>
                               {contact.name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim()}
                             </SelectItem>
