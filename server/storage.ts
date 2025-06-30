@@ -14,6 +14,9 @@ import {
     whatsappMessageUpdates
 } from '../shared/schema';
 
+// Import cortex automation schema
+import { automationRules } from '../shared/cortex-automations-schema';
+
 class DatabaseStorage {
     // =============================
     // WHATSAPP CORE METHODS
@@ -1097,11 +1100,7 @@ class DatabaseStorage {
             
             console.log('updateActionRule - final updateData:', JSON.stringify(updateData, null, 2));
             
-            // Create proper PostgreSQL array literal for empty arrays
-            const allowedUserIdsLiteral = updateData.allowed_user_ids.length === 0 
-                ? 'ARRAY[]::text[]' 
-                : `ARRAY[${updateData.allowed_user_ids.map(id => `'${id}'`).join(',')}]::text[]`;
-
+            // Use raw SQL to handle all fields including extra ones not in schema
             const result = await db.execute(sql`
                 UPDATE cortex_automation.rules 
                 SET 
@@ -1112,12 +1111,13 @@ class DatabaseStorage {
                     priority = ${updateData.priority},
                     whatsapp_instance_id = ${updateData.whatsapp_instance_id},
                     trigger_permission = ${updateData.trigger_permission},
-                    allowed_user_ids = ${sql.raw(allowedUserIdsLiteral)},
+                    allowed_user_ids = ARRAY[${updateData.allowed_user_ids.length > 0 ? updateData.allowed_user_ids.map((id: string) => `'${id}'`).join(',') : ''}]::text[],
                     updated_at = NOW()
                 WHERE id = ${ruleId}
                 RETURNING *
             `);
-            return result.rows[0];
+                
+            return result[0];
         } catch (error) {
             console.error('Error updating action rule:', error);
             throw error;
