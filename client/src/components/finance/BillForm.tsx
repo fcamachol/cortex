@@ -36,7 +36,6 @@ import { useToast } from "@/hooks/use-toast";
 import { VendorSelect } from "./VendorSelect";
 
 const billFormSchema = z.object({
-  bill_number: z.string().min(1, "Bill number is required"),
   vendor_entity_id: z.string().min(1, "Vendor is required"),
   amount: z.number().min(0, "Amount must be positive"),
   bill_date: z.date(),
@@ -68,7 +67,6 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
   const form = useForm<BillFormData>({
     resolver: zodResolver(billFormSchema),
     defaultValues: {
-      bill_number: `BILL-${Date.now()}`,
       vendor_entity_id: "",
       amount: 0,
       bill_date: new Date(),
@@ -219,39 +217,23 @@ export function BillForm({ onSuccess, onCancel }: BillFormProps) {
           )}
         />
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="bill_number"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Bill Number</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="vendor_entity_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Vendor</FormLabel>
-                <FormControl>
-                  <VendorSelect
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    placeholder="Select vendor..."
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        <FormField
+          control={form.control}
+          name="vendor_entity_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Vendor</FormLabel>
+              <FormControl>
+                <VendorSelect
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Select vendor..."
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="grid grid-cols-2 gap-4">
           <FormField

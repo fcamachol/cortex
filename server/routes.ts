@@ -2328,7 +2328,13 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Create payable
   app.post('/api/finance/payables', async (req: Request, res: Response) => {
     try {
-      const payable = await storage.createPayable(req.body);
+      // Auto-generate bill number if not provided
+      const billData = {
+        ...req.body,
+        bill_number: req.body.bill_number || `BILL-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`
+      };
+      
+      const payable = await storage.createPayable(billData);
       
       // DISABLED: Companion task creation temporarily disabled after finance schema cleanup
       // try {
