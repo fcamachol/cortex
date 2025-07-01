@@ -1647,8 +1647,7 @@ class DatabaseStorage {
     async getCrmCompanies(userId: string): Promise<any[]> {
         try {
             const result = await db.execute(sql`
-                SELECT * FROM crm.companies 
-                WHERE owner_user_id = ${userId}
+                SELECT * FROM cortex_entities.companies 
                 ORDER BY name ASC
             `);
             return result.rows;
