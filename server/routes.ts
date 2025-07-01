@@ -1443,7 +1443,33 @@ export async function registerRoutes(app: Express): Promise<void> {
       
       console.log('Found rules:', rules.length, rules);
       
-      res.json(rules);
+      // Map database field names to frontend expected format
+      const mappedRules = rules.map(rule => ({
+        id: rule.id,
+        name: rule.name,
+        description: rule.description,
+        isActive: rule.isActive,
+        triggerType: rule.triggerType,
+        actionType: rule.actionType,
+        triggerConditions: rule.triggerConditions,
+        actionConfig: rule.actionConfig,
+        status: rule.status,
+        performerFilter: rule.performerFilter,
+        instanceFilterType: rule.instanceFilterType,
+        selectedInstances: rule.selectedInstances,
+        cooldownMinutes: rule.cooldownMinutes,
+        maxExecutionsPerDay: rule.maxExecutionsPerDay,
+        createdBy: rule.createdBy,
+        spaceId: rule.spaceId,
+        lastExecutedAt: rule.lastExecutedAt,
+        executionCount: rule.executionCount,
+        successCount: rule.successCount,
+        failureCount: rule.failureCount,
+        createdAt: rule.createdAt,
+        updatedAt: rule.updatedAt
+      }));
+      
+      res.json(mappedRules);
     } catch (error) {
       console.error('Error fetching action rules:', error);
       res.status(500).json({ error: 'Failed to fetch action rules' });

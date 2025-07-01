@@ -59,6 +59,16 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
         ? JSON.parse(rule.action_config) 
         : rule.action_config || {};
       
+      // Include status from rule.status field if not in action_config
+      if (rule.status && !actionConfig.status) {
+        actionConfig.status = rule.status;
+      }
+      
+      // Include default priority if not set
+      if (!actionConfig.priority) {
+        actionConfig.priority = 'medium';
+      }
+      
       console.log('Parsed triggerConditions:', triggerConditions);
       console.log('Parsed actionConfig:', actionConfig);
       
