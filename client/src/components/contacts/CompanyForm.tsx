@@ -15,9 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 const companyFormSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
-  businessType: z.string().optional(),
-  taxId: z.string().optional(),
-  contactInfo: z.string().optional(),
+  description: z.string().optional(),
 });
 
 type CompanyFormData = z.infer<typeof companyFormSchema>;
@@ -35,17 +33,16 @@ export function CompanyForm({ onCompanyCreated }: CompanyFormProps) {
     resolver: zodResolver(companyFormSchema),
     defaultValues: {
       companyName: "",
-      businessType: "",
-      taxId: "",
-      contactInfo: "",
+      description: "",
     },
   });
 
   const createCompanyMutation = useMutation({
     mutationFn: async (data: CompanyFormData) => {
       const companyData = {
-        ...data,
-        spaceId: 1, // Default space ID for now
+        name: data.companyName,
+        description: data.description,
+        createdBy: 'cu_181de66a23864b2fac56779a82189691', // Development user
       };
       return apiRequest("POST", "/api/crm/companies", companyData);
     },
@@ -105,54 +102,13 @@ export function CompanyForm({ onCompanyCreated }: CompanyFormProps) {
 
             <FormField
               control={form.control}
-              name="businessType"
+              name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Business Type</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select business type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Corporation">Corporation</SelectItem>
-                      <SelectItem value="LLC">LLC</SelectItem>
-                      <SelectItem value="Partnership">Partnership</SelectItem>
-                      <SelectItem value="Sole Proprietorship">Sole Proprietorship</SelectItem>
-                      <SelectItem value="Non-Profit">Non-Profit</SelectItem>
-                      <SelectItem value="Government">Government</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="taxId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tax ID / EIN</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter tax identification number" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="contactInfo"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Contact Information</FormLabel>
+                  <FormLabel>Description</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Phone, email, address, or other contact details..."
+                      placeholder="Add a description about this company and any existing contacts..."
                       className="min-h-[80px]"
                       {...field}
                     />

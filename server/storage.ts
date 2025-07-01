@@ -1660,18 +1660,19 @@ class DatabaseStorage {
     async createCrmCompany(data: any): Promise<any> {
         try {
             const result = await db.execute(sql`
-                INSERT INTO crm.companies (
-                    name, industry, website, description, size, 
-                    founded_year, headquarters, owner_user_id
+                INSERT INTO cortex_entities.companies (
+                    name, legal_name, industry, website_url, description, 
+                    size, founded_date, headquarters_address, created_by
                 ) VALUES (
                     ${data.name}, 
-                    ${data.industry || ''}, 
-                    ${data.website || ''}, 
-                    ${data.description || ''}, 
-                    ${data.size || ''}, 
-                    ${data.foundedYear || null}, 
-                    ${data.headquarters || ''}, 
-                    ${data.ownerUserId}
+                    ${data.legalName || data.name}, 
+                    ${data.industry || null}, 
+                    ${data.websiteUrl || null}, 
+                    ${data.description || null}, 
+                    ${data.size || null}, 
+                    ${data.foundedDate || null}, 
+                    ${data.headquartersAddress || null}, 
+                    ${data.createdBy || 'cu_181de66a23864b2fac56779a82189691'}
                 )
                 RETURNING *
             `);
