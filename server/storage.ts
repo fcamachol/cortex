@@ -1614,22 +1614,26 @@ class DatabaseStorage {
 
     async createCompleteContact(data: any): Promise<any> {
         try {
-            // Format tags as PostgreSQL array literal
-            const tagsArray = data.tags || [];
-            const tagsLiteral = `{${tagsArray.map((tag: string) => `"${tag.replace(/"/g, '\\"')}"`).join(',')}}`;
-            
-            // Create complete contact with both name and full_name populated
+            // Create contact in Cortex entities schema
             const result = await db.execute(sql`
-                INSERT INTO crm.contacts (
-                    name, full_name, relationship, notes, tags, owner_user_id, entity_type
+                INSERT INTO cortex_entities.persons (
+                    full_name, 
+                    first_name, 
+                    last_name,
+                    profession,
+                    company_name,
+                    relationship, 
+                    notes, 
+                    created_by
                 ) VALUES (
                     ${data.fullName}, 
-                    ${data.fullName}, 
+                    ${data.firstName || ''},
+                    ${data.lastName || ''},
+                    ${data.profession || ''},
+                    ${data.company || ''},
                     ${data.relationship || 'Contact'}, 
                     ${data.notes || ''}, 
-                    ${tagsLiteral}::text[], 
-                    ${data.ownerUserId},
-                    ${data.entityType || 'person'}
+                    ${data.ownerUserId}
                 )
                 RETURNING *
             `);

@@ -3243,40 +3243,48 @@ export async function registerRoutes(app: Express): Promise<void> {
   // COMPREHENSIVE CONTACTS & CRM API ROUTES - 360-Degree Network Intelligence
   // =========================================================================
 
-  // Core Contact Routes - Using CRM schema
+  // Core Contact Routes - Using Cortex entities schema
   app.get('/api/crm/contacts', async (req: Request, res: Response) => {
     try {
       const { ownerUserId } = req.query;
       const userId = ownerUserId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
       
-      // Fetch contacts from CRM schema
+      // Fetch contacts from Cortex entities schema
       const result = await db.execute(sql`
         SELECT 
-          id as contactId,
-          name,
-          full_name as fullName,
-          phone,
-          email,
-          company,
-          profession,
-          notes,
-          relationship,
-          tags,
-          is_whatsapp_linked as isWhatsappLinked,
-          whatsapp_jid as whatsappJid,
-          whatsapp_instance_id as whatsappInstanceId,
-          whatsapp_linked_at as whatsappLinkedAt,
-          created_at as createdAt,
-          updated_at as updatedAt,
-          entity_type as entityType
-        FROM crm.contacts 
-        WHERE owner_user_id = ${userId}
-        ORDER BY created_at DESC
+          p.id as contactId,
+          p.full_name as fullName,
+          p.first_name as firstName,
+          p.last_name as lastName,
+          p.profession,
+          p.company_name as company,
+          p.notes,
+          p.relationship,
+          p.is_whatsapp_linked as isWhatsappLinked,
+          p.primary_whatsapp_jid as whatsappJid,
+          p.whatsapp_instance_name as whatsappInstanceId,
+          p.whatsapp_linked_at as whatsappLinkedAt,
+          p.profile_picture_url as profilePictureUrl,
+          p.created_at as createdAt,
+          p.updated_at as updatedAt,
+          p.date_of_birth as dateOfBirth,
+          p.gender,
+          p.title,
+          p.nickname,
+          -- Get primary phone
+          (SELECT phone_number FROM cortex_entities.contact_phones WHERE person_id = p.id AND is_primary = true LIMIT 1) as phone,
+          -- Get primary email  
+          (SELECT email_address FROM cortex_entities.contact_emails WHERE person_id = p.id AND is_primary = true LIMIT 1) as email,
+          -- Create tags array (empty for now, can be enhanced later)
+          ARRAY[]::text[] as tags
+        FROM cortex_entities.persons p
+        WHERE p.created_by = ${userId} AND p.is_active = true
+        ORDER BY p.created_at DESC
       `);
       
       res.json(result.rows);
     } catch (error) {
-      console.error('Error fetching CRM contacts:', error);
+      console.error('Error fetching Cortex contacts:', error);
       res.status(500).json({ error: 'Failed to fetch contacts' });
     }
   });
