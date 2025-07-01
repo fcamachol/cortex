@@ -3418,6 +3418,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         interests: []
       };
       
+      console.log('Raw contact data from DB:', contact);
       console.log('Contact details retrieved:', transformedContact);
       res.json(transformedContact);
     } catch (error) {
