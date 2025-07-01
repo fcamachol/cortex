@@ -170,7 +170,7 @@ export const WebhookApiAdapter = {
      */
     async handleReaction(instanceName: string, rawReaction: any, sender?: string): Promise<void> {
         try {
-            const cleanReaction = this.mapApiPayloadToWhatsappReaction(rawReaction, instanceName, sender);
+            const cleanReaction = await this.mapApiPayloadToWhatsappReaction(rawReaction, instanceName, sender);
             if (!cleanReaction) {
                 console.warn(`[${instanceName}] Could not process invalid reaction payload.`);
                 return;
@@ -1097,7 +1097,7 @@ export const WebhookApiAdapter = {
 
     // --- Data Mapping Functions ---
 
-    mapApiPayloadToWhatsappReaction(rawReaction: any, instanceName: string, sender?: string): Omit<WhatsappMessageReactions, 'reactionId'> | null {
+    async mapApiPayloadToWhatsappReaction(rawReaction: any, instanceName: string, sender?: string): Promise<Omit<WhatsappMessageReactions, 'reactionId'> | null> {
         const reactionMsg = rawReaction.message?.reactionMessage;
         if (!reactionMsg?.key?.id) return null;
         
@@ -1111,8 +1111,14 @@ export const WebhookApiAdapter = {
         // For individual chats, determine reactor based on fromMe field
         else if (rawReaction.key?.fromMe) {
             // If fromMe is true, the instance owner reacted
-            // Use the sender parameter which should contain the instance owner JID
-            reactorJid = sender || rawReaction.key?.remoteJid || '';
+            // Get the instance owner from database
+            try {
+                const instance = await storage.getWhatsappInstance(instanceName);
+                reactorJid = instance?.ownerJid || sender || rawReaction.key?.remoteJid || '';
+            } catch (error) {
+                console.warn('Failed to get instance owner, using fallback:', error.message);
+                reactorJid = sender || rawReaction.key?.remoteJid || '';
+            }
         } 
         // If fromMe is false, the other person in the chat reacted
         else {
