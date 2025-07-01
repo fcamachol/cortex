@@ -2286,6 +2286,71 @@ class DatabaseStorage {
             throw error;
         }
     }
+
+    async createCortexSchedulingEvent(eventData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO cortex_scheduling.events (
+                    id, title, description, start_datetime, end_datetime,
+                    is_all_day, location_type, location_details, meeting_url,
+                    status, timezone, visibility, external_event_id,
+                    calendar_integration_id, created_by, attendee_emails,
+                    recurrence_rule, whatsapp_trigger_message_id
+                ) VALUES (
+                    gen_random_uuid(),
+                    ${eventData.title},
+                    ${eventData.description},
+                    ${eventData.startTime},
+                    ${eventData.endTime},
+                    ${eventData.isAllDay},
+                    ${eventData.location ? 'physical' : 'virtual'},
+                    ${eventData.location},
+                    ${eventData.meetingUrl},
+                    ${eventData.status || 'confirmed'},
+                    ${eventData.timezone || 'America/Mexico_City'},
+                    ${eventData.visibility || 'default'},
+                    ${eventData.externalEventId},
+                    ${eventData.calendarIntegrationId},
+                    ${eventData.createdBy},
+                    ${JSON.stringify(eventData.attendees || [])},
+                    ${JSON.stringify(eventData.recurrence)},
+                    ${eventData.whatsappTriggerMessageId}
+                )
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating cortex scheduling event:', error);
+            throw error;
+        }
+    }
+
+    async updateCalendarIntegrationSyncTime(integrationId: string, syncTime: Date): Promise<void> {
+        try {
+            await db.execute(sql`
+                UPDATE cortex_scheduling.calendar_integrations 
+                SET last_sync_at = ${syncTime}, sync_status = 'active'
+                WHERE id = ${integrationId}
+            `);
+        } catch (error) {
+            console.error('Error updating calendar integration sync time:', error);
+            throw error;
+        }
+    }
+
+    async getCalendarIntegrationCredentials(integrationId: string): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                SELECT access_token, refresh_token, token_expires_at
+                FROM cortex_scheduling.calendar_integrations
+                WHERE id = ${integrationId}
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error getting calendar integration credentials:', error);
+            return null;
+        }
+    }
 }
 
 export const storage = new DatabaseStorage();

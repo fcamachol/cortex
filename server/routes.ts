@@ -1218,7 +1218,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Calendar routes
+  // Calendar routes - Migrated to cortex_scheduling
   app.get('/api/calendar/events', async (req: Request, res: Response) => {
     try {
       const events = await storage.getCalendarEvents();
@@ -1236,6 +1236,105 @@ export async function registerRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error('Error creating calendar event:', error);
       res.status(500).json({ error: 'Failed to create calendar event' });
+    }
+  });
+
+  app.get('/api/calendar/calendars', async (req: Request, res: Response) => {
+    try {
+      const calendars = await storage.getCalendars();
+      res.json(calendars);
+    } catch (error) {
+      console.error('Error fetching calendars:', error);
+      res.status(500).json({ error: 'Failed to fetch calendars' });
+    }
+  });
+
+  app.post('/api/calendar/integrations/google', async (req: Request, res: Response) => {
+    try {
+      const integration = await storage.createGoogleCalendarIntegration(req.body);
+      res.status(201).json(integration);
+    } catch (error) {
+      console.error('Error creating Google Calendar integration:', error);
+      res.status(500).json({ error: 'Failed to create Google Calendar integration' });
+    }
+  });
+
+  // Google Calendar OAuth flow
+  app.get('/api/auth/google/calendar', async (req: Request, res: Response) => {
+    try {
+      const { googleCalendarService } = await import('./google-calendar-service');
+      const authUrl = googleCalendarService.getAuthUrl();
+      res.json({ authUrl });
+    } catch (error) {
+      console.error('Error getting Google auth URL:', error);
+      res.status(500).json({ error: 'Failed to get Google auth URL' });
+    }
+  });
+
+  app.post('/api/auth/google/calendar/callback', async (req: Request, res: Response) => {
+    try {
+      const { code, userId } = req.body;
+      const { googleCalendarService } = await import('./google-calendar-service');
+      
+      // Exchange code for tokens
+      const tokens = await googleCalendarService.getTokens(code);
+      
+      // Set credentials and get user profile
+      googleCalendarService.setCredentials({
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token
+      });
+      
+      const profile = await googleCalendarService.getUserProfile();
+      
+      // Create integration record
+      const integration = await storage.createGoogleCalendarIntegration({
+        userId,
+        accountId: profile.email,
+        accountName: profile.name || profile.email,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        tokenExpiresAt: new Date(Date.now() + (tokens.expires_in * 1000))
+      });
+      
+      // Start initial sync
+      await googleCalendarService.syncCalendarEvents(userId, integration.id);
+      
+      res.json({ 
+        success: true, 
+        integration,
+        message: 'Google Calendar integration successful' 
+      });
+    } catch (error) {
+      console.error('Error handling Google Calendar callback:', error);
+      res.status(500).json({ error: 'Failed to complete Google Calendar integration' });
+    }
+  });
+
+  app.post('/api/calendar/sync/:integrationId', async (req: Request, res: Response) => {
+    try {
+      const { integrationId } = req.params;
+      const { userId } = req.body;
+      
+      // Get integration credentials
+      const credentials = await storage.getCalendarIntegrationCredentials(integrationId);
+      if (!credentials) {
+        return res.status(404).json({ error: 'Integration not found' });
+      }
+      
+      const { googleCalendarService } = await import('./google-calendar-service');
+      googleCalendarService.setCredentials({
+        accessToken: credentials.access_token,
+        refreshToken: credentials.refresh_token
+      });
+      
+      // Perform sync
+      await googleCalendarService.syncCalendarEvents(userId, integrationId);
+      
+      res.json({ success: true, message: 'Calendar sync completed' });
+    } catch (error) {
+      console.error('Error syncing calendar:', error);
+      res.status(500).json({ error: 'Failed to sync calendar' });
     }
   });
 
