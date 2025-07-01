@@ -2139,6 +2139,153 @@ class DatabaseStorage {
             throw error;
         }
     }
+
+    // =============================
+    // GOOGLE CALENDAR INTEGRATION - CORTEX_SCHEDULING
+    // =============================
+    
+    async getCalendarEvents(): Promise<any[]> {
+        try {
+            // Return CRM calendar events for now
+            // TODO: Integrate with cortex_scheduling.events once sync is implemented
+            const result = await db.execute(sql`
+                SELECT * FROM crm.calendar_events 
+                ORDER BY start_time DESC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching calendar events:', error);
+            return [];
+        }
+    }
+
+    async createCalendarEvent(eventData: any): Promise<any> {
+        try {
+            console.log('📅 Creating calendar event in CRM schema:', eventData.title);
+            
+            const result = await db.execute(sql`
+                INSERT INTO crm.calendar_events (
+                    title, description, start_time, end_time, location, 
+                    is_all_day, created_by_user_id, triggering_message_id,
+                    project_id, task_id, related_chat_jid, space_id, instance_id
+                ) VALUES (
+                    ${eventData.title},
+                    ${eventData.description || null},
+                    ${eventData.startTime || new Date()},
+                    ${eventData.endTime || null},
+                    ${eventData.location || null},
+                    ${eventData.isAllDay || false},
+                    ${eventData.ownerUserId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'},
+                    ${eventData.triggeringMessageId || null},
+                    ${eventData.projectId || null},
+                    ${eventData.taskId || null},
+                    ${eventData.relatedChatJid || null},
+                    ${eventData.spaceId || null},
+                    ${eventData.instanceId || null}
+                )
+                RETURNING *
+            `);
+            
+            console.log('✅ CRM calendar event created successfully:', eventData.title);
+            return result.rows[0];
+        } catch (error) {
+            console.error('❌ Error creating CRM calendar event:', error);
+            throw error;
+        }
+    }
+
+    async getCalendarProviders(): Promise<any[]> {
+        try {
+            // Return cortex_scheduling calendar integrations
+            const result = await db.execute(sql`
+                SELECT 
+                    id,
+                    provider_type,
+                    account_name,
+                    sync_status,
+                    last_sync_at,
+                    created_at
+                FROM cortex_scheduling.calendar_integrations 
+                ORDER BY created_at DESC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching calendar providers:', error);
+            return [];
+        }
+    }
+
+    async getCalendars(): Promise<any[]> {
+        try {
+            // Return default calendars for frontend display
+            // TODO: Implement sync with actual Google Calendar data
+            return [
+                { 
+                    id: 'personal', 
+                    name: 'Personal', 
+                    color: 'bg-blue-500', 
+                    visible: true, 
+                    provider: 'local' 
+                },
+                { 
+                    id: 'work', 
+                    name: 'Work', 
+                    color: 'bg-red-500', 
+                    visible: true, 
+                    provider: 'local' 
+                },
+                { 
+                    id: 'family', 
+                    name: 'Family', 
+                    color: 'bg-purple-500', 
+                    visible: true, 
+                    provider: 'local' 
+                },
+            ];
+        } catch (error) {
+            console.error('Error fetching calendars:', error);
+            return [];
+        }
+    }
+
+    async updateCalendar(id: string, data: any): Promise<any> {
+        // TODO: Implement calendar update functionality
+        console.log('Calendar update not yet implemented for cortex_scheduling');
+        return { id, ...data };
+    }
+
+    async deleteCalendar(id: string): Promise<void> {
+        // TODO: Implement calendar deletion functionality
+        console.log('Calendar deletion not yet implemented for cortex_scheduling');
+    }
+
+    async createGoogleCalendarIntegration(integrationData: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO cortex_scheduling.calendar_integrations (
+                    id, user_id, provider_type, provider_account_id, 
+                    account_name, access_token, refresh_token, 
+                    token_expires_at, sync_status, sync_direction
+                ) VALUES (
+                    gen_random_uuid(),
+                    ${integrationData.userId},
+                    'google',
+                    ${integrationData.accountId},
+                    ${integrationData.accountName},
+                    ${integrationData.accessToken},
+                    ${integrationData.refreshToken},
+                    ${integrationData.tokenExpiresAt},
+                    'active',
+                    'bidirectional'
+                )
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating Google Calendar integration:', error);
+            throw error;
+        }
+    }
 }
 
 export const storage = new DatabaseStorage();

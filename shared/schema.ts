@@ -7,14 +7,9 @@ import { z } from "zod";
 export const whatsappSchema = pgSchema("whatsapp");
 export const crmSchema = pgSchema("crm");
 export const actionsSchema = pgSchema("actions");
-export const calendarSchema = pgSchema("calendar");
+// export const calendarSchema = pgSchema("calendar"); // REMOVED - Migrated to cortex_scheduling
 // export const financeSchema = pgSchema("finance"); // REMOVED - Migrated to cortex_finance
 // export const appSchema = pgSchema("app"); // REMOVED - Migrated to cortex_foundation
-
-// Enums for Calendar schema
-export const providerTypeEnum = calendarSchema.enum("provider_type", ["google", "outlook", "apple"]);
-export const syncStatusTypeEnum = calendarSchema.enum("sync_status_type", ["active", "revoked", "error", "pending"]);
-export const attendeeResponseStatusEnum = calendarSchema.enum("attendee_response_status", ["needsAction", "declined", "tentative", "accepted"]);
 
 // Enums for Finance schema - MIGRATED TO CORTEX_FINANCE
 // Legacy enums removed - use cortex_finance schema enums instead
@@ -1756,145 +1751,18 @@ export type ContactWithRelations = CrmContact & {
 };
 
 // =============================================================================
-// CALENDAR SCHEMA - External Calendar Integration
+// CALENDAR INTEGRATION MIGRATED TO CORTEX_SCHEDULING SCHEMA
 // =============================================================================
-
-// Calendar Accounts - Store OAuth credentials for external calendar providers
-export const calendarAccounts = calendarSchema.table("accounts", {
-  accountId: serial("account_id").primaryKey(),
-  userId: uuid("user_id").notNull().unique(), // One calendar account per app user
-  workspaceId: uuid("workspace_id").notNull(),
-  provider: providerTypeEnum("provider").notNull().default("google"),
-  providerAccountId: varchar("provider_account_id", { length: 255 }).notNull(), // User's email address
-  accessToken: text("access_token").notNull(), // Should be encrypted in production
-  refreshToken: text("refresh_token"), // Should be encrypted in production
-  tokenExpiryDate: timestamp("token_expiry_date", { withTimezone: true }),
-  scopes: jsonb("scopes"), // OAuth permissions granted
-  syncStatus: syncStatusTypeEnum("sync_status").notNull().default("pending"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
-
-// Calendar Calendars - Individual calendars (Work, Personal, etc.)
-export const calendarCalendars = calendarSchema.table("calendars", {
-  calendarId: serial("calendar_id").primaryKey(),
-  accountId: integer("account_id").notNull(),
-  providerCalendarId: varchar("provider_calendar_id", { length: 255 }).notNull(), // External calendar ID
-  summary: varchar("summary", { length: 255 }).notNull(),
-  description: text("description"),
-  timezone: varchar("timezone", { length: 100 }),
-  isPrimary: boolean("is_primary").default(false),
-  isEnabledForSync: boolean("is_enabled_for_sync").default(true).notNull(),
-  lastSyncToken: varchar("last_sync_token", { length: 255 }), // For incremental sync
-  lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
-
-// Calendar Events - Synchronized copy of external calendar events
-export const calendarEvents = calendarSchema.table("events", {
-  eventId: serial("event_id").primaryKey(),
-  calendarId: integer("calendar_id").notNull(),
-  providerEventId: varchar("provider_event_id", { length: 255 }).notNull(), // External event ID
-  crmEventId: integer("crm_event_id").unique(), // Link to CRM event
-  title: varchar("title", { length: 255 }).notNull(),
-  description: text("description"),
-  startTime: timestamp("start_time", { withTimezone: true }),
-  endTime: timestamp("end_time", { withTimezone: true }),
-  isAllDay: boolean("is_all_day").notNull().default(false),
-  location: varchar("location", { length: 512 }),
-  meetLink: varchar("meet_link", { length: 512 }),
-  providerHtmlLink: varchar("provider_html_link", { length: 512 }), // View on Google Calendar
-  status: varchar("status", { length: 50 }), // confirmed, tentative, cancelled
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
-
-// Calendar Attendees - Event attendees from external calendars
-export const calendarAttendees = calendarSchema.table("attendees", {
-  attendeeId: serial("attendee_id").primaryKey(),
-  eventId: integer("event_id").notNull(),
-  email: varchar("email", { length: 255 }).notNull(),
-  displayName: varchar("display_name", { length: 255 }),
-  responseStatus: attendeeResponseStatusEnum("response_status").notNull().default("needsAction"),
-  isOrganizer: boolean("is_organizer").default(false),
-});
-
-// Calendar Schema Relations
-export const calendarAccountsRelations = relations(calendarAccounts, ({ many, one }) => ({
-  calendars: many(calendarCalendars),
-  user: one(appUsers, {
-    fields: [calendarAccounts.userId],
-    references: [appUsers.userId],
-  }),
-  workspace: one(appWorkspaces, {
-    fields: [calendarAccounts.workspaceId],
-    references: [appWorkspaces.workspaceId],
-  }),
-}));
-
-export const calendarCalendarsRelations = relations(calendarCalendars, ({ one, many }) => ({
-  account: one(calendarAccounts, {
-    fields: [calendarCalendars.accountId],
-    references: [calendarAccounts.accountId],
-  }),
-  events: many(calendarEvents),
-}));
-
-export const calendarEventsRelations = relations(calendarEvents, ({ one, many }) => ({
-  calendar: one(calendarCalendars, {
-    fields: [calendarEvents.calendarId],
-    references: [calendarCalendars.calendarId],
-  }),
-  crmEvent: one(crmCalendarEvents, {
-    fields: [calendarEvents.crmEventId],
-    references: [crmCalendarEvents.eventId],
-  }),
-  attendees: many(calendarAttendees),
-}));
-
-export const calendarAttendeesRelations = relations(calendarAttendees, ({ one }) => ({
-  event: one(calendarEvents, {
-    fields: [calendarAttendees.eventId],
-    references: [calendarEvents.eventId],
-  }),
-}));
-
-// Calendar Schema Insert Schemas
-export const insertCalendarAccountSchema = createInsertSchema(calendarAccounts).omit({
-  accountId: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertCalendarCalendarSchema = createInsertSchema(calendarCalendars).omit({
-  calendarId: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit({
-  eventId: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertCalendarAttendeeSchema = createInsertSchema(calendarAttendees).omit({
-  attendeeId: true,
-});
-
-// Calendar Schema Types
-export type CalendarAccount = typeof calendarAccounts.$inferSelect;
-export type InsertCalendarAccount = z.infer<typeof insertCalendarAccountSchema>;
-
-export type CalendarCalendar = typeof calendarCalendars.$inferSelect;
-export type InsertCalendarCalendar = z.infer<typeof insertCalendarCalendarSchema>;
-
-export type CalendarEvent = typeof calendarEvents.$inferSelect;
-export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
-
-export type CalendarAttendee = typeof calendarAttendees.$inferSelect;
-export type InsertCalendarAttendee = z.infer<typeof insertCalendarAttendeeSchema>;
+//
+// The calendar schema has been eliminated to avoid confusion and consolidate
+// all scheduling functionality into cortex_scheduling schema.
+// Migration completed July 01, 2025 - zero data loss (calendar schema was empty)
+//
+// For Google Calendar integration, use:
+// - cortex_scheduling.calendar_integrations (replaces calendar.accounts)
+// - cortex_scheduling.events (internal events, linked to external via integrations)
+// - crm.calendar_events (CRM events created from WhatsApp reactions)
+//
 
 // =============================================================================
 // FINANCE SCHEMA MIGRATED TO CORTEX_FINANCE 
