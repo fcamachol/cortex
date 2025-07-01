@@ -3,7 +3,7 @@
  * This validates the fixed user_only performer filter system
  */
 
-const { Client } = require('@neondatabase/serverless');
+import { Client } from '@neondatabase/serverless';
 
 async function testPerformerFiltering() {
     const client = new Client({
