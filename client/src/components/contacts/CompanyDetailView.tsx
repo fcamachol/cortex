@@ -82,7 +82,10 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
       return await apiRequest("POST", `/api/crm/companies/${company.id}/contacts`, data);
     },
     onSuccess: () => {
+      // Force refresh the company contacts
       queryClient.invalidateQueries({ queryKey: ["/api/crm/company-contacts-enhanced", company.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/crm/companies"] });
+      queryClient.refetchQueries({ queryKey: ["/api/crm/company-contacts-enhanced", company.id] });
       setSelectedContact(null);
       setRelationshipType('works_for');
       setJobTitle('');
