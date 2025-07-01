@@ -2504,6 +2504,67 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // =============================
+  // CORTEX FINANCE ROUTES
+  // =============================
+
+  // Get cortex finance accounts
+  app.get('/api/cortex/finance/accounts', async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const accounts = await storage.getFinanceAccounts(userId);
+      res.json(accounts || []);
+    } catch (error) {
+      console.error('Error fetching cortex finance accounts:', error);
+      res.status(500).json({ error: 'Failed to fetch cortex finance accounts' });
+    }
+  });
+
+  // Create cortex finance account
+  app.post('/api/cortex/finance/accounts', async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const accountData = { 
+        ...req.body, 
+        createdByEntityId: userId,
+        currency: req.body.currency || 'MXN' // Default to MXN
+      };
+      const account = await storage.createFinanceAccount(accountData);
+      res.json(account);
+    } catch (error) {
+      console.error('Error creating cortex finance account:', error);
+      res.status(500).json({ error: 'Failed to create cortex finance account' });
+    }
+  });
+
+  // Get cortex finance transactions
+  app.get('/api/cortex/finance/transactions', async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const transactions = await storage.getCortexFinanceTransactions(userId);
+      res.json(transactions || []);
+    } catch (error) {
+      console.error('Error fetching cortex finance transactions:', error);
+      res.status(500).json({ error: 'Failed to fetch cortex finance transactions' });
+    }
+  });
+
+  // Create cortex finance transaction
+  app.post('/api/cortex/finance/transactions', async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      const transactionData = { 
+        ...req.body, 
+        createdByEntityId: userId 
+      };
+      const transaction = await storage.createCortexFinanceTransaction(transactionData);
+      res.json(transaction);
+    } catch (error) {
+      console.error('Error creating cortex finance transaction:', error);
+      res.status(500).json({ error: 'Failed to create cortex finance transaction' });
+    }
+  });
+
   // Get transactions
   app.get('/api/finance/transactions', async (req: Request, res: Response) => {
     try {

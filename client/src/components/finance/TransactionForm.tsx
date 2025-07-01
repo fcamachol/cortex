@@ -84,11 +84,6 @@ export function TransactionForm({ open, onClose, onSuccess, onCancel }: Transact
     ["checking", "savings", "cash", "credit_card"].includes(acc.accountType)
   );
 
-  // Debug logging
-  console.log("All accounts:", accounts);
-  console.log("All payment accounts:", allPaymentAccounts);
-  console.log("Transaction type:", transactionType);
-
   const createTransactionMutation = useMutation({
     mutationFn: async (data: TransactionFormData) => {
       const payload = {
