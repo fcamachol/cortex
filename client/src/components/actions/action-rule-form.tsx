@@ -49,15 +49,15 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
     console.log('Parsing existing rule:', rule);
     
     try {
-      // Parse trigger conditions from JSONB format
+      // Parse trigger conditions from JSONB format (check both camelCase and snake_case)
       const triggerConditions = typeof rule.trigger_conditions === 'string' 
         ? JSON.parse(rule.trigger_conditions) 
-        : rule.trigger_conditions || {};
+        : rule.trigger_conditions || rule.triggerConditions || {};
       
-      // Parse action config from JSONB format
+      // Parse action config from JSONB format (check both camelCase and snake_case)
       const actionConfig = typeof rule.action_config === 'string' 
         ? JSON.parse(rule.action_config) 
-        : rule.action_config || {};
+        : rule.action_config || rule.actionConfig || {};
       
       // Include status from rule.status field if not in action_config
       if (rule.status && !actionConfig.status) {
@@ -71,6 +71,13 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
       
       console.log('Parsed triggerConditions:', triggerConditions);
       console.log('Parsed actionConfig:', actionConfig);
+      console.log('Rule fields check:', {
+        trigger_conditions: rule.trigger_conditions,
+        triggerConditions: rule.triggerConditions,
+        action_config: rule.action_config,
+        actionConfig: rule.actionConfig,
+        status: rule.status
+      });
       
       return { triggerConditions, actionConfig };
     } catch (error) {

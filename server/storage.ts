@@ -1287,6 +1287,9 @@ class DatabaseStorage {
         try {
             console.log('Updating simple action rule:', ruleId, updates);
             
+            // Extract status from action_config if present
+            const statusValue = updates.action_config?.status || updates.status || 'todo';
+            
             const [updatedRule] = await db
                 .update(actionRules)
                 .set({
@@ -1297,6 +1300,7 @@ class DatabaseStorage {
                     actionType: updates.action_type,
                     triggerConditions: updates.trigger_conditions,
                     actionConfig: updates.action_config,
+                    status: statusValue, // Update the status field
                     performerFilter: updates.performer_filter,
                     instanceFilterType: updates.instance_filter_type,
                     selectedInstances: updates.selected_instances,
