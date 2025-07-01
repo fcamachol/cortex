@@ -85,8 +85,8 @@ export const ActionService = {
                 return;
             }
 
-            // Filter rules based on conditions
-            const matchingRules = rules.filter(rule => {
+            // Filter rules based on conditions (synchronous checks first)
+            const initialMatchingRules = rules.filter(rule => {
                 if (!rule.isActive) {
                     console.log(`⏭️  Skipping inactive rule: ${rule.name}`);
                     return false;
@@ -103,6 +103,46 @@ export const ActionService = {
                 
                 return true;
             });
+
+            // Filter for performer permissions (async checks)
+            const matchingRules = [];
+            for (const rule of initialMatchingRules) {
+                // Check performer filter - only execute if the right person is reacting
+                if (rule.performerFilter === 'user_only') {
+                    const reactorJid = context.reactorJid || context.senderJid;
+                    const instanceName = context.instanceName;
+                    
+                    console.log(`🔒 Checking performer filter: reactorJid=${reactorJid}, instanceName=${instanceName}`);
+                    
+                    // For user_only, the reactor must be the owner of the WhatsApp instance
+                    try {
+                        // Get the owner JID from the context or check against known instance owners
+                        const instanceOwners = {
+                            'instance-1750433520122': '5215579188699@s.whatsapp.net',
+                            'live-test-1750199771': '15103165094@s.whatsapp.net'
+                        };
+                        
+                        const expectedOwnerJid = instanceOwners[instanceName as keyof typeof instanceOwners];
+                        
+                        if (!expectedOwnerJid) {
+                            console.log(`⏭️  Skipping rule "${rule.name}" - unknown instance ${instanceName}`);
+                            continue;
+                        }
+                        
+                        if (reactorJid !== expectedOwnerJid) {
+                            console.log(`⏭️  Skipping rule "${rule.name}" - reactor ${reactorJid} is not the instance owner ${expectedOwnerJid}`);
+                            continue;
+                        }
+                        
+                        console.log(`✅ Performer filter passed: ${reactorJid} is the owner of ${instanceName}`);
+                    } catch (error) {
+                        console.error(`❌ Error checking performer filter:`, error);
+                        continue;
+                    }
+                }
+                
+                matchingRules.push(rule);
+            }
 
             console.log(`🎯 Found ${matchingRules.length} matching rules after filtering`);
 
