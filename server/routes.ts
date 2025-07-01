@@ -1470,79 +1470,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
 
 
-  // Update action rule
-  app.put('/api/actions/rules/:ruleId', async (req: AuthRequest, res: Response) => {
-    try {
-      const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-      const { ruleId } = req.params;
-      
-      // Map frontend fields to database fields
-      const {
-        ruleName,
-        description,
-        isActive,
-        triggerType,
-        performerFilter,
-        instanceFilterType,
-        selectedInstances,
-        triggerConditions,
-        actionConfig,
-        performerFilters
-      } = req.body;
 
-      // Handle WhatsApp instance logic
-      let whatsappInstanceId = null;
-      if (instanceFilterType === 'specific' && selectedInstances && selectedInstances.length > 0) {
-        // For specific instances, use the first selected instance
-        // TODO: In the future, we might want to support multiple instances per rule
-        whatsappInstanceId = selectedInstances[0];
-      } else if (instanceFilterType === 'all') {
-        // For "all instances", set to null (applies to all)
-        whatsappInstanceId = null;
-      }
-
-      // Map performer filter to trigger permission
-      let triggerPermission = 'anyone';
-      if (performerFilter === 'user_only') {
-        triggerPermission = 'me';
-      }
-
-      // Map frontend trigger types to database enum values
-      let dbTriggerType = triggerType;
-      if (triggerType === 'reaction' || triggerType === 'keyword' || triggerType === 'hashtag') {
-        dbTriggerType = 'whatsapp_message';
-      } else if (triggerType === 'time_based') {
-        dbTriggerType = 'schedule';
-      }
-
-      const updateData = {
-        name: ruleName,
-        description,
-        is_active: isActive,
-        trigger_type: dbTriggerType,
-        priority: 1, // Default priority
-        whatsapp_instance_id: whatsappInstanceId,
-        trigger_permission: triggerPermission,
-        allowed_user_ids: [],
-        triggerConditions,
-        actionConfig,
-        actionType: req.body.actionType
-      };
-      
-      console.log('Updating rule with complete data:', updateData);
-      
-      const updatedRule = await storage.updateActionRule(ruleId, updateData);
-      
-      if (!updatedRule) {
-        return res.status(404).json({ error: 'Rule not found' });
-      }
-      
-      res.json(updatedRule);
-    } catch (error) {
-      console.error('Error updating action rule:', error);
-      res.status(500).json({ error: 'Failed to update action rule' });
-    }
-  });
 
   app.get('/api/actions/executions', async (req: AuthRequest, res: Response) => {
     try {
@@ -1643,11 +1571,18 @@ export async function registerRoutes(app: Express): Promise<void> {
       
       // Map frontend field names to backend field names
       const mappedBody = {
-        name: req.body.ruleName || req.body.name,
+        name: req.body.name,
         description: req.body.description,
-        is_active: req.body.isActive !== undefined ? req.body.isActive : req.body.is_active,
-        trigger_type: mapTriggerType(req.body.triggerType || req.body.trigger_type || 'reaction'),
-        trigger_permission: req.body.performerFilter === 'user_only' ? 'me' : 'anyone',
+        is_active: req.body.is_active,
+        trigger_type: mapTriggerType(req.body.trigger_type || 'reaction'),
+        action_type: req.body.action_type,
+        trigger_conditions: req.body.trigger_conditions,
+        action_config: req.body.action_config,
+        performer_filter: req.body.performer_filter,
+        instance_filter_type: req.body.instance_filter_type,
+        selected_instances: req.body.selected_instances,
+        cooldown_minutes: req.body.cooldown_minutes,
+        max_executions_per_day: req.body.max_executions_per_day,
         priority: req.body.priority || 0,
         whatsapp_instance_id: req.body.whatsapp_instance_id || null,
         allowed_user_ids: req.body.allowed_user_ids || []
