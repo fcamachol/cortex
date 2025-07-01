@@ -1331,11 +1331,17 @@ class DatabaseStorage {
         return await dbConnection.executeWithRetry(async () => {
             console.log('Fetching action rules by trigger:', triggerType);
             
+            // Map frontend trigger types to database trigger types
+            let dbTriggerType = triggerType;
+            if (triggerType === 'reaction') {
+                dbTriggerType = 'whatsapp_message';
+            }
+            
             let query = db
                 .select()
                 .from(actionRules)
                 .where(and(
-                    eq(actionRules.triggerType, 'whatsapp_message'), // Map reaction -> whatsapp_message
+                    eq(actionRules.triggerType, dbTriggerType),
                     eq(actionRules.isActive, true)
                 ));
             
@@ -1348,6 +1354,16 @@ class DatabaseStorage {
                     return conditions.reactions && Array.isArray(conditions.reactions);
                 });
                 console.log(`Found ${filteredRules.length} reaction rules`);
+                return filteredRules;
+            }
+            
+            // For keyword triggers, only return rules that have keywords in their conditions
+            if (triggerType === 'keyword') {
+                const filteredRules = rules.filter(rule => {
+                    const conditions = rule.triggerConditions || {};
+                    return conditions.keywords && Array.isArray(conditions.keywords) && conditions.keywords.length > 0;
+                });
+                console.log(`Found ${filteredRules.length} keyword rules`);
                 return filteredRules;
             }
             

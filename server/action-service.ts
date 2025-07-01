@@ -28,8 +28,9 @@ export const ActionService = {
                 // Process hashtag triggers
                 this.processHashtagTriggers(storedMessage);
                 
-                // Process keyword triggers for financial automation
-                await this.processKeywordTriggers(storedMessage);
+                // TEMPORARILY DISABLED: Process keyword triggers to prevent unwanted task creation
+                // await this.processKeywordTriggers(storedMessage);
+                console.log(`🚫 Keyword triggers disabled to prevent unwanted task creation`);
             }
         } catch (error) {
             console.error(`❌ Error processing new message ${storedMessage.messageId}:`, error);
@@ -542,25 +543,32 @@ export const ActionService = {
         
         console.log(`🔍 Processing keyword triggers for: "${storedMessage.content}"`);
         
-        // Get all active keyword-based action rules
-        const keywordRules = await storage.getActionRulesByTrigger('keyword', storedMessage.content, storedMessage.instanceName);
+        // Get all active keyword-based action rules using the simple method
+        const keywordRules = await storage.getActionRulesByTrigger('keyword', storedMessage.instanceName);
         
         console.log(`🎯 Found ${keywordRules.length} keyword rules for message`);
         
-        for (const rule of keywordRules) {
-            console.log(`⚡ Executing keyword action: ${rule.ruleName} (${rule.actionType})`);
+        // Filter rules that actually match the message content
+        const matchingRules = keywordRules.filter(rule => {
+            const conditions = rule.triggerConditions || {};
+            const keywords = conditions.keywords || [];
+            return keywords.some((keyword: string) => 
+                storedMessage.content.toLowerCase().includes(keyword.toLowerCase())
+            );
+        });
+        
+        console.log(`🎯 Found ${matchingRules.length} matching keyword rules`);
+        
+        for (const rule of matchingRules) {
+            console.log(`⚡ Executing keyword action: ${rule.name}`);
             
-            await this.executeAction(rule.actionType, rule.actionConfig, {
+            // Use the new simple action architecture
+            await this.triggerSimpleAction('keyword', storedMessage.content, {
                 instanceName: storedMessage.instanceName,
-                triggerType: 'keyword',
-                triggerValue: storedMessage.content,
-                context: {
-                    messageId: storedMessage.messageId,
-                    content: storedMessage.content,
-                    senderJid: storedMessage.senderJid,
-                    chatId: storedMessage.chatJid
-                },
-                rule
+                messageId: storedMessage.messageId,
+                content: storedMessage.content,
+                senderJid: storedMessage.senderJid,
+                chatId: storedMessage.chatJid
             });
         }
     },
