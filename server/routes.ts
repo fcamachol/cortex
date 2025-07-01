@@ -3249,40 +3249,47 @@ export async function registerRoutes(app: Express): Promise<void> {
       const { ownerUserId } = req.query;
       const userId = ownerUserId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
       
-      // Fetch contacts from Cortex entities schema
-      const result = await db.execute(sql`
-        SELECT 
-          p.id as contactId,
-          p.full_name as fullName,
-          p.first_name as firstName,
-          p.last_name as lastName,
-          p.profession,
-          p.company_name as company,
-          p.notes,
-          p.relationship,
-          p.is_whatsapp_linked as isWhatsappLinked,
-          p.primary_whatsapp_jid as whatsappJid,
-          p.whatsapp_instance_name as whatsappInstanceId,
-          p.whatsapp_linked_at as whatsappLinkedAt,
-          p.profile_picture_url as profilePictureUrl,
-          p.created_at as createdAt,
-          p.updated_at as updatedAt,
-          p.date_of_birth as dateOfBirth,
-          p.gender,
-          p.title,
-          p.nickname,
-          -- Get primary phone
-          (SELECT phone_number FROM cortex_entities.contact_phones WHERE person_id = p.id AND is_primary = true LIMIT 1) as phone,
-          -- Get primary email  
-          (SELECT email_address FROM cortex_entities.contact_emails WHERE person_id = p.id AND is_primary = true LIMIT 1) as email,
-          -- Create tags array (empty for now, can be enhanced later)
-          ARRAY[]::text[] as tags
-        FROM cortex_entities.persons p
-        WHERE p.created_by = ${userId} AND p.is_active = true
-        ORDER BY p.created_at DESC
-      `);
+      // Fetch contacts from Cortex entities schema using direct query
+      const contacts = await db.select({
+        contactId: cortexPersons.id,
+        fullName: cortexPersons.fullName,
+        firstName: cortexPersons.firstName,
+        lastName: cortexPersons.lastName,
+        profession: cortexPersons.profession,
+        company: cortexPersons.companyName,
+        notes: cortexPersons.notes,
+        relationship: cortexPersons.relationship,
+        isWhatsappLinked: cortexPersons.isWhatsappLinked,
+        whatsappJid: cortexPersons.primaryWhatsappJid,
+        whatsappInstanceId: cortexPersons.whatsappInstanceName,
+        whatsappLinkedAt: cortexPersons.whatsappLinkedAt,
+        profilePictureUrl: cortexPersons.profilePictureUrl,
+        createdAt: cortexPersons.createdAt,
+        updatedAt: cortexPersons.updatedAt,
+        dateOfBirth: cortexPersons.dateOfBirth,
+        gender: cortexPersons.gender,
+        title: cortexPersons.title,
+        nickname: cortexPersons.nickname,
+        phone: cortexPersons.primaryWhatsappJid,  // Placeholder for phone
+        email: cortexPersons.primaryWhatsappJid,  // Placeholder for email
+        tags: []
+      })
+      .from(cortexPersons)
+      .where(and(
+        eq(cortexPersons.createdBy, userId),
+        eq(cortexPersons.isActive, true)
+      ))
+      .orderBy(desc(cortexPersons.createdAt));
       
-      res.json(result.rows);
+      // Add empty tags array to each contact
+      const contactsWithTags = contacts.map(contact => ({
+        ...contact,
+        tags: [],
+        phone: null,  // Will be populated later with proper phone lookup
+        email: null   // Will be populated later with proper email lookup
+      }));
+      
+      res.json(contactsWithTags);
     } catch (error) {
       console.error('Error fetching Cortex contacts:', error);
       res.status(500).json({ error: 'Failed to fetch contacts' });
