@@ -473,11 +473,20 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
             <div className="space-y-2">
               {availableContacts
                 .filter((contact: any) => 
-                  !companyContacts.some((cc: any) => cc.contactId === contact.contactId)
+                  !companyContacts.some((cc: any) => cc.contact_id === contact.contactId)
                 )
                 .map((contact: any) => (
                 <div key={contact.contactId} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                     onClick={() => associateContactMutation.mutate(contact.contactId)}>
+                     onClick={() => associateContactMutation.mutate({
+                       contactId: contact.contactId || contact.id,
+                       relationshipType: 'employee',
+                       metadata: {
+                         title: '',
+                         department: '',
+                         start_date: new Date().toISOString().split('T')[0],
+                         is_primary: false
+                       }
+                     })}>
                   <Avatar>
                     <AvatarFallback>
                       {contact.fullName?.charAt(0) || "?"}
@@ -497,7 +506,7 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
                 </div>
               ))}
               {availableContacts.filter((contact: any) => 
-                !companyContacts.some((cc: any) => cc.contactId === contact.contactId)
+                !companyContacts.some((cc: any) => cc.contact_id === contact.contactId)
               ).length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
