@@ -86,16 +86,16 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   console.log('Instances Error:', instancesError);
 
   // Map database trigger type back to frontend trigger type
-  const mapDbTriggerTypeToFrontend = (dbTriggerType: string, conditions: any[]) => {
+  const mapDbTriggerTypeToFrontend = (dbTriggerType: string, triggerConditions: any) => {
     if (dbTriggerType === 'whatsapp_message') {
-      // Determine specific trigger type based on conditions
-      if (conditions.some((c: any) => c.condition_type === 'reaction')) return 'reaction';
-      if (conditions.some((c: any) => c.condition_type === 'keyword')) return 'keyword';
-      if (conditions.some((c: any) => c.condition_type === 'hashtag')) return 'hashtag';
-      return 'hashtag'; // default
+      // Determine specific trigger type based on trigger conditions
+      if (triggerConditions.reactions) return 'reaction';
+      if (triggerConditions.keywords) return 'keyword';
+      if (triggerConditions.hashtags) return 'hashtag';
+      return 'reaction'; // default to reaction
     }
     if (dbTriggerType === 'schedule') return 'time_based';
-    return 'hashtag'; // fallback
+    return 'reaction'; // fallback
   };
 
   // Get action type from actions array
@@ -105,6 +105,9 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
     }
     return 'create_task';
   };
+
+  // Compute the frontend trigger type from the database rule
+  const frontendTriggerType = rule ? mapDbTriggerTypeToFrontend(rule.trigger_type, parsedTriggerConditions) : 'reaction';
 
   const form = useForm<z.infer<typeof actionRuleSchema>>({
     resolver: zodResolver(actionRuleSchema),
@@ -208,7 +211,9 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
     }));
   };
 
-  const triggerType = form.watch("trigger_type");
+  // Use a separate state for the frontend trigger type since the form only has trigger_type (database field)
+  const [frontendTriggerTypeState, setFrontendTriggerTypeState] = useState(frontendTriggerType);
+  const triggerType = frontendTriggerTypeState;
   const actionType = form.watch("action_type");
 
   const renderTriggerConfig = () => {
