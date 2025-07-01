@@ -45,10 +45,17 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
   const queryClient = useQueryClient();
 
   // Fetch company employees/contacts with enhanced relationship data
-  const { data: companyContacts = [] } = useQuery({
+  const { data: companyContacts = [], refetch: refetchCompanyContacts } = useQuery({
     queryKey: ["/api/crm/company-contacts-enhanced", company?.id],
     enabled: !!company?.id,
   });
+
+  // Debug logging
+  React.useEffect(() => {
+    if (companyContacts.length > 0) {
+      console.log("Company contacts loaded:", companyContacts);
+    }
+  }, [companyContacts]);
 
   // Fetch all available contacts for association
   const { data: availableContacts = [] } = useQuery({
@@ -85,7 +92,7 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
       // Force refresh the company contacts
       queryClient.invalidateQueries({ queryKey: ["/api/crm/company-contacts-enhanced", company.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/crm/companies"] });
-      queryClient.refetchQueries({ queryKey: ["/api/crm/company-contacts-enhanced", company.id] });
+      refetchCompanyContacts();
       setSelectedContact(null);
       setRelationshipType('works_for');
       setJobTitle('');

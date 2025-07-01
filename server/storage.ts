@@ -1790,7 +1790,7 @@ class DatabaseStorage {
             const result = await db.execute(sql`
                 SELECT 
                     p.id as contact_id,
-                    p.display_name as full_name,
+                    p.full_name as full_name,
                     p.profession as profession,
                     er.relationship_type,
                     er.metadata->>'title' as title,
