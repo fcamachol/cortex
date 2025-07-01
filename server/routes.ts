@@ -3926,8 +3926,12 @@ export async function registerRoutes(app: Express): Promise<void> {
       const { companyId } = req.params;
       const { relationshipTypes, activeOnly = 'true' } = req.query;
       
+      console.log('🔍 Fetching company contacts for company ID:', companyId);
+      
       // This uses the enhanced getContactsByCompany method
       const contacts = await storage.getContactsByCompany(companyId);
+      
+      console.log('📋 Raw contacts from database:', contacts.length, contacts);
       
       // Filter by relationship types if specified
       let filteredContacts = contacts;
@@ -3936,6 +3940,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         filteredContacts = contacts.filter(contact => 
           types.includes(contact.relationship_type)
         );
+        console.log('🎯 Filtered by relationship types:', types, 'Result:', filteredContacts.length);
       }
       
       // Filter by active status if specified
@@ -3943,11 +3948,13 @@ export async function registerRoutes(app: Express): Promise<void> {
         filteredContacts = filteredContacts.filter(contact => 
           contact.status === 'active'
         );
+        console.log('✅ Filtered by active status, Result:', filteredContacts.length);
       }
       
+      console.log('📤 Final contacts being returned:', filteredContacts);
       res.json(filteredContacts);
     } catch (error) {
-      console.error('Error getting enhanced company contacts:', error);
+      console.error('❌ Error getting enhanced company contacts:', error);
       res.status(500).json({ error: 'Failed to get company contacts' });
     }
   });

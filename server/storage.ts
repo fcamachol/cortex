@@ -1819,7 +1819,7 @@ class DatabaseStorage {
                 ORDER BY 
                     COALESCE((er.metadata->>'is_primary')::BOOLEAN, FALSE) DESC,
                     er.weight DESC,
-                    p.display_name ASC
+                    p.full_name ASC
             `);
             return result.rows;
         } catch (error) {
