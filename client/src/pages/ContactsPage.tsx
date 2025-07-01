@@ -776,16 +776,15 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
       )}
 
       {/* Company Detail Modal */}
-      {selectedCompany && showCompanyModal && (
+      {selectedCompany && (
         <CompanyDetailView
           company={selectedCompany}
+          isOpen={showCompanyModal}
           onClose={() => {
             setShowCompanyModal(false);
             setSelectedCompany(null);
           }}
-          onUpdate={() => {
-            queryClient.invalidateQueries({ queryKey: ['/api/crm/companies'] });
-          }}
+          spaceId={selectedSpace?.id || "default"}
         />
       )}
     </div>
