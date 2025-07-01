@@ -9,6 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import CompanyFormBlocks from "./CompanyFormBlocks";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +26,10 @@ interface CompanyDetailViewProps {
 export default function CompanyDetailView({ company, isOpen, onClose, spaceId }: CompanyDetailViewProps) {
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<any>(null);
+  const [relationshipType, setRelationshipType] = useState('works_for');
+  const [jobTitle, setJobTitle] = useState('');
+  const [department, setDepartment] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -361,10 +368,11 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
                               <Badge 
                                 variant="outline" 
                                 className={`text-xs ${
-                                  contact.relationship_type === 'employee' ? 'border-blue-200 text-blue-700' :
+                                  contact.relationship_type === 'works_for' ? 'border-blue-200 text-blue-700' :
+                                  contact.relationship_type === 'owns' ? 'border-gold-200 text-yellow-700' :
                                   contact.relationship_type === 'contractor' ? 'border-purple-200 text-purple-700' :
-                                  contact.relationship_type === 'client' ? 'border-green-200 text-green-700' :
-                                  contact.relationship_type === 'vendor' ? 'border-orange-200 text-orange-700' :
+                                  contact.relationship_type === 'client_of' ? 'border-green-200 text-green-700' :
+                                  contact.relationship_type === 'vendor_of' ? 'border-orange-200 text-orange-700' :
                                   'border-gray-200 text-gray-700'
                                 }`}
                               >
@@ -479,7 +487,7 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
                 <div key={contact.contactId} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
                      onClick={() => associateContactMutation.mutate({
                        contactId: contact.contactId || contact.id,
-                       relationshipType: 'employee',
+                       relationshipType: 'works_for',
                        metadata: {
                          title: '',
                          department: '',
