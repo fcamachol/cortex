@@ -3320,18 +3320,110 @@ export async function registerRoutes(app: Express): Promise<void> {
       const { contactId } = req.params;
       console.log('Fetching contact details for ID:', contactId);
       
-      // Handle both Cortex IDs (strings starting with cp_) and legacy numeric IDs
-      const parsedContactId = contactId.startsWith('cp_') ? contactId : parseInt(contactId);
-      const contact = await storage.getCrmContactWithFullDetails(parsedContactId);
+      // Fetch contact details from Cortex entities schema
+      const result = await db.execute(sql`
+        SELECT 
+          p.*,
+          -- Get phones
+          COALESCE(
+            (SELECT json_agg(json_build_object(
+              'id', id,
+              'phoneNumber', phone_number,
+              'label', label,
+              'isPrimary', is_primary,
+              'isWhatsappEnabled', is_whatsapp_enabled
+            )) FROM cortex_entities.contact_phones WHERE person_id = p.id),
+            '[]'::json
+          ) as phones,
+          -- Get emails
+          COALESCE(
+            (SELECT json_agg(json_build_object(
+              'id', id,
+              'emailAddress', email_address,
+              'label', label,
+              'isPrimary', is_primary
+            )) FROM cortex_entities.contact_emails WHERE person_id = p.id),
+            '[]'::json
+          ) as emails,
+          -- Get addresses
+          COALESCE(
+            (SELECT json_agg(json_build_object(
+              'id', id,
+              'street', street,
+              'city', city,
+              'state', state,
+              'zipCode', zip_code,
+              'country', country,
+              'label', label,
+              'isPrimary', is_primary
+            )) FROM cortex_entities.contact_addresses WHERE person_id = p.id),
+            '[]'::json
+          ) as addresses,
+          -- Get special dates
+          COALESCE(
+            (SELECT json_agg(json_build_object(
+              'id', id,
+              'eventName', event_name,
+              'eventDay', event_day,
+              'eventMonth', event_month,
+              'originalYear', original_year,
+              'category', category
+            )) FROM cortex_entities.special_dates WHERE person_id = p.id),
+            '[]'::json
+          ) as specialDates
+        FROM cortex_entities.persons p
+        WHERE p.id = ${contactId}
+        LIMIT 1
+      `);
       
-      console.log('Contact details retrieved:', contact);
-      if (!contact) {
+      if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Contact not found' });
       }
-      res.json(contact);
+      
+      const contact = result.rows[0];
+      
+      // Transform to expected format
+      const transformedContact = {
+        contactId: contact.id,
+        id: contact.id,
+        fullName: contact.full_name,
+        firstName: contact.first_name,
+        middleName: contact.middle_name,
+        lastName: contact.last_name,
+        nickname: contact.nickname,
+        title: contact.title,
+        profession: contact.profession,
+        companyName: contact.company_name,
+        dateOfBirth: contact.date_of_birth,
+        gender: contact.gender,
+        relationship: contact.relationship,
+        notes: contact.notes,
+        profilePictureUrl: contact.profile_picture_url,
+        isActive: contact.is_active,
+        primaryWhatsappJid: contact.primary_whatsapp_jid,
+        whatsappInstanceName: contact.whatsapp_instance_name,
+        isWhatsappLinked: contact.is_whatsapp_linked,
+        whatsappLinkedAt: contact.whatsapp_linked_at,
+        createdAt: contact.created_at,
+        updatedAt: contact.updated_at,
+        createdBy: contact.created_by,
+        phones: contact.phones,
+        emails: contact.emails,
+        addresses: contact.addresses,
+        specialDates: contact.specialDates,
+        tags: [],
+        companies: [],
+        groups: [],
+        relationships: [],
+        interests: []
+      };
+      
+      console.log('Contact details retrieved:', transformedContact);
+      res.json(transformedContact);
     } catch (error) {
       console.error('Error fetching contact details:', error);
-      res.status(500).json({ error: 'Failed to fetch contact details' });
+      console.error('Error details:', error.message);
+      res.status(500).json({ error: 'Failed to fetch contact details', details: error.message });
     }
   });
 
