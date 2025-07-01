@@ -1,0 +1,22 @@
+{
+  "id": "1751410773544-csuss0zmw",
+  "timestamp": "2025-07-01T22:59:33.544Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "messages.reaction",
+  "payload": {
+    "event": "messages.reaction",
+    "instance": {
+      "instanceId": "instance-1750433520122",
+      "instanceName": "instance-1750433520122"
+    },
+    "data": {
+      "reaction": {
+        "id": "3AC2BB4A3E1D661DEFAE",
+        "reaction": "✔️",
+        "participant": "5215579188699@s.whatsapp.net"
+      }
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

@@ -615,6 +615,24 @@ class DatabaseStorage {
         }, 'upsertWhatsappMessageReaction');
     }
 
+    async getWhatsappMessageReactions(filter: { messageId?: string; instanceName?: string; reactorJid?: string }): Promise<any[]> {
+        return await dbConnection.executeWithRetry(async () => {
+            let query = db.select().from(whatsappMessageReactions);
+            
+            if (filter.messageId) {
+                query = query.where(eq(whatsappMessageReactions.messageId, filter.messageId));
+            }
+            if (filter.instanceName) {
+                query = query.where(eq(whatsappMessageReactions.instanceName, filter.instanceName));
+            }
+            if (filter.reactorJid) {
+                query = query.where(eq(whatsappMessageReactions.reactorJid, filter.reactorJid));
+            }
+            
+            return await query;
+        }, 'getWhatsappMessageReactions');
+    }
+
     // =============================
     // COMPANIES/UPCOMING DATES STUBS
     // =============================
