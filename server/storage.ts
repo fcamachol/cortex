@@ -252,15 +252,23 @@ class DatabaseStorage {
             const taskId = taskData.id || crypto.randomUUID();
             const result = await db.execute(sql.raw(`
                 INSERT INTO cortex_projects.tasks (
-                    id, user_id, name, description, status, priority, due_date
+                    id, title, description, status, priority, due_date,
+                    created_by_entity_id, assigned_to_entity_id, 
+                    triggering_message_id, triggering_instance_name,
+                    created_at, updated_at
                 ) VALUES (
                     '${taskId}', 
-                    '${taskData.userId}', 
                     '${taskData.title}', 
                     '${taskData.description || ''}', 
-                    '${taskData.status || 'todo'}', 
+                    '${taskData.status || 'pending'}', 
                     '${taskData.priority || 'medium'}', 
-                    ${taskData.due_date ? `'${taskData.due_date}'` : 'NULL'}
+                    ${taskData.due_date ? `'${taskData.due_date}'` : 'NULL'},
+                    '${taskData.createdByEntityId || taskData.userId || 'cu_181de66a23864b2fac56779a82189691'}',
+                    '${taskData.assignedToEntityId || taskData.userId || 'cu_181de66a23864b2fac56779a82189691'}',
+                    ${taskData.triggeringMessageId ? `'${taskData.triggeringMessageId}'` : 'NULL'},
+                    ${taskData.triggeringInstanceName ? `'${taskData.triggeringInstanceName}'` : 'NULL'},
+                    NOW(),
+                    NOW()
                 ) RETURNING *
             `));
             return result.rows[0];

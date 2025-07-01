@@ -155,7 +155,10 @@ export const ActionService = {
                 description: this.processTemplate(config.description || '', context),
                 status: 'pending',
                 priority: config.priority || 'medium',
-                userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42', // Default user for now
+                createdByEntityId: 'cu_181de66a23864b2fac56779a82189691', // Default user entity ID
+                assignedToEntityId: 'cu_181de66a23864b2fac56779a82189691', // Assign to same user for now
+                triggeringMessageId: context.messageId,
+                triggeringInstanceName: context.instanceName,
                 createdAt: new Date(),
                 updatedAt: new Date()
             };

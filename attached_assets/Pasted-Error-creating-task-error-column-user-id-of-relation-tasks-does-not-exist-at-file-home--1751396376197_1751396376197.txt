@@ -1,0 +1,80 @@
+Error creating task: error: column "user_id" of relation "tasks" does not exist
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.createTaskGeneral (/home/runner/workspace/server/storage.ts:253:28)
+    at async DatabaseStorage.createTask (/home/runner/workspace/server/storage.ts:416:16)
+    at async Object.createSimpleTaskAction (/home/runner/workspace/server/action-service.ts:163:33)
+    at async Object.executeSimpleAction (/home/runner/workspace/server/action-service.ts:143:17)
+    at async Object.triggerSimpleAction (/home/runner/workspace/server/action-service.ts:107:21)
+    at async Object.processReaction (/home/runner/workspace/server/action-service.ts:53:13) {
+  length: 125,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '78',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '1066',
+  routine: 'checkInsertTargets'
+}
+❌ Error creating task from reaction: error: column "user_id" of relation "tasks" does not exist
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.createTaskGeneral (/home/runner/workspace/server/storage.ts:253:28)
+    at async DatabaseStorage.createTask (/home/runner/workspace/server/storage.ts:416:16)
+    at async Object.createSimpleTaskAction (/home/runner/workspace/server/action-service.ts:163:33)
+    at async Object.executeSimpleAction (/home/runner/workspace/server/action-service.ts:143:17)
+    at async Object.triggerSimpleAction (/home/runner/workspace/server/action-service.ts:107:21)
+    at async Object.processReaction (/home/runner/workspace/server/action-service.ts:53:13) {
+  length: 125,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '78',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '1066',
+  routine: 'checkInsertTargets'
+}
+❌ Error executing rule Personal task from  ✔️ reaction: error: column "user_id" of relation "tasks" does not exist
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.createTaskGeneral (/home/runner/workspace/server/storage.ts:253:28)
+    at async DatabaseStorage.createTask (/home/runner/workspace/server/storage.ts:416:16)
+    at async Object.createSimpleTaskAction (/home/runner/workspace/server/action-service.ts:163:33)
+    at async Object.executeSimpleAction (/home/runner/workspace/server/action-service.ts:143:17)
+    at async Object.triggerSimpleAction (/home/runner/workspace/server/action-service.ts:107:21)
+    at async Object.processReaction (/home/runner/workspace/server/action-service.ts:53:13) {
+  length: 125,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '78',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '1066',
+  routine: 'checkInsertTargets'
