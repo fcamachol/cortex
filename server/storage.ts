@@ -1087,84 +1087,10 @@ class DatabaseStorage {
     }
 
     // =============================
-    // ACTION RULES METHODS
+    // ACTION RULES METHODS (Simple approach)
     // =============================
     
-    async getActionRulesByTrigger(triggerType: string, instanceId?: string): Promise<any[]> {
-        try {
-            // Get rules with their conditions and actions from cortex_automation schema
-            const query = sql`
-                SELECT 
-                    r.id,
-                    r.name,
-                    r.description,
-                    r.is_active,
-                    r.trigger_type,
-                    r.priority,
-                    r.created_by,
-                    r.space_id,
-                    r.whatsapp_instance_id,
-                    r.trigger_permission,
-                    r.allowed_user_ids,
-                    array_agg(
-                        json_build_object(
-                            'condition_type', rc.condition_type,
-                            'operator', rc.operator,
-                            'field_name', rc.field_name,
-                            'value', rc.value,
-                            'is_negated', rc.is_negated
-                        )
-                    ) FILTER (WHERE rc.id IS NOT NULL) as conditions,
-                    array_agg(
-                        json_build_object(
-                            'action_type', ra.action_type,
-                            'action_order', ra.action_order,
-                            'target_entity_id', ra.target_entity_id,
-                            'parameters', ra.parameters,
-                            'template_id', ra.template_id
-                        ) ORDER BY ra.action_order
-                    ) FILTER (WHERE ra.id IS NOT NULL) as actions
-                FROM cortex_automation.rules r
-                LEFT JOIN cortex_automation.rule_conditions rc ON r.id = rc.rule_id
-                LEFT JOIN cortex_automation.rule_actions ra ON r.id = ra.rule_id
-                WHERE r.trigger_type = ${triggerType}
-                AND (r.is_active IS NULL OR r.is_active = true)
-                GROUP BY r.id, r.name, r.description, r.is_active, r.trigger_type, r.priority, r.created_by, r.space_id, r.whatsapp_instance_id, r.trigger_permission, r.allowed_user_ids
-            `;
-            
-            const result = await db.execute(query);
-            return result.rows;
-        } catch (error) {
-            console.error('Error fetching action rules from cortex_automation:', error);
-            return [];
-        }
-    }
-    
-    async saveActionExecution(executionData: any): Promise<any> {
-        try {
-            const result = await db.execute(sql`
-                INSERT INTO cortex_automation.rule_executions (
-                    rule_id, trigger_data, execution_result, status, error_message, 
-                    actions_executed, actions_failed, execution_time_ms, executed_at
-                ) VALUES (
-                    ${executionData.ruleId}, 
-                    ${JSON.stringify(executionData.triggerContext)}, 
-                    ${JSON.stringify(executionData.executionResult)}, 
-                    ${executionData.status}, 
-                    ${executionData.errorMessage},
-                    ${executionData.actionsExecuted || 1},
-                    ${executionData.actionsFailed || 0},
-                    ${executionData.executionTimeMs || 0},
-                    NOW()
-                )
-                RETURNING *
-            `);
-            return result.rows[0];
-        } catch (error) {
-            console.error('Error saving action execution to cortex_automation:', error);
-            throw error;
-        }
-    }
+    // Simple saveActionExecution will be handled by the later duplicate implementation
     
     async createTaskMessageLink(linkData: any): Promise<any> {
         try {
@@ -1357,57 +1283,72 @@ class DatabaseStorage {
         }
     }
 
-    async updateActionRule(ruleId: string, updates: any): Promise<any> {
+    async getActionRulesByTrigger(triggerType: string, instanceId?: string): Promise<any[]> {
         try {
-            const result = await db.execute(sql`
-                UPDATE cortex_automation.action_rules 
-                SET 
-                    name = ${updates.name},
-                    description = ${updates.description},
-                    is_active = ${updates.is_active},
-                    trigger_type = ${updates.trigger_type},
-                    action_type = ${updates.action_type},
-                    trigger_conditions = ${JSON.stringify(updates.trigger_conditions)},
-                    action_config = ${JSON.stringify(updates.action_config)},
-                    performer_filter = ${updates.performer_filter},
-                    instance_filter_type = ${updates.instance_filter_type},
-                    selected_instances = ${JSON.stringify(updates.selected_instances)},
-                    cooldown_minutes = ${updates.cooldown_minutes},
-                    max_executions_per_day = ${updates.max_executions_per_day},
-                    updated_at = NOW()
-                WHERE id = ${ruleId}
-                RETURNING *
-            `);
-            return result.rows[0];
+            console.log('Fetching action rules by trigger:', triggerType);
+            
+            let query = db
+                .select()
+                .from(actionRules)
+                .where(and(
+                    eq(actionRules.triggerType, 'whatsapp_message'), // Map reaction -> whatsapp_message
+                    eq(actionRules.isActive, true)
+                ));
+            
+            const rules = await query;
+            
+            // Filter by trigger conditions for reactions
+            if (triggerType === 'reaction') {
+                const filteredRules = rules.filter(rule => {
+                    const conditions = rule.triggerConditions || {};
+                    return conditions.reactions && Array.isArray(conditions.reactions);
+                });
+                console.log(`Found ${filteredRules.length} reaction rules`);
+                return filteredRules;
+            }
+            
+            console.log(`Found ${rules.length} rules for trigger type: ${triggerType}`);
+            return rules;
         } catch (error) {
-            console.error('Error updating action rule:', error);
-            throw error;
+            console.error('Error fetching action rules by trigger:', error);
+            return [];
         }
     }
 
-    async getActionRule(ruleId: string): Promise<any> {
+    async saveActionExecution(executionData: any): Promise<any> {
         try {
-            const result = await db.execute(sql`
-                SELECT * FROM cortex_automation.action_rules 
-                WHERE id = ${ruleId}
-            `);
-            return result.rows[0] || null;
+            console.log('Saving action execution for simple rule system');
+            
+            // For the simple system, we could either:
+            // 1. Create a separate executions table
+            // 2. Update the rule's execution counters
+            // 3. Just log it (simplified approach)
+            
+            // For now, let's update the rule's execution counters
+            if (executionData.rule_id) {
+                await db
+                    .update(actionRules)
+                    .set({
+                        lastExecutedAt: new Date(),
+                        executionCount: sql`${actionRules.executionCount} + 1`,
+                        successCount: executionData.status === 'success' 
+                            ? sql`${actionRules.successCount} + 1`
+                            : actionRules.successCount,
+                        failureCount: executionData.status === 'failure'
+                            ? sql`${actionRules.failureCount} + 1`
+                            : actionRules.failureCount
+                    })
+                    .where(eq(actionRules.id, executionData.rule_id));
+            }
+            
+            return { success: true, execution: executionData };
         } catch (error) {
-            console.error('Error getting action rule:', error);
-            return null;
+            console.error('Error saving action execution:', error);
+            return { success: false, error: error.message };
         }
     }
 
-    async deleteActionRule(ruleId: string): Promise<void> {
-        try {
-            await db.execute(sql`
-                DELETE FROM cortex_automation.action_rules WHERE id = ${ruleId}
-            `);
-        } catch (error) {
-            console.error('Error deleting action rule:', error);
-            throw error;
-        }
-    }
+
 
     async getActionExecutions(ruleId?: string, status?: string, limit?: number): Promise<any[]> {
         try {
