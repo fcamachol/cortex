@@ -1278,15 +1278,15 @@ class DatabaseStorage {
                 INSERT INTO cortex_automation.action_rules (
                     name, description, is_active, trigger_type, action_type,
                     trigger_conditions, action_config, performer_filter,
-                    instance_filter_type, selected_instances, cooldown_minutes,
-                    max_executions_per_day, created_by, space_id
+                    cooldown_minutes, max_executions_per_day
                 ) VALUES (
                     ${ruleData.name}, ${ruleData.description}, ${ruleData.is_active || true},
                     ${ruleData.trigger_type}, ${ruleData.action_type},
-                    ${JSON.stringify(ruleData.trigger_conditions)}, ${JSON.stringify(ruleData.action_config)},
-                    ${ruleData.performer_filter}, ${ruleData.instance_filter_type},
-                    ${JSON.stringify(ruleData.selected_instances)}, ${ruleData.cooldown_minutes},
-                    ${ruleData.max_executions_per_day}, ${ruleData.created_by}, ${ruleData.space_id}
+                    ${JSON.stringify(ruleData.trigger_conditions || {})}, 
+                    ${JSON.stringify(ruleData.action_config || {})},
+                    ${ruleData.performer_filter || 'both'}, 
+                    ${ruleData.cooldown_minutes || 5},
+                    ${ruleData.max_executions_per_day || 100}
                 ) RETURNING *
             `);
             return result.rows[0];

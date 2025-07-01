@@ -171,30 +171,11 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
     // Clean trigger conditions based on trigger type
     let cleanedTriggerConditions = { ...triggerConditions };
     
-    if (values.triggerType === 'reaction') {
-      cleanedTriggerConditions = {
-        reactions: triggerConditions.reactions || []
-      };
-    } else if (values.triggerType === 'keyword') {
-      cleanedTriggerConditions = {
-        keywords: triggerConditions.keywords || []
-      };
-    } else if (values.triggerType === 'hashtag') {
-      cleanedTriggerConditions = {
-        hashtag: triggerConditions.hashtag || ''
-      };
-    }
-
+    // For simplified schema, we use simple trigger conditions in JSONB format
     const payload = {
       ...values,
-      triggerConditions: cleanedTriggerConditions,
-      actionConfig,
-      performerFilters: {
-        allowedPerformers: [values.performerFilter]
-      },
-      instanceFilters: values.selectedInstances.length > 0 ? {
-        include: values.selectedInstances
-      } : null
+      trigger_conditions: cleanedTriggerConditions,
+      action_config: actionConfig,
     };
 
     console.log('Submitting payload:', payload);
@@ -209,21 +190,10 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   const handleTriggerConditionChange = (key: string, value: any) => {
     setTriggerConditions((prev: any) => {
       // Clear irrelevant conditions when trigger type changes
-      const currentTriggerType = form.getValues('triggerType');
+      const currentTriggerType = form.getValues('trigger_type');
       let cleanedConditions = { ...prev };
       
-      // Remove conditions that don't apply to current trigger type
-      if (currentTriggerType === 'reaction') {
-        delete cleanedConditions.keywords;
-        delete cleanedConditions.hashtag;
-      } else if (currentTriggerType === 'keyword') {
-        delete cleanedConditions.reactions;
-        delete cleanedConditions.hashtag;
-      } else if (currentTriggerType === 'hashtag') {
-        delete cleanedConditions.reactions;
-        delete cleanedConditions.keywords;
-      }
-      
+      // For simplified schema, we just update the specific condition
       return {
         ...cleanedConditions,
         [key]: value
@@ -774,7 +744,7 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
                   />
                   <FormField
                     control={form.control}
-                    name="maxExecutionsPerDay"
+                    name="max_executions_per_day"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Max Executions Per Day</FormLabel>
@@ -795,7 +765,7 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
                   />
                   <FormField
                     control={form.control}
-                    name="performerFilter"
+                    name="performer_filter"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Who Can Trigger</FormLabel>
