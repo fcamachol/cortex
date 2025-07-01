@@ -31,6 +31,17 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
   const [jobTitle, setJobTitle] = useState('');
   const [department, setDepartment] = useState('');
   const { toast } = useToast();
+
+  // Available relationship types based on the database enum
+  const relationshipTypes = [
+    { value: 'works_for', label: 'Employee', description: 'Person works for the company' },
+    { value: 'owns', label: 'Owner', description: 'Person owns the company' },
+    { value: 'manages', label: 'Manager', description: 'Person manages part of the company' },
+    { value: 'client_of', label: 'Client', description: 'Person is a client of the company' },
+    { value: 'vendor_of', label: 'Vendor', description: 'Person provides services to the company' },
+    { value: 'collaborates_with', label: 'Collaborator', description: 'Person collaborates with the company' },
+    { value: 'reports_to', label: 'Reports To', description: 'Person reports to the company' }
+  ];
   const queryClient = useQueryClient();
 
   // Fetch company employees/contacts with enhanced relationship data
@@ -72,6 +83,10 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/crm/company-contacts-enhanced", company.id] });
+      setSelectedContact(null);
+      setRelationshipType('works_for');
+      setJobTitle('');
+      setDepartment('');
       toast({
         title: "Contact Associated",
         description: "Contact has been successfully associated with the company.",
@@ -86,6 +101,22 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
       });
     },
   });
+
+  // Handle contact association with form data
+  const handleAssociateContact = () => {
+    if (!selectedContact) return;
+    
+    associateContactMutation.mutate({
+      contactId: selectedContact.contactId || selectedContact.id,
+      relationshipType,
+      metadata: {
+        title: jobTitle,
+        department: department,
+        start_date: new Date().toISOString().split('T')[0],
+        is_primary: false
+      }
+    });
+  };
 
   if (!company) return null;
 
@@ -470,59 +501,115 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
 
       {/* Add Contact Dialog */}
       <Dialog open={isAddContactOpen} onOpenChange={setIsAddContactOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add Contact to Company</DialogTitle>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Select a contact to associate with {company.name}
-            </p>
+            <DialogTitle>Associate Contact with {company.name}</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="max-h-96">
-            <div className="space-y-2">
-              {availableContacts
-                .filter((contact: any) => 
-                  !companyContacts.some((cc: any) => cc.contact_id === contact.contactId)
-                )
-                .map((contact: any) => (
-                <div key={contact.contactId} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                     onClick={() => associateContactMutation.mutate({
-                       contactId: contact.contactId || contact.id,
-                       relationshipType: 'works_for',
-                       metadata: {
-                         title: '',
-                         department: '',
-                         start_date: new Date().toISOString().split('T')[0],
-                         is_primary: false
-                       }
-                     })}>
-                  <Avatar>
-                    <AvatarFallback>
-                      {contact.fullName?.charAt(0) || "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <h4 className="font-medium">{contact.fullName}</h4>
-                    {contact.relationship && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {contact.relationship}
-                      </p>
-                    )}
-                  </div>
-                  {contact.relationship && (
-                    <Badge variant="outline">{contact.relationship}</Badge>
-                  )}
-                </div>
-              ))}
-              {availableContacts.filter((contact: any) => 
-                !companyContacts.some((cc: any) => cc.contact_id === contact.contactId)
-              ).length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No available contacts to associate.</p>
-                </div>
-              )}
+          <div className="space-y-6">
+            {/* Contact Selection */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Select Contact</Label>
+              <Select 
+                value={selectedContact?.contactId || selectedContact?.id || ''}
+                onValueChange={(value) => {
+                  const contact = availableContacts.find((c: any) => 
+                    (c.contactId || c.id) === value
+                  );
+                  setSelectedContact(contact);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a contact to associate..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableContacts
+                    .filter((contact: any) => 
+                      !companyContacts.some((cc: any) => cc.contact_id === contact.contactId)
+                    )
+                    .map((contact: any) => (
+                      <SelectItem key={contact.contactId || contact.id} value={contact.contactId || contact.id}>
+                        {contact.fullName}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
-          </ScrollArea>
+
+            {/* Relationship Type Selection */}
+            {selectedContact && (
+              <>
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Relationship Type</Label>
+                  <Select value={relationshipType} onValueChange={setRelationshipType}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {relationshipTypes.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{type.label}</span>
+                            <span className="text-xs text-gray-500">{type.description}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Job Details */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Job Title</Label>
+                    <Input
+                      placeholder="e.g., Manager, Developer"
+                      value={jobTitle}
+                      onChange={(e) => setJobTitle(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Department</Label>
+                    <Input
+                      placeholder="e.g., Sales, Engineering"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Association Button */}
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setSelectedContact(null);
+                      setRelationshipType('works_for');
+                      setJobTitle('');
+                      setDepartment('');
+                    }}
+                  >
+                    Clear
+                  </Button>
+                  <Button 
+                    onClick={handleAssociateContact}
+                    disabled={associateContactMutation.isPending}
+                  >
+                    {associateContactMutation.isPending ? 'Associating...' : 'Associate Contact'}
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* No Available Contacts Message */}
+            {availableContacts.filter((contact: any) => 
+              !companyContacts.some((cc: any) => cc.contact_id === contact.contactId)
+            ).length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No available contacts to associate.</p>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </>
