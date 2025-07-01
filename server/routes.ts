@@ -4835,7 +4835,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Test endpoint for cortex_automation integration
   app.post('/api/test-reaction-automation', async (req: Request, res: Response) => {
     try {
-      const { instanceId, messageId, emoji, reactorJid, content } = req.body;
+      const { instanceId, instanceName, messageId, emoji, reactorJid, content } = req.body;
       
       console.log('🧪 Testing cortex_automation integration...');
       
@@ -4845,7 +4845,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       // Simulate a reaction event
       const reactionData = {
         messageId,
-        instanceName: instanceId,
+        instanceName: instanceName || instanceId,
         reactorJid,
         reactionEmoji: emoji,
         timestamp: new Date()
