@@ -1614,18 +1614,20 @@ class DatabaseStorage {
 
     async createCompleteContact(data: any): Promise<any> {
         try {
-            // Format tags as PostgreSQL array
+            // Format tags as PostgreSQL array literal
             const tagsArray = data.tags || [];
+            const tagsLiteral = `{${tagsArray.map((tag: string) => `"${tag.replace(/"/g, '\\"')}"`).join(',')}}`;
             
-            // Simple implementation - just create basic contact for now
+            // Create complete contact with both name and full_name populated
             const result = await db.execute(sql`
                 INSERT INTO crm.contacts (
-                    full_name, relationship, notes, tags, owner_user_id, entity_type
+                    name, full_name, relationship, notes, tags, owner_user_id, entity_type
                 ) VALUES (
+                    ${data.fullName}, 
                     ${data.fullName}, 
                     ${data.relationship || 'Contact'}, 
                     ${data.notes || ''}, 
-                    ${tagsArray}, 
+                    ${tagsLiteral}::text[], 
                     ${data.ownerUserId},
                     ${data.entityType || 'person'}
                 )
