@@ -559,6 +559,27 @@ class DatabaseStorage {
         }
     }
 
+    async upsertWhatsappMessageReaction(reaction: any): Promise<any> {
+        try {
+            const [result] = await db
+                .insert(whatsappMessageReactions)
+                .values(reaction)
+                .onConflictDoUpdate({
+                    target: [whatsappMessageReactions.messageId, whatsappMessageReactions.instanceName, whatsappMessageReactions.reactorJid],
+                    set: {
+                        reactionEmoji: reaction.reactionEmoji,
+                        timestamp: reaction.timestamp,
+                        fromMe: reaction.fromMe
+                    }
+                })
+                .returning();
+            return result;
+        } catch (error) {
+            console.error('Error upserting reaction:', error);
+            throw error;
+        }
+    }
+
     // =============================
     // COMPANIES/UPCOMING DATES STUBS
     // =============================

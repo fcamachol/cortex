@@ -38,14 +38,9 @@ export const ActionService = {
 
     async processReaction(cleanReaction: InsertWhatsappMessageReaction): Promise<void> {
         try {
-            // Store reaction asynchronously without blocking
-            storage.upsertWhatsappMessageReaction(cleanReaction).then((storedReaction) => {
-                console.log(`✅ [${cleanReaction.instanceName}] Reaction stored: ${cleanReaction.reactionEmoji} on ${cleanReaction.messageId}`);
-                // Notify clients of new reaction via SSE
-                SseManager.notifyClientsOfNewReaction(storedReaction);
-            }).catch(error => {
-                console.error(`❌ Error storing reaction:`, error);
-            });
+            console.log(`🎯 [ActionService] Processing reaction: ${cleanReaction.reactionEmoji} on message ${cleanReaction.messageId}`);
+            
+            // Reaction is already stored by the webhook adapter, we just process actions
             
             // Security check - only process reactions from internal users
             // if (!await storage.isInternalUser(cleanReaction.reactorJid)) return;
@@ -54,20 +49,138 @@ export const ActionService = {
             const originalMessage = await storage.getWhatsappMessageById(cleanReaction.messageId, cleanReaction.instanceName);
             console.log(`🔍 Retrieved message for reaction: ${cleanReaction.messageId}`, originalMessage?.content?.substring(0, 50));
             
-            // Trigger action logic based on reaction using cortex_automation schema
-            await this.triggerAction(cleanReaction.instanceName, 'whatsapp_message', cleanReaction.reactionEmoji || '', {
+            // Trigger action logic based on reaction using simple actionRules approach
+            await this.triggerSimpleAction('reaction', cleanReaction.reactionEmoji || '', {
                 messageId: cleanReaction.messageId,
                 reactorJid: cleanReaction.reactorJid,
                 chatId: originalMessage?.chatId || await this.getChatIdFromMessage(cleanReaction.messageId, cleanReaction.instanceName),
                 content: originalMessage?.content || '',
                 senderJid: originalMessage?.senderJid || '',
                 timestamp: cleanReaction.timestamp,
-                eventType: 'reaction',
+                instanceName: cleanReaction.instanceName,
                 emoji: cleanReaction.reactionEmoji || ''
             });
         } catch (error) {
             console.error(`❌ Error processing reaction:`, error);
         }
+    },
+
+    async triggerSimpleAction(triggerType: string, triggerValue: string, context: any): Promise<void> {
+        console.log(`🧠 ActionService processing simple trigger: ${triggerType} -> ${triggerValue}`);
+        
+        try {
+            // Get matching action rules from the simple actionRules table
+            const rules = await storage.getActionRulesByTrigger(triggerType);
+            console.log(`🔍 Found ${rules.length} potential rules for ${triggerType}`);
+            
+            if (rules.length === 0) {
+                console.log(`📭 No action rules found for ${triggerType}`);
+                return;
+            }
+
+            // Filter rules based on conditions
+            const matchingRules = rules.filter(rule => {
+                if (!rule.isActive) {
+                    console.log(`⏭️  Skipping inactive rule: ${rule.name}`);
+                    return false;
+                }
+                
+                // Check reaction matching for reaction triggers
+                if (triggerType === 'reaction' && rule.triggerConditions?.reactions) {
+                    const allowedReactions = rule.triggerConditions.reactions;
+                    if (Array.isArray(allowedReactions) && !allowedReactions.includes(triggerValue)) {
+                        console.log(`⏭️  Skipping rule "${rule.name}" - reaction ${triggerValue} not in allowed list`);
+                        return false;
+                    }
+                }
+                
+                return true;
+            });
+
+            console.log(`🎯 Found ${matchingRules.length} matching rules after filtering`);
+
+            // Execute each matching rule
+            for (const rule of matchingRules) {
+                console.log(`⚡ Executing simple action rule: ${rule.name}`);
+                
+                try {
+                    await this.executeSimpleAction(rule, context);
+                    
+                    // Log successful execution
+                    await storage.saveActionExecution({
+                        rule_id: rule.id,
+                        status: 'success',
+                        trigger_type: triggerType,
+                        trigger_value: triggerValue,
+                        context: context,
+                        executed_at: new Date()
+                    });
+                    
+                } catch (actionError) {
+                    console.error(`❌ Error executing rule ${rule.name}:`, actionError);
+                    
+                    // Log failed execution
+                    await storage.saveActionExecution({
+                        rule_id: rule.id,
+                        status: 'failure',
+                        trigger_type: triggerType,
+                        trigger_value: triggerValue,
+                        error: actionError.message,
+                        executed_at: new Date()
+                    });
+                }
+            }
+        } catch (error) {
+            console.error(`❌ Error in triggerSimpleAction:`, error);
+        }
+    },
+
+    async executeSimpleAction(rule: any, context: any): Promise<void> {
+        console.log(`🎯 Executing simple action: ${rule.actionType} for rule: ${rule.name}`);
+        
+        switch (rule.actionType) {
+            case 'create_task':
+                await this.createSimpleTaskAction(rule.actionConfig, context);
+                break;
+            default:
+                console.log(`⚠️  Unknown action type: ${rule.actionType}`);
+        }
+    },
+
+    async createSimpleTaskAction(config: any, context: any): Promise<void> {
+        try {
+            const taskData = {
+                id: nanoid(),
+                title: this.processTemplate(config.title || 'New Task', context),
+                description: this.processTemplate(config.description || '', context),
+                status: 'pending',
+                priority: config.priority || 'medium',
+                userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42', // Default user for now
+                createdAt: new Date(),
+                updatedAt: new Date()
+            };
+
+            const createdTask = await storage.createTask(taskData);
+            console.log(`✅ Task created from reaction: ${createdTask.title}`);
+            
+            // Send SSE notification
+            SseManager.notifyClientsOfNewTask(createdTask);
+            
+            return createdTask;
+        } catch (error) {
+            console.error('❌ Error creating task from reaction:', error);
+            throw error;
+        }
+    },
+
+    processTemplate(template: string, context: any): string {
+        if (!template) return '';
+        
+        return template
+            .replace(/\{\{content\}\}/g, context.content || '')
+            .replace(/\{\{emoji\}\}/g, context.emoji || '')
+            .replace(/\{\{messageId\}\}/g, context.messageId || '')
+            .replace(/\{\{chatId\}\}/g, context.chatId || '');
     },
 
     async triggerAction(instanceId: string, triggerType: string, triggerValue: string, context: any): Promise<void> {
