@@ -3243,14 +3243,40 @@ export async function registerRoutes(app: Express): Promise<void> {
   // COMPREHENSIVE CONTACTS & CRM API ROUTES - 360-Degree Network Intelligence
   // =========================================================================
 
-  // Core Contact Routes - Updated for Cortex entities
+  // Core Contact Routes - Using CRM schema
   app.get('/api/crm/contacts', async (req: Request, res: Response) => {
     try {
-      // Temporarily redirect to Cortex entities while keeping same endpoint
-      const contacts = await storage.getCortexPersons();
-      res.json(contacts);
+      const { ownerUserId } = req.query;
+      const userId = ownerUserId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
+      
+      // Fetch contacts from CRM schema
+      const result = await db.execute(sql`
+        SELECT 
+          id as contactId,
+          name,
+          full_name as fullName,
+          phone,
+          email,
+          company,
+          profession,
+          notes,
+          relationship,
+          tags,
+          is_whatsapp_linked as isWhatsappLinked,
+          whatsapp_jid as whatsappJid,
+          whatsapp_instance_id as whatsappInstanceId,
+          whatsapp_linked_at as whatsappLinkedAt,
+          created_at as createdAt,
+          updated_at as updatedAt,
+          entity_type as entityType
+        FROM crm.contacts 
+        WHERE owner_user_id = ${userId}
+        ORDER BY created_at DESC
+      `);
+      
+      res.json(result.rows);
     } catch (error) {
-      console.error('Error fetching Cortex contacts:', error);
+      console.error('Error fetching CRM contacts:', error);
       res.status(500).json({ error: 'Failed to fetch contacts' });
     }
   });
