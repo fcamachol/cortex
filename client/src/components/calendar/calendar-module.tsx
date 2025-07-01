@@ -1062,7 +1062,7 @@ export default function CalendarModule() {
                   providers.map((provider: any) => (
                     <div key={provider.providerId} className="flex items-center gap-3 py-1 px-2 rounded hover:bg-gray-50 group">
                       <div className="w-3 h-3 rounded bg-blue-500"></div>
-                      <span className="text-sm text-gray-700 flex-1 capitalize">{provider.provider.replace('_', ' ')}</span>
+                      <span className="text-sm text-gray-700 flex-1 capitalize">{provider.provider_type?.replace('_', ' ') || provider.provider?.replace('_', ' ') || 'Unknown'}</span>
                       <div className="flex items-center gap-2">
                         <Badge variant={provider.syncStatus === 'active' ? 'default' : 'destructive'} className="text-xs">
                           {provider.syncStatus}

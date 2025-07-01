@@ -2146,11 +2146,23 @@ class DatabaseStorage {
     
     async getCalendarEvents(): Promise<any[]> {
         try {
-            // Return CRM calendar events for now
-            // TODO: Integrate with cortex_scheduling.events once sync is implemented
+            // Return cortex_scheduling events
             const result = await db.execute(sql`
-                SELECT * FROM crm.calendar_events 
-                ORDER BY start_time DESC
+                SELECT 
+                    id,
+                    title,
+                    description,
+                    start_datetime as start_time,
+                    end_datetime as end_time,
+                    is_all_day,
+                    location_details as location,
+                    meeting_url,
+                    status,
+                    created_by,
+                    created_at,
+                    updated_at
+                FROM cortex_scheduling.events 
+                ORDER BY start_datetime DESC
             `);
             return result.rows;
         } catch (error) {
@@ -2161,35 +2173,33 @@ class DatabaseStorage {
 
     async createCalendarEvent(eventData: any): Promise<any> {
         try {
-            console.log('📅 Creating calendar event in CRM schema:', eventData.title);
+            console.log('📅 Creating calendar event in cortex_scheduling:', eventData.title);
             
             const result = await db.execute(sql`
-                INSERT INTO crm.calendar_events (
-                    title, description, start_time, end_time, location, 
-                    is_all_day, created_by_user_id, triggering_message_id,
-                    project_id, task_id, related_chat_jid, space_id, instance_id
+                INSERT INTO cortex_scheduling.events (
+                    id, title, description, start_datetime, end_datetime, 
+                    location_details, is_all_day, created_by, 
+                    whatsapp_trigger_message_id, status, timezone
                 ) VALUES (
+                    gen_random_uuid(),
                     ${eventData.title},
                     ${eventData.description || null},
                     ${eventData.startTime || new Date()},
                     ${eventData.endTime || null},
                     ${eventData.location || null},
                     ${eventData.isAllDay || false},
-                    ${eventData.ownerUserId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'},
+                    ${eventData.ownerUserId || eventData.createdBy || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'},
                     ${eventData.triggeringMessageId || null},
-                    ${eventData.projectId || null},
-                    ${eventData.taskId || null},
-                    ${eventData.relatedChatJid || null},
-                    ${eventData.spaceId || null},
-                    ${eventData.instanceId || null}
+                    'confirmed',
+                    'America/Mexico_City'
                 )
                 RETURNING *
             `);
             
-            console.log('✅ CRM calendar event created successfully:', eventData.title);
+            console.log('✅ Cortex scheduling event created successfully:', eventData.title);
             return result.rows[0];
         } catch (error) {
-            console.error('❌ Error creating CRM calendar event:', error);
+            console.error('❌ Error creating cortex scheduling event:', error);
             throw error;
         }
     }
