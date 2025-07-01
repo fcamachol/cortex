@@ -188,7 +188,8 @@ export default function ContactDetailView({ contact, interests, onClose, onUpdat
     relationshipForm.reset();
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return 'XX';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
