@@ -210,16 +210,24 @@ export class ActionProcessorService {
    * Process a reaction action with optional NLP
    */
   private async processReactionAction(eventData: any) {
-    // Get the reaction from database (already stored by webhook handler)
-    const reactionId = eventData.key?.id || eventData.reactionId;
+    // Handle different data structures from webhooks
+    const reactionId = eventData.key?.id || 
+                      eventData.reactionId || 
+                      eventData.data?.reaction?.id ||
+                      eventData.messageId;
     
-    if (!reactionId) {
-      throw new Error('No reaction ID found in event data');
+    const messageId = eventData.message?.reactionMessage?.key?.id || 
+                     eventData.messageId || 
+                     eventData.data?.reaction?.id ||
+                     reactionId;
+    
+    if (!reactionId || !messageId) {
+      throw new Error(`No reaction/message ID found in event data. Available keys: ${Object.keys(eventData)}`);
     }
 
     // Get the reaction with message content for NLP
     const reactions = await this.storage.getWhatsappMessageReactions({
-      messageId: eventData.message?.reactionMessage?.key?.id || eventData.messageId,
+      messageId: messageId,
       instanceName: eventData.instanceName,
     });
 
