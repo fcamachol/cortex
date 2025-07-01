@@ -1,7 +1,7 @@
 import { storage } from './storage';
 import { SseManager } from './sse-manager';
 import * as chrono from 'chrono-node';
-import { nanoid } from 'nanoid';
+import { randomUUID } from 'crypto';
 import { 
     type InsertWhatsappMessage,
     type InsertWhatsappMessageReaction
@@ -150,7 +150,7 @@ export const ActionService = {
     async createSimpleTaskAction(config: any, context: any): Promise<void> {
         try {
             const taskData = {
-                id: nanoid(),
+                id: randomUUID(),
                 title: this.processTemplate(config.title || 'New Task', context),
                 description: this.processTemplate(config.description || '', context),
                 status: 'pending',

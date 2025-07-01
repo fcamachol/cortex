@@ -145,6 +145,32 @@ class DatabaseStorage {
         }
     }
 
+    async upsertWhatsappChat(chat: any): Promise<any> {
+        try {
+            const [result] = await db.insert(whatsappChats)
+                .values(chat)
+                .onConflictDoUpdate({
+                    target: [whatsappChats.chatId, whatsappChats.instanceName],
+                    set: {
+                        name: chat.name,
+                        phone: chat.phone,
+                        unreadCount: chat.unreadCount,
+                        isGroup: chat.isGroup,
+                        isArchived: chat.isArchived,
+                        status: chat.status,
+                        lastMessageTimestamp: chat.lastMessageTimestamp,
+                        updatedAt: new Date()
+                    }
+                })
+                .returning();
+            
+            return result;
+        } catch (error) {
+            console.error('Error upserting WhatsApp chat:', error);
+            throw error;
+        }
+    }
+
     async getWhatsappConversations(instanceName: string): Promise<any[]> {
         try {
             // First check if is_group column exists, otherwise determine from chat_id pattern
