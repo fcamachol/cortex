@@ -445,9 +445,21 @@ export const ActionService = {
 
     async createTaskAction(config: any, triggerContext: any): Promise<void> {
         console.log('📝 Creating task from action trigger');
+        console.log('🔍 DEBUG triggerContext:', {
+            triggerType: triggerContext.triggerType,
+            instanceId: triggerContext.instanceId,
+            context: {
+                messageId: triggerContext.context.messageId,
+                content: triggerContext.context.content?.substring(0, 100),
+                reactorJid: triggerContext.context.reactorJid,
+                senderJid: triggerContext.context.senderJid,
+                chatId: triggerContext.context.chatId
+            }
+        });
         
         // Process template variables in config
         const processedConfig = this.processTemplateVariables(config, triggerContext);
+        console.log('🔍 DEBUG processedConfig:', processedConfig);
         
         // Use NLP to enhance task creation
         const nlpAnalysis = this.analyzeContentWithNLP(triggerContext.context.content || '');
@@ -463,11 +475,21 @@ export const ActionService = {
             description: processedConfig.description || 'Automatically created task',
             priority: nlpAnalysis.isUrgent ? 'high' : (processedConfig.priority || 'medium'),
             status: 'todo',
-            dueDate: nlpAnalysis.suggestedDueDate || (processedConfig.dueDate ? new Date(processedConfig.dueDate) : null)
+            dueDate: nlpAnalysis.suggestedDueDate || (processedConfig.dueDate ? new Date(processedConfig.dueDate) : null),
+            // Add WhatsApp tracking fields with correct field names for database
+            triggeringMessageId: triggerContext.context.messageId,
+            triggeringInstanceName: triggerContext.context.instanceName || triggerContext.instanceId
         };
         
+        console.log('🔍 DEBUG taskData before creation:', {
+            title: taskData.title,
+            description: taskData.description,
+            triggeringMessageId: taskData.triggeringMessageId,
+            triggeringInstanceName: taskData.triggeringInstanceName
+        });
+        
         const createdTask = await storage.createTask(taskData);
-        console.log(`✅ Task created: ${taskData.title}`);
+        console.log(`✅ Task created: ${taskData.title} (ID: ${createdTask.id})`);
         
         // Create task-message link using the new junction table
         const linkData = {
@@ -477,6 +499,7 @@ export const ActionService = {
             linkType: 'trigger' as const // This message triggered the task creation
         };
         
+        console.log('🔍 DEBUG linkData:', linkData);
         await storage.createTaskMessageLink(linkData);
         console.log(`🔗 Task-message link created: ${linkData.linkType}`);
         
