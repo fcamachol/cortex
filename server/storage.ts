@@ -1814,7 +1814,7 @@ class DatabaseStorage {
                 FROM cortex_foundation.entity_relationships er
                 INNER JOIN cortex_entities.persons p ON er.from_entity_id = p.id
                 WHERE er.to_entity_id = ${companyId}
-                AND er.relationship_type IN ('works_for', 'owns', 'manages', 'client_of', 'vendor_of', 'collaborates_with', 'reports_to')
+                AND er.relationship_type IN ('works_for', 'owns', 'manages', 'client_of', 'vendor_of', 'colleague_of', 'reports_to')
                 AND er.is_active = true
                 ORDER BY 
                     COALESCE((er.metadata->>'is_primary')::BOOLEAN, FALSE) DESC,

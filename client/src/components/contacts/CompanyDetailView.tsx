@@ -39,7 +39,7 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
     { value: 'manages', label: 'Manager', description: 'Person manages part of the company' },
     { value: 'client_of', label: 'Client', description: 'Person is a client of the company' },
     { value: 'vendor_of', label: 'Vendor', description: 'Person provides services to the company' },
-    { value: 'collaborates_with', label: 'Collaborator', description: 'Person collaborates with the company' },
+    { value: 'colleague_of', label: 'Collaborator', description: 'Person collaborates with the company' },
     { value: 'reports_to', label: 'Reports To', description: 'Person reports to the company' }
   ];
   const queryClient = useQueryClient();
