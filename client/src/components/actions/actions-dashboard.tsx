@@ -16,8 +16,9 @@ interface ActionRule {
   id: string;
   name: string;
   description?: string;
-  is_active: boolean;
-  trigger_type: string;
+  isActive: boolean;
+  triggerType: string;
+  actionType: string;
   whatsapp_instance_id?: string;
   trigger_permission?: string;
   instance_name?: string;
@@ -239,7 +240,7 @@ export function ActionsDashboard() {
                         )}
                       </div>
                       <Switch
-                        checked={rule.is_active}
+                        checked={rule.isActive}
                         onCheckedChange={() => toggleRuleMutation.mutate(rule.id)}
                         disabled={toggleRuleMutation.isPending}
                       />
@@ -247,9 +248,9 @@ export function ActionsDashboard() {
                     <div className="flex gap-2 mt-3">
                       <Badge 
                         variant="secondary" 
-                        className={`text-white ${getTriggerBadgeColor(rule.trigger_type || 'unknown')}`}
+                        className={`text-white ${getTriggerBadgeColor(rule.triggerType || 'unknown')}`}
                       >
-                        {formatTriggerType(rule.trigger_type || 'unknown')}
+                        {formatTriggerType(rule.triggerType || 'unknown')}
                       </Badge>
                       {rule.whatsapp_instance_id && (
                         <Badge variant="outline" className="text-xs">
