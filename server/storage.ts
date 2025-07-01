@@ -280,7 +280,7 @@ class DatabaseStorage {
                     '${taskId}', 
                     '${taskData.title}', 
                     '${taskData.description || ''}', 
-                    '${taskData.status || 'pending'}', 
+                    '${taskData.status || 'todo'}', 
                     '${taskData.priority || 'medium'}', 
                     ${taskData.due_date ? `'${taskData.due_date}'` : 'NULL'},
                     '${taskData.createdByEntityId || taskData.userId || 'cu_181de66a23864b2fac56779a82189691'}',
