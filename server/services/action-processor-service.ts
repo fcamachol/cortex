@@ -259,8 +259,8 @@ export class ActionProcessorService {
    * Process keyword action
    */
   private async processKeywordAction(eventData: any) {
-    // Handle keyword-based triggers
-    await this.actionService.processKeywordTriggers(eventData);
+    // Keyword triggers disabled to prevent unwanted task creation
+    console.log('🚫 Keyword action processing disabled to prevent spurious task creation');
   }
 
   /**
