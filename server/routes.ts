@@ -3862,6 +3862,24 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.post('/api/crm/companies/:companyId/contacts', async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.params;
+      const { contactId } = req.body;
+      
+      if (!contactId) {
+        return res.status(400).json({ error: 'Contact ID is required' });
+      }
+      
+      // Create the association by adding the contact to the company
+      const association = await storage.associateContactWithCompany(contactId, companyId);
+      res.status(201).json(association);
+    } catch (error) {
+      console.error('Error associating contact with company:', error);
+      res.status(500).json({ error: 'Failed to associate contact with company' });
+    }
+  });
+
   app.post('/api/crm/company-members', async (req: Request, res: Response) => {
     try {
       const member = await storage.addCompanyMember(req.body);

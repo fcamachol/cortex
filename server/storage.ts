@@ -1785,6 +1785,53 @@ class DatabaseStorage {
         }
     }
 
+    async getContactsByCompany(companyId: number): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT 
+                    c.contact_id,
+                    c.full_name,
+                    c.relationship,
+                    cm.role,
+                    cm.start_date
+                FROM crm.contacts c
+                INNER JOIN crm.company_members cm ON c.contact_id = cm.contact_id
+                WHERE cm.company_id = ${companyId}
+                ORDER BY c.full_name ASC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error getting contacts by company:', error);
+            return [];
+        }
+    }
+
+    async associateContactWithCompany(contactId: string, companyId: string): Promise<any> {
+        try {
+            // Check if association already exists
+            const existingAssociation = await db.execute(sql`
+                SELECT * FROM crm.company_members 
+                WHERE contact_id = ${parseInt(contactId)} AND company_id = ${parseInt(companyId)}
+            `);
+            
+            if (existingAssociation.rows.length > 0) {
+                throw new Error('Contact is already associated with this company');
+            }
+            
+            // Create the association
+            const result = await db.execute(sql`
+                INSERT INTO crm.company_members (contact_id, company_id, is_current, added_at)
+                VALUES (${parseInt(contactId)}, ${parseInt(companyId)}, true, NOW())
+                RETURNING *
+            `);
+            
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error associating contact with company:', error);
+            throw error;
+        }
+    }
+
     async getCrmGroups(userId: string): Promise<any[]> {
         try {
             const result = await db.execute(sql`
