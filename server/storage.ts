@@ -1266,84 +1266,30 @@ class DatabaseStorage {
         }
     }
 
+
+
     // =============================
     // UTILITY METHODS
     // =============================
-    
+
     async createActionRule(ruleData: any): Promise<any> {
         try {
-            console.log('Creating rule with data:', ruleData);
-            
-            // Create the rule first
-            const ruleResult = await db.execute(sql`
-                INSERT INTO cortex_automation.rules (
-                    name, description, is_active, trigger_type, priority, 
-                    created_by, space_id, whatsapp_instance_id, trigger_permission, allowed_user_ids
+            const result = await db.execute(sql`
+                INSERT INTO cortex_automation.action_rules (
+                    name, description, is_active, trigger_type, action_type,
+                    trigger_conditions, action_config, performer_filter,
+                    instance_filter_type, selected_instances, cooldown_minutes,
+                    max_executions_per_day, created_by, space_id
                 ) VALUES (
-                    ${ruleData.name || ruleData.ruleName}, ${ruleData.description}, ${ruleData.is_active || true},
-                    ${ruleData.trigger_type || 'whatsapp_message'}, ${ruleData.priority || 0},
-                    ${ruleData.created_by}, ${ruleData.space_id || null}, 
-                    ${ruleData.whatsapp_instance_id || null}, ${ruleData.trigger_permission || 'anyone'},
-                    ${ruleData.allowed_user_ids || []}
+                    ${ruleData.name}, ${ruleData.description}, ${ruleData.is_active || true},
+                    ${ruleData.trigger_type}, ${ruleData.action_type},
+                    ${JSON.stringify(ruleData.trigger_conditions)}, ${JSON.stringify(ruleData.action_config)},
+                    ${ruleData.performer_filter}, ${ruleData.instance_filter_type},
+                    ${JSON.stringify(ruleData.selected_instances)}, ${ruleData.cooldown_minutes},
+                    ${ruleData.max_executions_per_day}, ${ruleData.created_by}, ${ruleData.space_id}
                 ) RETURNING *
             `);
-            
-            const rule = ruleResult.rows[0];
-            const ruleId = rule.id;
-            
-            // Create conditions if provided
-            if (ruleData.triggerConditions) {
-                console.log('Creating conditions for rule:', ruleId, ruleData.triggerConditions);
-                
-                if (ruleData.triggerConditions.reactions && ruleData.triggerConditions.reactions.length > 0) {
-                    for (const reaction of ruleData.triggerConditions.reactions) {
-                        await db.execute(sql`
-                            INSERT INTO cortex_automation.rule_conditions (
-                                rule_id, condition_type, operator, field_name, value
-                            ) VALUES (
-                                ${ruleId}, 'reaction', 'equals', 'emoji', ${reaction}
-                            )
-                        `);
-                    }
-                }
-                
-                if (ruleData.triggerConditions.keywords && ruleData.triggerConditions.keywords.length > 0) {
-                    for (const keyword of ruleData.triggerConditions.keywords) {
-                        await db.execute(sql`
-                            INSERT INTO cortex_automation.rule_conditions (
-                                rule_id, condition_type, operator, field_name, value
-                            ) VALUES (
-                                ${ruleId}, 'keyword', 'contains', 'message_content', ${keyword}
-                            )
-                        `);
-                    }
-                }
-                
-                if (ruleData.triggerConditions.hashtag) {
-                    await db.execute(sql`
-                        INSERT INTO cortex_automation.rule_conditions (
-                            rule_id, condition_type, operator, field_name, value
-                        ) VALUES (
-                            ${ruleId}, 'hashtag', 'contains', 'message_content', ${ruleData.triggerConditions.hashtag}
-                        )
-                    `);
-                }
-            }
-            
-            // Create actions if provided
-            if (ruleData.actionConfig && ruleData.actionType) {
-                console.log('Creating action for rule:', ruleId, ruleData.actionType, ruleData.actionConfig);
-                
-                await db.execute(sql`
-                    INSERT INTO cortex_automation.rule_actions (
-                        rule_id, action_type, action_order, parameters
-                    ) VALUES (
-                        ${ruleId}, ${ruleData.actionType}, 1, ${JSON.stringify(ruleData.actionConfig)}
-                    )
-                `);
-            }
-            
-            return rule;
+            return result.rows[0];
         } catch (error) {
             console.error('Error creating action rule:', error);
             throw error;
@@ -1352,106 +1298,26 @@ class DatabaseStorage {
 
     async updateActionRule(ruleId: string, updates: any): Promise<any> {
         try {
-            // Handle PostgreSQL array field properly
-            const allowedUserIds = updates.allowed_user_ids || [];
-            const allowedUserIdsArray = Array.isArray(allowedUserIds) ? allowedUserIds : [];
-            
-            // Check for undefined/null values that might cause SQL issues
-            const updateData = {
-                name: updates.name || updates.ruleName || 'Untitled Rule',
-                description: updates.description || '',
-                is_active: Boolean(updates.is_active),
-                trigger_type: updates.trigger_type || 'whatsapp_message',
-                priority: Number(updates.priority) || 0,
-                whatsapp_instance_id: updates.whatsapp_instance_id || null,
-                trigger_permission: updates.trigger_permission || 'me',
-                allowed_user_ids: allowedUserIdsArray
-            };
-            
-            // Update the rule first
             const result = await db.execute(sql`
-                UPDATE cortex_automation.rules 
+                UPDATE cortex_automation.action_rules 
                 SET 
-                    name = ${updateData.name},
-                    description = ${updateData.description},
-                    is_active = ${updateData.is_active},
-                    trigger_type = ${updateData.trigger_type},
-                    priority = ${updateData.priority},
-                    whatsapp_instance_id = ${updateData.whatsapp_instance_id},
-                    trigger_permission = ${updateData.trigger_permission},
-                    allowed_user_ids = ARRAY[${updateData.allowed_user_ids.length > 0 ? updateData.allowed_user_ids.map((id: string) => `'${id}'`).join(',') : ''}]::text[],
+                    name = ${updates.name},
+                    description = ${updates.description},
+                    is_active = ${updates.is_active},
+                    trigger_type = ${updates.trigger_type},
+                    action_type = ${updates.action_type},
+                    trigger_conditions = ${JSON.stringify(updates.trigger_conditions)},
+                    action_config = ${JSON.stringify(updates.action_config)},
+                    performer_filter = ${updates.performer_filter},
+                    instance_filter_type = ${updates.instance_filter_type},
+                    selected_instances = ${JSON.stringify(updates.selected_instances)},
+                    cooldown_minutes = ${updates.cooldown_minutes},
+                    max_executions_per_day = ${updates.max_executions_per_day},
                     updated_at = NOW()
                 WHERE id = ${ruleId}
                 RETURNING *
             `);
-            
-            const rule = result.rows[0];
-            
-            // Update conditions if provided
-            if (updates.triggerConditions) {
-                console.log('Updating conditions for rule:', ruleId, updates.triggerConditions);
-                
-                // Delete existing conditions
-                await db.execute(sql`
-                    DELETE FROM cortex_automation.rule_conditions WHERE rule_id = ${ruleId}
-                `);
-                
-                // Create new conditions
-                if (updates.triggerConditions.reactions && updates.triggerConditions.reactions.length > 0) {
-                    for (const reaction of updates.triggerConditions.reactions) {
-                        await db.execute(sql`
-                            INSERT INTO cortex_automation.rule_conditions (
-                                rule_id, condition_type, operator, field_name, value
-                            ) VALUES (
-                                ${ruleId}, 'reaction', 'equals', 'emoji', ${reaction}
-                            )
-                        `);
-                    }
-                }
-                
-                if (updates.triggerConditions.keywords && updates.triggerConditions.keywords.length > 0) {
-                    for (const keyword of updates.triggerConditions.keywords) {
-                        await db.execute(sql`
-                            INSERT INTO cortex_automation.rule_conditions (
-                                rule_id, condition_type, operator, field_name, value
-                            ) VALUES (
-                                ${ruleId}, 'keyword', 'contains', 'message_content', ${keyword}
-                            )
-                        `);
-                    }
-                }
-                
-                if (updates.triggerConditions.hashtag) {
-                    await db.execute(sql`
-                        INSERT INTO cortex_automation.rule_conditions (
-                            rule_id, condition_type, operator, field_name, value
-                        ) VALUES (
-                            ${ruleId}, 'hashtag', 'contains', 'message_content', ${updates.triggerConditions.hashtag}
-                        )
-                    `);
-                }
-            }
-            
-            // Update actions if provided
-            if (updates.actionConfig && updates.actionType) {
-                console.log('Updating action for rule:', ruleId, updates.actionType, updates.actionConfig);
-                
-                // Delete existing actions
-                await db.execute(sql`
-                    DELETE FROM cortex_automation.rule_actions WHERE rule_id = ${ruleId}
-                `);
-                
-                // Create new action
-                await db.execute(sql`
-                    INSERT INTO cortex_automation.rule_actions (
-                        rule_id, action_type, action_order, parameters
-                    ) VALUES (
-                        ${ruleId}, ${updates.actionType}, 1, ${JSON.stringify(updates.actionConfig)}
-                    )
-                `);
-            }
-                
-            return rule;
+            return result.rows[0];
         } catch (error) {
             console.error('Error updating action rule:', error);
             throw error;
@@ -1460,12 +1326,10 @@ class DatabaseStorage {
 
     async getActionRule(ruleId: string): Promise<any> {
         try {
-            const query = sql`
-                SELECT * FROM cortex_automation.rules 
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_automation.action_rules 
                 WHERE id = ${ruleId}
-            `;
-            
-            const result = await db.execute(query);
+            `);
             return result.rows[0] || null;
         } catch (error) {
             console.error('Error getting action rule:', error);
@@ -1476,7 +1340,7 @@ class DatabaseStorage {
     async deleteActionRule(ruleId: string): Promise<void> {
         try {
             await db.execute(sql`
-                DELETE FROM cortex_automation.rules WHERE id = ${ruleId}
+                DELETE FROM cortex_automation.action_rules WHERE id = ${ruleId}
             `);
         } catch (error) {
             console.error('Error deleting action rule:', error);
@@ -1484,14 +1348,9 @@ class DatabaseStorage {
         }
     }
 
-    async getActionExecutions(ruleId?: string): Promise<any[]> {
+    async getActionExecutions(ruleId?: string, status?: string, limit?: number): Promise<any[]> {
         try {
-            const query = ruleId 
-                ? sql`SELECT * FROM cortex_automation.rule_executions WHERE rule_id = ${ruleId} ORDER BY executed_at DESC`
-                : sql`SELECT * FROM cortex_automation.rule_executions ORDER BY executed_at DESC LIMIT 50`;
-            
-            const result = await db.execute(query);
-            return result.rows;
+            return []; // Placeholder for now
         } catch (error) {
             console.error('Error getting action executions:', error);
             return [];

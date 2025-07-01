@@ -1604,37 +1604,24 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
       
-      // Helper function to map frontend trigger types to backend enum values
-      function mapTriggerType(frontendType: string): string {
-        const mapping: Record<string, string> = {
-          'reaction': 'whatsapp_message',
-          'hashtag': 'whatsapp_message', 
-          'keyword': 'whatsapp_message',
-          'time_based': 'schedule',
-          'location': 'whatsapp_message',
-          'contact_group': 'whatsapp_message',
-          'whatsapp_message': 'whatsapp_message',
-          'schedule': 'schedule',
-          'entity_change': 'entity_change',
-          'manual': 'manual',
-          'webhook': 'webhook'
-        };
-        return mapping[frontendType] || 'whatsapp_message';
-      }
-      
       const ruleData = {
-        name: req.body.ruleName || req.body.name,
+        name: req.body.name || req.body.ruleName,
         description: req.body.description,
-        is_active: req.body.isActive !== undefined ? req.body.isActive : true,
-        trigger_type: mapTriggerType(req.body.triggerType || 'reaction'),
-        trigger_permission: req.body.performerFilter === 'user_only' ? 'me' : 'anyone',
-        priority: req.body.priority || 0,
-        whatsapp_instance_id: req.body.whatsapp_instance_id || null,
-        allowed_user_ids: req.body.allowed_user_ids || [],
-        created_by: userId
+        is_active: req.body.is_active !== undefined ? req.body.is_active : true,
+        trigger_type: req.body.trigger_type || 'reaction',
+        action_type: req.body.action_type || 'create_task',
+        trigger_conditions: req.body.trigger_conditions || {},
+        action_config: req.body.action_config || {},
+        performer_filter: req.body.performer_filter || 'both',
+        instance_filter_type: req.body.instance_filter_type || 'all',
+        selected_instances: req.body.selected_instances || [],
+        cooldown_minutes: req.body.cooldown_minutes || 0,
+        max_executions_per_day: req.body.max_executions_per_day || 100,
+        created_by: userId,
+        space_id: req.body.space_id || null
       };
       
-      console.log('POST /api/actions/rules - creating rule:', ruleData);
+      console.log('Creating new action rule:', ruleData);
       const rule = await storage.createActionRule(ruleData);
       res.status(201).json(rule);
     } catch (error) {
