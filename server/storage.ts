@@ -1358,7 +1358,7 @@ class DatabaseStorage {
 
     async saveActionExecution(executionData: any): Promise<any> {
         return await dbConnection.executeWithRetry(async () => {
-            console.log('Saving action execution for simple rule system');
+            console.log(`✅ Saving action execution for rule ${executionData.rule_id}: ${executionData.status}`);
             
             // For the simple system, we could either:
             // 1. Create a separate executions table
@@ -1367,7 +1367,7 @@ class DatabaseStorage {
             
             // For now, let's update the rule's execution counters
             if (executionData.rule_id) {
-                await db
+                const result = await db
                     .update(actionRules)
                     .set({
                         lastExecutedAt: new Date(),
@@ -1380,6 +1380,8 @@ class DatabaseStorage {
                             : actionRules.failureCount
                     })
                     .where(eq(actionRules.id, executionData.rule_id));
+                
+                console.log(`✅ Execution counter updated successfully for rule ${executionData.rule_id}`);
             }
             
             return { success: true, execution: executionData };
