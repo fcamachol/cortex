@@ -48,14 +48,21 @@ export const ActionService = {
             // Get the original message content for template processing
             const originalMessage = await storage.getWhatsappMessageById(cleanReaction.messageId, cleanReaction.instanceName);
             console.log(`🔍 Retrieved message for reaction: ${cleanReaction.messageId}`, originalMessage?.content?.substring(0, 50));
+            console.log(`🔍 Original message sender info:`, {
+                senderJid: originalMessage?.senderJid,
+                fromMe: originalMessage?.fromMe,
+                chatId: originalMessage?.chatId,
+                reactorJid: cleanReaction.reactorJid
+            });
             
             // Trigger action logic based on reaction using simple actionRules approach
+            // For reactions, the "sender" in context should be the person who reacted (reactorJid)
             await this.triggerSimpleAction('reaction', cleanReaction.reactionEmoji || '', {
                 messageId: cleanReaction.messageId,
                 reactorJid: cleanReaction.reactorJid,
                 chatId: originalMessage?.chatId || await this.getChatIdFromMessage(cleanReaction.messageId, cleanReaction.instanceName),
                 content: originalMessage?.content || '',
-                senderJid: originalMessage?.senderJid || '',
+                senderJid: cleanReaction.reactorJid || originalMessage?.senderJid || '', // Use reactor as sender for task creation
                 timestamp: cleanReaction.timestamp,
                 instanceName: cleanReaction.instanceName,
                 emoji: cleanReaction.reactionEmoji || ''
