@@ -22,28 +22,28 @@ export function SimpleActionsDashboard() {
 
   // Fetch real action rules
   const { data: actionRules = [], isLoading: rulesLoading } = useQuery<any[]>({
-    queryKey: ['/api/action/rules'],
+    queryKey: ['/api/actions/rules'],
   });
 
   // Fetch real execution stats
   const { data: executionStats, isLoading: statsLoading } = useQuery<ActionStats>({
-    queryKey: ['/api/action/stats'],
+    queryKey: ['/api/actions/stats'],
   });
 
   // Calculate real stats
   const stats: ActionStats = executionStats || {
     totalRules: actionRules.length,
-    activeRules: actionRules.filter(rule => rule.isActive).length,
+    activeRules: actionRules.filter(rule => rule.is_active).length,
     totalExecutions: 0,
     recentExecutions: 0,
   };
 
   // Filter rules based on search and status
   const filteredRules = actionRules.filter(rule => {
-    const matchesSearch = rule.ruleName?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = rule.name?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || 
-      (statusFilter === "active" && rule.isActive) ||
-      (statusFilter === "inactive" && !rule.isActive);
+      (statusFilter === "active" && rule.is_active) ||
+      (statusFilter === "inactive" && !rule.is_active);
     return matchesSearch && matchesStatus;
   });
 
