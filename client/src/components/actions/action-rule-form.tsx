@@ -328,6 +328,24 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
                 </SelectContent>
               </Select>
             </FormItem>
+            <FormItem>
+              <FormLabel>Status</FormLabel>
+              <Select value={actionConfig.status || 'todo'} onValueChange={(value) => handleActionConfigChange('status', value)}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="todo">To Do</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="waiting">Waiting</SelectItem>
+                  <SelectItem value="review">Review</SelectItem>
+                  <SelectItem value="done">Done</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormItem>
           </div>
         );
 
