@@ -1791,15 +1791,35 @@ class DatabaseStorage {
                 SELECT 
                     p.id as contact_id,
                     p.display_name as full_name,
-                    p.profession as relationship,
+                    p.profession as profession,
+                    er.relationship_type,
+                    er.metadata->>'title' as title,
+                    er.metadata->>'department' as department,
                     er.metadata->>'role' as role,
-                    er.created_at as start_date
+                    (er.metadata->>'start_date')::DATE as start_date,
+                    (er.metadata->>'end_date')::DATE as end_date,
+                    COALESCE((er.metadata->>'is_primary')::BOOLEAN, FALSE) as is_primary,
+                    er.weight,
+                    er.id as relationship_id,
+                    CASE 
+                        WHEN (er.metadata->>'end_date')::DATE < CURRENT_DATE THEN 'ended'
+                        WHEN (er.metadata->>'end_date')::DATE IS NULL THEN 'active'
+                        ELSE 'active'
+                    END as status,
+                    (SELECT phone_number FROM cortex_entities.contact_phones 
+                     WHERE person_id = p.id AND is_primary = TRUE LIMIT 1) as phone,
+                    (SELECT email_address FROM cortex_entities.contact_emails 
+                     WHERE person_id = p.id AND is_primary = TRUE LIMIT 1) as email,
+                    er.created_at
                 FROM cortex_foundation.entity_relationships er
                 INNER JOIN cortex_entities.persons p ON er.from_entity_id = p.id
                 WHERE er.to_entity_id = ${companyId}
-                AND er.relationship_type = 'member_of'
+                AND er.relationship_type IN ('employee', 'contractor', 'client', 'vendor', 'partner', 'member_of')
                 AND er.is_active = true
-                ORDER BY p.display_name ASC
+                ORDER BY 
+                    COALESCE((er.metadata->>'is_primary')::BOOLEAN, FALSE) DESC,
+                    er.weight DESC,
+                    p.display_name ASC
             `);
             return result.rows;
         } catch (error) {
@@ -1808,37 +1828,84 @@ class DatabaseStorage {
         }
     }
 
-    async associateContactWithCompany(contactId: string, companyId: string): Promise<any> {
+    async associateContactWithCompany(
+        contactId: string, 
+        companyId: string, 
+        relationshipType: string = 'employee',
+        metadata: any = {}
+    ): Promise<any> {
         try {
+            // Validate entities exist
+            const personExists = await db.execute(sql`
+                SELECT 1 FROM cortex_entities.persons WHERE id = ${contactId}
+            `);
+            if (personExists.rows.length === 0) {
+                throw new Error(`Person with ID ${contactId} not found`);
+            }
+
+            const companyExists = await db.execute(sql`
+                SELECT 1 FROM cortex_entities.companies WHERE id = ${companyId}
+            `);
+            if (companyExists.rows.length === 0) {
+                throw new Error(`Company with ID ${companyId} not found`);
+            }
+
             // Check if association already exists
             const existingAssociation = await db.execute(sql`
                 SELECT * FROM cortex_foundation.entity_relationships 
                 WHERE from_entity_id = ${contactId} 
                 AND to_entity_id = ${companyId}
-                AND relationship_type = 'member_of'
+                AND relationship_type = ${relationshipType}
                 AND is_active = true
             `);
             
             if (existingAssociation.rows.length > 0) {
-                throw new Error('Contact is already associated with this company');
+                throw new Error('Contact is already associated with this company in this role');
             }
-            
+
+            // Calculate weight based on relationship type
+            const weight = this.calculateRelationshipWeight(relationshipType, metadata.is_primary);
+
+            // If this is a primary relationship, mark others as non-primary
+            if (metadata.is_primary && relationshipType === 'employee') {
+                await db.execute(sql`
+                    UPDATE cortex_foundation.entity_relationships 
+                    SET metadata = metadata || '{"is_primary": false}'::jsonb,
+                        weight = weight * 0.8
+                    WHERE from_entity_id = ${contactId}
+                      AND relationship_type = 'employee'
+                      AND metadata->>'is_primary' = 'true'
+                `);
+            }
+
+            // Create enhanced metadata
+            const enhancedMetadata = {
+                ...metadata,
+                start_date: metadata.start_date || new Date().toISOString().split('T')[0],
+                created_date: new Date().toISOString(),
+                is_primary: metadata.is_primary || false
+            };
+
             // Create the association using entity_relationships
             const result = await db.execute(sql`
                 INSERT INTO cortex_foundation.entity_relationships (
                     from_entity_id, 
                     to_entity_id, 
                     relationship_type, 
-                    is_active,
+                    is_bidirectional,
+                    weight,
                     metadata,
+                    is_active,
                     created_at
                 )
                 VALUES (
                     ${contactId}, 
                     ${companyId}, 
-                    'member_of', 
+                    ${relationshipType}, 
                     true,
-                    '{"role": "Member"}',
+                    ${weight},
+                    ${JSON.stringify(enhancedMetadata)},
+                    true,
                     NOW()
                 )
                 RETURNING *
@@ -1848,6 +1915,129 @@ class DatabaseStorage {
         } catch (error) {
             console.error('Error associating contact with company:', error);
             throw error;
+        }
+    }
+
+    private calculateRelationshipWeight(relationshipType: string, isPrimary: boolean = false): number {
+        if (isPrimary) return 1.0;
+        
+        switch (relationshipType) {
+            case 'employee':
+            case 'founder':
+            case 'owner':
+                return 0.9;
+            case 'contractor':
+            case 'consultant':
+                return 0.7;
+            case 'client':
+            case 'customer':
+                return 0.8;
+            case 'vendor':
+            case 'supplier':
+                return 0.6;
+            case 'partner':
+            case 'investor':
+                return 0.8;
+            case 'member_of':
+                return 0.5;
+            default:
+                return 0.5;
+        }
+    }
+
+    async updatePersonCompanyRelationship(
+        relationshipId: string,
+        updates: {
+            title?: string;
+            department?: string;
+            salary?: number;
+            promotionDate?: string;
+            endDate?: string;
+        }
+    ): Promise<boolean> {
+        try {
+            // Get current metadata
+            const currentResult = await db.execute(sql`
+                SELECT metadata, from_entity_id FROM cortex_foundation.entity_relationships
+                WHERE id = ${relationshipId}
+            `);
+            
+            if (currentResult.rows.length === 0) {
+                return false;
+            }
+
+            const currentMetadata = currentResult.rows[0].metadata || {};
+            const personId = currentResult.rows[0].from_entity_id;
+
+            // Build updated metadata
+            const updatedMetadata: any = {
+                ...currentMetadata,
+                ...updates,
+                last_updated: new Date().toISOString()
+            };
+
+            if (updates.promotionDate) {
+                updatedMetadata.last_promotion_date = updates.promotionDate;
+                delete updatedMetadata.promotionDate;
+            }
+
+            // Update the relationship
+            await db.execute(sql`
+                UPDATE cortex_foundation.entity_relationships
+                SET metadata = ${JSON.stringify(updatedMetadata)},
+                    updated_at = NOW()
+                WHERE id = ${relationshipId}
+            `);
+
+            return true;
+        } catch (error) {
+            console.error('Error updating person-company relationship:', error);
+            return false;
+        }
+    }
+
+    async getPersonCompanies(
+        personId: string,
+        relationshipTypes: string[] = [],
+        activeOnly: boolean = true
+    ): Promise<any[]> {
+        try {
+            const typeFilter = relationshipTypes.length > 0 
+                ? sql`AND er.relationship_type = ANY(${relationshipTypes})`
+                : sql``;
+
+            const activeFilter = activeOnly 
+                ? sql`AND (er.metadata->>'end_date' IS NULL OR (er.metadata->>'end_date')::DATE >= CURRENT_DATE)`
+                : sql``;
+
+            const result = await db.execute(sql`
+                SELECT 
+                    c.id as company_id,
+                    c.name as company_name,
+                    er.relationship_type,
+                    er.id as relationship_id,
+                    (er.metadata->>'start_date')::DATE as start_date,
+                    (er.metadata->>'end_date')::DATE as end_date,
+                    COALESCE((er.metadata->>'is_primary')::BOOLEAN, FALSE) as is_primary,
+                    er.metadata->>'title' as title,
+                    er.metadata->>'department' as department,
+                    er.weight,
+                    er.created_at
+                FROM cortex_foundation.entity_relationships er
+                JOIN cortex_entities.companies c ON er.to_entity_id = c.id
+                WHERE er.from_entity_id = ${personId}
+                  AND er.is_active = true
+                  ${typeFilter}
+                  ${activeFilter}
+                ORDER BY 
+                    COALESCE((er.metadata->>'is_primary')::BOOLEAN, FALSE) DESC,
+                    er.weight DESC,
+                    er.created_at DESC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error getting person companies:', error);
+            return [];
         }
     }
 

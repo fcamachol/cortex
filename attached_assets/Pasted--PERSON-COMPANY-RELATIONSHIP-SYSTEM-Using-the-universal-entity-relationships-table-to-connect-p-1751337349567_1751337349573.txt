@@ -1,0 +1,488 @@
+-- PERSON-COMPANY RELATIONSHIP SYSTEM
+-- Using the universal entity_relationships table to connect people and companies
+
+-- ================================
+-- RELATIONSHIP TYPES SETUP
+-- ================================
+
+-- Standard relationship types for person-company connections
+-- These would be inserted as reference data
+
+INSERT INTO cortex_foundation.entity_relationships (
+    from_entity_id, to_entity_id, relationship_type, is_bidirectional, weight, metadata
+) VALUES 
+-- Example relationships (these are templates/examples)
+('example_person_id', 'example_company_id', 'employee', TRUE, 1.0, 
+ jsonb_build_object('title', 'Software Engineer', 'department', 'Engineering', 'start_date', '2023-01-15')),
+ 
+('example_person_id', 'example_company_id', 'contractor', TRUE, 0.7,
+ jsonb_build_object('contract_type', 'freelance', 'hourly_rate', 85.00, 'end_date', '2024-12-31')),
+ 
+('example_person_id', 'example_company_id', 'client', TRUE, 0.8,
+ jsonb_build_object('client_type', 'enterprise', 'account_value', 50000, 'contact_frequency', 'weekly')),
+ 
+('example_person_id', 'example_company_id', 'vendor', TRUE, 0.6,
+ jsonb_build_object('service_type', 'consulting', 'payment_terms', 'NET30'));
+
+-- ================================
+-- RELATIONSHIP MANAGEMENT FUNCTIONS
+-- ================================
+
+-- Create person-to-company relationship
+CREATE OR REPLACE FUNCTION create_person_company_relationship(
+    p_person_id VARCHAR(50),
+    p_company_id VARCHAR(50),
+    p_relationship_type VARCHAR(100),
+    p_metadata JSONB DEFAULT '{}',
+    p_start_date DATE DEFAULT CURRENT_DATE,
+    p_end_date DATE DEFAULT NULL,
+    p_is_primary BOOLEAN DEFAULT FALSE,
+    p_created_by VARCHAR(50) DEFAULT NULL
+) RETURNS UUID AS $$
+DECLARE
+    relationship_id UUID;
+    weight_value NUMERIC(3,2) := 1.0;
+BEGIN
+    -- Validate entities exist
+    IF NOT EXISTS (SELECT 1 FROM cortex_entities.persons WHERE id = p_person_id) THEN
+        RAISE EXCEPTION 'Person with ID % not found', p_person_id;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM cortex_entities.companies WHERE id = p_company_id) THEN
+        RAISE EXCEPTION 'Company with ID % not found', p_company_id;
+    END IF;
+    
+    -- Set weight based on relationship type and primary status
+    weight_value := CASE 
+        WHEN p_is_primary THEN 1.0
+        WHEN p_relationship_type IN ('employee', 'founder', 'owner') THEN 0.9
+        WHEN p_relationship_type IN ('contractor', 'consultant') THEN 0.7
+        WHEN p_relationship_type IN ('client', 'customer') THEN 0.8
+        WHEN p_relationship_type IN ('vendor', 'supplier') THEN 0.6
+        WHEN p_relationship_type IN ('partner', 'investor') THEN 0.8
+        ELSE 0.5
+    END;
+    
+    -- Create enhanced metadata
+    p_metadata := p_metadata || jsonb_build_object(
+        'start_date', p_start_date,
+        'end_date', p_end_date,
+        'is_primary', p_is_primary,
+        'created_date', CURRENT_TIMESTAMP
+    );
+    
+    -- If this is a primary relationship, mark others as non-primary
+    IF p_is_primary AND p_relationship_type = 'employee' THEN
+        UPDATE cortex_foundation.entity_relationships 
+        SET metadata = metadata || jsonb_build_object('is_primary', false),
+            weight = weight * 0.8
+        WHERE from_entity_id = p_person_id 
+          AND relationship_type = 'employee'
+          AND metadata->>'is_primary' = 'true';
+    END IF;
+    
+    -- Create the relationship
+    INSERT INTO cortex_foundation.entity_relationships (
+        from_entity_id,
+        to_entity_id,
+        relationship_type,
+        is_bidirectional,
+        weight,
+        metadata,
+        created_by,
+        is_active
+    ) VALUES (
+        p_person_id,
+        p_company_id,
+        p_relationship_type,
+        TRUE, -- Most person-company relationships are bidirectional
+        weight_value,
+        p_metadata,
+        p_created_by,
+        TRUE
+    ) RETURNING id INTO relationship_id;
+    
+    -- Log the relationship creation
+    INSERT INTO cortex_foundation.activity_log (
+        entity_id,
+        action_type,
+        action_details,
+        performed_by,
+        performed_at
+    ) VALUES (
+        p_person_id,
+        'relationship_created',
+        jsonb_build_object(
+            'target_entity_id', p_company_id,
+            'relationship_type', p_relationship_type,
+            'relationship_id', relationship_id
+        ),
+        p_created_by,
+        CURRENT_TIMESTAMP
+    );
+    
+    RETURN relationship_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ================================
+-- RELATIONSHIP QUERY FUNCTIONS
+-- ================================
+
+-- Get all companies for a person
+CREATE OR REPLACE FUNCTION get_person_companies(
+    p_person_id VARCHAR(50),
+    p_relationship_types VARCHAR(100)[] DEFAULT NULL,
+    p_active_only BOOLEAN DEFAULT TRUE
+) RETURNS TABLE (
+    company_id VARCHAR(50),
+    company_name VARCHAR(255),
+    relationship_type VARCHAR(100),
+    relationship_id UUID,
+    start_date DATE,
+    end_date DATE,
+    is_primary BOOLEAN,
+    title VARCHAR(255),
+    department VARCHAR(255),
+    weight NUMERIC(3,2),
+    created_at TIMESTAMP
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.id as company_id,
+        c.name as company_name,
+        er.relationship_type,
+        er.id as relationship_id,
+        (er.metadata->>'start_date')::DATE as start_date,
+        (er.metadata->>'end_date')::DATE as end_date,
+        COALESCE((er.metadata->>'is_primary')::BOOLEAN, FALSE) as is_primary,
+        er.metadata->>'title' as title,
+        er.metadata->>'department' as department,
+        er.weight,
+        er.created_at
+    FROM cortex_foundation.entity_relationships er
+    JOIN cortex_entities.companies c ON er.to_entity_id = c.id
+    WHERE er.from_entity_id = p_person_id
+      AND (p_relationship_types IS NULL OR er.relationship_type = ANY(p_relationship_types))
+      AND (NOT p_active_only OR er.is_active = TRUE)
+      AND (NOT p_active_only OR (er.metadata->>'end_date') IS NULL OR (er.metadata->>'end_date')::DATE >= CURRENT_DATE)
+    ORDER BY 
+        COALESCE((er.metadata->>'is_primary')::BOOLEAN, FALSE) DESC,
+        er.weight DESC,
+        er.created_at DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Get all people for a company
+CREATE OR REPLACE FUNCTION get_company_people(
+    p_company_id VARCHAR(50),
+    p_relationship_types VARCHAR(100)[] DEFAULT NULL,
+    p_active_only BOOLEAN DEFAULT TRUE
+) RETURNS TABLE (
+    person_id VARCHAR(50),
+    person_name VARCHAR(255),
+    relationship_type VARCHAR(100),
+    relationship_id UUID,
+    start_date DATE,
+    end_date DATE,
+    title VARCHAR(255),
+    department VARCHAR(255),
+    phone VARCHAR(50),
+    email VARCHAR(255),
+    weight NUMERIC(3,2),
+    created_at TIMESTAMP
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        p.id as person_id,
+        p.full_name as person_name,
+        er.relationship_type,
+        er.id as relationship_id,
+        (er.metadata->>'start_date')::DATE as start_date,
+        (er.metadata->>'end_date')::DATE as end_date,
+        er.metadata->>'title' as title,
+        er.metadata->>'department' as department,
+        (SELECT phone_number FROM cortex_entities.contact_phones 
+         WHERE person_id = p.id AND is_primary = TRUE LIMIT 1) as phone,
+        (SELECT email_address FROM cortex_entities.contact_emails 
+         WHERE person_id = p.id AND is_primary = TRUE LIMIT 1) as email,
+        er.weight,
+        er.created_at
+    FROM cortex_foundation.entity_relationships er
+    JOIN cortex_entities.persons p ON er.from_entity_id = p.id
+    WHERE er.to_entity_id = p_company_id
+      AND (p_relationship_types IS NULL OR er.relationship_type = ANY(p_relationship_types))
+      AND (NOT p_active_only OR er.is_active = TRUE)
+      AND (NOT p_active_only OR (er.metadata->>'end_date') IS NULL OR (er.metadata->>'end_date')::DATE >= CURRENT_DATE)
+    ORDER BY 
+        er.relationship_type,
+        er.weight DESC,
+        p.full_name;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ================================
+-- RELATIONSHIP UPDATES
+-- ================================
+
+-- Update relationship (e.g., promotion, role change)
+CREATE OR REPLACE FUNCTION update_person_company_relationship(
+    p_relationship_id UUID,
+    p_new_title VARCHAR(255) DEFAULT NULL,
+    p_new_department VARCHAR(255) DEFAULT NULL,
+    p_new_salary NUMERIC(12,2) DEFAULT NULL,
+    p_promotion_date DATE DEFAULT NULL,
+    p_updated_by VARCHAR(50) DEFAULT NULL
+) RETURNS BOOLEAN AS $$
+DECLARE
+    current_metadata JSONB;
+    updated_metadata JSONB;
+BEGIN
+    -- Get current metadata
+    SELECT metadata INTO current_metadata
+    FROM cortex_foundation.entity_relationships
+    WHERE id = p_relationship_id;
+    
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+    
+    -- Build updated metadata
+    updated_metadata := current_metadata;
+    
+    IF p_new_title IS NOT NULL THEN
+        updated_metadata := updated_metadata || jsonb_build_object('title', p_new_title);
+    END IF;
+    
+    IF p_new_department IS NOT NULL THEN
+        updated_metadata := updated_metadata || jsonb_build_object('department', p_new_department);
+    END IF;
+    
+    IF p_new_salary IS NOT NULL THEN
+        updated_metadata := updated_metadata || jsonb_build_object('salary', p_new_salary);
+    END IF;
+    
+    IF p_promotion_date IS NOT NULL THEN
+        updated_metadata := updated_metadata || jsonb_build_object('last_promotion_date', p_promotion_date);
+    END IF;
+    
+    -- Add update tracking
+    updated_metadata := updated_metadata || jsonb_build_object(
+        'last_updated', CURRENT_TIMESTAMP,
+        'updated_by', p_updated_by
+    );
+    
+    -- Update the relationship
+    UPDATE cortex_foundation.entity_relationships
+    SET metadata = updated_metadata,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = p_relationship_id;
+    
+    -- Log the update
+    INSERT INTO cortex_foundation.activity_log (
+        entity_id,
+        action_type,
+        action_details,
+        performed_by,
+        performed_at
+    ) VALUES (
+        (SELECT from_entity_id FROM cortex_foundation.entity_relationships WHERE id = p_relationship_id),
+        'relationship_updated',
+        jsonb_build_object(
+            'relationship_id', p_relationship_id,
+            'changes', jsonb_build_object(
+                'title', p_new_title,
+                'department', p_new_department,
+                'salary', p_new_salary
+            )
+        ),
+        p_updated_by,
+        CURRENT_TIMESTAMP
+    );
+    
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ================================
+-- PRACTICAL EXAMPLES
+-- ================================
+
+-- Example: Creating relationships
+/*
+
+-- 1. Add John as employee of Acme Corp
+SELECT create_person_company_relationship(
+    'cp_john_doe_123',
+    'cc_acme_corp_456', 
+    'employee',
+    jsonb_build_object(
+        'title', 'Senior Software Engineer',
+        'department', 'Engineering',
+        'salary', 120000,
+        'employment_type', 'full_time'
+    ),
+    '2023-01-15',
+    NULL, -- No end date
+    TRUE, -- Primary employer
+    'hr_user_id'
+);
+
+-- 2. Add Mary as consultant for multiple companies
+SELECT create_person_company_relationship(
+    'cp_mary_smith_789',
+    'cc_acme_corp_456',
+    'contractor',
+    jsonb_build_object(
+        'contract_type', 'consulting',
+        'hourly_rate', 150.00,
+        'specialty', 'Digital Marketing'
+    ),
+    '2024-01-01',
+    '2024-12-31'
+);
+
+-- 3. Add Bob as client of service company
+SELECT create_person_company_relationship(
+    'cp_bob_johnson_321',
+    'cc_service_co_654',
+    'client',
+    jsonb_build_object(
+        'account_value', 75000,
+        'contact_frequency', 'monthly',
+        'primary_contact', TRUE
+    )
+);
+
+*/
+
+-- ================================
+-- HELPER VIEWS
+-- ================================
+
+-- View of all person-company relationships
+CREATE VIEW cortex_intel.person_company_relationships AS
+SELECT 
+    p.id as person_id,
+    p.full_name as person_name,
+    c.id as company_id,
+    c.name as company_name,
+    er.relationship_type,
+    er.metadata->>'title' as title,
+    er.metadata->>'department' as department,
+    (er.metadata->>'start_date')::DATE as start_date,
+    (er.metadata->>'end_date')::DATE as end_date,
+    COALESCE((er.metadata->>'is_primary')::BOOLEAN, FALSE) as is_primary,
+    er.weight,
+    er.is_active,
+    CASE 
+        WHEN (er.metadata->>'end_date')::DATE < CURRENT_DATE THEN 'ended'
+        WHEN (er.metadata->>'end_date')::DATE IS NULL THEN 'active'
+        ELSE 'active'
+    END as status,
+    er.created_at,
+    er.updated_at
+FROM cortex_foundation.entity_relationships er
+JOIN cortex_entities.persons p ON er.from_entity_id = p.id
+JOIN cortex_entities.companies c ON er.to_entity_id = c.id
+WHERE er.is_active = TRUE;
+
+-- Company org chart view
+CREATE VIEW cortex_intel.company_org_chart AS
+SELECT 
+    c.id as company_id,
+    c.name as company_name,
+    er.metadata->>'department' as department,
+    COUNT(*) as employee_count,
+    array_agg(p.full_name ORDER BY er.metadata->>'title') as employees,
+    array_agg(er.metadata->>'title') as titles
+FROM cortex_foundation.entity_relationships er
+JOIN cortex_entities.persons p ON er.from_entity_id = p.id
+JOIN cortex_entities.companies c ON er.to_entity_id = c.id
+WHERE er.relationship_type = 'employee'
+  AND er.is_active = TRUE
+  AND ((er.metadata->>'end_date') IS NULL OR (er.metadata->>'end_date')::DATE >= CURRENT_DATE)
+GROUP BY c.id, c.name, er.metadata->>'department'
+ORDER BY c.name, er.metadata->>'department';
+
+-- Person's employment history
+CREATE VIEW cortex_intel.employment_history AS
+SELECT 
+    p.id as person_id,
+    p.full_name as person_name,
+    c.name as company_name,
+    er.metadata->>'title' as title,
+    er.metadata->>'department' as department,
+    (er.metadata->>'start_date')::DATE as start_date,
+    (er.metadata->>'end_date')::DATE as end_date,
+    CASE 
+        WHEN (er.metadata->>'end_date') IS NULL THEN 
+            EXTRACT(YEAR FROM AGE(CURRENT_DATE, (er.metadata->>'start_date')::DATE)) || ' years'
+        ELSE 
+            EXTRACT(YEAR FROM AGE((er.metadata->>'end_date')::DATE, (er.metadata->>'start_date')::DATE)) || ' years'
+    END as duration,
+    COALESCE((er.metadata->>'is_primary')::BOOLEAN, FALSE) as was_primary_employer
+FROM cortex_foundation.entity_relationships er
+JOIN cortex_entities.persons p ON er.from_entity_id = p.id
+JOIN cortex_entities.companies c ON er.to_entity_id = c.id
+WHERE er.relationship_type = 'employee'
+ORDER BY p.full_name, (er.metadata->>'start_date')::DATE DESC;
+
+-- ================================
+-- WHATSAPP INTEGRATION EXAMPLES
+-- ================================
+
+-- Function to auto-detect company from WhatsApp message context
+CREATE OR REPLACE FUNCTION detect_company_from_message(
+    p_person_id VARCHAR(50),
+    p_message_content TEXT
+) RETURNS VARCHAR(50) AS $$
+DECLARE
+    company_id VARCHAR(50);
+    company_name VARCHAR(255);
+BEGIN
+    -- First, try to find company mentioned by name in message
+    FOR company_name IN 
+        SELECT c.name 
+        FROM cortex_entities.companies c
+        JOIN cortex_foundation.entity_relationships er ON c.id = er.to_entity_id
+        WHERE er.from_entity_id = p_person_id 
+          AND er.relationship_type IN ('employee', 'contractor', 'client')
+        ORDER BY er.weight DESC
+    LOOP
+        IF p_message_content ILIKE '%' || company_name || '%' THEN
+            SELECT c.id INTO company_id
+            FROM cortex_entities.companies c
+            WHERE c.name = company_name;
+            
+            RETURN company_id;
+        END IF;
+    END LOOP;
+    
+    -- If no company mentioned, return primary employer
+    SELECT c.id INTO company_id
+    FROM cortex_entities.companies c
+    JOIN cortex_foundation.entity_relationships er ON c.id = er.to_entity_id
+    WHERE er.from_entity_id = p_person_id
+      AND er.relationship_type = 'employee'
+      AND (er.metadata->>'is_primary')::BOOLEAN = TRUE
+      AND er.is_active = TRUE
+    LIMIT 1;
+    
+    RETURN company_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ================================
+-- INDEXES FOR PERFORMANCE
+-- ================================
+
+CREATE INDEX idx_entity_relationships_person_company ON cortex_foundation.entity_relationships(from_entity_id, to_entity_id, relationship_type);
+CREATE INDEX idx_entity_relationships_company_people ON cortex_foundation.entity_relationships(to_entity_id, relationship_type) 
+    WHERE to_entity_id LIKE 'cc_%';
+CREATE INDEX idx_entity_relationships_person_companies ON cortex_foundation.entity_relationships(from_entity_id, relationship_type) 
+    WHERE from_entity_id LIKE 'cp_%';
+CREATE INDEX idx_entity_relationships_metadata_primary ON cortex_foundation.entity_relationships(from_entity_id) 
+    WHERE (metadata->>'is_primary')::BOOLEAN = TRUE;

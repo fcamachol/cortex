@@ -26,9 +26,9 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch company employees/contacts
+  // Fetch company employees/contacts with enhanced relationship data
   const { data: companyContacts = [] } = useQuery({
-    queryKey: ["/api/crm/company-contacts", company?.id],
+    queryKey: ["/api/crm/company-contacts-enhanced", company?.id],
     enabled: !!company?.id,
   });
 
@@ -60,13 +60,11 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
   });
 
   const associateContactMutation = useMutation({
-    mutationFn: async (contactId: string) => {
-      return await apiRequest("POST", `/api/crm/companies/${company.id}/contacts`, {
-        contactId,
-      });
+    mutationFn: async (data: { contactId: string; relationshipType: string; metadata: any }) => {
+      return await apiRequest("POST", `/api/crm/companies/${company.id}/contacts`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/crm/company-contacts", company.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/crm/company-contacts-enhanced", company.id] });
       toast({
         title: "Contact Associated",
         description: "Contact has been successfully associated with the company.",
@@ -304,23 +302,87 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
                     ) : (
                       <div className="space-y-3">
                         {companyContacts.map((contact: any) => (
-                          <div key={contact.contactId} className="flex items-center gap-3 p-3 border rounded-lg">
-                            <Avatar>
+                          <div key={contact.contact_id} className="flex items-center gap-3 p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                            <Avatar className="w-10 h-10">
                               <AvatarFallback>
-                                {contact.fullName?.charAt(0) || "?"}
+                                {contact.full_name?.charAt(0) || "?"}
                               </AvatarFallback>
                             </Avatar>
-                            <div className="flex-1">
-                              <h4 className="font-medium">{contact.fullName}</h4>
-                              {contact.jobTitle && (
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  {contact.jobTitle}
-                                </p>
+                            <div className="flex-1 space-y-1">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium">{contact.full_name}</h4>
+                                {contact.is_primary && (
+                                  <Badge variant="default" className="bg-green-100 text-green-800 text-xs">
+                                    Primary
+                                  </Badge>
+                                )}
+                              </div>
+                              
+                              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                {contact.title && (
+                                  <span className="font-medium">{contact.title}</span>
+                                )}
+                                {contact.title && contact.department && (
+                                  <span>•</span>
+                                )}
+                                {contact.department && (
+                                  <span>{contact.department}</span>
+                                )}
+                              </div>
+
+                              {(contact.phone || contact.email) && (
+                                <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                                  {contact.phone && (
+                                    <div className="flex items-center gap-1">
+                                      <Phone className="w-3 h-3" />
+                                      <span>{contact.phone}</span>
+                                    </div>
+                                  )}
+                                  {contact.email && (
+                                    <div className="flex items-center gap-1">
+                                      <Mail className="w-3 h-3" />
+                                      <span>{contact.email}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {contact.start_date && (
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Started: {new Date(contact.start_date).toLocaleDateString()}
+                                  {contact.end_date && (
+                                    <span> - {new Date(contact.end_date).toLocaleDateString()}</span>
+                                  )}
+                                </div>
                               )}
                             </div>
-                            {contact.relationship && (
-                              <Badge variant="outline">{contact.relationship}</Badge>
-                            )}
+                            
+                            <div className="flex flex-col items-end gap-2">
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs ${
+                                  contact.relationship_type === 'employee' ? 'border-blue-200 text-blue-700' :
+                                  contact.relationship_type === 'contractor' ? 'border-purple-200 text-purple-700' :
+                                  contact.relationship_type === 'client' ? 'border-green-200 text-green-700' :
+                                  contact.relationship_type === 'vendor' ? 'border-orange-200 text-orange-700' :
+                                  'border-gray-200 text-gray-700'
+                                }`}
+                              >
+                                {contact.relationship_type}
+                              </Badge>
+                              
+                              <div className="flex items-center gap-1 text-xs text-gray-400">
+                                <div className="w-2 h-2 rounded-full bg-gray-300"></div>
+                                <span>Weight: {contact.weight}</span>
+                              </div>
+                              
+                              <Badge 
+                                variant={contact.status === 'active' ? 'default' : 'secondary'}
+                                className="text-xs"
+                              >
+                                {contact.status}
+                              </Badge>
+                            </div>
                           </div>
                         ))}
                       </div>

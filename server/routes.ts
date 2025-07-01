@@ -3865,18 +3865,90 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post('/api/crm/companies/:companyId/contacts', async (req: Request, res: Response) => {
     try {
       const { companyId } = req.params;
-      const { contactId } = req.body;
+      const { contactId, relationshipType = 'employee', metadata = {} } = req.body;
       
       if (!contactId) {
         return res.status(400).json({ error: 'Contact ID is required' });
       }
       
-      // Create the association by adding the contact to the company
-      const association = await storage.associateContactWithCompany(contactId, companyId);
+      // Create the association by adding the contact to the company with enhanced metadata
+      const association = await storage.associateContactWithCompany(
+        contactId, 
+        companyId, 
+        relationshipType, 
+        metadata
+      );
       res.status(201).json(association);
     } catch (error) {
       console.error('Error associating contact with company:', error);
       res.status(500).json({ error: 'Failed to associate contact with company' });
+    }
+  });
+
+  // Update person-company relationship
+  app.put('/api/crm/person-company-relationship/:relationshipId', async (req: Request, res: Response) => {
+    try {
+      const { relationshipId } = req.params;
+      const updates = req.body;
+      const success = await storage.updatePersonCompanyRelationship(relationshipId, updates);
+      
+      if (success) {
+        res.json({ success: true, message: 'Relationship updated successfully' });
+      } else {
+        res.status(404).json({ error: 'Relationship not found' });
+      }
+    } catch (error) {
+      console.error('Error updating person-company relationship:', error);
+      res.status(500).json({ error: 'Failed to update relationship' });
+    }
+  });
+
+  // Get person's companies
+  app.get('/api/crm/person-companies/:personId', async (req: Request, res: Response) => {
+    try {
+      const { personId } = req.params;
+      const { relationshipTypes, activeOnly = 'true' } = req.query;
+      
+      const types = relationshipTypes ? (relationshipTypes as string).split(',') : [];
+      const active = activeOnly === 'true';
+      
+      const companies = await storage.getPersonCompanies(personId, types, active);
+      res.json(companies);
+    } catch (error) {
+      console.error('Error getting person companies:', error);
+      res.status(500).json({ error: 'Failed to get person companies' });
+    }
+  });
+
+  // Enhanced company contacts endpoint with relationship details
+  app.get('/api/crm/company-contacts-enhanced/:companyId', async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.params;
+      const { relationshipTypes, activeOnly = 'true' } = req.query;
+      
+      // This uses the enhanced getContactsByCompany method
+      const contacts = await storage.getContactsByCompany(companyId);
+      
+      // Filter by relationship types if specified
+      let filteredContacts = contacts;
+      if (relationshipTypes) {
+        const types = (relationshipTypes as string).split(',');
+        filteredContacts = contacts.filter(contact => 
+          types.includes(contact.relationship_type)
+        );
+      }
+      
+      // Filter by active status if specified
+      if (activeOnly === 'true') {
+        filteredContacts = filteredContacts.filter(contact => 
+          contact.status === 'active'
+        );
+      }
+      
+      res.json(filteredContacts);
+    } catch (error) {
+      console.error('Error getting enhanced company contacts:', error);
+      res.status(500).json({ error: 'Failed to get company contacts' });
     }
   });
 
