@@ -1614,22 +1614,148 @@ class DatabaseStorage {
 
     async createCompleteContact(data: any): Promise<any> {
         try {
+            // Format tags as PostgreSQL array
+            const tagsArray = data.tags || [];
+            
             // Simple implementation - just create basic contact for now
             const result = await db.execute(sql`
                 INSERT INTO crm.contacts (
-                    full_name, relationship, notes, tags, owner_user_id
+                    full_name, relationship, notes, tags, owner_user_id, entity_type
                 ) VALUES (
                     ${data.fullName}, 
                     ${data.relationship || 'Contact'}, 
                     ${data.notes || ''}, 
-                    ${JSON.stringify(data.tags || [])}, 
-                    ${data.ownerUserId}
+                    ${tagsArray}, 
+                    ${data.ownerUserId},
+                    ${data.entityType || 'person'}
                 )
                 RETURNING *
             `);
             return result.rows[0];
         } catch (error) {
             console.error('Error creating complete contact:', error);
+            throw error;
+        }
+    }
+
+    async getCrmCompanies(userId: string): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM crm.companies 
+                WHERE owner_user_id = ${userId}
+                ORDER BY name ASC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching CRM companies:', error);
+            return [];
+        }
+    }
+
+    async createCrmCompany(data: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO crm.companies (
+                    name, industry, website, description, size, 
+                    founded_year, headquarters, owner_user_id
+                ) VALUES (
+                    ${data.name}, 
+                    ${data.industry || ''}, 
+                    ${data.website || ''}, 
+                    ${data.description || ''}, 
+                    ${data.size || ''}, 
+                    ${data.foundedYear || null}, 
+                    ${data.headquarters || ''}, 
+                    ${data.ownerUserId}
+                )
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating CRM company:', error);
+            throw error;
+        }
+    }
+
+    async getCrmGroups(userId: string): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM crm.groups 
+                WHERE owner_user_id = ${userId}
+                ORDER BY name ASC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching CRM groups:', error);
+            return [];
+        }
+    }
+
+    async createCrmGroup(data: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO crm.groups (
+                    name, description, group_type, color, 
+                    parent_group_id, status, owner_user_id
+                ) VALUES (
+                    ${data.name}, 
+                    ${data.description || ''}, 
+                    ${data.groupType || 'general'}, 
+                    ${data.color || '#3B82F6'}, 
+                    ${data.parentGroupId || null}, 
+                    ${data.status || 'active'}, 
+                    ${data.ownerUserId}
+                )
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating CRM group:', error);
+            throw error;
+        }
+    }
+
+    async getCrmObjects(userId: string): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM crm.objects 
+                WHERE owner_user_id = ${userId}
+                ORDER BY name ASC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching CRM objects:', error);
+            return [];
+        }
+    }
+
+    async createCrmObject(data: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO crm.objects (
+                    name, category, brand, model, serial_number, 
+                    description, purchase_date, purchase_price, 
+                    condition, location, status, tags, owner_user_id
+                ) VALUES (
+                    ${data.name}, 
+                    ${data.category || ''}, 
+                    ${data.brand || ''}, 
+                    ${data.model || ''}, 
+                    ${data.serialNumber || ''}, 
+                    ${data.description || ''}, 
+                    ${data.purchaseDate || null}, 
+                    ${data.purchasePrice || null}, 
+                    ${data.condition || 'good'}, 
+                    ${data.location || ''}, 
+                    ${data.status || 'active'}, 
+                    ${data.tags || []}, 
+                    ${data.ownerUserId}
+                )
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating CRM object:', error);
             throw error;
         }
     }

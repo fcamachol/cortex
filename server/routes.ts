@@ -3382,6 +3382,84 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // =============================
+  // CRM COMPANIES ROUTES
+  // =============================
+
+  app.get('/api/crm/companies', async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Development fallback
+      const companies = await storage.getCrmCompanies(userId);
+      res.json(companies);
+    } catch (error) {
+      console.error('Error fetching CRM companies:', error);
+      res.status(500).json({ error: 'Failed to fetch companies' });
+    }
+  });
+
+  app.post('/api/crm/companies', async (req: Request, res: Response) => {
+    try {
+      const companyData = req.body;
+      const company = await storage.createCrmCompany(companyData);
+      res.json(company);
+    } catch (error) {
+      console.error('Error creating CRM company:', error);
+      res.status(500).json({ error: 'Failed to create company' });
+    }
+  });
+
+  // =============================
+  // CRM GROUPS ROUTES
+  // =============================
+
+  app.get('/api/crm/groups', async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Development fallback
+      const groups = await storage.getCrmGroups(userId);
+      res.json(groups);
+    } catch (error) {
+      console.error('Error fetching CRM groups:', error);
+      res.status(500).json({ error: 'Failed to fetch groups' });
+    }
+  });
+
+  app.post('/api/crm/groups', async (req: Request, res: Response) => {
+    try {
+      const groupData = req.body;
+      const group = await storage.createCrmGroup(groupData);
+      res.json(group);
+    } catch (error) {
+      console.error('Error creating CRM group:', error);
+      res.status(500).json({ error: 'Failed to create group' });
+    }
+  });
+
+  // =============================
+  // CRM OBJECTS ROUTES
+  // =============================
+
+  app.get('/api/crm/objects', async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Development fallback
+      const objects = await storage.getCrmObjects(userId);
+      res.json(objects);
+    } catch (error) {
+      console.error('Error fetching CRM objects:', error);
+      res.status(500).json({ error: 'Failed to fetch objects' });
+    }
+  });
+
+  app.post('/api/crm/objects', async (req: Request, res: Response) => {
+    try {
+      const objectData = req.body;
+      const object = await storage.createCrmObject(objectData);
+      res.json(object);
+    } catch (error) {
+      console.error('Error creating CRM object:', error);
+      res.status(500).json({ error: 'Failed to create object' });
+    }
+  });
+
   // Contact Phone Routes
   app.get('/api/crm/contacts/:contactId/phones', async (req: Request, res: Response) => {
     try {
