@@ -19,6 +19,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 const actionRuleSchema = z.object({
   name: z.string().min(1, "Rule name is required"),
   description: z.string().optional(),
+  // Backend fields (snake_case)
   trigger_type: z.enum(["whatsapp_message", "schedule", "manual"]),
   action_type: z.enum([
     "create_task", "create_project", "create_note", "store_file", "create_document",
@@ -33,6 +34,18 @@ const actionRuleSchema = z.object({
   performer_filter: z.enum(["user_only", "contacts_only", "both"]).default("both"),
   instance_filter_type: z.enum(["all", "include", "exclude"]).default("all"),
   selected_instances: z.array(z.string()).default([]),
+  // Frontend fields (camelCase) - for form fields
+  triggerType: z.enum(["reaction", "hashtag", "keyword", "time_based", "location", "contact_group"]).optional(),
+  actionType: z.enum([
+    "create_task", "create_project", "create_note", "store_file", "create_document",
+    "create_calendar_event", "send_message", "add_label", "update_contact", 
+    "move_to_folder", "send_notification", "webhook", "create_space",
+    "update_project_status", "create_checklist", "assign_to_space",
+    "create_financial_record", "schedule_meeting", "create_invoice", "update_task_priority"
+  ]).optional(),
+  isActive: z.boolean().default(true).optional(),
+  cooldownMinutes: z.number().min(0).default(0).optional(),
+  selectedInstances: z.array(z.string()).default([]).optional(),
 });
 
 interface ActionRuleFormProps {
@@ -123,22 +136,24 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
     return 'create_task';
   };
 
-  // Compute the frontend trigger type from the database rule
-  const frontendTriggerType = rule ? mapDbTriggerTypeToFrontend(rule.trigger_type, parsedTriggerConditions) : 'reaction';
+  // Compute the frontend trigger type from the database rule  
+  const frontendTriggerType = rule ? mapDbTriggerTypeToFrontend(rule.triggerType || rule.trigger_type, parsedTriggerConditions) : 'reaction';
 
   const form = useForm<z.infer<typeof actionRuleSchema>>({
     resolver: zodResolver(actionRuleSchema),
     defaultValues: {
       name: rule?.name || "",
       description: rule?.description || "",
-      trigger_type: rule?.trigger_type || "whatsapp_message",
-      action_type: rule?.action_type || "create_task",
-      is_active: rule?.is_active ?? true,
-      cooldown_minutes: rule?.cooldown_minutes || 0,
-      max_executions_per_day: rule?.max_executions_per_day || 100,
-      performer_filter: rule?.performer_filter || "both",
-      instance_filter_type: rule?.instance_filter_type || "all", 
-      selected_instances: rule?.selected_instances || [],
+      trigger_type: rule?.triggerType || "whatsapp_message", 
+      action_type: rule?.actionType || "create_task", 
+      triggerType: frontendTriggerType, // Frontend trigger type for form field
+      actionType: rule?.actionType || "create_task", // Frontend action type for form field
+      isActive: rule?.isActive ?? true,
+      cooldownMinutes: rule?.cooldownMinutes || 0,
+      max_executions_per_day: rule?.maxExecutionsPerDay || 100,
+      performer_filter: rule?.performerFilter || "both",
+      instance_filter_type: rule?.instanceFilterType || "all", 
+      selectedInstances: rule?.selectedInstances || [],
     },
   });
 
