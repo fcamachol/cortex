@@ -1498,6 +1498,17 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Test endpoint for task count validation
+  app.get('/api/test/tasks-count', async (req, res) => {
+    try {
+      const tasks = await storage.getTasks('7804247f-3ae8-4eb2-8c6d-2c44f967ad42');
+      res.json({ count: tasks.length });
+    } catch (error) {
+      console.error('Error getting tasks count:', error);
+      res.status(500).json({ error: 'Failed to get tasks count' });
+    }
+  });
+
   app.put('/api/calendar/calendars/:id', async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
