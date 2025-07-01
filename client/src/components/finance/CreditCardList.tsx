@@ -39,6 +39,7 @@ import {
 export function CreditCardList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
 
   const { data: creditCards = [], isLoading, error, refetch } = useQuery({
     queryKey: ["/api/finance/credit-cards"],
@@ -149,6 +150,10 @@ export function CreditCardList() {
             const cardStatus = getCardStatus(card.current_balance, card.credit_limit);
             const paymentDueDate = getPaymentDueDate(card.statement_closing_day, card.payment_due_days_after_statement);
             
+            const handleDropdownOpenChange = (open: boolean) => {
+              setOpenDropdowns(prev => ({ ...prev, [card.id]: open }));
+            };
+            
             return (
               <Card key={card.id} className="overflow-hidden">
                 <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
@@ -161,7 +166,7 @@ export function CreditCardList() {
                         {card.bank_name} •••• {card.last_4_digits}
                       </p>
                     </div>
-                    <DropdownMenu>
+                    <DropdownMenu open={openDropdowns[card.id] || false} onOpenChange={handleDropdownOpenChange}>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
                           <MoreVertical className="h-4 w-4" />
@@ -169,7 +174,12 @@ export function CreditCardList() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <CreditCardFormTrigger creditCard={card}>
-                          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                          <DropdownMenuItem 
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              handleDropdownOpenChange(false);
+                            }}
+                          >
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
