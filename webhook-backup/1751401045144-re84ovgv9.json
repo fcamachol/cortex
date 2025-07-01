@@ -1,0 +1,30 @@
+{
+  "id": "1751401045144-re84ovgv9",
+  "timestamp": "2025-07-01T20:17:25.144Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "messages-reaction",
+  "payload": {
+    "event": "messages.reaction",
+    "instance": "instance-1750433520122",
+    "data": {
+      "instanceName": "instance-1750433520122",
+      "key": {
+        "id": "reaction-1751401045141",
+        "remoteJid": "5214611239748@s.whatsapp.net",
+        "fromMe": false
+      },
+      "reaction": {
+        "key": {
+          "id": "test-1751401043123",
+          "remoteJid": "5214611239748@s.whatsapp.net",
+          "fromMe": false
+        },
+        "text": "✅",
+        "senderTimestampMs": 1751401045141
+      },
+      "messageTimestamp": 1751401045
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

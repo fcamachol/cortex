@@ -3,8 +3,9 @@
  * Tests complete webhook → reaction → action → task creation flow with improved retry logic
  */
 
-const { Pool } = require('pg');
-const fetch = require('node-fetch');
+import pkg from 'pg';
+const { Pool } = pkg;
+import fetch from 'node-fetch';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -50,10 +51,10 @@ async function testActionExecutionPipeline() {
         // Step 3: Get WhatsApp instances
         console.log('\n📱 Step 3: Checking WhatsApp Instances');
         const instancesResult = await pool.query(`
-            SELECT instance_name, status, connected_at, api_key 
+            SELECT instance_name, is_connected, last_connection_at 
             FROM whatsapp.instances 
-            WHERE status = 'connected'
-            ORDER BY connected_at DESC
+            WHERE is_connected = true
+            ORDER BY last_connection_at DESC
         `);
         
         if (instancesResult.rows.length === 0) {
