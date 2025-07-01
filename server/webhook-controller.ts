@@ -121,6 +121,9 @@ export const WebhookController = {
                 instanceName,
             };
 
+            // Debug: Log all event types that reach the queueing system
+            console.log(`🔍 [${instanceName}] Attempting to queue actions for event type: ${eventType}`);
+            
             // Queue actions based on event type
             switch (eventType) {
                 case 'messages.reaction':
@@ -135,7 +138,7 @@ export const WebhookController = {
                     break;
 
                 default:
-                    // Other events don't need action processing currently
+                    console.log(`⏭️ [${instanceName}] Event type '${eventType}' does not require action processing`);
                     break;
             }
         } catch (error) {
