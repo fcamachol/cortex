@@ -11,7 +11,7 @@ import { Storage } from '../storage';
 import { WhatsAppAPIAdapter } from '../adapters/whatsapp-api-adapter';
 import { db } from '../db';
 import { actionQueue, nlpProcessingLog } from '../../shared/schema';
-import { eq, and, lt } from 'drizzle-orm';
+import { eq, and, lt, inArray } from 'drizzle-orm';
 
 interface NLPResult {
   type: 'calendar' | 'task' | 'bill' | 'note' | 'unknown';
@@ -97,17 +97,29 @@ export class ActionProcessorService {
 
     try {
       // Get pending actions using FOR UPDATE SKIP LOCKED for concurrent processing
-      const batch = await db
-        .update(actionQueue)
-        .set({ status: 'processing', processedAt: new Date() })
+      // First, get the pending items
+      const pendingItems = await db
+        .select()
+        .from(actionQueue)
         .where(
           and(
             eq(actionQueue.status, 'pending'),
             lt(actionQueue.attempts, actionQueue.maxAttempts)
           )
         )
-        .returning()
         .limit(this.BATCH_SIZE);
+
+      if (pendingItems.length === 0) {
+        return; // No pending actions
+      }
+
+      // Then, update them to processing status
+      const itemIds = pendingItems.map(item => item.id);
+      const batch = await db
+        .update(actionQueue)
+        .set({ status: 'processing', processedAt: new Date() })
+        .where(inArray(actionQueue.id, itemIds))
+        .returning();
 
       if (batch.length === 0) {
         return; // No pending actions

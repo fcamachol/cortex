@@ -3,7 +3,7 @@ import { storage } from './storage';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { eq, sql } from 'drizzle-orm';
-import { appUsers } from '../shared/schema';
+import { appUsers, actionQueue } from '../shared/schema';
 import { nanoid } from 'nanoid';
 import { WebhookController } from './webhook-controller';
 import { SseManager } from './sse-manager';
@@ -4185,6 +4185,16 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Action Queue Monitoring Endpoints
   app.get('/api/actions/queue/status', async (req: Request, res: Response) => {
     try {
+      console.log('🔍 Checking queue status...');
+      
+      // First, just check if we can access the table
+      const totalCount = await db.select({
+        count: sql<number>`count(*)`
+      })
+      .from(actionQueue);
+      
+      console.log('📊 Total queue items:', totalCount);
+
       // Get queue statistics from database
       const stats = await db.select({
         status: actionQueue.status,
@@ -4193,11 +4203,15 @@ export async function registerRoutes(app: Express): Promise<void> {
       .from(actionQueue)
       .groupBy(actionQueue.status);
 
+      console.log('📊 Stats by status:', stats);
+
       const backlogCount = await db.select({
         count: sql<number>`count(*)`
       })
       .from(actionQueue)
       .where(eq(actionQueue.status, 'pending'));
+
+      console.log('📊 Backlog count:', backlogCount);
 
       const total = stats.reduce((sum, stat) => sum + stat.count, 0);
 
@@ -4212,8 +4226,12 @@ export async function registerRoutes(app: Express): Promise<void> {
         timestamp: new Date().toISOString()
       });
     } catch (error) {
-      console.error('Error getting action queue status:', error);
-      res.status(500).json({ error: 'Failed to get action queue status' });
+      console.error('❌ Error getting action queue status:', error);
+      console.error('❌ Error stack:', error.stack);
+      res.status(500).json({ 
+        error: 'Failed to get action queue status',
+        details: error.message 
+      });
     }
   });
 
