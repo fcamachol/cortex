@@ -1785,19 +1785,21 @@ class DatabaseStorage {
         }
     }
 
-    async getContactsByCompany(companyId: number): Promise<any[]> {
+    async getContactsByCompany(companyId: string): Promise<any[]> {
         try {
             const result = await db.execute(sql`
                 SELECT 
-                    c.contact_id,
-                    c.full_name,
-                    c.relationship,
-                    cm.role,
-                    cm.start_date
-                FROM crm.contacts c
-                INNER JOIN crm.company_members cm ON c.contact_id = cm.contact_id
-                WHERE cm.company_id = ${companyId}
-                ORDER BY c.full_name ASC
+                    p.id as contact_id,
+                    p.display_name as full_name,
+                    p.profession as relationship,
+                    er.metadata->>'role' as role,
+                    er.created_at as start_date
+                FROM cortex_foundation.entity_relationships er
+                INNER JOIN cortex_entities.persons p ON er.from_entity_id = p.id
+                WHERE er.to_entity_id = ${companyId}
+                AND er.relationship_type = 'member_of'
+                AND er.is_active = true
+                ORDER BY p.display_name ASC
             `);
             return result.rows;
         } catch (error) {
@@ -1810,18 +1812,35 @@ class DatabaseStorage {
         try {
             // Check if association already exists
             const existingAssociation = await db.execute(sql`
-                SELECT * FROM crm.company_members 
-                WHERE contact_id = ${parseInt(contactId)} AND company_id = ${parseInt(companyId)}
+                SELECT * FROM cortex_foundation.entity_relationships 
+                WHERE from_entity_id = ${contactId} 
+                AND to_entity_id = ${companyId}
+                AND relationship_type = 'member_of'
+                AND is_active = true
             `);
             
             if (existingAssociation.rows.length > 0) {
                 throw new Error('Contact is already associated with this company');
             }
             
-            // Create the association
+            // Create the association using entity_relationships
             const result = await db.execute(sql`
-                INSERT INTO crm.company_members (contact_id, company_id, is_current, added_at)
-                VALUES (${parseInt(contactId)}, ${parseInt(companyId)}, true, NOW())
+                INSERT INTO cortex_foundation.entity_relationships (
+                    from_entity_id, 
+                    to_entity_id, 
+                    relationship_type, 
+                    is_active,
+                    metadata,
+                    created_at
+                )
+                VALUES (
+                    ${contactId}, 
+                    ${companyId}, 
+                    'member_of', 
+                    true,
+                    '{"role": "Member"}',
+                    NOW()
+                )
                 RETURNING *
             `);
             

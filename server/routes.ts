@@ -3853,7 +3853,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get('/api/crm/company-contacts/:companyId', async (req: Request, res: Response) => {
     try {
-      const companyId = parseInt(req.params.companyId);
+      const { companyId } = req.params;
       const contacts = await storage.getContactsByCompany(companyId);
       res.json(contacts);
     } catch (error) {
