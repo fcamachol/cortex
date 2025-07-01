@@ -1607,6 +1607,50 @@ class DatabaseStorage {
             throw error;
         }
     }
+
+    // =============================
+    // CORTEX FINANCE TRANSACTIONS METHODS
+    // =============================
+
+    async getCortexFinanceTransactions(userId: string): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_finance.transactions 
+                ORDER BY transaction_date DESC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error fetching cortex finance transactions:', error);
+            return [];
+        }
+    }
+
+    async createCortexFinanceTransaction(data: any): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                INSERT INTO cortex_finance.transactions (
+                    amount, transaction_type, description, transaction_date, 
+                    category, subcategory, debit_account_entity_id, 
+                    credit_account_entity_id, created_by_entity_id
+                ) VALUES (
+                    ${data.amount}, 
+                    ${data.transactionType}, 
+                    ${data.description}, 
+                    ${data.transactionDate}, 
+                    ${data.category || ''}, 
+                    ${data.subcategory || ''}, 
+                    ${data.debitAccountEntityId}, 
+                    ${data.creditAccountEntityId},
+                    ${data.createdByEntityId}
+                )
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating cortex finance transaction:', error);
+            throw error;
+        }
+    }
 }
 
 export const storage = new DatabaseStorage();

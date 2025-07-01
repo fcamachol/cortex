@@ -62,6 +62,11 @@ export function TransactionForm({ open, onClose, onSuccess, onCancel }: Transact
     },
   });
 
+  // Watch form values for reactive updates
+  const transactionType = form.watch("transactionType");
+  const debitAccount = form.watch("debitAccountEntityId");
+  const creditAccount = form.watch("creditAccountEntityId");
+
   // Fetch accounts for dropdowns
   const { data: accounts = [] } = useQuery<Account[]>({
     queryKey: ["/api/cortex/finance/accounts"],
@@ -142,10 +147,6 @@ export function TransactionForm({ open, onClose, onSuccess, onCancel }: Transact
     
     createTransactionMutation.mutate(processedData);
   };
-
-  const transactionType = form.watch("transactionType");
-  const debitAccount = form.watch("debitAccountEntityId");
-  const creditAccount = form.watch("creditAccountEntityId");
   
   // Get account details for validation
   const debitAccountDetails = accounts.find(acc => acc.id === debitAccount);
