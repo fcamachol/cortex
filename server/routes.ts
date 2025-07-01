@@ -3560,6 +3560,58 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Get complete company details (phones, emails, addresses, relationships)
+  app.get('/api/crm/companies/:companyId/details', async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.params;
+      console.log('Fetching company details for ID:', companyId);
+      const company = await storage.getCompleteCompany(companyId);
+      res.json(company);
+    } catch (error) {
+      console.error('Error fetching complete company:', error);
+      res.status(500).json({ error: 'Failed to fetch complete company' });
+    }
+  });
+
+  // Create complete company (with blocks data)
+  app.post('/api/crm/companies/complete', async (req: Request, res: Response) => {
+    try {
+      const companyData = req.body;
+      console.log('Complete company creation - data:', companyData);
+      const company = await storage.createCompleteCompany(companyData);
+      res.json(company);
+    } catch (error) {
+      console.error('Error creating complete company:', error);
+      res.status(500).json({ error: 'Failed to create complete company' });
+    }
+  });
+
+  // Update complete company (with blocks data)
+  app.put('/api/crm/companies/:companyId/complete', async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.params;
+      const companyData = req.body;
+      console.log('Complete company update - companyId:', companyId, 'data:', companyData);
+      const company = await storage.updateCompleteCompany(companyId, companyData);
+      res.json(company);
+    } catch (error) {
+      console.error('Error updating complete company:', error);
+      res.status(500).json({ error: 'Failed to update complete company' });
+    }
+  });
+
+  // Delete company
+  app.delete('/api/crm/companies/:companyId', async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.params;
+      await storage.deleteCrmCompany(companyId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting company:', error);
+      res.status(500).json({ error: 'Failed to delete company' });
+    }
+  });
+
   // =============================
   // CRM GROUPS ROUTES
   // =============================

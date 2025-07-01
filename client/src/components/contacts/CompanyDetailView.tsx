@@ -9,8 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import CompanyForm from "./CompanyForm";
-import { apiRequest } from "@/lib/queryClient";
+import CompanyFormBlocks from "./CompanyFormBlocks";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface CompanyDetailViewProps {
@@ -347,12 +347,26 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
         </DialogContent>
       </Dialog>
 
-      <CompanyForm
-        isOpen={isEditFormOpen}
-        onClose={() => setIsEditFormOpen(false)}
-        company={company}
-        spaceId={spaceId}
-      />
+      <Dialog open={isEditFormOpen} onOpenChange={setIsEditFormOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
+          <CompanyFormBlocks
+            isEditMode={true}
+            companyId={company.id}
+            ownerUserId="7804247f-3ae8-4eb2-8c6d-2c44f967ad42"
+            spaceId={spaceId}
+            onSuccess={() => {
+              setIsEditFormOpen(false);
+              queryClient.invalidateQueries({ queryKey: ["/api/crm/companies"] });
+            }}
+            onDelete={handleDelete}
+            initialData={{
+              name: company.name,
+              description: company.description,
+              tags: company.tags || []
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
