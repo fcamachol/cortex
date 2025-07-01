@@ -45,6 +45,7 @@ export const actionRules = cortexAutomationSchema.table("action_rules", {
   actionType: varchar("action_type", { length: 50 }).notNull(), // 'create_task', 'create_note', etc.
   triggerConditions: jsonb("trigger_conditions").notNull().default({}), // Store reactions, keywords, etc.
   actionConfig: jsonb("action_config").notNull().default({}), // Store task title, description, etc.
+  status: varchar("status", { length: 50 }).default("todo"), // Task status for create_task actions
   performerFilter: varchar("performer_filter", { length: 20 }).default("both"), // 'user_only', 'contacts_only', 'both'
   instanceFilterType: varchar("instance_filter_type", { length: 20 }).default("all"), // 'all', 'include', 'exclude'
   selectedInstances: jsonb("selected_instances").default([]), // Array of instance IDs

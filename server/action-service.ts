@@ -140,20 +140,20 @@ export const ActionService = {
         
         switch (rule.actionType) {
             case 'create_task':
-                await this.createSimpleTaskAction(rule.actionConfig, context);
+                await this.createSimpleTaskAction(rule.actionConfig, context, rule);
                 break;
             default:
                 console.log(`⚠️  Unknown action type: ${rule.actionType}`);
         }
     },
 
-    async createSimpleTaskAction(config: any, context: any): Promise<void> {
+    async createSimpleTaskAction(config: any, context: any, rule: any): Promise<void> {
         try {
             const taskData = {
                 id: randomUUID(),
                 title: this.processTemplate(config.title || 'New Task', context),
                 description: this.processTemplate(config.description || '', context),
-                status: config.status || 'todo', // Use status from rule config or default to 'todo'
+                status: rule.status || 'todo', // Use status from rule field, not config
                 priority: config.priority || 'medium',
                 createdByEntityId: 'cu_181de66a23864b2fac56779a82189691', // Default user entity ID
                 assignedToEntityId: 'cu_181de66a23864b2fac56779a82189691', // Assign to same user for now
