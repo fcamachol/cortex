@@ -42,8 +42,49 @@ interface ActionRuleFormProps {
 }
 
 export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
-  const [triggerConditions, setTriggerConditions] = useState(rule?.triggerConditions || {});
-  const [actionConfig, setActionConfig] = useState(rule?.actionConfig || {});
+  // Parse existing rule conditions and actions from database format
+  const parseExistingRule = (rule: any) => {
+    if (!rule) return { triggerConditions: {}, actionConfig: {} };
+    
+    console.log('Parsing existing rule:', rule);
+    
+    const triggerConditions: any = {};
+    const actionConfig: any = {};
+    
+    // Parse conditions from array format
+    if (rule.conditions && Array.isArray(rule.conditions)) {
+      const reactions = rule.conditions.filter((c: any) => c.condition_type === 'reaction').map((c: any) => c.value);
+      const keywords = rule.conditions.filter((c: any) => c.condition_type === 'keyword').map((c: any) => c.value);
+      const hashtags = rule.conditions.filter((c: any) => c.condition_type === 'hashtag').map((c: any) => c.value);
+      
+      if (reactions.length > 0) triggerConditions.reactions = reactions;
+      if (keywords.length > 0) triggerConditions.keywords = keywords;
+      if (hashtags.length > 0) triggerConditions.hashtag = hashtags[0]; // hashtag is singular
+    }
+    
+    // Parse actions from array format
+    if (rule.actions && Array.isArray(rule.actions) && rule.actions.length > 0) {
+      const action = rule.actions[0]; // Take first action
+      if (action.parameters) {
+        try {
+          const params = typeof action.parameters === 'string' ? JSON.parse(action.parameters) : action.parameters;
+          Object.assign(actionConfig, params);
+        } catch (e) {
+          console.warn('Failed to parse action parameters:', e);
+        }
+      }
+    }
+    
+    console.log('Parsed triggerConditions:', triggerConditions);
+    console.log('Parsed actionConfig:', actionConfig);
+    
+    return { triggerConditions, actionConfig };
+  };
+  
+  const { triggerConditions: parsedTriggerConditions, actionConfig: parsedActionConfig } = parseExistingRule(rule);
+  
+  const [triggerConditions, setTriggerConditions] = useState(parsedTriggerConditions);
+  const [actionConfig, setActionConfig] = useState(parsedActionConfig);
   const { toast } = useToast();
 
   // Fetch available WhatsApp instances for multi-instance support
@@ -56,19 +97,40 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   console.log('Instances Loading:', instancesLoading);
   console.log('Instances Error:', instancesError);
 
+  // Map database trigger type back to frontend trigger type
+  const mapDbTriggerTypeToFrontend = (dbTriggerType: string, conditions: any[]) => {
+    if (dbTriggerType === 'whatsapp_message') {
+      // Determine specific trigger type based on conditions
+      if (conditions.some((c: any) => c.condition_type === 'reaction')) return 'reaction';
+      if (conditions.some((c: any) => c.condition_type === 'keyword')) return 'keyword';
+      if (conditions.some((c: any) => c.condition_type === 'hashtag')) return 'hashtag';
+      return 'hashtag'; // default
+    }
+    if (dbTriggerType === 'schedule') return 'time_based';
+    return 'hashtag'; // fallback
+  };
+
+  // Get action type from actions array
+  const getActionTypeFromActions = (actions: any[]) => {
+    if (actions && actions.length > 0) {
+      return actions[0].action_type || 'create_task';
+    }
+    return 'create_task';
+  };
+
   const form = useForm<z.infer<typeof actionRuleSchema>>({
     resolver: zodResolver(actionRuleSchema),
     defaultValues: {
-      ruleName: rule?.ruleName || "",
+      ruleName: rule?.name || rule?.ruleName || "",
       description: rule?.description || "",
-      triggerType: rule?.triggerType || "hashtag",
-      actionType: rule?.actionType || "create_task",
-      isActive: rule?.isActive ?? true,
+      triggerType: rule ? mapDbTriggerTypeToFrontend(rule.trigger_type, rule.conditions || []) : "hashtag",
+      actionType: rule ? getActionTypeFromActions(rule.actions || []) : "create_task",
+      isActive: rule?.is_active ?? rule?.isActive ?? true,
       cooldownMinutes: rule?.cooldownMinutes || 0,
       maxExecutionsPerDay: rule?.maxExecutionsPerDay || 100,
-      performerFilter: rule?.performerFilters?.allowedPerformers?.[0] || "both",
-      instanceFilterType: rule?.instanceFilters?.type || "all", 
-      selectedInstances: rule?.instanceFilters?.instances || [],
+      performerFilter: rule?.trigger_permission === 'me' ? 'user_only' : 'both',
+      instanceFilterType: rule?.whatsapp_instance_id ? 'include' : 'all', 
+      selectedInstances: rule?.whatsapp_instance_id ? [rule.whatsapp_instance_id] : [],
     },
   });
 

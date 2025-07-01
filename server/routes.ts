@@ -1544,8 +1544,13 @@ export async function registerRoutes(app: Express): Promise<void> {
         priority: 1, // Default priority
         whatsapp_instance_id: whatsappInstanceId,
         trigger_permission: triggerPermission,
-        allowed_user_ids: []
+        allowed_user_ids: [],
+        triggerConditions,
+        actionConfig,
+        actionType: req.body.actionType
       };
+      
+      console.log('Updating rule with complete data:', updateData);
       
       const updatedRule = await storage.updateActionRule(ruleId, updateData);
       
