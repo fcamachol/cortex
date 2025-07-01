@@ -14,44 +14,77 @@ if (!process.env.DATABASE_URL) {
 
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  // Optimized connection settings for Neon
-  max: 1, // Single connection to prevent Neon limits
+  // Optimized connection settings for Neon serverless
+  max: 3, // Increase for better concurrency
   min: 0,
-  idleTimeoutMillis: 5000,
-  connectionTimeoutMillis: 3000,
+  idleTimeoutMillis: 10000, // Keep connections alive longer
+  connectionTimeoutMillis: 10000, // Increase timeout for reliability
+  maxUses: Infinity,
+  allowExitOnIdle: false,
+  maxLifetimeSeconds: 0
 });
 
 export const db = drizzle({ client: pool });
 
-// Connection queue to prevent overwhelming Neon
-class ConnectionQueue {
-  private queue: Array<{ resolve: Function, reject: Function, operation: Function }> = [];
-  private processing = false;
+// Enhanced connection management with retry logic
+class DatabaseConnection {
+  private retryAttempts = 3;
+  private baseDelay = 1000; // Start with 1 second delay
 
-  async add<T>(operation: () => Promise<T>): Promise<T> {
-    return new Promise((resolve, reject) => {
-      this.queue.push({ resolve, reject, operation });
-      this.process();
-    });
+  async executeWithRetry<T>(operation: () => Promise<T>, context = 'database operation'): Promise<T> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= this.retryAttempts; attempt++) {
+      try {
+        // Add small delay before each attempt (except first)
+        if (attempt > 1) {
+          const delay = this.baseDelay * Math.pow(2, attempt - 2); // Exponential backoff
+          console.log(`🔄 Retry attempt ${attempt}/${this.retryAttempts} for ${context} (delay: ${delay}ms)`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+
+        const result = await operation();
+        
+        // Log successful retry
+        if (attempt > 1) {
+          console.log(`✅ Database operation succeeded on attempt ${attempt}`);
+        }
+        
+        return result;
+      } catch (error: any) {
+        lastError = error;
+        const isTimeoutError = error.message?.includes('timeout') || error.message?.includes('connect');
+        const isConnectionError = error.code === 'ECONNRESET' || error.code === 'ENOTFOUND';
+        
+        if (attempt === this.retryAttempts || (!isTimeoutError && !isConnectionError)) {
+          console.error(`❌ Database operation failed after ${attempt} attempts:`, error.message);
+          break;
+        }
+        
+        console.warn(`⚠️ Database connection issue (attempt ${attempt}/${this.retryAttempts}):`, error.message);
+      }
+    }
+
+    throw lastError || new Error(`Failed after ${this.retryAttempts} attempts`);
   }
 
-  private async process() {
-    if (this.processing || this.queue.length === 0) return;
-    
-    this.processing = true;
-    while (this.queue.length > 0) {
-      const { resolve, reject, operation } = this.queue.shift()!;
-      try {
-        const result = await operation();
-        resolve(result);
-      } catch (error) {
-        reject(error);
-      }
-      // Small delay between operations
-      await new Promise(resolve => setTimeout(resolve, 50));
+  async healthCheck(): Promise<boolean> {
+    try {
+      await this.executeWithRetry(async () => {
+        const client = await pool.connect();
+        try {
+          await client.query('SELECT 1');
+          return true;
+        } finally {
+          client.release();
+        }
+      }, 'health check');
+      return true;
+    } catch (error) {
+      console.error('Database health check failed:', error);
+      return false;
     }
-    this.processing = false;
   }
 }
 
-export const connectionQueue = new ConnectionQueue();
+export const dbConnection = new DatabaseConnection();

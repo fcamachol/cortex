@@ -1,4 +1,4 @@
-import { db, pool } from './db';
+import { db, pool, dbConnection } from './db';
 import { sql, desc, eq, and, or, asc, isNull, isNotNull, like, count, inArray } from 'drizzle-orm';
 
 // Import core schemas
@@ -26,13 +26,10 @@ class DatabaseStorage {
     // =============================
     
     async getWhatsappInstances(spaceId?: string): Promise<any[]> {
-        try {
+        return await dbConnection.executeWithRetry(async () => {
             const result = await db.select().from(whatsappInstances);
             return result;
-        } catch (error) {
-            console.error('Error fetching WhatsApp instances:', error);
-            throw error;
-        }
+        }, 'getWhatsappInstances');
     }
 
     async getInstanceById(instanceName: string): Promise<any | null> {
@@ -1343,7 +1340,7 @@ class DatabaseStorage {
     }
 
     async getActionRulesByTrigger(triggerType: string, instanceId?: string): Promise<any[]> {
-        try {
+        return await dbConnection.executeWithRetry(async () => {
             console.log('Fetching action rules by trigger:', triggerType);
             
             let query = db
@@ -1368,10 +1365,7 @@ class DatabaseStorage {
             
             console.log(`Found ${rules.length} rules for trigger type: ${triggerType}`);
             return rules;
-        } catch (error) {
-            console.error('Error fetching action rules by trigger:', error);
-            return [];
-        }
+        }, 'getActionRulesByTrigger');
     }
 
     async saveActionExecution(executionData: any): Promise<any> {
