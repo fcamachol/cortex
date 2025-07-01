@@ -45,17 +45,27 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
   const queryClient = useQueryClient();
 
   // Fetch company employees/contacts with enhanced relationship data
-  const { data: companyContacts = [], refetch: refetchCompanyContacts } = useQuery({
+  const { 
+    data: companyContacts = [], 
+    refetch: refetchCompanyContacts,
+    isLoading: contactsLoading,
+    error: contactsError
+  } = useQuery({
     queryKey: ["/api/crm/company-contacts-enhanced", company?.id],
     enabled: !!company?.id,
   });
 
   // Debug logging
   React.useEffect(() => {
-    if (companyContacts.length > 0) {
-      console.log("Company contacts loaded:", companyContacts);
-    }
-  }, [companyContacts]);
+    console.log("📊 Company contacts query state:", {
+      companyId: company?.id,
+      enabled: !!company?.id,
+      contactsLength: companyContacts.length,
+      isLoading: contactsLoading,
+      error: contactsError,
+      companyContacts
+    });
+  }, [company?.id, companyContacts, contactsLoading, contactsError]);
 
   // Fetch all available contacts for association
   const { data: availableContacts = [] } = useQuery({
