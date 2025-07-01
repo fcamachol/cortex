@@ -1609,6 +1609,32 @@ class DatabaseStorage {
     }
 
     // =============================
+    // CRM CONTACTS METHODS
+    // =============================
+
+    async createCompleteContact(data: any): Promise<any> {
+        try {
+            // Simple implementation - just create basic contact for now
+            const result = await db.execute(sql`
+                INSERT INTO crm.contacts (
+                    full_name, relationship, notes, tags, owner_user_id
+                ) VALUES (
+                    ${data.fullName}, 
+                    ${data.relationship || 'Contact'}, 
+                    ${data.notes || ''}, 
+                    ${JSON.stringify(data.tags || [])}, 
+                    ${data.ownerUserId}
+                )
+                RETURNING *
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating complete contact:', error);
+            throw error;
+        }
+    }
+
+    // =============================
     // CORTEX FINANCE TRANSACTIONS METHODS
     // =============================
 

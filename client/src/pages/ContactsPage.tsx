@@ -172,6 +172,7 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
   };
 
   const getInitials = (name: string) => {
+    if (!name) return 'XX';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
