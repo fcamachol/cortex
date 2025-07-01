@@ -1328,17 +1328,76 @@ class DatabaseStorage {
         try {
             console.log('Creating rule with data:', ruleData);
             
-            const result = await db.execute(sql`
+            // Create the rule first
+            const ruleResult = await db.execute(sql`
                 INSERT INTO cortex_automation.rules (
                     name, description, is_active, trigger_type, priority, 
-                    created_by, space_id
+                    created_by, space_id, whatsapp_instance_id, trigger_permission, allowed_user_ids
                 ) VALUES (
-                    ${ruleData.name}, ${ruleData.description}, ${ruleData.is_active || true},
+                    ${ruleData.name || ruleData.ruleName}, ${ruleData.description}, ${ruleData.is_active || true},
                     ${ruleData.trigger_type || 'whatsapp_message'}, ${ruleData.priority || 0},
-                    ${ruleData.created_by}, ${ruleData.space_id}
+                    ${ruleData.created_by}, ${ruleData.space_id || null}, 
+                    ${ruleData.whatsapp_instance_id || null}, ${ruleData.trigger_permission || 'anyone'},
+                    ${ruleData.allowed_user_ids || []}
                 ) RETURNING *
             `);
-            return result.rows[0];
+            
+            const rule = ruleResult.rows[0];
+            const ruleId = rule.id;
+            
+            // Create conditions if provided
+            if (ruleData.triggerConditions) {
+                console.log('Creating conditions for rule:', ruleId, ruleData.triggerConditions);
+                
+                if (ruleData.triggerConditions.reactions && ruleData.triggerConditions.reactions.length > 0) {
+                    for (const reaction of ruleData.triggerConditions.reactions) {
+                        await db.execute(sql`
+                            INSERT INTO cortex_automation.rule_conditions (
+                                rule_id, condition_type, operator, field_name, value
+                            ) VALUES (
+                                ${ruleId}, 'reaction', 'equals', 'emoji', ${reaction}
+                            )
+                        `);
+                    }
+                }
+                
+                if (ruleData.triggerConditions.keywords && ruleData.triggerConditions.keywords.length > 0) {
+                    for (const keyword of ruleData.triggerConditions.keywords) {
+                        await db.execute(sql`
+                            INSERT INTO cortex_automation.rule_conditions (
+                                rule_id, condition_type, operator, field_name, value
+                            ) VALUES (
+                                ${ruleId}, 'keyword', 'contains', 'message_content', ${keyword}
+                            )
+                        `);
+                    }
+                }
+                
+                if (ruleData.triggerConditions.hashtag) {
+                    await db.execute(sql`
+                        INSERT INTO cortex_automation.rule_conditions (
+                            rule_id, condition_type, operator, field_name, value
+                        ) VALUES (
+                            ${ruleId}, 'hashtag', 'contains', 'message_content', ${ruleData.triggerConditions.hashtag}
+                        )
+                    `);
+                }
+            }
+            
+            // Create actions if provided
+            if (ruleData.actionConfig && ruleData.actionType) {
+                console.log('Creating action for rule:', ruleId, ruleData.actionType, ruleData.actionConfig);
+                
+                await db.execute(sql`
+                    INSERT INTO cortex_automation.rule_actions (
+                        rule_id, action_type, action_order, parameters
+                    ) VALUES (
+                        ${ruleId}, ${ruleData.actionType}, 1, ${JSON.stringify(ruleData.actionConfig)}
+                    )
+                `);
+            }
+            
+            return rule;
         } catch (error) {
             console.error('Error creating action rule:', error);
             throw error;
