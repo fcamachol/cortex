@@ -24,7 +24,7 @@ import {
   RefreshCw,
   AlertTriangle
 } from "lucide-react";
-import { CreditCardFormTrigger } from "./CreditCardForm";
+import { CreditCardFormTrigger, CreditCardForm } from "./CreditCardForm";
 import { 
   CreditCardData,
   calculateDebt,
@@ -40,6 +40,7 @@ export function CreditCardList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
+  const [editingCard, setEditingCard] = useState<CreditCardData | null>(null);
 
   const { data: creditCards = [], isLoading, error, refetch } = useQuery({
     queryKey: ["/api/finance/credit-cards"],
@@ -173,17 +174,19 @@ export function CreditCardList() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <CreditCardFormTrigger creditCard={card}>
-                          <DropdownMenuItem 
-                            onSelect={(e) => {
-                              e.preventDefault();
-                              handleDropdownOpenChange(false);
-                            }}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                        </CreditCardFormTrigger>
+                        <DropdownMenuItem 
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            handleDropdownOpenChange(false);
+                            // Small delay to ensure dropdown closes before opening modal
+                            setTimeout(() => {
+                              setEditingCard(card);
+                            }, 50);
+                          }}
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => handleDelete(card.id)}
                           className="text-red-600 dark:text-red-400"
@@ -298,6 +301,15 @@ export function CreditCardList() {
             );
           })}
         </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingCard && (
+        <CreditCardForm 
+          open={!!editingCard}
+          onClose={() => setEditingCard(null)}
+          creditCard={editingCard}
+        />
       )}
     </div>
   );

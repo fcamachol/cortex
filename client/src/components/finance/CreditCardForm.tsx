@@ -332,9 +332,15 @@ interface CreditCardFormTriggerProps {
 export function CreditCardFormTrigger({ creditCard, children }: CreditCardFormTriggerProps) {
   const [open, setOpen] = useState(false);
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpen(true);
+  };
+
   return (
     <>
-      <div onClick={() => setOpen(true)} className="cursor-pointer">
+      <div onClick={handleClick} className="cursor-pointer w-full">
         {children || (
           <Button>
             <Plus className="mr-2 h-4 w-4" />
