@@ -3349,10 +3349,10 @@ export async function registerRoutes(app: Express): Promise<void> {
           COALESCE(
             (SELECT json_agg(json_build_object(
               'id', id,
-              'street', street,
+              'street', street_address,
               'city', city,
               'state', state,
-              'zipCode', zip_code,
+              'zipCode', postal_code,
               'country', country,
               'label', label,
               'isPrimary', is_primary
