@@ -568,13 +568,29 @@ class DatabaseStorage {
 
     async getWhatsappMessageById(messageId: string, instanceName: string): Promise<any> {
         try {
-            const result = await db.execute(sql`
-                SELECT m.*, mm.file_local_path as media_path
-                FROM whatsapp.messages m
-                LEFT JOIN whatsapp.message_media mm ON m.message_id = mm.message_id AND m.instance_name = mm.instance_name
-                WHERE m.message_id = ${messageId} AND m.instance_name = ${instanceName}
-            `);
-            return result.rows[0] || null;
+            const result = await db.select()
+                .from(whatsappMessages)
+                .leftJoin(whatsappMessageMedia, 
+                    and(
+                        eq(whatsappMessages.messageId, whatsappMessageMedia.messageId),
+                        eq(whatsappMessages.instanceName, whatsappMessageMedia.instanceName)
+                    )
+                )
+                .where(
+                    and(
+                        eq(whatsappMessages.messageId, messageId),
+                        eq(whatsappMessages.instanceName, instanceName)
+                    )
+                );
+            
+            const row = result[0];
+            if (!row) return null;
+            
+            // Flatten the joined result
+            return {
+                ...row.messages,
+                media_path: row.message_media?.fileLocalPath || null
+            };
         } catch (error) {
             console.error('Error fetching WhatsApp message by ID:', error);
             return null;
