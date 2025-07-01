@@ -22,6 +22,7 @@ interface CompanyDetailViewProps {
 
 export default function CompanyDetailView({ company, isOpen, onClose, spaceId }: CompanyDetailViewProps) {
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
+  const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -29,6 +30,12 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
   const { data: companyContacts = [] } = useQuery({
     queryKey: ["/api/crm/company-contacts", company?.id],
     enabled: !!company?.id,
+  });
+
+  // Fetch all available contacts for association
+  const { data: availableContacts = [] } = useQuery({
+    queryKey: ["/api/crm/contacts"],
+    enabled: isAddContactOpen,
   });
 
   const deleteCompanyMutation = useMutation({
@@ -47,6 +54,29 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
       toast({
         title: "Error",
         description: error.message || "Failed to delete company",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const associateContactMutation = useMutation({
+    mutationFn: async (contactId: string) => {
+      return await apiRequest("POST", `/api/crm/companies/${company.id}/contacts`, {
+        contactId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/crm/company-contacts", company.id] });
+      toast({
+        title: "Contact Associated",
+        description: "Contact has been successfully associated with the company.",
+      });
+      setIsAddContactOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to associate contact",
         variant: "destructive",
       });
     },
@@ -259,7 +289,7 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
                           People associated with {company.companyName}
                         </CardDescription>
                       </div>
-                      <Button size="sm">
+                      <Button size="sm" onClick={() => setIsAddContactOpen(true)}>
                         <Plus className="w-4 h-4 mr-2" />
                         Add Contact
                       </Button>
@@ -365,6 +395,55 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
               tags: company.tags || []
             }}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Contact Dialog */}
+      <Dialog open={isAddContactOpen} onOpenChange={setIsAddContactOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Contact to Company</DialogTitle>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Select a contact to associate with {company.name}
+            </p>
+          </DialogHeader>
+          <ScrollArea className="max-h-96">
+            <div className="space-y-2">
+              {availableContacts
+                .filter((contact: any) => 
+                  !companyContacts.some((cc: any) => cc.contactId === contact.contactId)
+                )
+                .map((contact: any) => (
+                <div key={contact.contactId} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                     onClick={() => associateContactMutation.mutate(contact.contactId)}>
+                  <Avatar>
+                    <AvatarFallback>
+                      {contact.fullName?.charAt(0) || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h4 className="font-medium">{contact.fullName}</h4>
+                    {contact.relationship && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {contact.relationship}
+                      </p>
+                    )}
+                  </div>
+                  {contact.relationship && (
+                    <Badge variant="outline">{contact.relationship}</Badge>
+                  )}
+                </div>
+              ))}
+              {availableContacts.filter((contact: any) => 
+                !companyContacts.some((cc: any) => cc.contactId === contact.contactId)
+              ).length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No available contacts to associate.</p>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </>
