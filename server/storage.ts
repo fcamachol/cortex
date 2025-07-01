@@ -15,7 +15,7 @@ import {
 } from '../shared/schema';
 
 // Import cortex automation schema
-import { automationRules } from '../shared/cortex-automations-schema';
+import { actionRules } from '../shared/cortex-automations-schema';
 
 // Import finance schema
 import { cortexCreditCards } from '../shared/finance-schema';
@@ -1251,17 +1251,19 @@ class DatabaseStorage {
 
     async getActionRules(userId: string): Promise<any[]> {
         try {
-            const query = sql`
-                SELECT *
-                FROM cortex_automation.action_rules
-                WHERE created_by = ${userId}
-                ORDER BY created_at DESC
-            `;
+            console.log('Fetching simple action rules for user:', userId);
             
-            const result = await db.execute(query);
-            return result.rows;
+            // Use the simple actionRules table
+            const rules = await db
+                .select()
+                .from(actionRules)
+                .where(eq(actionRules.createdBy, userId))
+                .orderBy(desc(actionRules.createdAt));
+            
+            console.log('Found rules:', rules.length);
+            return rules;
         } catch (error) {
-            console.error('Error fetching action rules from cortex_automation:', error);
+            console.error('Error fetching simple action rules:', error);
             return [];
         }
     }
@@ -1274,44 +1276,83 @@ class DatabaseStorage {
 
     async createActionRule(ruleData: any): Promise<any> {
         try {
-            console.log('Creating action rule with data:', ruleData);
-            console.log('Rule name:', ruleData.name);
-            console.log('Rule description:', ruleData.description);
-            console.log('Rule trigger_type:', ruleData.trigger_type);
-            console.log('Rule action_type:', ruleData.action_type);
+            console.log('Creating simple action rule with data:', ruleData);
             
-            // Use drizzle db with SQL template for cortex_automation schema
-            const result = await db.execute(sql`
-                INSERT INTO cortex_automation.action_rules (
-                    name, 
-                    description, 
-                    is_active, 
-                    trigger_type, 
-                    action_type,
-                    trigger_conditions, 
-                    action_config, 
-                    performer_filter,
-                    cooldown_minutes, 
-                    max_executions_per_day, 
-                    created_by
-                ) VALUES (
-                    ${ruleData.name}, 
-                    ${ruleData.description || ''}, 
-                    ${ruleData.is_active !== false}, 
-                    ${ruleData.trigger_type}, 
-                    ${ruleData.action_type},
-                    ${JSON.stringify(ruleData.trigger_conditions || {})}, 
-                    ${JSON.stringify(ruleData.action_config || {})}, 
-                    ${ruleData.performer_filter || 'both'},
-                    ${ruleData.cooldown_minutes || 5}, 
-                    ${ruleData.max_executions_per_day || 100}, 
-                    ${ruleData.created_by || 'system'}
-                ) RETURNING *
-            `);
+            // Use the simple actionRules table from cortex-automations-schema
+            const [newRule] = await db.insert(actionRules).values({
+                name: ruleData.name,
+                description: ruleData.description || '',
+                isActive: ruleData.is_active !== false,
+                triggerType: ruleData.trigger_type || 'whatsapp_message',
+                actionType: ruleData.action_type || 'create_task',
+                triggerConditions: ruleData.trigger_conditions || {},
+                actionConfig: ruleData.action_config || {},
+                performerFilter: ruleData.performer_filter || 'both',
+                instanceFilterType: ruleData.instance_filter_type || 'all',
+                selectedInstances: ruleData.selected_instances || [],
+                cooldownMinutes: ruleData.cooldown_minutes || 5,
+                maxExecutionsPerDay: ruleData.max_executions_per_day || 100,
+                createdBy: ruleData.created_by || 'system'
+            }).returning();
             
-            return result.rows?.[0] || result[0];
+            return newRule;
         } catch (error) {
             console.error('Error creating action rule:', error);
+            throw error;
+        }
+    }
+
+    async updateActionRule(ruleId: string, updates: any): Promise<any> {
+        try {
+            console.log('Updating simple action rule:', ruleId, updates);
+            
+            const [updatedRule] = await db
+                .update(actionRules)
+                .set({
+                    name: updates.name,
+                    description: updates.description,
+                    isActive: updates.is_active,
+                    triggerType: updates.trigger_type,
+                    actionType: updates.action_type,
+                    triggerConditions: updates.trigger_conditions,
+                    actionConfig: updates.action_config,
+                    performerFilter: updates.performer_filter,
+                    instanceFilterType: updates.instance_filter_type,
+                    selectedInstances: updates.selected_instances,
+                    cooldownMinutes: updates.cooldown_minutes,
+                    maxExecutionsPerDay: updates.max_executions_per_day
+                })
+                .where(eq(actionRules.id, ruleId))
+                .returning();
+            
+            return updatedRule;
+        } catch (error) {
+            console.error('Error updating action rule:', error);
+            throw error;
+        }
+    }
+
+    async getActionRule(ruleId: string): Promise<any> {
+        try {
+            const [rule] = await db
+                .select()
+                .from(actionRules)
+                .where(eq(actionRules.id, ruleId));
+            
+            return rule || null;
+        } catch (error) {
+            console.error('Error fetching action rule:', error);
+            return null;
+        }
+    }
+
+    async deleteActionRule(ruleId: string): Promise<void> {
+        try {
+            await db
+                .delete(actionRules)
+                .where(eq(actionRules.id, ruleId));
+        } catch (error) {
+            console.error('Error deleting action rule:', error);
             throw error;
         }
     }
