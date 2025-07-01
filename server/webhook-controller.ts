@@ -132,9 +132,8 @@ export const WebhookController = {
                     break;
 
                 case 'messages.upsert':
-                    // Queue for keyword processing (disabled in main webhook flow)
-                    await actionProcessor.queueAction('message', eventData);
-                    console.log(`📨 Queued message action for instance: ${instanceName}`);
+                    // Keyword processing disabled to prevent unwanted task creation
+                    console.log(`⏭️ [${instanceName}] Message queuing disabled to prevent spurious task creation`);
                     break;
 
                 default:
