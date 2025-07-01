@@ -5,6 +5,11 @@ import { setupVite, serveStatic, log } from "./vite";
 import { initializeEvolutionApi } from "./evolution-api";
 import { SseManager } from "./sse-manager"; // Import the SSE manager
 import { ScheduledJobsService } from "./scheduled-jobs";
+import { ActionProcessorService } from "./services/action-processor-service";
+import { WebhookController } from "./webhook-controller";
+import { storage } from "./storage";
+import { ActionService } from "./action-service";
+import { WhatsAppAPIAdapter } from "./whatsapp-api-adapter";
 
 // Main async function to start the server
 (async () => {
@@ -70,6 +75,13 @@ import { ScheduledJobsService } from "./scheduled-jobs";
     console.log("⏰ Starting scheduled jobs for bill processing...");
     ScheduledJobsService.start();
 
+    // 4.6. Initialize and Start Action Processor Service
+    console.log("🔄 Initializing action processor service...");
+    const actionProcessor = new ActionProcessorService(storage, ActionService, WhatsAppAPIAdapter);
+    WebhookController.setActionProcessor(actionProcessor);
+    actionProcessor.start();
+    console.log("✅ Action processor service started");
+
     // 5. Setup Frontend Serving (Vite for Dev, Static for Prod)
     if (process.env.NODE_ENV === "development") {
         await setupVite(app, server);
@@ -89,6 +101,27 @@ import { ScheduledJobsService } from "./scheduled-jobs";
     const port = process.env.PORT || 5000;
     server.listen(port, "0.0.0.0", () => {
         console.log(`🚀 Server listening on port ${port}`);
+    });
+
+    // 8. Graceful Shutdown Handling
+    process.on('SIGTERM', async () => {
+        console.log('🛑 Received SIGTERM, shutting down gracefully...');
+        actionProcessor.stop();
+        ScheduledJobsService.stop();
+        server.close(() => {
+            console.log('✅ Server shutdown complete');
+            process.exit(0);
+        });
+    });
+
+    process.on('SIGINT', async () => {
+        console.log('🛑 Received SIGINT, shutting down gracefully...');
+        actionProcessor.stop();
+        ScheduledJobsService.stop();
+        server.close(() => {
+            console.log('✅ Server shutdown complete');
+            process.exit(0);
+        });
     });
 
 })();

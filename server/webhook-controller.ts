@@ -64,10 +64,14 @@ export const WebhookController = {
             console.log(`!!!    RAW EVENT: ${eventType.padEnd(27)} !!!`);
             console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
 
-            // 4. Pass the raw payload to the next layer for processing asynchronously.
-            // We don't `await` this, allowing the HTTP response to be sent instantly.
-            // But we wrap it to capture any processing failures for recovery
+            // 4. Process event in two phases: Data Storage → Action Processing
+            
+            // Phase 1: Store data immediately (existing logic)
             WebhookApiAdapter.processIncomingEvent(instanceName, standardizedEvent)
+                .then(async () => {
+                    // Phase 2: Queue actions for asynchronous processing
+                    await this.queueActionsForEvent(instanceName, standardizedEvent);
+                })
                 .catch(async (processingError) => {
                     console.error(`❌ [${instanceName}] Processing failed:`, processingError);
                     
@@ -98,6 +102,45 @@ export const WebhookController = {
             } catch (recoveryError) {
                 console.error('❌ Failed to capture critical error for recovery:', recoveryError);
             }
+        }
+    },
+
+    /**
+     * Queue actions for asynchronous processing based on webhook event type
+     */
+    async queueActionsForEvent(instanceName: string, standardizedEvent: any): Promise<void> {
+        if (!actionProcessor) {
+            console.warn('⚠️ ActionProcessor not initialized, skipping action queuing');
+            return;
+        }
+
+        try {
+            const eventType = standardizedEvent.event;
+            const eventData = {
+                ...standardizedEvent,
+                instanceName,
+            };
+
+            // Queue actions based on event type
+            switch (eventType) {
+                case 'messages.reaction':
+                    await actionProcessor.queueAction('reaction', eventData);
+                    console.log(`📨 Queued reaction action for instance: ${instanceName}`);
+                    break;
+
+                case 'messages.upsert':
+                    // Queue for keyword processing (disabled in main webhook flow)
+                    await actionProcessor.queueAction('message', eventData);
+                    console.log(`📨 Queued message action for instance: ${instanceName}`);
+                    break;
+
+                default:
+                    // Other events don't need action processing currently
+                    break;
+            }
+        } catch (error) {
+            console.error('❌ Failed to queue actions:', error);
+            // Don't throw - action queuing failures shouldn't break webhook processing
         }
     }
 };

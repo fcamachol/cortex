@@ -4182,6 +4182,60 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Action Queue Monitoring Endpoints
+  app.get('/api/actions/queue/status', async (req: Request, res: Response) => {
+    try {
+      // Get queue statistics from database
+      const stats = await db.select({
+        status: actionQueue.status,
+        count: sql<number>`count(*)`
+      })
+      .from(actionQueue)
+      .groupBy(actionQueue.status);
+
+      const backlogCount = await db.select({
+        count: sql<number>`count(*)`
+      })
+      .from(actionQueue)
+      .where(eq(actionQueue.status, 'pending'));
+
+      const total = stats.reduce((sum, stat) => sum + stat.count, 0);
+
+      res.json({
+        stats: stats.reduce((acc, stat) => {
+          acc[stat.status] = stat.count;
+          return acc;
+        }, {} as Record<string, number>),
+        backlog: backlogCount[0]?.count || 0,
+        total,
+        health: (backlogCount[0]?.count || 0) < 100 ? 'healthy' : 'warning',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error getting action queue status:', error);
+      res.status(500).json({ error: 'Failed to get action queue status' });
+    }
+  });
+
+  app.post('/api/actions/queue/retry/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      
+      await db.update(actionQueue)
+        .set({
+          status: 'pending',
+          attempts: 0,
+          lastError: null
+        })
+        .where(eq(actionQueue.id, id));
+
+      res.json({ success: true, message: 'Action queued for retry' });
+    } catch (error) {
+      console.error('Error retrying action:', error);
+      res.status(500).json({ error: 'Failed to retry action' });
+    }
+  });
+
   // Enhanced Spaces API endpoints
   app.patch('/api/spaces/:spaceId', async (req: Request, res: Response) => {
     try {
