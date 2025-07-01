@@ -1676,6 +1676,115 @@ class DatabaseStorage {
         }
     }
 
+    async deleteCrmCompany(companyId: string): Promise<void> {
+        try {
+            await db.execute(sql`
+                DELETE FROM cortex_entities.companies 
+                WHERE id = ${companyId}
+            `);
+        } catch (error) {
+            console.error('Error deleting CRM company:', error);
+            throw error;
+        }
+    }
+
+    // =============================
+    // COMPLETE COMPANY METHODS
+    // =============================
+
+    async getCompleteCompany(companyId: string): Promise<any> {
+        try {
+            // Get company basic info
+            const companyResult = await db.execute(sql`
+                SELECT * FROM cortex_entities.companies 
+                WHERE id = ${companyId}
+            `);
+            
+            if (companyResult.rows.length === 0) {
+                throw new Error('Company not found');
+            }
+            
+            const company = companyResult.rows[0];
+            
+            // For now return basic company data - phone/email/address support can be added later
+            return {
+                ...company,
+                phones: [],
+                emails: [],
+                addresses: [],
+                relationships: []
+            };
+        } catch (error) {
+            console.error('Error fetching complete company:', error);
+            throw error;
+        }
+    }
+
+    async createCompleteCompany(data: any): Promise<any> {
+        try {
+            // Create company in Cortex entities schema
+            const result = await db.execute(sql`
+                INSERT INTO cortex_entities.companies (
+                    name, 
+                    description,
+                    legal_name,
+                    business_type,
+                    industry,
+                    website_url,
+                    main_phone,
+                    main_email,
+                    created_by
+                ) VALUES (
+                    ${data.name}, 
+                    ${data.description || null},
+                    ${data.legalName || null},
+                    ${data.businessType || null},
+                    ${data.industry || null},
+                    ${data.websiteUrl || null},
+                    ${data.mainPhone || null},
+                    ${data.mainEmail || null},
+                    ${data.ownerUserId || 'cu_181de66a23864b2fac56779a82189691'}
+                )
+                RETURNING *
+            `);
+            
+            // For now just return the company - block processing can be added later
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error creating complete company:', error);
+            throw error;
+        }
+    }
+
+    async updateCompleteCompany(companyId: string, data: any): Promise<any> {
+        try {
+            // Update company basic info
+            const result = await db.execute(sql`
+                UPDATE cortex_entities.companies SET
+                    name = COALESCE(${data.name}, name),
+                    description = COALESCE(${data.description}, description),
+                    legal_name = COALESCE(${data.legalName}, legal_name),
+                    business_type = COALESCE(${data.businessType}, business_type),
+                    industry = COALESCE(${data.industry}, industry),
+                    website_url = COALESCE(${data.websiteUrl}, website_url),
+                    main_phone = COALESCE(${data.mainPhone}, main_phone),
+                    main_email = COALESCE(${data.mainEmail}, main_email),
+                    updated_at = NOW()
+                WHERE id = ${companyId}
+                RETURNING *
+            `);
+            
+            if (result.rows.length === 0) {
+                throw new Error('Company not found');
+            }
+            
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error updating complete company:', error);
+            throw error;
+        }
+    }
+
     async getCrmGroups(userId: string): Promise<any[]> {
         try {
             const result = await db.execute(sql`
