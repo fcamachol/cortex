@@ -35,7 +35,32 @@ export const stepTypeEnum = pgEnum("step_type", [
   "action", "condition", "wait", "human_approval", "loop", "parallel"
 ]);
 
-// Automation Rules (replaces existing actions.rules)
+// Simple Action Rules (like the original actions.action_rules table)
+export const actionRules = cortexAutomationSchema.table("action_rules", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  triggerType: varchar("trigger_type", { length: 50 }).notNull(), // 'reaction', 'keyword', 'hashtag', 'time_based'
+  actionType: varchar("action_type", { length: 50 }).notNull(), // 'create_task', 'create_note', etc.
+  triggerConditions: jsonb("trigger_conditions").notNull().default({}), // Store reactions, keywords, etc.
+  actionConfig: jsonb("action_config").notNull().default({}), // Store task title, description, etc.
+  performerFilter: varchar("performer_filter", { length: 20 }).default("both"), // 'user_only', 'contacts_only', 'both'
+  instanceFilterType: varchar("instance_filter_type", { length: 20 }).default("all"), // 'all', 'include', 'exclude'
+  selectedInstances: jsonb("selected_instances").default([]), // Array of instance IDs
+  cooldownMinutes: integer("cooldown_minutes").default(0),
+  maxExecutionsPerDay: integer("max_executions_per_day").default(100),
+  createdBy: varchar("created_by", { length: 50 }).notNull(),
+  spaceId: varchar("space_id", { length: 50 }),
+  lastExecutedAt: timestamp("last_executed_at"),
+  executionCount: integer("execution_count").default(0),
+  successCount: integer("success_count").default(0),
+  failureCount: integer("failure_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Keep the complex automation rules for advanced workflows
 export const automationRules = cortexAutomationSchema.table("rules", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull(),
@@ -157,6 +182,10 @@ export const automationTriggers = cortexAutomationSchema.table("triggers", {
 });
 
 // Relations
+export const actionRulesRelations = relations(actionRules, ({ many }) => ({
+  // Simple table, no complex relations needed
+}));
+
 export const automationRulesRelations = relations(automationRules, ({ many }) => ({
   conditions: many(ruleConditions),
   actions: many(ruleActions),
@@ -200,6 +229,16 @@ export const workflowStepsRelations = relations(workflowSteps, ({ one }) => ({
 }));
 
 // Insert Schemas
+export const insertActionRuleSchema = createInsertSchema(actionRules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastExecutedAt: true,
+  executionCount: true,
+  successCount: true,
+  failureCount: true
+});
+
 export const insertAutomationRuleSchema = createInsertSchema(automationRules).omit({
   id: true,
   createdAt: true,
@@ -247,6 +286,9 @@ export const insertAutomationTriggerSchema = createInsertSchema(automationTrigge
 });
 
 // Types
+export type ActionRule = typeof actionRules.$inferSelect;
+export type InsertActionRule = z.infer<typeof insertActionRuleSchema>;
+
 export type AutomationRule = typeof automationRules.$inferSelect;
 export type InsertAutomationRule = z.infer<typeof insertAutomationRuleSchema>;
 
