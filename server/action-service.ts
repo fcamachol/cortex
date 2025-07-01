@@ -153,7 +153,7 @@ export const ActionService = {
                 id: randomUUID(),
                 title: this.processTemplate(config.title || 'New Task', context),
                 description: this.processTemplate(config.description || '', context),
-                status: 'pending',
+                status: 'todo',
                 priority: config.priority || 'medium',
                 createdByEntityId: 'cu_181de66a23864b2fac56779a82189691', // Default user entity ID
                 assignedToEntityId: 'cu_181de66a23864b2fac56779a82189691', // Assign to same user for now

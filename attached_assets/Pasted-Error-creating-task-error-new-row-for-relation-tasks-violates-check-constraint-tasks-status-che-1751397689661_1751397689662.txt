@@ -1,0 +1,79 @@
+Error creating task: error: new row for relation "tasks" violates check constraint "tasks_status_check"
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.createTaskGeneral (/home/runner/workspace/server/storage.ts:279:28)
+    at async DatabaseStorage.createTask (/home/runner/workspace/server/storage.ts:450:16)
+    at async Object.createSimpleTaskAction (/home/runner/workspace/server/action-service.ts:166:33)
+    at async Object.executeSimpleAction (/home/runner/workspace/server/action-service.ts:143:17)
+    at async Object.triggerSimpleAction (/home/runner/workspace/server/action-service.ts:107:21)
+    at async Object.processReaction (/home/runner/workspace/server/action-service.ts:53:13) {
+  length: 516,
+  severity: 'ERROR',
+  code: '23514',
+  detail: 'Failing row contains (efa7752d-eaf5-4c8e-9ba6-25a40796a6ff, New task, , null, pending, medium, null, null, null, null, null, null, null, cu_181de66a23864b2fac56779a82189691, cu_181de66a23864b2fac56779a82189691, null, 3AC87F51F0CD37D5BD74, live-test-1750199771, 0, [], {}, [], 2025-07-01 19:21:04.130383, 2025-07-01 19:21:04.130383).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'cortex_projects',
+  table: 'tasks',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'tasks_status_check',
+  file: 'execMain.c',
+  line: '2058',
+  routine: 'ExecConstraints'
+}
+❌ Error creating task from reaction: error: new row for relation "tasks" violates check constraint "tasks_status_check"
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.createTaskGeneral (/home/runner/workspace/server/storage.ts:279:28)
+    at async DatabaseStorage.createTask (/home/runner/workspace/server/storage.ts:450:16)
+    at async Object.createSimpleTaskAction (/home/runner/workspace/server/action-service.ts:166:33)
+    at async Object.executeSimpleAction (/home/runner/workspace/server/action-service.ts:143:17)
+    at async Object.triggerSimpleAction (/home/runner/workspace/server/action-service.ts:107:21)
+    at async Object.processReaction (/home/runner/workspace/server/action-service.ts:53:13) {
+  length: 516,
+  severity: 'ERROR',
+  code: '23514',
+  detail: 'Failing row contains (efa7752d-eaf5-4c8e-9ba6-25a40796a6ff, New task, , null, pending, medium, null, null, null, null, null, null, null, cu_181de66a23864b2fac56779a82189691, cu_181de66a23864b2fac56779a82189691, null, 3AC87F51F0CD37D5BD74, live-test-1750199771, 0, [], {}, [], 2025-07-01 19:21:04.130383, 2025-07-01 19:21:04.130383).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'cortex_projects',
+  table: 'tasks',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'tasks_status_check',
+  file: 'execMain.c',
+  line: '2058',
+  routine: 'ExecConstraints'
+}
+❌ Error executing rule Personal task from  ✔️ reaction: error: new row for relation "tasks" violates check constraint "tasks_status_check"
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseStorage.createTaskGeneral (/home/runner/workspace/server/storage.ts:279:28)
+    at async DatabaseStorage.createTask (/home/runner/workspace/server/storage.ts:450:16)
+    at async Object.createSimpleTaskAction (/home/runner/workspace/server/action-service.ts:166:33)
+    at async Object.executeSimpleAction (/home/runner/workspace/server/action-service.ts:143:17)
+    at async Object.triggerSimpleAction (/home/runner/workspace/server/action-service.ts:107:21)
+    at async Object.processReaction (/home/runner/workspace/server/action-service.ts:53:13) {
+  length: 516,
+  severity: 'ERROR',
+  code: '23514',
+  detail: 'Failing row contains (efa7752d-eaf5-4c8e-9ba6-25a40796a6ff, New task, , null, pending, medium, null, null, null, null, null, null, null, cu_181de66a23864b2fac56779a82189691, cu_181de66a23864b2fac56779a82189691, null, 3AC87F51F0CD37D5BD74, live-test-1750199771, 0, [], {}, [], 2025-07-01 19:21:04.130383, 2025-07-01 19:21:04.130383).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'cortex_projects',
+  table: 'tasks',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'tasks_status_check',
+  file: 'execMain.c',
+  line: '2058',
