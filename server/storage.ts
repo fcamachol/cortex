@@ -1305,7 +1305,7 @@ class DatabaseStorage {
                     ${ruleData.performer_filter || 'both'},
                     ${ruleData.cooldown_minutes || 5}, 
                     ${ruleData.max_executions_per_day || 100}, 
-                    ${'system'}
+                    ${ruleData.created_by || 'system'}
                 ) RETURNING *
             `);
             

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Settings, Activity, TrendingUp, Zap, Filter, Search, MoreHorizontal, Play, Pause, Edit, Trash2, Hash, MessageSquare, Calendar, Bell } from "lucide-react";
+import { Plus, Settings, Activity, TrendingUp, Zap, Filter, Search, MoreHorizontal, Play, Pause, Edit, Trash2, Hash, MessageSquare, Calendar, Bell, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
