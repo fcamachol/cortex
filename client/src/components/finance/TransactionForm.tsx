@@ -117,7 +117,30 @@ export function TransactionForm({ open, onClose, onSuccess, onCancel }: Transact
   });
 
   const onSubmit = (data: TransactionFormData) => {
-    createTransactionMutation.mutate(data);
+    // Auto-complete missing account fields for income/expense transactions
+    let processedData = { ...data };
+    
+    if (data.transactionType === "income") {
+      // Income: Need a bank account to receive the money (debit) and income account (credit)
+      // If only income account is selected, we need to find a default bank account
+      if (!processedData.debitAccountEntityId && processedData.creditAccountEntityId) {
+        const defaultBankAccount = allPaymentAccounts.find(acc => acc.accountType === "checking");
+        if (defaultBankAccount) {
+          processedData.debitAccountEntityId = defaultBankAccount.id;
+        }
+      }
+    } else if (data.transactionType === "expense") {
+      // Expense: Need expense account (debit) and payment account (credit)
+      // If only expense account is selected, we need to find a default payment account
+      if (processedData.debitAccountEntityId && !processedData.creditAccountEntityId) {
+        const defaultPaymentAccount = allPaymentAccounts.find(acc => acc.accountType === "checking");
+        if (defaultPaymentAccount) {
+          processedData.creditAccountEntityId = defaultPaymentAccount.id;
+        }
+      }
+    }
+    
+    createTransactionMutation.mutate(processedData);
   };
 
   const transactionType = form.watch("transactionType");
@@ -312,59 +335,99 @@ export function TransactionForm({ open, onClose, onSuccess, onCancel }: Transact
           />
         </div>
 
-        {/* Double-Entry Accounting Section */}
+        {/* Accounting Section - Conditional based on transaction type */}
         <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
           <div className="flex items-center gap-2">
             <Calculator className="h-4 w-4" />
-            <h4 className="text-sm font-medium">Double-Entry Accounting</h4>
+            <h4 className="text-sm font-medium">
+              {transactionType === "transfer" ? "Double-Entry Accounting" : "Account Selection"}
+            </h4>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            {/* Debit Account */}
-            <FormField
-              control={form.control}
-              name="debitAccountEntityId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Debit Account</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select debit account" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {getAccountsForField("debit").map((account) => (
-                        <SelectItem key={account.id} value={account.id}>
-                          <div className="flex flex-col">
-                            <span>{account.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {account.accountType} • Balance: ${account.balance}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="text-xs text-muted-foreground">
-                    Account that receives the debit entry
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          {/* Conditional Account Fields based on Transaction Type */}
+          {transactionType === "transfer" ? (
+            // Transfer: Show both debit and credit accounts (double-entry)
+            <div className="grid grid-cols-2 gap-4">
+              {/* Debit Account */}
+              <FormField
+                control={form.control}
+                name="debitAccountEntityId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Debit Account</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select debit account" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {getAccountsForField("debit").map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            <div className="flex flex-col">
+                              <span>{account.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {account.accountType} • Balance: ${account.balance}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="text-xs text-muted-foreground">
+                      Account that receives the debit entry
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            {/* Credit Account */}
+              {/* Credit Account */}
+              <FormField
+                control={form.control}
+                name="creditAccountEntityId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Credit Account</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select credit account" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {getAccountsForField("credit").map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            <div className="flex flex-col">
+                              <span>{account.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {account.accountType} • Balance: ${account.balance}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="text-xs text-muted-foreground">
+                      Account that receives the credit entry
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          ) : transactionType === "income" ? (
+            // Income: Show only credit account (money coming in)
             <FormField
               control={form.control}
               name="creditAccountEntityId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Credit Account</FormLabel>
+                  <FormLabel>Income Account</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select credit account" />
+                        <SelectValue placeholder="Select income account" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -381,16 +444,50 @@ export function TransactionForm({ open, onClose, onSuccess, onCancel }: Transact
                     </SelectContent>
                   </Select>
                   <div className="text-xs text-muted-foreground">
-                    Account that receives the credit entry
+                    Money coming in - creates credit entry
                   </div>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          </div>
+          ) : (
+            // Expense: Show only debit account (money going out)
+            <FormField
+              control={form.control}
+              name="debitAccountEntityId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Expense Account</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select expense account" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {getAccountsForField("debit").map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          <div className="flex flex-col">
+                            <span>{account.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {account.accountType} • Balance: ${account.balance}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="text-xs text-muted-foreground">
+                    Money going out - creates debit entry
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
-          {/* Accounting Logic Validation */}
-          {accountingValidation && (
+          {/* Accounting Logic Validation - Only show for transfers */}
+          {transactionType === "transfer" && accountingValidation && (
             <Alert className={accountingValidation.type === "success" ? "border-green-200 bg-green-50" : "border-yellow-200 bg-yellow-50"}>
               <Info className="h-4 w-4" />
               <AlertDescription className="text-sm">
