@@ -143,7 +143,7 @@ class DatabaseStorage {
     }
 
     async upsertWhatsappChat(chat: any): Promise<any> {
-        try {
+        return await dbConnection.executeWithRetry(async () => {
             const [result] = await db.insert(whatsappChats)
                 .values(chat)
                 .onConflictDoUpdate({
@@ -162,10 +162,7 @@ class DatabaseStorage {
                 .returning();
             
             return result;
-        } catch (error) {
-            console.error('Error upserting WhatsApp chat:', error);
-            throw error;
-        }
+        }, 'upsertWhatsappChat');
     }
 
     async getWhatsappConversations(instanceName: string): Promise<any[]> {
@@ -271,7 +268,7 @@ class DatabaseStorage {
     }
 
     async createTaskGeneral(taskData: any): Promise<any> {
-        try {
+        return await dbConnection.executeWithRetry(async () => {
             const taskId = taskData.id || crypto.randomUUID();
             const result = await db.execute(sql.raw(`
                 INSERT INTO cortex_projects.tasks (
@@ -295,10 +292,7 @@ class DatabaseStorage {
                 ) RETURNING *
             `));
             return result.rows[0];
-        } catch (error) {
-            console.error('Error creating task:', error);
-            throw error;
-        }
+        }, 'createTaskGeneral');
     }
 
     // =============================
@@ -547,7 +541,7 @@ class DatabaseStorage {
     }
 
     async upsertWhatsappMessage(message: any): Promise<any> {
-        try {
+        return await dbConnection.executeWithRetry(async () => {
             const [result] = await db.insert(whatsappMessages)
                 .values(message)
                 .onConflictDoUpdate({
@@ -569,10 +563,7 @@ class DatabaseStorage {
                 .returning();
             
             return result;
-        } catch (error) {
-            console.error('Error upserting WhatsApp message:', error);
-            throw error;
-        }
+        }, 'upsertWhatsappMessage');
     }
 
     async getWhatsappMessageById(messageId: string, instanceName: string): Promise<any> {
@@ -591,7 +582,7 @@ class DatabaseStorage {
     }
 
     async upsertWhatsappMessageReaction(reaction: any): Promise<any> {
-        try {
+        return await dbConnection.executeWithRetry(async () => {
             const [result] = await db
                 .insert(whatsappMessageReactions)
                 .values(reaction)
@@ -605,10 +596,7 @@ class DatabaseStorage {
                 })
                 .returning();
             return result;
-        } catch (error) {
-            console.error('Error upserting reaction:', error);
-            throw error;
-        }
+        }, 'upsertWhatsappMessageReaction');
     }
 
     // =============================
@@ -1369,7 +1357,7 @@ class DatabaseStorage {
     }
 
     async saveActionExecution(executionData: any): Promise<any> {
-        try {
+        return await dbConnection.executeWithRetry(async () => {
             console.log('Saving action execution for simple rule system');
             
             // For the simple system, we could either:
@@ -1395,10 +1383,7 @@ class DatabaseStorage {
             }
             
             return { success: true, execution: executionData };
-        } catch (error) {
-            console.error('Error saving action execution:', error);
-            return { success: false, error: error.message };
-        }
+        }, 'saveActionExecution');
     }
 
 
