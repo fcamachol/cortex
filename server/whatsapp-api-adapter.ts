@@ -1101,7 +1101,25 @@ export const WebhookApiAdapter = {
         const reactionMsg = rawReaction.message?.reactionMessage;
         if (!reactionMsg?.key?.id) return null;
         
-        const reactorJid = rawReaction.key?.participant || sender || rawReaction.key?.remoteJid;
+        // Enhanced reactor JID extraction for proper instance owner detection
+        let reactorJid: string;
+        
+        // For group chats, use participant field
+        if (rawReaction.key?.participant) {
+            reactorJid = rawReaction.key.participant;
+        } 
+        // For individual chats, determine reactor based on fromMe field
+        else if (rawReaction.key?.fromMe) {
+            // If fromMe is true, the instance owner reacted
+            // Use the sender parameter which should contain the instance owner JID
+            reactorJid = sender || rawReaction.key?.remoteJid || '';
+        } 
+        // If fromMe is false, the other person in the chat reacted
+        else {
+            reactorJid = rawReaction.key?.remoteJid || sender || '';
+        }
+        
+        console.log(`🔍 Reaction JID extraction: fromMe=${rawReaction.key?.fromMe}, participant=${rawReaction.key?.participant}, remoteJid=${rawReaction.key?.remoteJid}, extracted=${reactorJid}`);
         
         // Handle both string and number timestamps from Evolution API
         let validTimestamp = new Date();
