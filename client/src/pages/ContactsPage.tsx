@@ -15,6 +15,7 @@ import type { CrmContact } from "@shared/schema";
 import { ContactFormBlocks } from "@/components/contacts/ContactFormBlocks";
 import { ContactModal } from "@/components/contacts/ContactModal";
 import ContactDetailView from "@/components/contacts/ContactDetailView";
+import CompanyDetailView from "@/components/contacts/CompanyDetailView";
 import { CompanyForm } from "@/components/contacts/CompanyForm";
 
 interface ContactsPageProps {
@@ -30,6 +31,8 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
   const [showContactModal, setShowContactModal] = React.useState(false);
   const [editingContact, setEditingContact] = React.useState<CrmContact | null>(null);
   const [isCreatingMainContact, setIsCreatingMainContact] = React.useState(false);
+  const [selectedCompany, setSelectedCompany] = React.useState<any | null>(null);
+  const [showCompanyModal, setShowCompanyModal] = React.useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -206,7 +209,8 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
 
   const handleCompanyClick = (company: any) => {
     console.log('Company clicked:', company);
-    // TODO: Implement company detail view
+    setSelectedCompany(company);
+    setShowCompanyModal(true);
   };
 
   return (
@@ -769,6 +773,20 @@ export default function ContactsPage({ userId, selectedSpace }: ContactsPageProp
             />
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Company Detail Modal */}
+      {selectedCompany && showCompanyModal && (
+        <CompanyDetailView
+          company={selectedCompany}
+          onClose={() => {
+            setShowCompanyModal(false);
+            setSelectedCompany(null);
+          }}
+          onUpdate={() => {
+            queryClient.invalidateQueries({ queryKey: ['/api/crm/companies'] });
+          }}
+        />
       )}
     </div>
   );
