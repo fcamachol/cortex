@@ -5,6 +5,7 @@ import ChatInterface from "@/components/conversations/chat-interface";
 import { TasksPage } from "@/pages/TasksPage";
 import FinancePage from "@/pages/FinancePage";
 import ContactModule from "@/components/contacts/contact-module";
+import ContactsPage from "@/pages/ContactsPage";
 import CalendarModule from "@/components/calendar/calendar-module";
 import IntegrationModule from "@/components/integrations/integration-module";
 import { ActionsDashboard } from "@/components/actions/actions-dashboard";
@@ -100,7 +101,7 @@ export default function Dashboard() {
       case "finance":
         return <FinancePage />;
       case "contacts":
-        return <ContactModule />;
+        return <ContactsPage userId={userId} />;
       case "calendar":
         return <CalendarModule />;
       case "actions":
