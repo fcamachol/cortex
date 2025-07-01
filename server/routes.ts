@@ -1436,8 +1436,12 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const userId = req.user?.userId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
       
+      console.log('Fetching action rules for userId:', userId);
+      
       // Use actual database storage method instead of hardcoded data
       const rules = await storage.getActionRules(userId);
+      
+      console.log('Found rules:', rules.length, rules);
       
       res.json(rules);
     } catch (error) {
