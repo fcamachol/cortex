@@ -208,8 +208,8 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
     }));
   };
 
-  const triggerType = form.watch("triggerType");
-  const actionType = form.watch("actionType");
+  const triggerType = form.watch("trigger_type");
+  const actionType = form.watch("action_type");
 
   const renderTriggerConfig = () => {
     switch (triggerType) {
@@ -507,7 +507,7 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
                 <CardContent className="space-y-4">
                   <FormField
                     control={form.control}
-                    name="ruleName"
+                    name="name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Rule Name</FormLabel>

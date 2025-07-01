@@ -1274,32 +1274,42 @@ class DatabaseStorage {
 
     async createActionRule(ruleData: any): Promise<any> {
         try {
-            // Use direct SQL with proper JSON handling
-            const query = `
-                INSERT INTO cortex_automation.action_rules (
-                    name, description, is_active, trigger_type, action_type,
-                    trigger_conditions, action_config, performer_filter,
-                    cooldown_minutes, max_executions_per_day, created_by
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-                RETURNING *
-            `;
+            console.log('Creating action rule with data:', ruleData);
+            console.log('Rule name:', ruleData.name);
+            console.log('Rule description:', ruleData.description);
+            console.log('Rule trigger_type:', ruleData.trigger_type);
+            console.log('Rule action_type:', ruleData.action_type);
             
-            const values = [
-                ruleData.name,
-                ruleData.description,
-                ruleData.is_active || true,
-                ruleData.trigger_type,
-                ruleData.action_type,
-                JSON.stringify(ruleData.trigger_conditions || {}),
-                JSON.stringify(ruleData.action_config || {}),
-                ruleData.performer_filter || 'both',
-                ruleData.cooldown_minutes || 5,
-                ruleData.max_executions_per_day || 100,
-                ruleData.created_by || 'system'
-            ];
-
-            const result = await pool.query(query, values);
-            return result.rows[0];
+            // Use drizzle db with SQL template for cortex_automation schema
+            const result = await db.execute(sql`
+                INSERT INTO cortex_automation.action_rules (
+                    name, 
+                    description, 
+                    is_active, 
+                    trigger_type, 
+                    action_type,
+                    trigger_conditions, 
+                    action_config, 
+                    performer_filter,
+                    cooldown_minutes, 
+                    max_executions_per_day, 
+                    created_by
+                ) VALUES (
+                    ${ruleData.name}, 
+                    ${ruleData.description || ''}, 
+                    ${ruleData.is_active !== false}, 
+                    ${ruleData.trigger_type}, 
+                    ${ruleData.action_type},
+                    ${JSON.stringify(ruleData.trigger_conditions || {})}, 
+                    ${JSON.stringify(ruleData.action_config || {})}, 
+                    ${ruleData.performer_filter || 'both'},
+                    ${ruleData.cooldown_minutes || 5}, 
+                    ${ruleData.max_executions_per_day || 100}, 
+                    ${'system'}
+                ) RETURNING *
+            `);
+            
+            return result.rows?.[0] || result[0];
         } catch (error) {
             console.error('Error creating action rule:', error);
             throw error;
