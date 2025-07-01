@@ -1,0 +1,92 @@
+
+The Correct Architecture
+WhatsApp Webhook → Raw Storage → NLP Processing → Action Creation
+Why storage first:
+
+Reliability: Never lose data due to processing failures
+Auditing: Full trail of what users actually said
+Reprocessing: Can improve NLP and reprocess historical data
+Debugging: See exactly what went wrong when issues occur
+
+The Data Flow
+Step 1: Immediate storage
+RawMessage {
+  id: webhook_message_id
+  chat_id: where it came from
+  user_id: who sent it
+  content: exact message text
+  reaction: emoji used
+  timestamp: when received
+  processed: false
+  context: reply_to_message, mentions, etc.
+}
+Step 2: Asynchronous processing
+
+Background job picks up unprocessed messages
+NLP extracts structured data
+Creates appropriate records (tasks, bills, notes)
+Marks message as processed
+
+Why This Matters
+Webhook reliability:
+
+WhatsApp expects fast response (<5 seconds)
+Store immediately, return 200 OK
+Process complexity happens async
+
+Data integrity:
+
+Users expect reactions to "work immediately"
+Even if NLP fails, reaction is recorded
+Can fix processing errors later without losing intent
+
+Development flexibility:
+
+Change NLP logic without losing historical data
+A/B test different processing approaches
+Debug by replaying exact user inputs
+
+The Processing Queue
+Immediate response:
+
+Webhook receives message + reaction
+Store raw data instantly
+Return success to WhatsApp
+Queue for processing
+
+Background processing:
+
+NLP service processes queued items
+Creates tasks/bills/notes based on extraction
+Handles errors gracefully
+Retries failed processing
+
+Error Handling
+Processing failures:
+
+Message stays in queue for retry
+User sees "processing..." status
+Manual fallback if NLP fails completely
+No lost user intent
+
+Webhook failures:
+
+Raw storage prevents data loss
+Can replay missed webhooks
+Full audit trail maintained
+
+The Technical Implementation
+Webhook endpoint:
+POST /webhook
+1. Validate WhatsApp signature
+2. Store raw message instantly
+3. Queue for processing
+4. Return 200 OK (< 1 second)
+Processing worker:
+Background job:
+1. Pick unprocessed messages
+2. Run NLP extraction
+3. Create domain objects
+4. Mark as processed
+5. Handle errors/retries
+This gives you reliability, auditability, and the ability to improve your NLP over time without losing any user data or intent.

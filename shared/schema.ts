@@ -28,6 +28,14 @@ export const callOutcomeEnum = whatsappSchema.enum("call_outcome", [
   "answered", "missed", "declined"
 ]);
 
+// Enums for Actions schema
+export const actionQueueStatusEnum = actionsSchema.enum("action_queue_status", [
+  "pending", "processing", "completed", "failed"
+]);
+export const actionEventTypeEnum = actionsSchema.enum("action_event_type", [
+  "reaction", "message", "keyword", "scheduled"
+]);
+
 // WhatsApp Schema Tables
 export const whatsappInstances = whatsappSchema.table("instances", {
   instanceName: varchar("instance_name", { length: 100 }).primaryKey(),
@@ -1441,6 +1449,39 @@ export const crmEventAttendees = crmSchema.table("event_attendees", {
 }));
 
 // =========================================================================
+// ACTIONS SCHEMA - Action processing and queue management
+// =========================================================================
+
+// Action Queue - Manages asynchronous processing of webhook events
+export const actionQueue = actionsSchema.table("action_queue", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventType: actionEventTypeEnum("event_type").notNull(),
+  eventData: jsonb("event_data").notNull(),
+  status: actionQueueStatusEnum("status").default("pending").notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  maxAttempts: integer("max_attempts").default(3).notNull(),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+});
+
+// NLP Processing Log - Track NLP analysis results
+export const nlpProcessingLog = actionsSchema.table("nlp_processing_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  messageId: varchar("message_id", { length: 255 }).notNull(),
+  reactionEmoji: varchar("reaction_emoji", { length: 10 }),
+  parsedType: varchar("parsed_type", { length: 50 }), // calendar, task, bill, note
+  confidence: numeric("confidence", { precision: 5, scale: 4 }), // 0.0000 to 1.0000
+  extractedData: jsonb("extracted_data"),
+  language: varchar("language", { length: 10 }),
+  success: boolean("success").default(false).notNull(),
+  errorMessage: text("error_message"),
+  processingTimeMs: integer("processing_time_ms"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// =========================================================================
 // CRM RELATIONS - Comprehensive relationship definitions
 // =========================================================================
 
@@ -1692,6 +1733,19 @@ export const insertCrmNotesSchema = createInsertSchema(crmNotes).omit({
 
 export const insertTaskMessageLinkSchema = createInsertSchema(taskMessageLinks);
 
+// Action Queue Schemas
+export const insertActionQueueSchema = createInsertSchema(actionQueue).omit({
+  id: true,
+  createdAt: true,
+  processedAt: true,
+  completedAt: true,
+});
+
+export const insertNlpProcessingLogSchema = createInsertSchema(nlpProcessingLog).omit({
+  id: true,
+  createdAt: true,
+});
+
 // =========================================================================
 // COMPREHENSIVE CRM TYPES - Complete TypeScript definitions
 // =========================================================================
@@ -1773,3 +1827,10 @@ export type ContactWithRelations = CrmContact & {
 // Legacy finance schema removed June 29, 2025.
 
 // export type InsertStatement = z.infer<typeof insertStatementSchema>; // Removed - old finance schema
+
+// Action Queue Types
+export type ActionQueue = typeof actionQueue.$inferSelect;
+export type InsertActionQueue = z.infer<typeof insertActionQueueSchema>;
+
+export type NlpProcessingLog = typeof nlpProcessingLog.$inferSelect;
+export type InsertNlpProcessingLog = z.infer<typeof insertNlpProcessingLogSchema>;
