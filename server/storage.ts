@@ -1412,7 +1412,7 @@ class DatabaseStorage {
             
             // Check for undefined/null values that might cause SQL issues
             const updateData = {
-                name: updates.name || 'Untitled Rule',
+                name: updates.name || updates.ruleName || 'Untitled Rule',
                 description: updates.description || '',
                 is_active: Boolean(updates.is_active),
                 trigger_type: updates.trigger_type || 'whatsapp_message',
@@ -1422,7 +1422,7 @@ class DatabaseStorage {
                 allowed_user_ids: allowedUserIdsArray
             };
             
-            // Use raw SQL to handle all fields including extra ones not in schema
+            // Update the rule first
             const result = await db.execute(sql`
                 UPDATE cortex_automation.rules 
                 SET 
@@ -1438,8 +1438,74 @@ class DatabaseStorage {
                 WHERE id = ${ruleId}
                 RETURNING *
             `);
+            
+            const rule = result.rows[0];
+            
+            // Update conditions if provided
+            if (updates.triggerConditions) {
+                console.log('Updating conditions for rule:', ruleId, updates.triggerConditions);
                 
-            return result.rows[0];
+                // Delete existing conditions
+                await db.execute(sql`
+                    DELETE FROM cortex_automation.rule_conditions WHERE rule_id = ${ruleId}
+                `);
+                
+                // Create new conditions
+                if (updates.triggerConditions.reactions && updates.triggerConditions.reactions.length > 0) {
+                    for (const reaction of updates.triggerConditions.reactions) {
+                        await db.execute(sql`
+                            INSERT INTO cortex_automation.rule_conditions (
+                                rule_id, condition_type, operator, field_name, value
+                            ) VALUES (
+                                ${ruleId}, 'reaction', 'equals', 'emoji', ${reaction}
+                            )
+                        `);
+                    }
+                }
+                
+                if (updates.triggerConditions.keywords && updates.triggerConditions.keywords.length > 0) {
+                    for (const keyword of updates.triggerConditions.keywords) {
+                        await db.execute(sql`
+                            INSERT INTO cortex_automation.rule_conditions (
+                                rule_id, condition_type, operator, field_name, value
+                            ) VALUES (
+                                ${ruleId}, 'keyword', 'contains', 'message_content', ${keyword}
+                            )
+                        `);
+                    }
+                }
+                
+                if (updates.triggerConditions.hashtag) {
+                    await db.execute(sql`
+                        INSERT INTO cortex_automation.rule_conditions (
+                            rule_id, condition_type, operator, field_name, value
+                        ) VALUES (
+                            ${ruleId}, 'hashtag', 'contains', 'message_content', ${updates.triggerConditions.hashtag}
+                        )
+                    `);
+                }
+            }
+            
+            // Update actions if provided
+            if (updates.actionConfig && updates.actionType) {
+                console.log('Updating action for rule:', ruleId, updates.actionType, updates.actionConfig);
+                
+                // Delete existing actions
+                await db.execute(sql`
+                    DELETE FROM cortex_automation.rule_actions WHERE rule_id = ${ruleId}
+                `);
+                
+                // Create new action
+                await db.execute(sql`
+                    INSERT INTO cortex_automation.rule_actions (
+                        rule_id, action_type, action_order, parameters
+                    ) VALUES (
+                        ${ruleId}, ${updates.actionType}, 1, ${JSON.stringify(updates.actionConfig)}
+                    )
+                `);
+            }
+                
+            return rule;
         } catch (error) {
             console.error('Error updating action rule:', error);
             throw error;
