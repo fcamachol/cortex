@@ -179,11 +179,20 @@ export const ActionService = {
     processTemplate(template: string, context: any): string {
         if (!template) return '';
         
+        // Extract sender name from JID (e.g., "5215579188699@s.whatsapp.net" -> "5215579188699")
+        const senderName = context.senderJid ? context.senderJid.split('@')[0] : 'Unknown';
+        
+        // Generate task number (simple timestamp-based approach)
+        const taskNumber = `TASK-${Date.now().toString().slice(-6)}`;
+        
         return template
             .replace(/\{\{content\}\}/g, context.content || '')
             .replace(/\{\{emoji\}\}/g, context.emoji || '')
             .replace(/\{\{messageId\}\}/g, context.messageId || '')
-            .replace(/\{\{chatId\}\}/g, context.chatId || '');
+            .replace(/\{\{chatId\}\}/g, context.chatId || '')
+            .replace(/\{\{sender\}\}/g, senderName)
+            .replace(/\{\{senderJid\}\}/g, context.senderJid || '')
+            .replace(/\{\{taskNumber\}\}/g, taskNumber);
     },
 
     async triggerAction(instanceId: string, triggerType: string, triggerValue: string, context: any): Promise<void> {
@@ -709,7 +718,7 @@ export const ActionService = {
 
     async getChatIdFromMessage(messageId: string, instanceName: string): Promise<string | null> {
         try {
-            const message = await storage.getWhatsappMessage(messageId, instanceName);
+            const message = await storage.getWhatsappMessageById(messageId, instanceName);
             return message?.chatId || null;
         } catch (error) {
             console.error('Error getting chat ID from message:', error);
