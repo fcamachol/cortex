@@ -406,7 +406,7 @@ export const ActionService = {
             title: processedConfig.title || `Task from ${triggerContext.triggerType}`,
             description: processedConfig.description || 'Automatically created task',
             priority: nlpAnalysis.isUrgent ? 'high' : (processedConfig.priority || 'medium'),
-            status: 'to_do',
+            status: 'todo',
             dueDate: nlpAnalysis.suggestedDueDate || (processedConfig.dueDate ? new Date(processedConfig.dueDate) : null)
         };
         
@@ -519,7 +519,7 @@ export const ActionService = {
                 title: processedConfig.taskTitle || `Pay Bill: ${triggerContext.context.senderJid} - $${createdPayable.totalAmount}`,
                 description: `Payment task for bill: ${createdPayable.description}\n\nBill Details:\n- Amount: $${createdPayable.totalAmount}\n- Due Date: ${createdPayable.dueDate}\n\nCreated from WhatsApp automation system`,
                 priority: nlpAnalysis.isUrgent ? 'high' : 'medium',
-                status: 'to_do',
+                status: 'todo',
                 dueDate: createdPayable.dueDate,
                 linkedPayableId: createdPayable.payableId,
                 instanceId: triggerContext.instanceId,
@@ -641,8 +641,15 @@ export const ActionService = {
                 processingTimeMs
             };
             
-            const execution = await storage.createActionExecution(executionData);
-            console.log(`📊 Action execution logged: ${execution.executionId} (${status})`);
+            const execution = await storage.saveActionExecution({
+                rule_id: rule.id,
+                status,
+                result: JSON.stringify(result),
+                error_message: errorMessage,
+                processing_time_ms: processingTimeMs,
+                trigger_data: JSON.stringify(executionData.triggerData)
+            });
+            console.log(`📊 Action execution logged: ${rule.id} (${status})`);
             
         } catch (error) {
             console.error('❌ Error logging action execution:', error);

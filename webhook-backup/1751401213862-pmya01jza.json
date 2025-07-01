@@ -1,0 +1,26 @@
+{
+  "id": "1751401213862-pmya01jza",
+  "timestamp": "2025-07-01T20:20:13.862Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "messages-upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "instance-1750433520122",
+    "data": {
+      "instanceName": "instance-1750433520122",
+      "key": {
+        "id": "test-1751401213837",
+        "remoteJid": "5214611239748@s.whatsapp.net",
+        "fromMe": false
+      },
+      "message": {
+        "conversation": "Test message for automation ✅"
+      },
+      "messageTimestamp": 1751401213,
+      "pushName": "Test User",
+      "messageType": "conversation"
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
