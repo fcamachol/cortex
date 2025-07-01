@@ -27,19 +27,19 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
 
   // Fetch company employees/contacts
   const { data: companyContacts = [] } = useQuery({
-    queryKey: ["/api/crm/company-contacts", company?.companyId],
-    enabled: !!company?.companyId,
+    queryKey: ["/api/crm/company-contacts", company?.id],
+    enabled: !!company?.id,
   });
 
   const deleteCompanyMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("DELETE", `/api/crm/companies/${company.companyId}`);
+      return await apiRequest("DELETE", `/api/crm/companies/${company.id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/crm/companies"] });
       toast({
         title: "Company Deleted",
-        description: `${company.companyName} has been deleted successfully.`,
+        description: `${company.name} has been deleted successfully.`,
       });
       onClose();
     },
@@ -55,7 +55,7 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
   if (!company) return null;
 
   const handleDelete = () => {
-    if (window.confirm(`Are you sure you want to delete ${company.companyName}?`)) {
+    if (window.confirm(`Are you sure you want to delete ${company.name}?`)) {
       deleteCompanyMutation.mutate();
     }
   };
@@ -73,7 +73,7 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h2 className="text-xl font-semibold">{company.companyName}</h2>
+                  <h2 className="text-xl font-semibold">{company.name}</h2>
                   {company.industry && (
                     <p className="text-sm text-gray-600 dark:text-gray-400">{company.industry}</p>
                   )}
@@ -123,34 +123,34 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
                     )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {company.businessType && (
+                      {company.business_type && (
                         <div>
                           <h4 className="font-medium mb-1">Business Type</h4>
-                          <Badge variant="secondary">{company.businessType}</Badge>
+                          <Badge variant="secondary">{company.business_type}</Badge>
                         </div>
                       )}
 
-                      {company.taxId && (
+                      {company.tax_id && (
                         <div>
                           <h4 className="font-medium mb-1">Tax ID</h4>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {company.taxId}
+                            {company.tax_id}
                           </p>
                         </div>
                       )}
                     </div>
 
-                    {company.website && (
+                    {company.website_url && (
                       <div>
                         <h4 className="font-medium mb-1">Website</h4>
                         <a
-                          href={company.website}
+                          href={company.website_url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm"
                         >
                           <Globe className="w-4 h-4" />
-                          {company.website}
+                          {company.website_url}
                         </a>
                       </div>
                     )}
@@ -309,13 +309,13 @@ export default function CompanyDetailView({ company, isOpen, onClose, spaceId }:
                       <div>
                         <span className="font-medium">Created:</span>
                         <span className="ml-2 text-gray-600 dark:text-gray-400">
-                          {new Date(company.createdAt).toLocaleDateString()}
+                          {new Date(company.created_at).toLocaleDateString()}
                         </span>
                       </div>
                       <div>
                         <span className="font-medium">Last Updated:</span>
                         <span className="ml-2 text-gray-600 dark:text-gray-400">
-                          {new Date(company.updatedAt).toLocaleDateString()}
+                          {new Date(company.updated_at).toLocaleDateString()}
                         </span>
                       </div>
                     </div>
