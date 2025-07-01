@@ -3066,7 +3066,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/api/crm/companies', async (req: Request, res: Response) => {
     try {
       // TODO: Add proper user authentication middleware
-      const userId = 'default-user-id'; // Temporary for development
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // Temporary for development
       const companies = await storage.getCrmCompanies(userId);
       res.json(companies);
     } catch (error) {
