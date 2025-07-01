@@ -251,8 +251,8 @@ export class ActionProcessorService {
    * Process message action (keyword triggers)
    */
   private async processMessageAction(eventData: any) {
-    // Process keyword triggers that were disabled in the webhook
-    await this.actionService.processKeywordTriggers(eventData);
+    // Keyword triggers disabled to prevent unwanted task creation
+    console.log('🚫 Message action processing disabled to prevent spurious task creation');
   }
 
   /**
