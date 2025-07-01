@@ -131,11 +131,11 @@ export function TransactionForm({ open, onClose, onSuccess, onCancel }: Transact
       }
     } else if (data.transactionType === "expense") {
       // Expense: Need expense account (debit) and payment account (credit)
-      // If only expense account is selected, we need to find a default payment account
-      if (processedData.debitAccountEntityId && !processedData.creditAccountEntityId) {
-        const defaultPaymentAccount = allPaymentAccounts.find(acc => acc.accountType === "checking");
-        if (defaultPaymentAccount) {
-          processedData.creditAccountEntityId = defaultPaymentAccount.id;
+      // If only payment account is selected, we need to find a default expense account
+      if (!processedData.debitAccountEntityId && processedData.creditAccountEntityId) {
+        const defaultExpenseAccount = expenseAccounts.find(acc => acc.name.toLowerCase().includes("general")) || expenseAccounts[0];
+        if (defaultExpenseAccount) {
+          processedData.debitAccountEntityId = defaultExpenseAccount.id;
         }
       }
     }
@@ -451,21 +451,21 @@ export function TransactionForm({ open, onClose, onSuccess, onCancel }: Transact
               )}
             />
           ) : (
-            // Expense: Show only debit account (money going out)
+            // Expense: Show payment source (accounts and credit cards)
             <FormField
               control={form.control}
-              name="debitAccountEntityId"
+              name="creditAccountEntityId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Expense Account</FormLabel>
+                  <FormLabel>Payment Source</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select expense account" />
+                        <SelectValue placeholder="Select payment source" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {getAccountsForField("debit").map((account) => (
+                      {allPaymentAccounts.map((account) => (
                         <SelectItem key={account.id} value={account.id}>
                           <div className="flex flex-col">
                             <span>{account.name}</span>
@@ -478,7 +478,7 @@ export function TransactionForm({ open, onClose, onSuccess, onCancel }: Transact
                     </SelectContent>
                   </Select>
                   <div className="text-xs text-muted-foreground">
-                    Money going out - creates debit entry
+                    Source of payment - bank account or credit card
                   </div>
                   <FormMessage />
                 </FormItem>
