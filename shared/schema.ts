@@ -28,11 +28,11 @@ export const callOutcomeEnum = whatsappSchema.enum("call_outcome", [
   "answered", "missed", "declined"
 ]);
 
-// Enums for Actions schema
-export const actionQueueStatusEnum = actionsSchema.enum("action_queue_status", [
+// Enums for Actions schema - Queue Processing
+export const queueStatusEnum = actionsSchema.enum("queue_status", [
   "pending", "processing", "completed", "failed"
 ]);
-export const actionEventTypeEnum = actionsSchema.enum("action_event_type", [
+export const queueEventTypeEnum = actionsSchema.enum("queue_event_type", [
   "reaction", "message", "keyword", "scheduled"
 ]);
 
@@ -1455,9 +1455,9 @@ export const crmEventAttendees = crmSchema.table("event_attendees", {
 // Action Queue - Manages asynchronous processing of webhook events
 export const actionQueue = actionsSchema.table("action_queue", {
   id: uuid("id").primaryKey().defaultRandom(),
-  eventType: actionEventTypeEnum("event_type").notNull(),
+  eventType: queueEventTypeEnum("event_type").notNull(),
   eventData: jsonb("event_data").notNull(),
-  status: actionQueueStatusEnum("status").default("pending").notNull(),
+  status: queueStatusEnum("status").default("pending").notNull(),
   attempts: integer("attempts").default(0).notNull(),
   maxAttempts: integer("max_attempts").default(3).notNull(),
   lastError: text("last_error"),
