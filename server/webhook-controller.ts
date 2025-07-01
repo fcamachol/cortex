@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { WebhookApiAdapter } from './whatsapp-api-adapter'; // Import the next layer
 import { webhookReliability } from './webhook-reliability';
 import { messageRecovery } from './message-recovery-system';
+import { ActionProcessorService } from './services/action-processor-service';
 
 /**
  * @class WebhookController
@@ -10,7 +11,15 @@ import { messageRecovery } from './message-recovery-system';
  * off the processing to the adapter/service layer. It responds immediately to
  * the API to prevent timeouts.
  */
+
+// Static reference to ActionProcessorService - will be initialized by the main application
+let actionProcessor: ActionProcessorService | null = null;
+
 export const WebhookController = {
+    // Initialize the action processor service
+    setActionProcessor(processor: ActionProcessorService) {
+        actionProcessor = processor;
+    },
     async handleIncomingEvent(req: Request, res: Response): Promise<void> {
         try {
             const instanceName = req.params.instanceName;
