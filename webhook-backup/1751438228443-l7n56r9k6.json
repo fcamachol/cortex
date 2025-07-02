@@ -1,0 +1,30 @@
+{
+  "id": "1751438228443-l7n56r9k6",
+  "timestamp": "2025-07-02T06:37:08.443Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages-upsert",
+  "payload": {
+    "instanceId": "c5215849-bfb9-413c-aa94-dfa911c8310a",
+    "data": {
+      "key": {
+        "remoteJid": "5215579188699@s.whatsapp.net",
+        "fromMe": true,
+        "id": "3AA3BAAF8A5B9610E00E"
+      },
+      "messageId": "3AA3BAAF8A5B9610E00E",
+      "remoteJid": "5215579188699@s.whatsapp.net",
+      "fromMe": true,
+      "reaction": {
+        "text": "📅",
+        "key": {
+          "remoteJid": "5215579188699@s.whatsapp.net",
+          "fromMe": true,
+          "id": "3AA3BAAF8A5B9610E00E"
+        }
+      },
+      "timestamp": "1751438228374"
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

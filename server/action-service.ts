@@ -185,7 +185,7 @@ export const ActionService = {
     },
 
     async executeSimpleAction(rule: any, context: any): Promise<void> {
-        console.log(`🎯 Executing simple action: ${rule.actionType} for rule: ${rule.name}`);
+        console.log(`🎯 Executing simple action: ${rule.action_type} for rule: ${rule.name}`);
         
         // First, determine which NLP parser to use based on action type
         let nlpParser: string | null = null;
@@ -233,7 +233,8 @@ export const ActionService = {
             case 'create_calendar_event':
                 await this.createEnhancedCalendarAction(rule.action_config, enrichedContext, rule);
                 break;
-            case 'create_bill':
+            case 'create_bill_payable':
+            case 'create_bill_receivable':
                 await this.createEnhancedBillAction(rule.action_config, enrichedContext, rule);
                 break;
             default:
