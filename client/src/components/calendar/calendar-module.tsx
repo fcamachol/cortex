@@ -215,6 +215,22 @@ export default function CalendarModule() {
 
   const { toast } = useToast();
 
+  // Manual sync mutation
+  const syncCalendarsMutation = useMutation({
+    mutationFn: () => apiRequest('/api/calendar/sync'),
+    onSuccess: () => {
+      toast({ title: 'Calendars synced successfully' });
+      refetchCalendars();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Calendar sync failed', 
+        description: error?.message || 'An error occurred during sync',
+        variant: 'destructive' 
+      });
+    },
+  });
+
   // Fetch Google Calendar sub-calendars
   const { data: subCalendars = [], refetch: refetchCalendars } = useQuery({
     queryKey: ['/api/calendar/calendars'],
@@ -950,11 +966,12 @@ export default function CalendarModule() {
                   <Button 
                     variant="ghost"
                     size="sm"
-                    onClick={() => refetchCalendars()}
+                    onClick={() => syncCalendarsMutation.mutate()}
+                    disabled={syncCalendarsMutation.isPending}
                     className="h-6 w-6 p-0"
-                    title="Refresh calendars"
+                    title="Sync Google Calendars"
                   >
-                    <RotateCcw className="h-3 w-3" />
+                    <RotateCcw className={cn("h-3 w-3", syncCalendarsMutation.isPending && "animate-spin")} />
                   </Button>
                   <Button
                     variant="ghost"

@@ -1364,6 +1364,40 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Manual calendar sync endpoint
+  app.post('/api/calendar/sync', async (req: Request, res: Response) => {
+    try {
+      const integrations = await storage.getGoogleCalendarIntegrations();
+      
+      if (integrations.length === 0) {
+        return res.status(404).json({ error: 'No Google Calendar integrations found' });
+      }
+
+      const { googleCalendarService } = await import('./google-calendar-service');
+      
+      for (const integration of integrations) {
+        try {
+          // Set credentials for the integration
+          googleCalendarService.setCredentials({
+            accessToken: integration.access_token,
+            refreshToken: integration.refresh_token
+          });
+
+          // Sync calendar events
+          await googleCalendarService.syncCalendarEvents('dev-user-id', integration.id);
+          console.log(`📅 Synced calendar events for integration ${integration.id}`);
+        } catch (syncError) {
+          console.error(`Error syncing integration ${integration.id}:`, syncError);
+        }
+      }
+
+      res.json({ success: true, message: 'Calendar sync completed' });
+    } catch (error) {
+      console.error('Error syncing calendars:', error);
+      res.status(500).json({ error: 'Failed to sync calendars' });
+    }
+  });
+
   // Google Calendar OAuth flow - Support both GET and POST
   app.get('/api/calendar/auth/google', async (req: Request, res: Response) => {
     try {
