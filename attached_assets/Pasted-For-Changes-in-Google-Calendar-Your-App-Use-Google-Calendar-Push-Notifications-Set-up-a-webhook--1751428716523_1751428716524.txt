@@ -1,0 +1,87 @@
+For Changes in Google Calendar → Your App
+Use Google Calendar Push Notifications:
+
+Set up a webhook endpoint in your application to receive notifications
+Create a notification channel using the Calendar API:
+
+javascript// Create a watch request
+const watchRequest = {
+  id: 'unique-channel-id',
+  type: 'web_hook',
+  address: 'https://yourdomain.com/webhook/calendar',
+  params: {
+    ttl: '3600' // Time to live in seconds
+  }
+};
+
+// Watch a specific calendar
+await calendar.events.watch({
+  calendarId: 'primary',
+  requestBody: watchRequest
+});
+
+Handle incoming webhooks at your endpoint:
+
+javascriptapp.post('/webhook/calendar', (req, res) => {
+  const channelId = req.headers['x-goog-channel-id'];
+  const resourceState = req.headers['x-goog-resource-state'];
+  
+  if (resourceState === 'sync') {
+    // Initial sync - can ignore
+    return res.status(200).send('OK');
+  }
+  
+  // Handle the change
+  handleCalendarChange(channelId);
+  res.status(200).send('OK');
+});
+For Changes in Your App → Google Calendar
+Use the Calendar API to push updates:
+javascript// When user makes changes in your app
+async function syncToGoogleCalendar(eventData) {
+  try {
+    if (eventData.isNew) {
+      // Create new event
+      await calendar.events.insert({
+        calendarId: 'primary',
+        requestBody: {
+          summary: eventData.title,
+          start: { dateTime: eventData.startTime },
+          end: { dateTime: eventData.endTime },
+          // Add other fields
+        }
+      });
+    } else {
+      // Update existing event
+      await calendar.events.update({
+        calendarId: 'primary',
+        eventId: eventData.googleEventId,
+        requestBody: eventData
+      });
+    }
+  } catch (error) {
+    console.error('Sync failed:', error);
+    // Handle retry logic
+  }
+}
+Key Implementation Considerations
+Prevent Sync Loops:
+
+Add metadata to track sync source
+Use timestamps to determine which change is newer
+Implement conflict resolution strategies
+
+Handle Rate Limits:
+
+Implement exponential backoff for API calls
+Queue changes if hitting rate limits
+
+Manage Webhook Renewals:
+
+Calendar watch channels expire (max 1 week)
+Set up automatic renewal before expiration
+
+Error Handling:
+
+Implement retry logic for failed syncs
+Store failed operations for manual review

@@ -1294,8 +1294,9 @@ export default function CalendarModule() {
                             </div>
                             {weekViewDays.map((day, dayIndex) => {
                               const dayEvents = getEventsForDay(day.date).filter((event: any) => {
-                                const eventHour = new Date(event.startTime).getHours();
-                                return eventHour === slot.hour;
+                                // Convert event time to user's timezone for proper hour comparison
+                                const eventTimeInUserTz = toZonedTime(new Date(event.startTime), event.timezone || userTimezone);
+                                return eventTimeInUserTz.getHours() === slot.hour;
                               });
                               
                               return (
