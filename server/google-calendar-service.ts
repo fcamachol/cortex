@@ -115,27 +115,64 @@ export class GoogleCalendarService {
      */
     private convertGoogleColorToTailwind(hexColor: string): string {
         const colorMap: { [key: string]: string } = {
-            '#4285f4': 'bg-blue-500',    // Default Google blue
-            '#33b679': 'bg-green-500',   // Green
-            '#8e24aa': 'bg-purple-500',  // Purple
-            '#e67c73': 'bg-red-500',     // Red
-            '#f09300': 'bg-orange-500',  // Orange
-            '#f4c20d': 'bg-yellow-500',  // Yellow
-            '#795548': 'bg-amber-800',   // Brown
-            '#616161': 'bg-gray-500',    // Gray
-            '#ff7043': 'bg-orange-600',  // Deep Orange
-            '#9c27b0': 'bg-purple-600',  // Deep Purple
-            '#3f51b5': 'bg-indigo-500',  // Indigo
-            '#2196f3': 'bg-blue-400',    // Light Blue
-            '#00bcd4': 'bg-cyan-500',    // Cyan
-            '#009688': 'bg-teal-500',    // Teal
-            '#4caf50': 'bg-green-400',   // Light Green
-            '#8bc34a': 'bg-lime-500',    // Lime
-            '#cddc39': 'bg-lime-400',    // Lime Yellow
-            '#ffeb3b': 'bg-yellow-400',  // Yellow
-            '#ffc107': 'bg-amber-500',   // Amber
-            '#ff9800': 'bg-orange-500',  // Orange
-            '#ff5722': 'bg-red-600',     // Deep Orange
+            // Google Calendar Standard Colors - Authentic Palette
+            '#a4bdfc': 'bg-indigo-300',    // Periwinkle (Light blue)
+            '#7ae7bf': 'bg-emerald-300',   // Mint green
+            '#dbadff': 'bg-purple-300',    // Lavender
+            '#ff887c': 'bg-red-300',       // Flamingo pink
+            '#ffc8af': 'bg-orange-300',    // Peach
+            '#ffd6cc': 'bg-pink-300',      // Blush pink
+            '#c2c2c2': 'bg-gray-400',      // Gray
+            
+            // Bold Google Calendar Colors
+            '#4285f4': 'bg-blue-500',      // Google Blue (Default)
+            '#34a853': 'bg-green-500',     // Google Green
+            '#fbbc04': 'bg-yellow-500',    // Google Yellow  
+            '#ea4335': 'bg-red-500',       // Google Red
+            '#ff6d01': 'bg-orange-500',    // Google Orange
+            '#46d6db': 'bg-cyan-400',      // Turquoise
+            '#e1bee7': 'bg-purple-200',    // Wisteria
+            '#f3f3f3': 'bg-gray-200',      // Birch
+            
+            // Extended Google Calendar Colors
+            '#ac725e': 'bg-amber-700',     // Chocolate
+            '#d06b64': 'bg-red-400',       // Cherry blossom
+            '#f83a22': 'bg-red-600',       // Tomato
+            '#fa573c': 'bg-orange-600',    // Tangerine
+            '#ff7537': 'bg-orange-500',    // Pumpkin
+            '#ffad46': 'bg-yellow-400',    // Mango
+            '#42d692': 'bg-green-400',     // Eucalyptus
+            '#16a765': 'bg-green-600',     // Basil
+            '#7bd148': 'bg-lime-400',      // Pistachio
+            '#51b749': 'bg-green-500',     // Avocado
+            '#9fe1e7': 'bg-cyan-200',      // Peacock
+            '#9fc6e7': 'bg-blue-300',      // Sky
+            '#4986e7': 'bg-blue-600',      // Cobalt
+            '#9a9cff': 'bg-indigo-400',    // Blueberry
+            '#b99aff': 'bg-purple-400',    // Grape
+            '#cabdbf': 'bg-gray-300',      // Birch light
+            '#cca6ac': 'bg-pink-300',      // Rose
+            
+            // Legacy support
+            '#33b679': 'bg-green-500',     // Material Green
+            '#8e24aa': 'bg-purple-500',    // Material Purple
+            '#e67c73': 'bg-red-500',       // Material Red
+            '#f09300': 'bg-orange-500',    // Material Orange
+            '#795548': 'bg-amber-800',     // Material Brown
+            '#616161': 'bg-gray-500',      // Material Gray
+            '#ff7043': 'bg-orange-600',    // Deep Orange
+            '#9c27b0': 'bg-purple-600',    // Deep Purple
+            '#3f51b5': 'bg-indigo-500',    // Indigo
+            '#2196f3': 'bg-blue-400',      // Light Blue
+            '#00bcd4': 'bg-cyan-500',      // Cyan
+            '#009688': 'bg-teal-500',      // Teal
+            '#4caf50': 'bg-green-400',     // Light Green
+            '#8bc34a': 'bg-lime-500',      // Lime
+            '#cddc39': 'bg-lime-400',      // Lime Yellow
+            '#ffeb3b': 'bg-yellow-400',    // Yellow
+            '#ffc107': 'bg-amber-500',     // Amber
+            '#ff9800': 'bg-orange-500',    // Orange
+            '#ff5722': 'bg-red-600',       // Deep Orange
         };
         
         return colorMap[hexColor.toLowerCase()] || 'bg-blue-500';

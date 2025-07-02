@@ -23,11 +23,8 @@ export class CalendarSyncService {
         // Sync every 15 minutes
         const syncTask = cron.schedule('*/15 * * * *', async () => {
             await this.syncAllActiveIntegrations();
-        }, {
-            scheduled: false
         });
 
-        syncTask.start();
         this.syncJobs.set('main-sync', syncTask);
         
         // Also run an initial sync on startup
