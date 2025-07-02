@@ -18,6 +18,7 @@ import { RealtimeMonitor } from "@/pages/RealtimeMonitor";
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
+import OAuthCallbackPage from "@/pages/oauth-callback";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 import Sidebar from "@/components/layout/sidebar";
@@ -35,6 +36,7 @@ function AuthenticatedRoutes() {
       <Route path="/monitor" component={() => <RealtimeMonitor spaceId="7804247f-3ae8-4eb2-8c6d-2c44f967ad42" />} />
       <Route path="/database" component={DatabaseViewer} />
       <Route path="/qr-test" component={QRTestPage} />
+      <Route path="/oauth/callback" component={OAuthCallbackPage} />
       <Route component={NotFound} />
     </Switch>
   );
