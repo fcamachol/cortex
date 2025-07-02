@@ -217,7 +217,7 @@ export default function CalendarModule() {
 
   // Manual sync mutation
   const syncCalendarsMutation = useMutation({
-    mutationFn: () => apiRequest('/api/calendar/sync'),
+    mutationFn: () => apiRequest('/api/calendar/sync', 'POST'),
     onSuccess: () => {
       toast({ title: 'Calendars synced successfully' });
       refetchCalendars();

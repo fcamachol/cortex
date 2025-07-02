@@ -85,7 +85,7 @@ export class CalendarSyncService {
     public stopAutoSync() {
         console.log('📅 Stopping calendar sync service...');
         
-        for (const [jobId, task] of this.syncJobs) {
+        for (const [jobId, task] of Array.from(this.syncJobs.entries())) {
             task.stop();
             task.destroy();
         }

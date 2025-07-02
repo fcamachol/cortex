@@ -10,6 +10,7 @@ import { WebhookController } from "./webhook-controller";
 import { storage } from "./storage";
 import { ActionService } from "./action-service";
 import { WhatsAppAPIAdapter } from "./whatsapp-api-adapter";
+import { CalendarSyncService } from "./services/calendar-sync-service";
 
 // Main async function to start the server
 (async () => {
@@ -82,6 +83,12 @@ import { WhatsAppAPIAdapter } from "./whatsapp-api-adapter";
     actionProcessor.start();
     console.log("✅ Action processor service started");
 
+    // 4.7. Initialize Google Calendar Auto-Sync Service
+    console.log("📅 Initializing calendar sync service...");
+    const calendarSyncService = CalendarSyncService.getInstance();
+    await calendarSyncService.startAutoSync();
+    console.log("✅ Calendar sync service started");
+
     // 5. Setup Frontend Serving (Vite for Dev, Static for Prod)
     if (process.env.NODE_ENV === "development") {
         await setupVite(app, server);
@@ -108,6 +115,7 @@ import { WhatsAppAPIAdapter } from "./whatsapp-api-adapter";
         console.log('🛑 Received SIGTERM, shutting down gracefully...');
         actionProcessor.stop();
         ScheduledJobsService.stop();
+        calendarSyncService.stopAutoSync();
         server.close(() => {
             console.log('✅ Server shutdown complete');
             process.exit(0);
@@ -118,6 +126,7 @@ import { WhatsAppAPIAdapter } from "./whatsapp-api-adapter";
         console.log('🛑 Received SIGINT, shutting down gracefully...');
         actionProcessor.stop();
         ScheduledJobsService.stop();
+        calendarSyncService.stopAutoSync();
         server.close(() => {
             console.log('✅ Server shutdown complete');
             process.exit(0);
