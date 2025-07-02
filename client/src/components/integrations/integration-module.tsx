@@ -118,15 +118,39 @@ export default function IntegrationModule() {
     }
   };
 
+  const syncGoogleCalendarMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/calendar/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42' }),
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Sync failed');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Calendar Sync Completed",
+        description: "Your Google Calendar events have been synced successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Sync Failed",
+        description: `Failed to sync calendar: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleConfigure = (integrationId: string) => {
     if (integrationId === "whatsapp") {
       setShowWhatsAppManager(true);
     } else if (integrationId === "google-calendar") {
-      // Open Google Calendar sync configuration
-      toast({
-        title: "Google Calendar Configuration",
-        description: "Calendar sync settings will be available soon. Events are automatically synced.",
-      });
+      // Trigger manual sync
+      syncGoogleCalendarMutation.mutate();
     } else {
       console.log(`Configuring ${integrationId}`);
       // This would open configuration modal or redirect to settings

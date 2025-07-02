@@ -2202,17 +2202,17 @@ class DatabaseStorage {
                     id,
                     title,
                     description,
-                    start_datetime as start_time,
-                    end_datetime as end_time,
+                    start_time,
+                    end_time,
                     is_all_day,
-                    location_details as location,
+                    location,
                     meeting_url,
                     status,
-                    created_by,
+                    created_by_entity_id as created_by,
                     created_at,
                     updated_at
                 FROM cortex_scheduling.events 
-                ORDER BY start_datetime DESC
+                ORDER BY start_time DESC
             `);
             return result.rows;
         } catch (error) {
@@ -2227,9 +2227,9 @@ class DatabaseStorage {
             
             const result = await db.execute(sql`
                 INSERT INTO cortex_scheduling.events (
-                    id, title, description, start_datetime, end_datetime, 
-                    location_details, is_all_day, created_by, 
-                    whatsapp_trigger_message_id, status, timezone
+                    id, title, description, start_time, end_time, 
+                    location, is_all_day, created_by_entity_id, 
+                    triggering_message_id, status, timezone
                 ) VALUES (
                     gen_random_uuid(),
                     ${eventData.title},
@@ -2351,29 +2351,24 @@ class DatabaseStorage {
         try {
             const result = await db.execute(sql`
                 INSERT INTO cortex_scheduling.events (
-                    id, title, description, start_datetime, end_datetime,
-                    is_all_day, location_type, location_details, meeting_url,
-                    status, timezone, visibility, external_event_id,
-                    calendar_integration_id, created_by, attendee_emails,
-                    recurrence_rule, whatsapp_trigger_message_id
+                    id, title, description, start_time, end_time,
+                    is_all_day, location_type, location, meeting_url,
+                    status, timezone, external_event_id,
+                    created_by_entity_id, triggering_message_id
                 ) VALUES (
                     gen_random_uuid(),
                     ${eventData.title},
                     ${eventData.description},
                     ${eventData.startTime},
                     ${eventData.endTime},
-                    ${eventData.isAllDay},
+                    ${eventData.isAllDay || false},
                     ${eventData.location ? 'physical' : 'virtual'},
                     ${eventData.location},
                     ${eventData.meetingUrl},
                     ${eventData.status || 'confirmed'},
                     ${eventData.timezone || 'America/Mexico_City'},
-                    ${eventData.visibility || 'default'},
                     ${eventData.externalEventId},
-                    ${eventData.calendarIntegrationId},
-                    ${eventData.createdBy},
-                    ${JSON.stringify(eventData.attendees || [])},
-                    ${JSON.stringify(eventData.recurrence)},
+                    ${eventData.createdBy || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'},
                     ${eventData.whatsappTriggerMessageId}
                 )
                 RETURNING *
