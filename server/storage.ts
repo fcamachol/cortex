@@ -2538,6 +2538,40 @@ class DatabaseStorage {
             return null;
         }
     }
+
+    async getCortexEventByExternalId(externalId: string): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_scheduling.events 
+                WHERE external_event_id = ${externalId}
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error fetching cortex event by external ID:', error);
+            return null;
+        }
+    }
+
+    async updateCortexSchedulingEvent(eventId: string, updates: any): Promise<void> {
+        try {
+            const { title, description, start_datetime, end_datetime, location_details, is_all_day } = updates;
+            await db.execute(sql`
+                UPDATE cortex_scheduling.events 
+                SET 
+                    title = ${title},
+                    description = ${description || ''},
+                    start_datetime = ${start_datetime},
+                    end_datetime = ${end_datetime || start_datetime},
+                    location_details = ${location_details || ''},
+                    is_all_day = ${is_all_day || false},
+                    updated_at = NOW()
+                WHERE id = ${eventId}
+            `);
+        } catch (error) {
+            console.error('Error updating cortex scheduling event:', error);
+            throw error;
+        }
+    }
 }
 
 export const storage = new DatabaseStorage();

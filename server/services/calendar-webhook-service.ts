@@ -56,7 +56,7 @@ export class CalendarWebhookService {
       );
 
       // Get all calendars for this user
-      const calendars = await this.googleCalendarService.getCalendars();
+      const calendars = await this.googleCalendarService.getCalendarList(userId);
       
       // Set up webhook for each calendar
       for (const calendar of calendars) {
