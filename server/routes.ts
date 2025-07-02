@@ -1265,9 +1265,21 @@ export async function registerRoutes(app: Express): Promise<void> {
       // Try to get calendar integration and create in Google Calendar first
       try {
         const integration = await storage.getActiveGoogleCalendarIntegration(userId);
+        console.log('📅 Integration found:', integration ? 'YES' : 'NO');
+        if (integration) {
+          console.log('📅 Integration details:', {
+            id: integration.id,
+            account_name: integration.account_name,
+            hasAccessToken: !!integration.access_token,
+            hasRefreshToken: !!integration.refresh_token
+          });
+        }
         if (integration && integration.access_token) {
           const googleCalendarService = new GoogleCalendarService();
-          await googleCalendarService.setCredentials(integration.access_token, integration.refresh_token);
+          googleCalendarService.setCredentials({
+            accessToken: integration.access_token,
+            refreshToken: integration.refresh_token
+          });
           
           const googleEvent = await googleCalendarService.createCalendarEvent('primary', {
             title: eventData.title,
