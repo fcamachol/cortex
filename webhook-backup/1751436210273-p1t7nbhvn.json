@@ -1,0 +1,22 @@
+{
+  "id": "1751436210273-p1t7nbhvn",
+  "timestamp": "2025-07-02T06:03:30.273Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "messages-upsert",
+  "payload": {
+    "key": {
+      "remoteJid": "5214611239748@s.whatsapp.net",
+      "fromMe": false,
+      "id": "meal-notime-1751436210270"
+    },
+    "message": {
+      "conversation": "almuerzo con mi hermana",
+      "messageTimestamp": 1751436210270
+    },
+    "messageTimestamp": 1751436210270,
+    "pushName": "Test User",
+    "instanceId": "instance-1750433520122"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

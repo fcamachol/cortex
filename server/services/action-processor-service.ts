@@ -253,8 +253,41 @@ export class ActionProcessorService {
   private async processMessageAction(eventData: any) {
     // Check if this is actually a reaction event
     if (eventData.event === 'messages.reaction' || eventData.data?.reaction) {
-      console.log('🎯 Processing reaction event as message action');
-      await this.processReactionAction(eventData);
+      console.log('🎯 Processing reaction event as whatsapp_message trigger');
+      
+      // Extract reaction emoji and message details
+      const reactionEmoji = eventData.data?.reaction?.text;
+      const messageId = eventData.data?.reaction?.key?.id || eventData.data?.key?.id;
+      const instanceName = eventData.instanceName;
+      
+      if (!reactionEmoji || !messageId || !instanceName) {
+        throw new Error(`Missing reaction data: emoji=${reactionEmoji}, messageId=${messageId}, instanceName=${instanceName}`);
+      }
+      
+      // Get the original message for context
+      const message = await this.storage.getWhatsappMessageById(messageId, instanceName);
+      if (!message) {
+        throw new Error(`Message ${messageId} not found for reaction processing`);
+      }
+      
+      // Create context for whatsapp_message trigger
+      const context = {
+        messageId: messageId,
+        instanceName: instanceName,
+        chatId: message.chatId,
+        senderJid: message.senderJid,
+        content: message.content,
+        hashtags: [],
+        keywords: [],
+        timestamp: new Date(),
+        fromMe: message.fromMe,
+        reaction: reactionEmoji,
+        originalSenderJid: message.senderJid,
+        emoji: reactionEmoji
+      };
+      
+      // Use the ActionService triggerAction method for whatsapp_message triggers
+      await this.actionService.triggerAction(instanceName, 'whatsapp_message', reactionEmoji, context);
       return;
     }
     
