@@ -2260,6 +2260,7 @@ class DatabaseStorage {
 
     async getCalendarProviders(): Promise<any[]> {
         try {
+            console.log('🔍 getCalendarProviders: Starting database query...');
             // Return cortex_scheduling calendar integrations with tokens
             const result = await db.execute(sql`
                 SELECT 
@@ -2272,9 +2273,13 @@ class DatabaseStorage {
                     last_sync_at,
                     created_at
                 FROM cortex_scheduling.calendar_integrations 
-                WHERE sync_status = 'connected'
+                WHERE sync_status = 'active'
                 ORDER BY created_at DESC
             `);
+            console.log('🔍 getCalendarProviders: Query result:', {
+                rowCount: result.rows.length,
+                rows: result.rows
+            });
             return result.rows;
         } catch (error) {
             console.error('Error fetching calendar providers:', error);

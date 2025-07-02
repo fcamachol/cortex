@@ -1862,8 +1862,10 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   app.get('/api/calendar/providers', async (req: Request, res: Response) => {
+    console.log('🔄 Calendar providers API route called');
     try {
       // Get calendar integrations and their sub-calendars
+      console.log('🔄 About to call storage.getCalendarProviders()');
       const integrations = await storage.getCalendarProviders();
       console.log(`📅 Found ${integrations.length} calendar integrations`);
       const providers = [];
