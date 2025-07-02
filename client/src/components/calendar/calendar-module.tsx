@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronLeft, ChevronRight, Plus, MoreVertical, Calendar as CalendarIcon, Clock, MapPin, Menu, Search, Settings, Trash2, Edit3, Palette, Users, Video, Paperclip, X, Bell, Repeat, ChevronDown, RotateCcw } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, addDays, subDays, isSameDay, startOfMonth, endOfMonth, isSameMonth, startOfDay, endOfDay } from "date-fns";
+import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -1354,19 +1355,65 @@ export default function CalendarModule() {
                 
                 {/* Day Grid */}
                 <div className="flex-1 overflow-y-auto">
-                  {timeSlots.map((slot, slotIndex) => (
-                    <div key={slotIndex} className="flex border-b border-gray-100">
-                      <div className="w-16 p-2 text-xs text-gray-500 text-right border-r border-gray-200">
-                        {slot.time}
+                  <Droppable droppableId="day-view" type="EVENT">
+                    {(provided) => (
+                      <div ref={provided.innerRef} {...provided.droppableProps}>
+                        {timeSlots.map((slot, slotIndex) => {
+                          // Get events for this hour of the current day
+                          const dayEvents = getEventsForDay(currentDate).filter((event: any) => {
+                            const eventStart = new Date(event.startTime);
+                            return eventStart.getHours() === slot.hour;
+                          });
+
+                          return (
+                            <div key={slotIndex} className="flex border-b border-gray-100">
+                              <div className="w-16 p-2 text-xs text-gray-500 text-right border-r border-gray-200">
+                                {slot.time}
+                              </div>
+                              <div 
+                                className="flex-1 min-h-[60px] cursor-pointer hover:bg-gray-50 transition-colors relative p-1"
+                                onClick={() => handleGridClick(currentDate, slot.hour)}
+                              >
+                                {dayEvents.map((event: any, eventIndex: number) => (
+                                  <Draggable key={event.eventId} draggableId={event.eventId} index={eventIndex}>
+                                    {(provided, snapshot) => (
+                                      <div
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        {...provided.dragHandleProps}
+                                        className={cn(
+                                          "text-xs px-3 py-2 rounded-md cursor-pointer mb-1 truncate flex items-center gap-2",
+                                          event.isTask 
+                                            ? "bg-blue-100 text-blue-800 border border-blue-200" 
+                                            : "text-white",
+                                          snapshot.isDragging && "opacity-50"
+                                        )}
+                                        style={{
+                                          ...provided.draggableProps.style,
+                                          ...(event.isTask ? {} : { backgroundColor: event.color })
+                                        }}
+                                      >
+                                        {event.isTask && (
+                                          <div className="w-3 h-3 rounded-full border-2 border-blue-600 bg-white flex-shrink-0"></div>
+                                        )}
+                                        <span className="flex-1 truncate">{event.title}</span>
+                                        {!event.isAllDay && (
+                                          <span className="text-xs opacity-75">
+                                            {formatInTimeZone(new Date(event.startTime), userTimezone || 'UTC', 'HH:mm')}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {provided.placeholder}
                       </div>
-                      <div 
-                        className="flex-1 min-h-[60px] cursor-pointer hover:bg-gray-50 transition-colors relative"
-                        onClick={() => handleGridClick(currentDate, slot.hour)}
-                      >
-                        {/* Events for this hour would be positioned here */}
-                      </div>
-                    </div>
-                  ))}
+                    )}
+                  </Droppable>
                 </div>
               </div>
             )}
