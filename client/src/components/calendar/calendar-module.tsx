@@ -668,18 +668,24 @@ export default function CalendarModule() {
       const eventStart = new Date(event.startTime);
       const isInDateRange = eventStart >= dayStart && eventStart <= dayEnd;
       
-      // Check if event's calendar is visible
+      // Check if event's calendar is visible using local state
       const calendar = subCalendars?.find((cal: any) => 
         cal.id === event.calendarId || cal.provider === event.provider
       );
-      const isCalendarVisible = calendar ? calendar.visible : true;
+      
+      if (!calendar) return isInDateRange;
+      
+      // Use local visibility state if available, otherwise use default
+      const isCalendarVisible = calendarVisibility.hasOwnProperty(calendar.id) 
+        ? calendarVisibility[calendar.id] 
+        : calendar.visible !== false;
       
       return isInDateRange && isCalendarVisible;
     }).map((event: any) => {
       const calendar = subCalendars?.find((cal: any) => cal.id === event.calendarId || cal.provider === event.provider);
       return {
         ...event,
-        color: calendar ? calendar.color : 'bg-gray-500'
+        color: calendar ? calendar.color : '#9CA3AF'
       };
     });
   };
@@ -876,10 +882,13 @@ export default function CalendarModule() {
   };
 
   // Toggle calendar visibility
+  const [calendarVisibility, setCalendarVisibility] = useState<Record<string, boolean>>({});
+
   const toggleCalendarVisibility = (calendarId: string) => {
-    // Since subCalendars is now from a query, we'll implement backend visibility toggle
-    // For now, this will trigger a refetch to simulate the toggle
-    refetchCalendars();
+    setCalendarVisibility(prev => ({
+      ...prev,
+      [calendarId]: !prev[calendarId]
+    }));
   };
 
   // Filter events by visible calendars
@@ -984,16 +993,21 @@ export default function CalendarModule() {
                 </div>
               </div>
               <div className="space-y-1">
-                {subCalendars?.map((calendar) => {
+                {subCalendars?.map((calendar: any) => {
                   const calendarEventCount = events.filter((event: any) => 
                     event.calendarId === calendar.id || event.provider === calendar.provider
                   ).length;
                   
+                  // Check if calendar is visible (use local state if available, otherwise use default)
+                  const isVisible = calendarVisibility.hasOwnProperty(calendar.id) 
+                    ? calendarVisibility[calendar.id] 
+                    : calendar.visible !== false;
+                  
                   return (
                     <div key={calendar.id} className="flex items-center gap-3 py-2 px-2 rounded hover:bg-gray-50 cursor-pointer group transition-colors" onClick={() => toggleCalendarVisibility(calendar.id)}>
                       <div className="relative">
-                        {calendar.visible ? (
-                          <div className={cn("w-4 h-4 rounded border-2 flex items-center justify-center", calendar.color)}>
+                        {isVisible ? (
+                          <div className="w-4 h-4 rounded border-2 flex items-center justify-center" style={{ backgroundColor: calendar.color, borderColor: calendar.color }}>
                             <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
@@ -1002,9 +1016,9 @@ export default function CalendarModule() {
                           <div className="w-4 h-4 rounded border-2 border-gray-300 bg-white"></div>
                         )}
                       </div>
-                      <div className={cn("w-3 h-3 rounded", calendar.color)}></div>
+                      <div className="w-3 h-3 rounded" style={{ backgroundColor: calendar.color }}></div>
                       <span className={cn("text-sm flex-1 select-none transition-colors", 
-                        calendar.visible ? "text-gray-900" : "text-gray-400"
+                        isVisible ? "text-gray-900" : "text-gray-400"
                       )}>
                         {calendar.name}
                       </span>
