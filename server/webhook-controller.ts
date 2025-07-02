@@ -127,8 +127,9 @@ export const WebhookController = {
             // Queue actions based on event type
             switch (eventType) {
                 case 'messages.reaction':
-                    await actionProcessor.queueAction('reaction', eventData);
-                    console.log(`📨 Queued reaction action for instance: ${instanceName}`);
+                    // Queue as 'message' type to match whatsapp_message trigger in action rules
+                    await actionProcessor.queueAction('message', eventData);
+                    console.log(`📨 Queued reaction action as message type for instance: ${instanceName}`);
                     break;
 
                 case 'messages.upsert':

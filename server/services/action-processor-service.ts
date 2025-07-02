@@ -248,9 +248,16 @@ export class ActionProcessorService {
   }
 
   /**
-   * Process message action (keyword triggers)
+   * Process message action (keyword triggers and reactions)
    */
   private async processMessageAction(eventData: any) {
+    // Check if this is actually a reaction event
+    if (eventData.event === 'messages.reaction' || eventData.data?.reaction) {
+      console.log('🎯 Processing reaction event as message action');
+      await this.processReactionAction(eventData);
+      return;
+    }
+    
     // Keyword triggers disabled to prevent unwanted task creation
     console.log('🚫 Message action processing disabled to prevent spurious task creation');
   }
