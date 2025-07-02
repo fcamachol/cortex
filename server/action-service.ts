@@ -472,15 +472,19 @@ export const ActionService = {
     },
 
     checkUserPermissions(rule: any, context: any): boolean {
+        // Use cortex_automation field names: performer_filter instead of trigger_permission
+        const performerFilter = rule.performer_filter || rule.trigger_permission;
+        
         // If no permission set, default to anyone can trigger
-        if (!rule.trigger_permission) {
+        if (!performerFilter) {
             return true;
         }
         
-        switch (rule.trigger_permission) {
+        switch (performerFilter) {
             case 'anyone':
                 return true;
                 
+            case 'user_only':
             case 'me':
                 // Check if the sender is the rule creator (owner)
                 return context.senderJid === rule.created_by || context.reactorJid === rule.created_by;
