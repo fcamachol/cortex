@@ -1364,8 +1364,9 @@ export default function CalendarModule() {
                         {timeSlots.map((slot, slotIndex) => {
                           // Get events for this hour of the current day
                           const dayEvents = getEventsForDay(currentDate).filter((event: any) => {
-                            const eventStart = new Date(event.startTime);
-                            return eventStart.getHours() === slot.hour;
+                            // Convert event time to user's timezone for proper hour comparison
+                            const eventTimeInUserTz = toZonedTime(new Date(event.startTime), event.timezone || userTimezone);
+                            return eventTimeInUserTz.getHours() === slot.hour;
                           });
 
                           return (
