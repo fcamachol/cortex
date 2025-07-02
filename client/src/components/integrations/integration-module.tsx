@@ -23,19 +23,23 @@ export default function IntegrationModule() {
   // Google Calendar connection mutation
   const connectGoogleCalendarMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('GET', '/api/auth/google/calendar');
-      return response.json();
+      const response = await fetch('/api/calendar/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to get auth URL');
+      const data = await response.json();
+      
+      // Redirect to Google OAuth
+      window.location.href = data.authUrl;
+      return data;
     },
-    onSuccess: (data: any) => {
-      if (data.authUrl) {
-        window.location.href = data.authUrl;
-      }
-    },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
-        title: "Failed to connect Google Calendar",
-        description: error.message || "Could not initiate Google Calendar connection.",
-        variant: "destructive"
+        title: "Connection Failed",
+        description: `Failed to connect to Google Calendar: ${error.message}`,
+        variant: "destructive",
       });
     }
   });
@@ -118,6 +122,8 @@ export default function IntegrationModule() {
       // This would handle the OAuth flow or connection process
     }
   };
+
+
 
   const syncGoogleCalendarMutation = useMutation({
     mutationFn: async () => {

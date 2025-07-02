@@ -2347,6 +2347,35 @@ class DatabaseStorage {
         }
     }
 
+    async getGoogleCalendarIntegrations(): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT 
+                    id,
+                    user_id,
+                    provider_type,
+                    provider_account_id,
+                    account_name,
+                    access_token,
+                    refresh_token,
+                    token_expires_at,
+                    sync_status,
+                    sync_direction,
+                    last_sync_at,
+                    created_at,
+                    updated_at
+                FROM cortex_scheduling.calendar_integrations 
+                WHERE provider_type = 'google' 
+                  AND sync_status = 'active'
+                ORDER BY created_at DESC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error getting Google Calendar integrations:', error);
+            return [];
+        }
+    }
+
     async createCortexSchedulingEvent(eventData: any): Promise<any> {
         try {
             const result = await db.execute(sql`
