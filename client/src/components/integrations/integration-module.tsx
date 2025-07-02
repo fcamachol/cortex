@@ -40,8 +40,8 @@ export default function IntegrationModule() {
 
   // No longer needed - using real data directly in buildIntegrationsFromRealData()
 
-  // Transform real calendar providers into integration format
-  const buildIntegrationsFromRealData = () => {
+  // Always show core integrations: WhatsApp (connected) and Google Calendar (connected/disconnected based on real data)
+  const buildCoreIntegrations = () => {
     const integrations = [
       {
         id: "whatsapp",
@@ -57,49 +57,27 @@ export default function IntegrationModule() {
       }
     ];
 
-    // Add real calendar integrations from database
-    calendarProviders.forEach((provider: any) => {
-      if (provider.provider_type === 'google') {
-        integrations.push({
-          id: "google-calendar",
-          name: "Google Calendar",
-          description: "Calendar Sync",
-          icon: SiGoogle,
-          status: provider.sync_status === 'active' ? "connected" : "disconnected",
-          color: "bg-blue-500",
-          details: {
-            instanceName: provider.account_name || "Not connected", 
-            email: provider.account_name || "Not connected",
-            additionalInfo: provider.sync_status === 'active'
-              ? `Sync status: ${provider.sync_status}. Last sync: ${provider.last_sync_at ? new Date(provider.last_sync_at).toLocaleDateString() : 'Never'}`
-              : "Connect your Google Calendar to sync events and create meetings directly from conversations."
-          } as any
-        });
-      } else if (provider.provider_type === 'outlook') {
-        integrations.push({
-          id: "outlook-calendar",
-          name: "Outlook Calendar", 
-          description: "Microsoft Calendar",
-          icon: SiGoogle, // Will replace with proper Outlook icon
-          status: provider.sync_status === 'active' ? "connected" : "disconnected",
-          color: "bg-blue-600",
-          details: {
-            instanceName: provider.account_name || "Not connected",
-            email: provider.account_name || "Not connected",
-            additionalInfo: provider.sync_status === 'active'
-              ? `Sync status: ${provider.sync_status}. Last sync: ${provider.last_sync_at ? new Date(provider.last_sync_at).toLocaleDateString() : 'Never'}`
-              : "Connect your Outlook Calendar to sync events and create meetings."
-          } as any
-        });
-      }
+    // Always show Google Calendar as a core integration
+    const googleProvider = calendarProviders.find((p: any) => p.provider_type === 'google');
+    integrations.push({
+      id: "google-calendar",
+      name: "Google Calendar",
+      description: "Calendar Sync",
+      icon: SiGoogle,
+      status: googleProvider ? "connected" : "disconnected",
+      color: "bg-blue-500",
+      details: {
+        instanceName: googleProvider?.account_name || "Not connected", 
+        additionalInfo: googleProvider 
+          ? `Sync status: ${googleProvider.sync_status}. Last sync: ${googleProvider.last_sync_at ? new Date(googleProvider.last_sync_at).toLocaleDateString() : 'Never'}`
+          : "Connect your Google Calendar to sync events and create meetings directly from conversations."
+      } as any
     });
-
-    // Add Zapier as static - Don't add to avoid TypeScript errors for now
 
     return integrations;
   };
 
-  const connectedIntegrations = buildIntegrationsFromRealData();
+  const connectedIntegrations = buildCoreIntegrations();
 
   const availableIntegrations = [
     {
