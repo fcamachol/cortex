@@ -80,7 +80,9 @@ export class CalendarWebhookService {
   ): Promise<string> {
     try {
       const channelId = `cal-${nanoid(12)}`;
-      const webhookUrl = `${process.env.REPLIT_DEV_DOMAIN || 'https://localhost:5000'}/api/calendar/webhook`;
+      const webhookUrl = `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS || 'localhost:5000'}/api/calendar/webhook`;
+      
+      console.log(`🔗 Setting up webhook for calendar ${calendarId} with URL: ${webhookUrl}`);
       
       // Create watch request
       const watchRequest = {
