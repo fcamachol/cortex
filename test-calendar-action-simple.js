@@ -28,30 +28,30 @@ async function testCalendarAction() {
         // 2. Simulate direct calendar event creation (test the storage method)
         const testEventData = {
             title: 'Comemos mañana de 2-4 en la casa',
-            start_datetime: '2025-07-03 14:00:00',
-            end_datetime: '2025-07-03 16:00:00',
-            location_details: 'en la casa',
+            start_time: '2025-07-03 14:00:00',
+            end_time: '2025-07-03 16:00:00',
+            location: 'en la casa',
             description: 'Created from WhatsApp automation test',
-            created_by: 'automation-test',
-            event_type: 'meeting',
+            created_by_entity_id: 'automation-test',
+            status: 'confirmed',
             is_all_day: false
         };
         
         console.log('📝 Creating test calendar event...');
         const insertResult = await pool.query(`
             INSERT INTO cortex_scheduling.events (
-                title, start_datetime, end_datetime, location_details, 
-                description, created_by, event_type, is_all_day
+                title, start_time, end_time, location, 
+                description, created_by_entity_id, status, is_all_day
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            RETURNING id, title, start_datetime, end_datetime
+            RETURNING id, title, start_time, end_time
         `, [
             testEventData.title,
-            testEventData.start_datetime,
-            testEventData.end_datetime,
-            testEventData.location_details,
+            testEventData.start_time,
+            testEventData.end_time,
+            testEventData.location,
             testEventData.description,
-            testEventData.created_by,
-            testEventData.event_type,
+            testEventData.created_by_entity_id,
+            testEventData.status,
             testEventData.is_all_day
         ]);
         

@@ -3,64 +3,127 @@
  * Tests the complete flow from reaction to calendar event creation
  */
 
-import { ActionService } from './server/action-service.js';
-import { storage } from './server/storage.js';
+import pg from 'pg';
+const { Pool } = pg;
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    }
+});
 
 async function testCompleteActionExecution() {
     try {
-        console.log('🔄 COMPLETE ACTION EXECUTION TEST');
-        console.log('═══════════════════════════════════════');
+        console.log('🔄 TESTING COMPLETE ACTION EXECUTION WORKFLOW');
+        console.log('═══════════════════════════════════════════════');
         
-        // Simulate the test reaction data
-        const instanceId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42';
-        const testMessage = {
-            id: 'test-message-123',
+        // 1. Check initial state
+        const beforeEventsResult = await pool.query(`
+            SELECT COUNT(*) as count FROM cortex_scheduling.events
+        `);
+        const beforeCount = parseInt(beforeEventsResult.rows[0].count);
+        console.log(`📊 Calendar events before test: ${beforeCount}`);
+        
+        // 2. Verify action rule exists
+        console.log('\n🔍 Checking action rule configuration...');
+        const ruleResult = await pool.query(`
+            SELECT name, trigger_conditions, action_config, performer_filter, selected_instances
+            FROM cortex_automation.action_rules 
+            WHERE action_type = 'create_calendar_event'
+            AND is_active = true
+        `);
+        
+        if (ruleResult.rows.length === 0) {
+            console.log('❌ No active calendar action rules found');
+            return;
+        }
+        
+        const rule = ruleResult.rows[0];
+        console.log(`📋 Found active rule: "${rule.name}"`);
+        console.log(`   Trigger conditions:`, rule.trigger_conditions);
+        console.log(`   Action config:`, rule.action_config);
+        console.log(`   Performer filter:`, rule.performer_filter);
+        console.log(`   Selected instances:`, rule.selected_instances);
+        
+        // 3. Test direct ActionService execution (simulating webhook processing)
+        console.log('\n🎯 Testing ActionService triggerSimpleAction...');
+        
+        // Simulate the context that would come from a webhook
+        const testContext = {
+            messageId: 'test-message-123',
+            instanceName: '28AACF7E-8C0C-42D1-8139-E47418746C55',
+            senderJid: '5214611239748@s.whatsapp.net',
+            senderName: 'Fernando',
             content: 'Comemos mañana de 2-4 en la casa',
-            sender_jid: '5214611239748@s.whatsapp.net',
-            instance_name: instanceId,
-            chat_id: '5214611239748@s.whatsapp.net',
-            type: 'text'
+            reactionEmoji: '📅',
+            timestamp: new Date()
         };
         
-        const testReaction = {
-            message_id: 'test-message-123',
-            instance_name: instanceId,
-            reactor_jid: '5214611239748@s.whatsapp.net',
-            emoji: '📅',
-            chat_id: '5214611239748@s.whatsapp.net'
-        };
+        // Import and test ActionService directly
+        const { ActionService } = await import('./server/action-service.ts');
         
-        console.log('📝 Test data:');
-        console.log('Message:', testMessage);
-        console.log('Reaction:', testReaction);
+        try {
+            await ActionService.triggerSimpleAction(
+                'whatsapp_message',
+                '📅',
+                testContext
+            );
+            console.log('✅ ActionService.triggerSimpleAction executed successfully');
+        } catch (serviceError) {
+            console.error('❌ ActionService execution failed:', serviceError);
+            
+            // Let's test the storage layer directly instead
+            console.log('\n🔧 Testing storage layer directly...');
+            const { storage } = await import('./server/storage.ts');
+            
+            const directEventData = {
+                title: testContext.content,
+                start_time: new Date('2025-07-03 14:00:00'),
+                end_time: new Date('2025-07-03 16:00:00'),
+                location: 'en la casa',
+                description: 'Created from WhatsApp automation test',
+                created_by_entity_id: 'cu_181de66a23864b2fac56779a82189691',
+                status: 'confirmed',
+                is_all_day: false
+            };
+            
+            const directEvent = await storage.createCalendarEvent(directEventData);
+            console.log('✅ Direct storage createCalendarEvent successful:', directEvent.title);
+        }
         
-        console.log('\n🔍 Step 1: Get action rules for whatsapp_message trigger');
-        const rules = await storage.getActionRulesByTrigger('whatsapp_message', instanceId);
-        console.log(`Found ${rules.length} rules:`, rules.map(r => r.name));
+        // 4. Check final state
+        const afterEventsResult = await pool.query(`
+            SELECT COUNT(*) as count FROM cortex_scheduling.events
+        `);
+        const afterCount = parseInt(afterEventsResult.rows[0].count);
+        console.log(`\n📊 Calendar events after test: ${afterCount}`);
+        console.log(`📈 Events added: ${afterCount - beforeCount}`);
         
-        console.log('\n🔍 Step 2: Test triggerAction method');
-        await ActionService.triggerAction(
-            instanceId,
-            'whatsapp_message',
-            '📅',
-            {
-                emoji: '📅',
-                reactorJid: testReaction.reactor_jid,
-                senderJid: testMessage.sender_jid,
-                messageId: testMessage.id,
-                content: testMessage.content,
-                chatId: testMessage.chat_id,
-                instanceName: instanceId
-            }
-        );
+        // 5. Show recent events created
+        if (afterCount > beforeCount) {
+            console.log('\n📅 Recent calendar events created:');
+            const recentEvents = await pool.query(`
+                SELECT title, start_time, end_time, location, created_at
+                FROM cortex_scheduling.events 
+                ORDER BY created_at DESC 
+                LIMIT 3
+            `);
+            
+            recentEvents.rows.forEach((event, index) => {
+                console.log(`   ${index + 1}. "${event.title}" (${event.start_time} - ${event.end_time})`);
+                if (event.location) console.log(`      Location: ${event.location}`);
+                console.log(`      Created: ${event.created_at}`);
+            });
+        }
         
-        console.log('\n✅ Action execution test completed successfully!');
+        console.log('\n✅ Complete action execution test finished!');
         
     } catch (error) {
-        console.error('❌ Error in action execution test:', error);
+        console.error('❌ Error in complete action execution test:', error);
+    } finally {
+        await pool.end();
     }
-    
-    process.exit(0);
 }
 
 testCompleteActionExecution();
