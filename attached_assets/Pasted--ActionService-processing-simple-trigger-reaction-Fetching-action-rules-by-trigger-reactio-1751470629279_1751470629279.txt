@@ -1,0 +1,54 @@
+🧠 ActionService processing simple trigger: reaction -> 📅
+Fetching action rules by trigger: reaction
+Found 4 reaction rules
+🔍 Found 4 potential rules for reaction
+⏭️  Skipping rule "Bill Payable from 💳" - reaction 📅 not in allowed list
+⏭️  Skipping rule "Bill Receivable from 🧾" - reaction 📅 not in allowed list
+⏭️  Skipping rule "Personal task from  ✔️ reaction" - reaction 📅 not in allowed list
+🔒 Checking performer filter: reactorJid=15103165094@s.whatsapp.net, instanceName=live-test-1750199771
+✅ Performer filter passed: 15103165094@s.whatsapp.net is the owner of live-test-1750199771
+🎯 Found 1 matching rules after filtering
+⚡ Executing simple action rule: Calendar Event for me
+🎯 Executing simple action: create_calendar_event for rule: Calendar Event for me
+🧠 Running NLP parsing with calendar parser for content: "Nos vemos hoy a las 3 pm por meet..."
+🧠 NLP parsing message: "Nos vemos hoy a las 3 pm por meet" with parser: calendar
+🧠 Detected language: es
+🧠 Meet invite analysis: virtual=true, team=false, attendees=false, physical=false
+🧠 Calendar event parsed: title="Nos vemos hoy a las 3 pm por meet", startTime=Invalid Date, location="undefined", meetInvite=true, confidence=0.9999999999999999
+🧠 NLP parsing result: {
+  title: 'Nos vemos hoy a las 3 pm por meet',
+  description: undefined,
+  startTime: Invalid Date,
+  endTime: 2025-07-02T03:00:00.000Z,
+  duration: undefined,
+  location: undefined,
+  attendees: [],
+  shouldCreateMeetInvite: true,
+  confidence: 0.9999999999999999
+}
+🧠 Creating enhanced calendar event with NLP data: {
+  title: 'Nos vemos hoy a las 3 pm por meet',
+  description: undefined,
+  startTime: Invalid Date,
+  endTime: 2025-07-02T03:00:00.000Z,
+  duration: undefined,
+  location: undefined,
+  attendees: [],
+  shouldCreateMeetInvite: true,
+  confidence: 0.9999999999999999
+}
+❌ Error creating enhanced calendar event: RangeError: Invalid time value
+    at Date.toISOString (<anonymous>)
+    at Object.createEnhancedCalendarAction (/home/runner/workspace/server/action-service.ts:310:63)
+    at Object.executeSimpleAction (/home/runner/workspace/server/action-service.ts:234:28)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.triggerSimpleAction (/home/runner/workspace/server/action-service.ts:156:21)
+    at async Object.processReaction (/home/runner/workspace/server/action-service.ts:62:13)
+❌ Error executing rule Calendar Event for me: RangeError: Invalid time value
+    at Date.toISOString (<anonymous>)
+    at Object.createEnhancedCalendarAction (/home/runner/workspace/server/action-service.ts:310:63)
+    at Object.executeSimpleAction (/home/runner/workspace/server/action-service.ts:234:28)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.triggerSimpleAction (/home/runner/workspace/server/action-service.ts:156:21)
+    at async Object.processReaction (/home/runner/workspace/server/action-service.ts:62:13)
+✅ Saving action execution for rule undefined: failure

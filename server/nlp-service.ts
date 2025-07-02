@@ -1,5 +1,10 @@
 import { parse, isValid } from 'date-fns';
 import { es, enUS } from 'date-fns/locale';
+import * as chrono from 'chrono-node';
+import * as franc from 'franc';
+import * as compromise from 'compromise';
+import * as natural from 'natural';
+import * as Currency from 'currency.js';
 
 interface ParsedTask {
   title: string;
@@ -305,112 +310,122 @@ export class NLPService {
   }
 
   private extractEventTiming(content: string, language: 'es' | 'en'): { startTime?: Date, endTime?: Date, duration?: number } {
-    // First, check for time ranges like "de 2-4", "from 2 to 4", "2-4pm"
-    const rangePatterns = [
-      /de\s*(\d{1,2})\s*[-–]\s*(\d{1,2})/gi,  // Spanish: "de 2-4"
-      /from\s*(\d{1,2})\s*to\s*(\d{1,2})/gi,  // English: "from 2 to 4"
-      /(\d{1,2})\s*[-–]\s*(\d{1,2})\s*(am|pm)?/gi  // General: "2-4pm"
-    ];
-
-    for (const pattern of rangePatterns) {
-      const match = content.match(pattern);
-      if (match) {
-        try {
-          let startHour = parseInt(match[1]);
-          let endHour = parseInt(match[2]);
-          const period = match[3]?.toLowerCase();
-
-          // Handle PM period for both times
-          if (period === 'pm' && startHour !== 12) {
-            startHour += 12;
-            endHour += 12;
-          }
-
-          const startTime = new Date();
-          startTime.setHours(startHour, 0, 0, 0);
-          
-          const endTime = new Date();
-          endTime.setHours(endHour, 0, 0, 0);
-
-          // Calculate duration from the range
-          const durationMinutes = (endHour - startHour) * 60;
-
-          console.log(`🕐 Time range detected: ${startHour}:00 - ${endHour}:00 (${durationMinutes} minutes)`);
-          
-          return {
-            startTime,
-            endTime,
-            duration: durationMinutes
-          };
-        } catch (error) {
-          console.log(`❌ Error parsing time range: ${error}`);
-        }
+    console.log(`🕐 Parsing time from: "${content}" (${language})`);
+    
+    // Use chrono-node for robust natural language time parsing
+    try {
+      // Create locale-specific chrono parser
+      const chronoLocale = language === 'es' ? chrono.es : chrono.en;
+      
+      // Parse all dates/times from the content
+      const results = chronoLocale.parse(content, new Date(), { forwardDate: true });
+      console.log(`🕐 Chrono found ${results.length} time references:`, results.map(r => r.text));
+      
+      if (results.length === 0) {
+        console.log(`🕐 No time patterns found with chrono, falling back to manual patterns`);
+        return this.extractTimeFallback(content, language);
       }
-    }
 
-    // If no range found, extract individual time patterns like "a las 3pm", "at 3pm", "15:30"
+      // Use the first result as primary time
+      const firstResult = results[0];
+      const startTime = firstResult.start.date();
+      
+      // Check if there's an end time in the same result
+      let endTime: Date | undefined;
+      let duration: number | undefined;
+      
+      if (firstResult.end) {
+        endTime = firstResult.end.date();
+        duration = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+        console.log(`🕐 Time range detected: ${startTime.toLocaleTimeString()} - ${endTime.toLocaleTimeString()} (${duration} minutes)`);
+      } else {
+        // Look for duration patterns in the text
+        duration = this.extractDuration(content, language);
+        if (duration) {
+          endTime = new Date(startTime.getTime() + duration * 60000);
+        }
+        console.log(`🕐 Single time detected: ${startTime.toLocaleTimeString()}, duration: ${duration || 'none'} minutes`);
+      }
+
+      return {
+        startTime,
+        endTime,
+        duration
+      };
+    } catch (error) {
+      console.log(`❌ Error in chrono parsing: ${error}, falling back to manual patterns`);
+      return this.extractTimeFallback(content, language);
+    }
+  }
+
+  private extractTimeFallback(content: string, language: 'es' | 'en'): { startTime?: Date, endTime?: Date, duration?: number } {
+    // Fallback to manual patterns for edge cases
     const timePatterns = [
       /(\d{1,2}):(\d{2})/g,
       /(\d{1,2})\s*(am|pm)/gi,
-      /a\s*las\s*(\d{1,2})/gi,
-      /at\s*(\d{1,2})/gi
+      /a\s*las\s*(\d{1,2})\s*(pm|am)?/gi,
+      /at\s*(\d{1,2})\s*(pm|am)?/gi
     ];
 
-    const times: Date[] = [];
-    
     for (const pattern of timePatterns) {
-      const matches = [...content.matchAll(pattern)];
+      const matches = Array.from(content.matchAll(pattern));
       for (const match of matches) {
         try {
           let hour = parseInt(match[1]);
-          let minute = match[2] ? parseInt(match[2]) : 0;
+          let minute = match[2] && !isNaN(parseInt(match[2])) ? parseInt(match[2]) : 0;
+          const period = (match[3] || match[2])?.toLowerCase();
           
-          if (match[3] && match[3].toLowerCase() === 'pm' && hour !== 12) {
+          if (period === 'pm' && hour !== 12) {
             hour += 12;
+          } else if (period === 'am' && hour === 12) {
+            hour = 0;
           }
           
           const time = new Date();
           time.setHours(hour, minute, 0, 0);
-          times.push(time);
+          
+          const duration = this.extractDuration(content, language) || 60;
+          const endTime = new Date(time.getTime() + duration * 60000);
+          
+          console.log(`🕐 Fallback pattern matched: ${hour}:${minute.toString().padStart(2, '0')}, duration: ${duration} minutes`);
+          
+          return {
+            startTime: time,
+            endTime,
+            duration
+          };
         } catch (error) {
           continue;
         }
       }
     }
 
-    // Extract duration patterns like "1 hora", "30 minutos", "2 hours"
+    return { duration: 60 }; // Default duration if no time found
+  }
+
+  private extractDuration(content: string, language: 'es' | 'en'): number | undefined {
     const durationPatterns = [
       /(\d+)\s*(horas?|hours?)/gi,
-      /(\d+)\s*(minutos?|minutes?|mins?)/gi
+      /(\d+)\s*(minutos?|minutes?|mins?)/gi,
+      /(\d+)\s*(h|hr)/gi,
+      /(\d+)\s*(m|min)/gi
     ];
 
-    let duration: number | undefined;
-    
     for (const pattern of durationPatterns) {
       const match = content.match(pattern);
       if (match) {
         const value = parseInt(match[1]);
         const unit = match[2].toLowerCase();
         
-        if (unit.includes('hora') || unit.includes('hour')) {
-          duration = value * 60;
+        if (unit.includes('hora') || unit.includes('hour') || unit === 'h' || unit === 'hr') {
+          return value * 60;
         } else {
-          duration = value;
+          return value;
         }
-        break;
       }
     }
 
-    // Default to 60 minutes if no duration detected and only one time found
-    if (!duration && times.length === 1) {
-      duration = 60;
-    }
-
-    return {
-      startTime: times[0],
-      endTime: times[1],
-      duration
-    };
+    return undefined;
   }
 
   private extractLocation(content: string, language: 'es' | 'en'): string | undefined {
