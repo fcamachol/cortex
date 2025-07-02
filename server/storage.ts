@@ -780,7 +780,7 @@ class DatabaseStorage {
                     ${payableData.amount || 0},
                     ${payableData.bill_date || new Date().toISOString().split('T')[0]},
                     ${payableData.due_date || new Date().toISOString().split('T')[0]},
-                    ${payableData.status || 'draft'},
+                    ${payableData.status || 'unpaid'},
                     ${'7804247f-3ae8-4eb2-8c6d-2c44f967ad42'}
                 )
                 RETURNING *
@@ -803,7 +803,7 @@ class DatabaseStorage {
             amount: billData.amount || 0,
             bill_date: billData.billDate || new Date().toISOString().split('T')[0],
             due_date: billData.dueDate || new Date().toISOString().split('T')[0],
-            status: billData.status || 'pending',
+            status: billData.status || 'unpaid', // Changed from 'pending' to 'unpaid' to match constraint
             category: billData.category || 'General',
             created_by_entity_id: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'
         };

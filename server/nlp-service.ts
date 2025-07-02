@@ -469,20 +469,20 @@ export class NLPService {
     
     // Enhanced patterns for Spanish bill descriptions
     const vendorPatterns = [
-      // "Pago 1900 Lalo Costco" → "Lalo"
-      /(?:pago|payment)\s+\d+[\d.,]*\s+([A-Za-z]+)(?:\s+([A-Za-z]+))?/gi,
+      // "Pago 1900 a Lalo Costco" → "Lalo"
+      /(?:pago|payment)\s+\d+[\d.,]*\s+(?:a\s+)?([A-Za-zÁÉÍÓÚáéíóúÑñ]+)(?:\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+))?/gi,
       // "Pagar a Juan", "pay to John"
-      /(?:pagar\s+a|pay\s+to)\s+(.+?)(?:\s|$|[,.])/gi,
+      /(?:pagar\s+a|pay\s+to)\s+([A-Za-zÁÉÍÓÚáéíóúÑñ\s]+?)(?:\s|$|[,.])/gi,
       // "Bill from Costco", "Factura de Walmart"
-      /(?:bill\s+from|factura\s+de)\s+(.+?)(?:\s|$|[,.])/gi,
+      /(?:bill\s+from|factura\s+de)\s+([A-Za-zÁÉÍÓÚáéíóúÑñ\s]+?)(?:\s|$|[,.])/gi,
       // "Juan factura", "Costco bill"
-      /(.+?)(?:\s+factura|\s+bill)/gi
+      /([A-Za-zÁÉÍÓÚáéíóúÑñ\s]+?)(?:\s+factura|\s+bill)/gi
     ];
 
     for (const pattern of vendorPatterns) {
-      const match = content.match(pattern);
+      const match = pattern.exec(content);
       if (match) {
-        // For "Pago 1900 Lalo Costco" pattern, prefer the first name after amount
+        // For "Pago 1900 a Lalo Costco" pattern, prefer the first name after amount
         if (pattern.source.includes('pago|payment')) {
           const vendor = match[1]?.trim();
           if (vendor && vendor.length > 1 && vendor.length < 50) {
@@ -500,7 +500,7 @@ export class NLPService {
     }
     
     // Enhanced fallback: skip payment words and amounts, find meaningful vendor name
-    const paymentWords = ['pago', 'payment', 'bill', 'factura', 'pay', 'pagar'];
+    const paymentWords = ['pago', 'payment', 'bill', 'factura', 'pay', 'pagar', 'a'];
     const words = content.split(/\s+/)
       .filter(word => word.length > 2)
       .filter(word => !paymentWords.includes(word.toLowerCase()))

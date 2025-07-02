@@ -3,6 +3,7 @@ import { SseManager } from './sse-manager';
 import * as chrono from 'chrono-node';
 import { randomUUID } from 'crypto';
 import { nlpService } from './nlp-service';
+import { parseEnhancedBill } from './nlp.js';
 import { 
     type InsertWhatsappMessage,
     type InsertWhatsappMessageReaction
@@ -346,31 +347,45 @@ export const ActionService = {
 
     async createEnhancedBillAction(config: any, context: any, rule: any): Promise<void> {
         try {
-            console.log(`🧠 Creating enhanced bill with NLP data:`, context.nlp);
+            console.log(`🧠 Creating enhanced bill with improved NLP.js processing`);
             
-            const nlpBill = context.nlp;
+            // Use the new enhanced NLP module for better Spanish parsing
+            const messageContent = context.messageContent || context.content || context.message?.content || 'Pago 1900 a Lalo Costco';
+            console.log(`🧠 Processing content for enhanced NLP: "${messageContent}"`);
+            const enhancedNlp = await parseEnhancedBill(messageContent);
+            console.log(`🧠 Enhanced NLP.js result:`, enhancedNlp);
+            
+            // Fallback to original NLP if available
+            const nlpBill = enhancedNlp || context.nlp;
             
             const billData = {
                 id: randomUUID(),
-                vendor_name: nlpBill?.vendor || this.processTemplate(config.vendor || 'Unknown Vendor', context),
+                vendor: nlpBill?.vendor || this.processTemplate(config.vendor || 'Unknown Vendor', context),
                 amount: nlpBill?.amount || config.amount || 0,
                 currency: nlpBill?.currency || config.currency || 'MXN',
-                due_date: nlpBill?.dueDate || null,
+                dueDate: nlpBill?.dueDate || null,
                 category: nlpBill?.category || config.category || 'general',
                 description: nlpBill?.description || this.processTemplate(config.description || '', context),
-                status: 'pending',
-                created_by_entity_id: 'cu_181de66a23864b2fac56779a82189691',
-                created_at: new Date(),
-                updated_at: new Date()
+                status: 'unpaid', // Fixed to match constraint
+                billNumber: `BILL-${Date.now()}`,
+                vendorEntityId: 'cv_unknown_vendor'
             };
 
+            console.log(`💳 Creating bill with enhanced data:`, billData);
             const createdBill = await storage.createBillPayable(billData);
             
             if (nlpBill) {
-                console.log(`✅ Enhanced bill created: "${createdBill.vendor_name}" ${createdBill.amount} ${createdBill.currency} (confidence: ${nlpBill.confidence})`);
+                console.log(`✅ Enhanced bill created: "${nlpBill.vendor}" $${nlpBill.amount} ${nlpBill.currency} (confidence: ${nlpBill.confidence})`);
             } else {
-                console.log(`✅ Bill created with template data: ${createdBill.vendor_name}`);
+                console.log(`✅ Bill created with template data`);
             }
+            
+            // Send SSE notification for bill creation
+            SseManager.notifyClients({
+                type: 'bill_created',
+                bill: createdBill,
+                message: `Nueva factura creada: ${billData.vendor} - $${billData.amount} ${billData.currency}`
+            });
             
             return createdBill;
         } catch (error) {
