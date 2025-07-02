@@ -1223,7 +1223,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const events = await storage.getCalendarEvents();
       
-      // Transform database fields to frontend-expected format
+      // Transform database fields to frontend-expected format with subcalendar information
       const transformedEvents = events.map(event => ({
         eventId: event.id,
         title: event.title,
@@ -1232,14 +1232,18 @@ export async function registerRoutes(app: Express): Promise<void> {
         endTime: event.end_time,
         location: event.location,
         isAllDay: event.is_all_day,
-        provider: 'google_calendar',
+        provider: event.calendar_provider || 'google_calendar',
         providerEventId: event.provider_event_id || event.id,
         metadata: event.metadata || {},
-        calendarId: event.calendar_id || 'personal',
+        calendarId: event.calendar_id || event.subcalendar_id || 'personal',
         status: event.status,
         createdBy: event.created_by,
         createdAt: event.created_at,
-        updatedAt: event.updated_at
+        updatedAt: event.updated_at,
+        // Subcalendar information for better organization
+        subcalendarName: event.subcalendar_name,
+        subcalendarColor: event.subcalendar_color,
+        subcalendarId: event.subcalendar_id
       }));
       
       res.json(transformedEvents);
