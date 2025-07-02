@@ -121,11 +121,24 @@ export default function CalendarModule() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isCreateCalendarOpen, setIsCreateCalendarOpen] = useState(false);
   const [selectedCalendarForMenu, setSelectedCalendarForMenu] = useState<string | null>(null);
+  // Helper function to get current time in HH:MM format
+  const getCurrentTime = () => {
+    const now = new Date();
+    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  };
+
+  // Helper function to get time one hour from now
+  const getOneHourLater = () => {
+    const now = new Date();
+    now.setHours(now.getHours() + 1);
+    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  };
+
   const [newEvent, setNewEvent] = useState({
     title: '',
     description: '',
-    startTime: '',
-    endTime: '',
+    startTime: getCurrentTime(),
+    endTime: getOneHourLater(),
     location: '',
     isAllDay: false,
     calendarId: 'personal',
@@ -775,40 +788,64 @@ export default function CalendarModule() {
       return;
     }
 
-    let startDateTime = new Date();
-    let endDateTime = null;
+    try {
+      let startDateTime = new Date();
+      let endDateTime = null;
 
-    if (selectedDate) {
-      startDateTime = new Date(selectedDate);
+      if (selectedDate) {
+        startDateTime = new Date(selectedDate);
+      }
+
+      // Set default times if not provided
+      if (newEvent.startTime && newEvent.startTime.trim() !== '' && !newEvent.isAllDay) {
+        const [hours, minutes] = newEvent.startTime.split(':');
+        startDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+      } else if (!newEvent.isAllDay) {
+        // Default to current hour if no time specified
+        const now = new Date();
+        startDateTime.setHours(now.getHours(), 0, 0, 0);
+      }
+
+      if (newEvent.endTime && newEvent.endTime.trim() !== '' && !newEvent.isAllDay) {
+        const [hours, minutes] = newEvent.endTime.split(':');
+        endDateTime = new Date(startDateTime);
+        endDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+      } else {
+        // Default to 1 hour after start time
+        endDateTime = new Date(startDateTime.getTime() + (60 * 60 * 1000));
+      }
+
+      console.log('Creating event with data:', {
+        title: newEvent.title,
+        startTime: startDateTime.toISOString(),
+        endTime: endDateTime.toISOString(),
+        isAllDay: newEvent.isAllDay
+      });
+
+      createEventMutation.mutate({
+        title: newEvent.title,
+        description: newEvent.description,
+        startTime: startDateTime.toISOString(),
+        endTime: endDateTime.toISOString(),
+        location: newEvent.location,
+        isAllDay: newEvent.isAllDay,
+        calendarId: newEvent.calendarId,
+        guests: newEvent.guests || [],
+        hasGoogleMeet: newEvent.hasGoogleMeet || false,
+        meetLink: newEvent.meetLink || '',
+        attachments: newEvent.attachments || [],
+        availability: newEvent.availability || 'busy',
+        visibility: newEvent.visibility || 'default',
+        notifications: newEvent.notifications || [10]
+      });
+    } catch (error) {
+      console.error('Error creating event:', error);
+      toast({
+        title: "Failed to create event",
+        description: "There was an error processing the event data. Please check your inputs and try again.",
+        variant: "destructive"
+      });
     }
-
-    if (newEvent.startTime && !newEvent.isAllDay) {
-      const [hours, minutes] = newEvent.startTime.split(':');
-      startDateTime.setHours(parseInt(hours), parseInt(minutes));
-    }
-
-    if (newEvent.endTime && !newEvent.isAllDay) {
-      const [hours, minutes] = newEvent.endTime.split(':');
-      endDateTime = new Date(startDateTime);
-      endDateTime.setHours(parseInt(hours), parseInt(minutes));
-    }
-
-    createEventMutation.mutate({
-      title: newEvent.title,
-      description: newEvent.description,
-      startTime: startDateTime.toISOString(),
-      endTime: endDateTime ? endDateTime.toISOString() : null,
-      location: newEvent.location,
-      isAllDay: newEvent.isAllDay,
-      calendarId: newEvent.calendarId,
-      guests: newEvent.guests,
-      hasGoogleMeet: newEvent.hasGoogleMeet,
-      meetLink: newEvent.meetLink,
-      attachments: newEvent.attachments,
-      availability: newEvent.availability,
-      visibility: newEvent.visibility,
-      notifications: newEvent.notifications
-    });
   };
 
   // Handle create task form submission
