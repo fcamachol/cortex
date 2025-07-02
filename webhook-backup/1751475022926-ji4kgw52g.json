@@ -1,0 +1,47 @@
+{
+  "id": "1751475022926-ji4kgw52g",
+  "timestamp": "2025-07-02T16:50:22.926Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages-upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "live-test-1750199771",
+    "data": {
+      "key": {
+        "remoteJid": "5215579188699@s.whatsapp.net",
+        "fromMe": false,
+        "id": "3A57184FD3C0C4154E03"
+      },
+      "pushName": "F.C.",
+      "status": "DELIVERY_ACK",
+      "message": {
+        "messageContextInfo": {
+          "deviceListMetadata": {
+            "senderKeyHash": "GIAVj458BiAN1g==",
+            "senderTimestamp": "1750433542",
+            "recipientKeyHash": "MBCozQX4V6vlWg==",
+            "recipientTimestamp": "1750669644"
+          },
+          "deviceListMetadataVersion": 2,
+          "messageSecret": "s2v6Xu/No0mQjRUK8jGV66C9w9J06HgpePqrWRjd+Pk="
+        },
+        "conversation": "*Pagos pendientes junio  *\n- tarjeta lisi fecha límite 7 junio pago para no generar intereses: $80,120\n- ⁠club se debe nov, dic, enero, feb, marzo, abril , mayo , jun 156,700( si puedes depositar algo aunque sea para no ir acumulando) \n- ⁠Crédito: vence 4 de junio  se debe marzo y abril y mayo, junio   $93,380\n- ⁠colegiatura bella 6,600 \n- ⁠agua casa venció en mayo hay que pagarla $ 1,616\n- ⁠mantenimiento lomas 2,700\n- ⁠Braulio 600"
+      },
+      "contextInfo": {
+        "forwardingScore": 1,
+        "isForwarded": true
+      },
+      "messageType": "conversation",
+      "messageTimestamp": 1751475022,
+      "instanceId": "c5215849-bfb9-413c-aa94-dfa911c8310a",
+      "source": "ios"
+    },
+    "destination": "https://cf94481b-abb0-462d-99ce-66c0beae05d0-00-25qqlo4pnl49g.worf.replit.dev/api/evolution/webhook/live-test-1750199771",
+    "date_time": "2025-07-02T13:50:22.752Z",
+    "sender": "15103165094@s.whatsapp.net",
+    "server_url": "https://evolution-api-evolution-api.vuswn0.easypanel.host",
+    "apikey": "119FA240-45ED-46A7-AE13-5A1B7C909D7D"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
