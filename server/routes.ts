@@ -1259,8 +1259,20 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Google Calendar OAuth flow
-  app.get('/api/auth/google/calendar', async (req: Request, res: Response) => {
+  // Google Calendar OAuth flow - Support both GET and POST
+  app.get('/api/calendar/auth/google', async (req: Request, res: Response) => {
+    try {
+      const { googleCalendarService } = await import('./google-calendar-service');
+      const authUrl = googleCalendarService.getAuthUrl();
+      console.log('🚀 Generated OAuth URL:', authUrl);
+      res.json({ authUrl });
+    } catch (error) {
+      console.error('Error getting Google auth URL:', error);
+      res.status(500).json({ error: 'Failed to get Google auth URL' });
+    }
+  });
+
+  app.post('/api/calendar/auth/google', async (req: Request, res: Response) => {
     try {
       const { googleCalendarService } = await import('./google-calendar-service');
       const authUrl = googleCalendarService.getAuthUrl();

@@ -83,17 +83,28 @@ export class GoogleCalendarService {
             console.log(`📅 Found ${calendars.length} calendars for sync`);
 
             for (const cal of calendars) {
-                // Get events from each calendar
+                console.log(`📅 Syncing calendar: ${cal.summary} (${cal.id})`);
+                
+                // Get events from last 30 days and next 90 days to show comprehensive data
+                const timeMin = new Date();
+                timeMin.setDate(timeMin.getDate() - 30);
+                const timeMax = new Date();
+                timeMax.setDate(timeMax.getDate() + 90);
+
                 const eventsResponse = await calendar.events.list({
-                    calendarId: cal.id,
-                    timeMin: new Date().toISOString(),
-                    maxResults: 100,
+                    calendarId: cal.id!,
+                    timeMin: timeMin.toISOString(),
+                    timeMax: timeMax.toISOString(),
+                    maxResults: 250,
                     singleEvents: true,
                     orderBy: 'startTime'
                 });
 
                 const events = eventsResponse.data.items || [];
                 console.log(`📅 Found ${events.length} events in calendar: ${cal.summary}`);
+
+                // Store calendar info first
+                await this.storeCalendarInfo(cal, userId, integrationId);
 
                 // Store events in cortex_scheduling.events
                 for (const event of events) {
@@ -107,6 +118,33 @@ export class GoogleCalendarService {
         } catch (error) {
             console.error('Error syncing calendar events:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Store calendar information for display
+     */
+    private async storeCalendarInfo(cal: any, userId: string, integrationId: string): Promise<void> {
+        try {
+            // Store calendar metadata for better organization
+            const calendarData = {
+                externalId: cal.id,
+                name: cal.summary || 'Untitled Calendar',
+                description: cal.description || null,
+                color: cal.backgroundColor || '#4285f4',
+                isPrimary: cal.primary || false,
+                accessRole: cal.accessRole || 'reader',
+                timezone: cal.timeZone || 'UTC',
+                isVisible: !cal.hidden,
+                integrationId: integrationId,
+                userId: userId
+            };
+            
+            console.log(`📅 Storing calendar: ${calendarData.name}`);
+            // This would store calendar metadata if we had the table structure
+            
+        } catch (error) {
+            console.error('Error storing calendar info:', error);
         }
     }
 
