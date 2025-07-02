@@ -1,0 +1,34 @@
+{
+  "id": "1751471798345-qrvsj2wzh",
+  "timestamp": "2025-07-02T15:56:38.345Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages-upsert",
+  "payload": {
+    "data": {
+      "instanceId": "c5215849-bfb9-413c-aa94-dfa911c8310a",
+      "instanceName": "live-test-1750199771",
+      "messageType": "reactionMessage",
+      "message": {
+        "key": {
+          "id": "3AA3BAAF8A5B9610E00G_REACTION",
+          "fromMe": true,
+          "remoteJid": "15103165094@s.whatsapp.net"
+        },
+        "messageTimestamp": 1751471798,
+        "pushName": "Franco Camacho",
+        "reactionMessage": {
+          "key": {
+            "id": "3AA3BAAF8A5B9610E00G",
+            "fromMe": false,
+            "remoteJid": "15103165094@s.whatsapp.net"
+          },
+          "text": "📅",
+          "senderTimestamp": 1751471798
+        }
+      },
+      "source": "web"
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
