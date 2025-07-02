@@ -656,20 +656,56 @@ export const ActionService = {
         console.log('📅 Creating calendar event from action trigger');
         
         const processedConfig = this.processTemplateVariables(config, triggerContext);
-        const nlpAnalysis = this.analyzeContentWithNLP(triggerContext.context.content || '');
+        
+        // Use enhanced NLP parsing for calendar events
+        const nlpResult = await NLPService.parseCalendarEvent(
+            triggerContext.context.content || '',
+            triggerContext.context.emoji || ''
+        );
+        
+        console.log('🧠 NLP Calendar Analysis:', nlpResult);
+        
+        // Determine Google Meet invite creation
+        const shouldCreateMeetInvite = nlpResult.shouldCreateMeetInvite || 
+                                     processedConfig.shouldCreateMeetInvite || 
+                                     false;
         
         const eventData = {
-            title: processedConfig.title || 'WhatsApp Event',
-            description: processedConfig.description || 'Event created from WhatsApp',
-            startTime: nlpAnalysis.suggestedDueDate || new Date(),
-            endTime: nlpAnalysis.suggestedDueDate ? new Date(nlpAnalysis.suggestedDueDate.getTime() + 3600000) : new Date(Date.now() + 3600000),
+            title: nlpResult.title || processedConfig.title || 'WhatsApp Event',
+            description: nlpResult.description || processedConfig.description || 'Event created from WhatsApp',
+            startTime: nlpResult.startTime || new Date(),
+            endTime: nlpResult.endTime || new Date(Date.now() + (nlpResult.durationMinutes || 60) * 60000),
+            location: nlpResult.location || processedConfig.location || '',
+            duration: nlpResult.durationMinutes || processedConfig.durationMinutes || 60,
+            shouldCreateMeetInvite: shouldCreateMeetInvite,
             instanceId: triggerContext.instanceId,
             ownerUserId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42',
             calendarId: 1 // Default calendar
         };
         
-        await storage.createCalendarEvent(eventData);
-        console.log(`✅ Calendar event created: ${eventData.title}`);
+        console.log('📅 Creating enhanced calendar event:', {
+            title: eventData.title,
+            startTime: eventData.startTime,
+            endTime: eventData.endTime,
+            duration: eventData.duration,
+            location: eventData.location,
+            shouldCreateMeetInvite: eventData.shouldCreateMeetInvite
+        });
+        
+        const createdEvent = await storage.createCalendarEvent(eventData);
+        console.log(`✅ Enhanced calendar event created: ${eventData.title} (ID: ${createdEvent.id})`);
+        
+        // Log NLP processing for monitoring
+        try {
+            await this.logNLPProcessing(
+                triggerContext.context.messageId,
+                triggerContext.context.emoji || '',
+                nlpResult,
+                createdEvent
+            );
+        } catch (logError) {
+            console.warn('⚠️ Failed to log NLP processing:', logError.message);
+        }
     },
 
     async sendMessageAction(config: any, triggerContext: any): Promise<void> {
