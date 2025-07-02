@@ -322,11 +322,27 @@ export default function CalendarPage() {
   const handleEventSubmit = () => {
     if (!eventForm.title.trim()) return;
     
-    const eventData = {
-      ...eventForm,
-      calendarId: eventForm.calendarId || calendars.find(c => c.isDefault)?.id || calendars[0]?.id
+    // Get the first available Google Calendar sub-calendar or fallback to local calendar
+    const defaultCalendarId = () => {
+      // Try to get first Google Calendar sub-calendar
+      const firstGoogleCal = calendarProviders[0]?.subCalendars?.[0]?.id;
+      if (firstGoogleCal) return firstGoogleCal;
+      
+      // Fallback to local calendar
+      return calendars.find(c => c.isDefault)?.id?.toString() || calendars[0]?.id?.toString() || 'personal';
     };
     
+    const eventData = {
+      ...eventForm,
+      calendarId: eventForm.calendarId || defaultCalendarId(),
+      // Ensure attendees are properly formatted
+      attendees: eventForm.attendees.filter(email => email.trim()),
+      // Include Google Meet setting
+      hasGoogleMeet: eventForm.hasGoogleMeet,
+      createMeetLink: eventForm.hasGoogleMeet
+    };
+    
+    console.log('📅 Submitting event with data:', eventData);
     eventMutation.mutate(eventData);
   };
 
