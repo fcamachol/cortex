@@ -18,7 +18,7 @@ import {
 import { actionRules } from '../shared/cortex-automations-schema';
 
 // Import finance schema
-import { cortexCreditCards } from '../shared/finance-schema';
+import { cortexCreditCards, cortexBillsPayable, cortexBillsReceivable } from '../shared/finance-schema';
 
 class DatabaseStorage {
     // =============================
@@ -790,6 +790,25 @@ class DatabaseStorage {
             console.error('Error creating payable:', error);
             throw error;
         }
+    }
+
+    // Alias for ActionService compatibility
+    async createBillPayable(billData: any): Promise<any> {
+        console.log('💳 Creating bill payable with enhanced NLP data:', billData);
+        
+        const payableData = {
+            bill_number: billData.billNumber || `BILL-${Date.now()}`,
+            vendor_entity_id: billData.vendorEntityId || 'cv_unknown_vendor',
+            description: billData.description || `${billData.vendor || 'Unknown vendor'} - ${billData.amount} ${billData.currency}`,
+            amount: billData.amount || 0,
+            bill_date: billData.billDate || new Date().toISOString().split('T')[0],
+            due_date: billData.dueDate || new Date().toISOString().split('T')[0],
+            status: billData.status || 'pending',
+            category: billData.category || 'General',
+            created_by_entity_id: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'
+        };
+        
+        return await this.createPayable(payableData);
     }
 
     async updatePayable(id: string, payableData: any): Promise<any> {

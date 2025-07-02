@@ -465,26 +465,50 @@ export class NLPService {
   }
 
   private extractVendor(content: string, language: 'es' | 'en'): string {
-    // Look for patterns like "pagar a", "pay to", "bill from"
+    console.log(`🏪 Extracting vendor from: "${content}" (${language})`);
+    
+    // Enhanced patterns for Spanish bill descriptions
     const vendorPatterns = [
-      /(?:pagar\s+a|para)\s+(.+?)(?:\s|$|[,.])/gi,
-      /(?:pay\s+to|bill\s+from)\s+(.+?)(?:\s|$|[,.])/gi,
+      // "Pago 1900 Lalo Costco" → "Lalo"
+      /(?:pago|payment)\s+\d+[\d.,]*\s+([A-Za-z]+)(?:\s+([A-Za-z]+))?/gi,
+      // "Pagar a Juan", "pay to John"
+      /(?:pagar\s+a|pay\s+to)\s+(.+?)(?:\s|$|[,.])/gi,
+      // "Bill from Costco", "Factura de Walmart"
+      /(?:bill\s+from|factura\s+de)\s+(.+?)(?:\s|$|[,.])/gi,
+      // "Juan factura", "Costco bill"
       /(.+?)(?:\s+factura|\s+bill)/gi
     ];
 
     for (const pattern of vendorPatterns) {
       const match = content.match(pattern);
-      if (match && match[1]) {
-        const vendor = match[1].trim();
-        if (vendor.length > 2 && vendor.length < 50) {
-          return vendor;
+      if (match) {
+        // For "Pago 1900 Lalo Costco" pattern, prefer the first name after amount
+        if (pattern.source.includes('pago|payment')) {
+          const vendor = match[1]?.trim();
+          if (vendor && vendor.length > 1 && vendor.length < 50) {
+            console.log(`🏪 Vendor extracted via payment pattern: "${vendor}"`);
+            return vendor;
+          }
+        } else if (match[1]) {
+          const vendor = match[1].trim();
+          if (vendor.length > 2 && vendor.length < 50) {
+            console.log(`🏪 Vendor extracted via pattern: "${vendor}"`);
+            return vendor;
+          }
         }
       }
     }
     
-    // Fallback: use first meaningful word
-    const words = content.split(/\s+/).filter(word => word.length > 2);
-    return words[0] || 'Proveedor desconocido';
+    // Enhanced fallback: skip payment words and amounts, find meaningful vendor name
+    const paymentWords = ['pago', 'payment', 'bill', 'factura', 'pay', 'pagar'];
+    const words = content.split(/\s+/)
+      .filter(word => word.length > 2)
+      .filter(word => !paymentWords.includes(word.toLowerCase()))
+      .filter(word => !/^\d+[\d.,]*$/.test(word)); // Skip numbers
+      
+    const vendor = words[0] || 'Proveedor desconocido';
+    console.log(`🏪 Vendor extracted via fallback: "${vendor}"`);
+    return vendor;
   }
 
   private extractAmount(content: string): { amount?: number, currency: string } {
