@@ -1,16 +1,62 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Settings } from "lucide-react";
 import { SiWhatsapp, SiGoogle, SiSlack, SiTrello, SiNotion } from "react-icons/si";
 import { WhatsAppInstanceManager } from "./whatsapp-manager";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 
 export default function IntegrationModule() {
   const [showWhatsAppManager, setShowWhatsAppManager] = useState(false);
-  
-  // Mock data for integrations
+  const { toast } = useToast();
+
+  // Fetch real calendar providers from backend
+  const { data: calendarProviders = [], isLoading: providersLoading } = useQuery({
+    queryKey: ['/api/calendar/providers'],
+    enabled: true
+  });
+
+  // Google Calendar connection mutation
+  const connectGoogleCalendarMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('/api/auth/google/calendar', 'GET');
+    },
+    onSuccess: (data: any) => {
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to connect Google Calendar",
+        description: error.message || "Could not initiate Google Calendar connection.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Get real Google Calendar integration status
+  const getGoogleCalendarStatus = () => {
+    const googleProvider = calendarProviders.find((p: any) => p.provider_type === 'google');
+    return googleProvider ? {
+      isConnected: true,
+      accountName: googleProvider.account_name,
+      syncStatus: googleProvider.sync_status,
+      lastSync: googleProvider.last_sync_at
+    } : {
+      isConnected: false,
+      accountName: null,
+      syncStatus: 'disconnected',
+      lastSync: null
+    };
+  };
+
+  const googleCalendarStatus = getGoogleCalendarStatus();
+
+  // Updated integrations data with real Google Calendar status
   const connectedIntegrations = [
     {
       id: "whatsapp",
@@ -29,11 +75,13 @@ export default function IntegrationModule() {
       name: "Google Calendar",
       description: "Calendar Sync",
       icon: SiGoogle,
-      status: "connected",
+      status: googleCalendarStatus.isConnected ? "connected" : "disconnected",
       color: "bg-blue-500",
       details: {
-        email: "john@example.com",
-        additionalInfo: "Sync your Google Calendar events and create meetings directly from conversations."
+        email: googleCalendarStatus.accountName || "Not connected",
+        additionalInfo: googleCalendarStatus.isConnected 
+          ? `Sync status: ${googleCalendarStatus.syncStatus}. Last sync: ${googleCalendarStatus.lastSync ? new Date(googleCalendarStatus.lastSync).toLocaleDateString() : 'Never'}`
+          : "Connect your Google Calendar to sync events and create meetings directly from conversations."
       }
     },
     {
@@ -79,6 +127,8 @@ export default function IntegrationModule() {
   const handleConnect = (integrationId: string) => {
     if (integrationId === "whatsapp") {
       setShowWhatsAppManager(true);
+    } else if (integrationId === "google-calendar") {
+      connectGoogleCalendarMutation.mutate();
     } else {
       console.log(`Connecting to ${integrationId}`);
       // This would handle the OAuth flow or connection process
@@ -88,6 +138,12 @@ export default function IntegrationModule() {
   const handleConfigure = (integrationId: string) => {
     if (integrationId === "whatsapp") {
       setShowWhatsAppManager(true);
+    } else if (integrationId === "google-calendar") {
+      // Open Google Calendar sync configuration
+      toast({
+        title: "Google Calendar Configuration",
+        description: "Calendar sync settings will be available soon. Events are automatically synced.",
+      });
     } else {
       console.log(`Configuring ${integrationId}`);
       // This would open configuration modal or redirect to settings
@@ -198,8 +254,9 @@ export default function IntegrationModule() {
                       size="sm"
                       className={integration.color}
                       onClick={() => handleConnect(integration.id)}
+                      disabled={integration.id === 'google-calendar' && connectGoogleCalendarMutation.isPending}
                     >
-                      Connect
+                      {integration.id === 'google-calendar' && connectGoogleCalendarMutation.isPending ? 'Connecting...' : 'Connect'}
                     </Button>
                   )}
                 </div>
