@@ -2383,22 +2383,24 @@ class DatabaseStorage {
                     id, title, description, start_time, end_time,
                     is_all_day, location_type, location, meeting_url,
                     status, timezone, external_event_id,
-                    created_by_entity_id, triggering_message_id
+                    created_by_entity_id, triggering_message_id,
+                    calendar_provider
                 ) VALUES (
                     gen_random_uuid(),
-                    ${eventData.title},
-                    ${eventData.description},
-                    ${eventData.startTime},
-                    ${eventData.endTime},
+                    ${eventData.title || eventData.summary || 'Untitled Event'},
+                    ${eventData.description || ''},
+                    ${eventData.startTime || eventData.start},
+                    ${eventData.endTime || eventData.end},
                     ${eventData.isAllDay || false},
                     ${eventData.location ? 'physical' : 'virtual'},
-                    ${eventData.location},
-                    ${eventData.meetingUrl},
+                    ${eventData.location || ''},
+                    ${eventData.meetingUrl || eventData.hangoutLink || ''},
                     ${eventData.status || 'confirmed'},
                     ${eventData.timezone || 'America/Mexico_City'},
-                    ${eventData.externalEventId},
+                    ${eventData.externalEventId || eventData.id || ''},
                     ${eventData.createdBy || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'},
-                    ${eventData.whatsappTriggerMessageId}
+                    ${eventData.whatsappTriggerMessageId || null},
+                    ${eventData.calendarProvider || 'google'}
                 )
                 RETURNING *
             `);

@@ -160,14 +160,13 @@ export class GoogleCalendarService {
             // Store in cortex_scheduling.events table
             await storage.createCortexSchedulingEvent({
                 externalEventId: event.id,
-                calendarIntegrationId: integrationId,
                 title: event.summary || 'Untitled Event',
-                description: event.description || null,
+                description: event.description || '',
                 startTime: startTime ? new Date(startTime) : null,
                 endTime: endTime ? new Date(endTime) : null,
                 isAllDay,
-                location: event.location || null,
-                meetingUrl: event.hangoutLink || null,
+                location: event.location || '',
+                meetingUrl: event.hangoutLink || '',
                 status: event.status || 'confirmed',
                 organizerEmail: event.organizer?.email || null,
                 attendees: this.extractAttendees(event.attendees || []),
