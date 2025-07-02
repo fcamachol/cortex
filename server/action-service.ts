@@ -415,8 +415,9 @@ export const ActionService = {
                     return false;
                 }
                 
-                // Check rule conditions
-                return this.checkRuleConditions(rule.conditions, context);
+                // Check rule conditions (handle both field name formats)
+                const conditions = rule.trigger_conditions || rule.conditions || [];
+                return this.checkRuleConditions(conditions, context);
             });
 
             console.log(`🎯 Found ${matchingRules.length} matching rules after filtering`);
@@ -426,19 +427,30 @@ export const ActionService = {
                 console.log(`⚡ Executing action rule: ${rule.name} for instance: ${instanceId}`);
                 
                 // 4. Execute the action for this rule (simple structure)
-                if (rule.action_type) {
-                    console.log(`🎯 About to execute action: ${rule.action_type}`);
+                // Handle both camelCase and snake_case field names
+                const actionType = rule.action_type || rule.actionType;
+                const actionConfig = rule.action_config || rule.actionConfig || {};
+                
+                console.log(`🔍 Rule structure:`, { 
+                    action_type: rule.action_type, 
+                    actionType: rule.actionType,
+                    action_config: rule.action_config,
+                    actionConfig: rule.actionConfig 
+                });
+                
+                if (actionType) {
+                    console.log(`🎯 About to execute action: ${actionType}`);
                     try {
-                        await this.executeAction(rule.action_type, rule.action_config || {}, {
+                        await this.executeAction(actionType, actionConfig, {
                             instanceId,
                             triggerType,
                             triggerValue,
                             context,
                             rule
                         });
-                        console.log(`✅ Action ${rule.action_type} completed successfully`);
+                        console.log(`✅ Action ${actionType} completed successfully`);
                     } catch (actionError) {
-                        console.error(`❌ Error executing action ${rule.action_type}:`, actionError);
+                        console.error(`❌ Error executing action ${actionType}:`, actionError);
                     }
                 } else if (rule.actions && rule.actions.length > 0) {
                     // Support complex multi-action rules

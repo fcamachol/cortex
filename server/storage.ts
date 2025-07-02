@@ -1371,20 +1371,20 @@ class DatabaseStorage {
                 dbTriggerType = 'whatsapp_message';
             }
             
-            let query = db
-                .select()
-                .from(actionRules)
-                .where(and(
-                    eq(actionRules.triggerType, dbTriggerType),
-                    eq(actionRules.isActive, true)
-                ));
+            // Use cortex_automation.action_rules table instead of legacy actions.action_rules
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_automation.action_rules
+                WHERE trigger_type = ${dbTriggerType}
+                AND is_active = true
+                ORDER BY name
+            `);
             
-            const rules = await query;
+            const rules = result.rows as any[];
             
             // Filter by trigger conditions for reactions
             if (triggerType === 'reaction') {
                 const filteredRules = rules.filter(rule => {
-                    const conditions = rule.triggerConditions || {};
+                    const conditions = rule.trigger_conditions || {};
                     return conditions.reactions && Array.isArray(conditions.reactions);
                 });
                 console.log(`Found ${filteredRules.length} reaction rules`);
@@ -1394,7 +1394,7 @@ class DatabaseStorage {
             // For keyword triggers, only return rules that have keywords in their conditions
             if (triggerType === 'keyword') {
                 const filteredRules = rules.filter(rule => {
-                    const conditions = rule.triggerConditions || {};
+                    const conditions = rule.trigger_conditions || {};
                     return conditions.keywords && Array.isArray(conditions.keywords) && conditions.keywords.length > 0;
                 });
                 console.log(`Found ${filteredRules.length} keyword rules`);
