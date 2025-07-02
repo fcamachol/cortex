@@ -266,7 +266,7 @@ export class GoogleCalendarService {
             const endTime = event.end?.dateTime || event.end?.date;
             const isAllDay = !event.start?.dateTime; // If no time, it's all day
 
-            // Store in cortex_scheduling.events table
+            // Store in cortex_scheduling.events table with subcalendar information
             await storage.createCortexSchedulingEvent({
                 externalEventId: event.id,
                 title: event.summary || 'Untitled Event',
@@ -282,7 +282,11 @@ export class GoogleCalendarService {
                 recurrence: event.recurrence || null,
                 timezone: event.start?.timeZone || null,
                 visibility: event.visibility || 'default',
-                createdBy: userId
+                createdBy: userId,
+                // Subcalendar information for better organization
+                subcalendarName: calendar.summary || 'Unknown Calendar',
+                subcalendarColor: calendar.backgroundColor || '#4285f4',
+                subcalendarId: calendar.id
             });
 
         } catch (error) {

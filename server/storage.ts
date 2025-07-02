@@ -2196,7 +2196,7 @@ class DatabaseStorage {
     
     async getCalendarEvents(): Promise<any[]> {
         try {
-            // Return cortex_scheduling events
+            // Return cortex_scheduling events with subcalendar information
             const result = await db.execute(sql`
                 SELECT 
                     id,
@@ -2209,6 +2209,10 @@ class DatabaseStorage {
                     meeting_url,
                     status,
                     created_by_entity_id as created_by,
+                    subcalendar_name,
+                    subcalendar_color,
+                    subcalendar_id,
+                    calendar_provider,
                     created_at,
                     updated_at
                 FROM cortex_scheduling.events 
@@ -2415,7 +2419,7 @@ class DatabaseStorage {
                     is_all_day, location_type, location, meeting_url,
                     status, timezone, external_event_id,
                     created_by_entity_id, triggering_message_id,
-                    calendar_provider
+                    calendar_provider, subcalendar_name, subcalendar_color, subcalendar_id
                 ) VALUES (
                     gen_random_uuid(),
                     ${eventData.title || eventData.summary || 'Untitled Event'},
@@ -2431,7 +2435,10 @@ class DatabaseStorage {
                     ${eventData.externalEventId || eventData.id || ''},
                     ${eventData.createdBy || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'},
                     ${eventData.whatsappTriggerMessageId || null},
-                    ${eventData.calendarProvider || 'google'}
+                    ${eventData.calendarProvider || 'google'},
+                    ${eventData.subcalendarName || null},
+                    ${eventData.subcalendarColor || null},
+                    ${eventData.subcalendarId || null}
                 )
                 RETURNING *
             `);
