@@ -258,6 +258,34 @@ export class GoogleCalendarService {
     }
 
     /**
+     * Detect if this is a birthday event from Google Contacts
+     */
+    private isBirthdayEvent(event: any): boolean {
+        const title = event.summary || '';
+        const description = event.description || '';
+        
+        // Check for birthday patterns in multiple languages
+        const birthdayPatterns = [
+            /birthday/i,
+            /cumpleaños/i,
+            /aniversario/i,
+            /natalicio/i,
+            /\s+-\s+Birthday/i,
+            /\s+-\s+Cumpleaños/i
+        ];
+        
+        // Check if event comes from contacts calendar or has birthday patterns
+        const isBirthdayPattern = birthdayPatterns.some(pattern => 
+            pattern.test(title) || pattern.test(description)
+        );
+        
+        // Check if event is all-day (birthdays are typically all-day events)
+        const isAllDay = !event.start?.dateTime;
+        
+        return isBirthdayPattern && isAllDay;
+    }
+
+    /**
      * Store a Google Calendar event in cortex_scheduling.events
      */
     private async storeEventInCortex(event: any, calendar: any, userId: string, integrationId: string): Promise<void> {
@@ -266,6 +294,9 @@ export class GoogleCalendarService {
             const endTime = event.end?.dateTime || event.end?.date;
             const isAllDay = !event.start?.dateTime; // If no time, it's all day
 
+            // Detect if this is a birthday event from Google Contacts
+            const isBirthdayEvent = this.isBirthdayEvent(event);
+            
             // Store in cortex_scheduling.events table with subcalendar information
             await storage.createCortexSchedulingEvent({
                 externalEventId: event.id,
@@ -283,9 +314,9 @@ export class GoogleCalendarService {
                 timezone: event.start?.timeZone || null,
                 visibility: event.visibility || 'default',
                 createdBy: userId,
-                // Subcalendar information for better organization
-                subcalendarName: calendar.summary || 'Unknown Calendar',
-                subcalendarColor: calendar.backgroundColor || '#4285f4',
+                // Enhanced subcalendar information with birthday detection
+                subcalendarName: isBirthdayEvent ? 'Google Contacts Birthdays' : (calendar.summary || 'Unknown Calendar'),
+                subcalendarColor: isBirthdayEvent ? '#f093fb' : (calendar.backgroundColor || '#4285f4'),
                 subcalendarId: calendar.id
             });
 
