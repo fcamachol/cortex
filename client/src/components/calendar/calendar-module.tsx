@@ -110,6 +110,9 @@ interface SubCalendar {
 }
 
 export default function CalendarModule() {
+  // Get user's timezone for proper event display
+  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState("week");
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
