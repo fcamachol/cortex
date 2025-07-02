@@ -304,7 +304,7 @@ export class GoogleCalendarService {
             // Detect if this is a birthday event from Google Contacts
             const isBirthdayEvent = this.isBirthdayEvent(event);
             
-            // Handle timezone conversion properly - keep in local timezone
+            // Handle timezone conversion properly - convert to Mexico City time
             let processedStartTime = null;
             let processedEndTime = null;
             let eventTimezone = event.start?.timeZone || 'America/Mexico_City';
@@ -314,8 +314,10 @@ export class GoogleCalendarService {
                     // For all-day events, use the date as-is
                     processedStartTime = startTime;
                 } else {
-                    // For timed events, preserve the original time without UTC conversion
-                    processedStartTime = startTime;
+                    // For timed events, convert to Mexico City timezone
+                    const startDate = new Date(startTime);
+                    const mexicoCityTime = toZonedTime(startDate, 'America/Mexico_City');
+                    processedStartTime = format(mexicoCityTime, 'yyyy-MM-dd HH:mm:ss', { timeZone: 'America/Mexico_City' });
                 }
             }
             
@@ -323,7 +325,9 @@ export class GoogleCalendarService {
                 if (isAllDay) {
                     processedEndTime = endTime;
                 } else {
-                    processedEndTime = endTime;
+                    const endDate = new Date(endTime);
+                    const mexicoCityTime = toZonedTime(endDate, 'America/Mexico_City');
+                    processedEndTime = format(mexicoCityTime, 'yyyy-MM-dd HH:mm:ss', { timeZone: 'America/Mexico_City' });
                 }
             }
 
