@@ -1264,6 +1264,30 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Google Calendar webhook endpoint for real-time push notifications
+  app.post('/api/calendar/webhook', async (req: Request, res: Response) => {
+    try {
+      const channelId = req.headers['x-goog-channel-id'] as string;
+      const resourceState = req.headers['x-goog-resource-state'] as string;
+      const resourceId = req.headers['x-goog-resource-id'] as string;
+      
+      console.log(`📩 Calendar webhook received: Channel ${channelId}, State: ${resourceState}`);
+      
+      // Import webhook service dynamically to avoid circular dependencies
+      const { CalendarWebhookService } = await import('./services/calendar-webhook-service.js');
+      const webhookService = new CalendarWebhookService();
+      
+      // Handle the webhook notification
+      await webhookService.handleWebhookNotification(req.headers, req.body);
+      
+      // Respond with success immediately
+      res.status(200).send('OK');
+    } catch (error) {
+      console.error('Error handling calendar webhook:', error);
+      res.status(200).send('OK'); // Always respond OK to prevent Google from retrying
+    }
+  });
+
   app.get('/api/calendar/calendars', async (req: Request, res: Response) => {
     try {
       // Check if we have an active Google Calendar integration

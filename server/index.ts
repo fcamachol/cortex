@@ -89,6 +89,17 @@ import { CalendarSyncService } from "./services/calendar-sync-service";
     await calendarSyncService.startAutoSync();
     console.log("✅ Calendar sync service started");
 
+    // 4.8. Initialize Google Calendar Webhook Service for Real-time Push Notifications
+    console.log("📡 Initializing calendar webhook service...");
+    try {
+      const { CalendarWebhookService } = await import('./services/calendar-webhook-service.js');
+      const webhookService = new CalendarWebhookService();
+      await webhookService.loadExistingChannels();
+      console.log("✅ Calendar webhook service started for real-time sync");
+    } catch (error) {
+      console.error("⚠️ Calendar webhook service failed to start:", error);
+    }
+
     // 5. Setup Frontend Serving (Vite for Dev, Static for Prod)
     if (process.env.NODE_ENV === "development") {
         await setupVite(app, server);

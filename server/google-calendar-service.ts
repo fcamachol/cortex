@@ -409,6 +409,117 @@ export class GoogleCalendarService {
             return false;
         }
     }
+
+    /**
+     * Create a webhook channel to watch calendar changes
+     */
+    async watchCalendar(calendarId: string, watchRequest: any): Promise<any> {
+        try {
+            const response = await this.calendar.events.watch({
+                calendarId: calendarId,
+                requestBody: watchRequest
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error creating calendar watch:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Stop watching a calendar channel
+     */
+    async stopWatchChannel(channelId: string, resourceId: string): Promise<void> {
+        try {
+            await this.calendar.channels.stop({
+                requestBody: {
+                    id: channelId,
+                    resourceId: resourceId
+                }
+            });
+        } catch (error) {
+            console.error('Error stopping watch channel:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Create a new event in Google Calendar
+     */
+    async createEvent(calendarId: string, eventData: any): Promise<any> {
+        try {
+            const response = await this.calendar.events.insert({
+                calendarId: calendarId,
+                requestBody: eventData
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error creating calendar event:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update an existing event in Google Calendar
+     */
+    async updateEvent(calendarId: string, eventId: string, eventData: any): Promise<any> {
+        try {
+            const response = await this.calendar.events.update({
+                calendarId: calendarId,
+                eventId: eventId,
+                requestBody: eventData
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error updating calendar event:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Delete an event from Google Calendar
+     */
+    async deleteEvent(calendarId: string, eventId: string): Promise<void> {
+        try {
+            await this.calendar.events.delete({
+                calendarId: calendarId,
+                eventId: eventId
+            });
+        } catch (error) {
+            console.error('Error deleting calendar event:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get events from a specific calendar with optional time range
+     */
+    async getCalendarEvents(calendarId: string, timeMin?: string, timeMax?: string): Promise<any[]> {
+        try {
+            const response = await this.calendar.events.list({
+                calendarId: calendarId,
+                timeMin: timeMin,
+                timeMax: timeMax,
+                singleEvents: true,
+                orderBy: 'startTime'
+            });
+            return response.data.items || [];
+        } catch (error) {
+            console.error('Error getting calendar events:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Initialize with existing tokens for webhook service
+     */
+    async initializeWithTokens(accessToken: string, refreshToken?: string): Promise<void> {
+        this.oauth2Client.setCredentials({
+            access_token: accessToken,
+            refresh_token: refreshToken
+        });
+        this.calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
+    }
 }
 
 export const googleCalendarService = new GoogleCalendarService();
