@@ -1288,6 +1288,35 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Setup webhook channels for calendar integration
+  app.post('/api/calendar/providers/:integrationId/webhook/setup', async (req: Request, res: Response) => {
+    try {
+      const { integrationId } = req.params;
+      
+      console.log(`🔗 Setting up webhooks for integration: ${integrationId}`);
+      
+      // Import webhook service dynamically to avoid circular dependencies
+      const { CalendarWebhookService } = await import('./services/calendar-webhook-service.js');
+      const webhookService = new CalendarWebhookService();
+      
+      // Get integration details
+      const integration = await storage.getGoogleCalendarIntegrations();
+      const targetIntegration = integration.find(int => int.id === integrationId);
+      
+      if (!targetIntegration) {
+        return res.status(404).json({ error: 'Integration not found' });
+      }
+      
+      // Setup webhooks for this integration
+      await webhookService.setupCalendarWebhooks(targetIntegration.user_id, integrationId);
+      
+      res.json({ success: true, message: 'Webhooks setup successfully' });
+    } catch (error) {
+      console.error('Error setting up calendar webhooks:', error);
+      res.status(500).json({ error: 'Failed to setup webhooks' });
+    }
+  });
+
   app.get('/api/calendar/calendars', async (req: Request, res: Response) => {
     try {
       // Check if we have an active Google Calendar integration
