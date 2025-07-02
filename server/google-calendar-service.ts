@@ -304,13 +304,38 @@ export class GoogleCalendarService {
             // Detect if this is a birthday event from Google Contacts
             const isBirthdayEvent = this.isBirthdayEvent(event);
             
+            // Handle timezone conversion properly - keep in local timezone
+            let processedStartTime = null;
+            let processedEndTime = null;
+            let eventTimezone = event.start?.timeZone || 'America/Mexico_City';
+            
+            if (startTime) {
+                if (isAllDay) {
+                    // For all-day events, use the date as-is
+                    processedStartTime = startTime;
+                } else {
+                    // For timed events, preserve the original time without UTC conversion
+                    processedStartTime = startTime;
+                }
+            }
+            
+            if (endTime) {
+                if (isAllDay) {
+                    processedEndTime = endTime;
+                } else {
+                    processedEndTime = endTime;
+                }
+            }
+
+            console.log(`📅 Event timezone data: ${event.summary} - Start: ${startTime}, Timezone: ${eventTimezone}`);
+            
             // Store in cortex_scheduling.events table with subcalendar information
             await storage.createCortexSchedulingEvent({
                 externalEventId: event.id,
                 title: event.summary || 'Untitled Event',
                 description: event.description || '',
-                startTime: startTime ? new Date(startTime) : null,
-                endTime: endTime ? new Date(endTime) : null,
+                startTime: processedStartTime,
+                endTime: processedEndTime,
                 isAllDay,
                 location: event.location || '',
                 meetingUrl: event.hangoutLink || '',
@@ -318,7 +343,7 @@ export class GoogleCalendarService {
                 organizerEmail: event.organizer?.email || null,
                 attendees: this.extractAttendees(event.attendees || []),
                 recurrence: event.recurrence || null,
-                timezone: event.start?.timeZone || null,
+                timezone: eventTimezone,
                 visibility: event.visibility || 'default',
                 createdBy: userId,
                 // Enhanced subcalendar information with birthday detection

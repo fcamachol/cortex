@@ -2413,6 +2413,33 @@ class DatabaseStorage {
 
     async createCortexSchedulingEvent(eventData: any): Promise<any> {
         try {
+            // Handle timezone conversion properly - parse datetime and convert to Mexico City time
+            let startTimeForDb = null;
+            let endTimeForDb = null;
+            
+            if (eventData.startTime) {
+                if (eventData.isAllDay) {
+                    // For all-day events, use date as-is
+                    startTimeForDb = eventData.startTime;
+                } else {
+                    // For timed events, ensure proper timezone handling
+                    const startDate = new Date(eventData.startTime);
+                    // Format as Mexico City time
+                    startTimeForDb = startDate.toISOString().replace('T', ' ').replace('Z', '');
+                }
+            }
+            
+            if (eventData.endTime) {
+                if (eventData.isAllDay) {
+                    endTimeForDb = eventData.endTime;
+                } else {
+                    const endDate = new Date(eventData.endTime);
+                    endTimeForDb = endDate.toISOString().replace('T', ' ').replace('Z', '');
+                }
+            }
+
+            console.log(`📅 Storing event with timezone: ${eventData.timezone}, Start: ${eventData.startTime} -> ${startTimeForDb}`);
+
             const result = await db.execute(sql`
                 INSERT INTO cortex_scheduling.events (
                     id, title, description, start_time, end_time,
@@ -2424,8 +2451,8 @@ class DatabaseStorage {
                     gen_random_uuid(),
                     ${eventData.title || eventData.summary || 'Untitled Event'},
                     ${eventData.description || ''},
-                    ${eventData.startTime || eventData.start},
-                    ${eventData.endTime || eventData.end},
+                    ${startTimeForDb},
+                    ${endTimeForDb},
                     ${eventData.isAllDay || false},
                     ${eventData.location ? 'physical' : 'virtual'},
                     ${eventData.location || ''},
