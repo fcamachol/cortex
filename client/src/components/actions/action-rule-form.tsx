@@ -246,7 +246,7 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   // Use a separate state for the frontend trigger type since the form only has trigger_type (database field)
   const [frontendTriggerTypeState, setFrontendTriggerTypeState] = useState(frontendTriggerType);
   const triggerType = frontendTriggerTypeState;
-  const actionType = form.watch("action_type");
+  const actionType = form.watch("actionType");
 
   // Reset action config when action type changes
   useEffect(() => {
@@ -337,7 +337,7 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
 
   const renderActionConfig = () => {
     console.log('🎯 Rendering action config for actionType:', actionType);
-    console.log('🎯 Form action_type value:', form.getValues('action_type'));
+    console.log('🎯 Form actionType value:', form.getValues('actionType'));
     console.log('🎯 ActionType comparison - actionType === "create_calendar_event":', actionType === "create_calendar_event");
     switch (actionType) {
       case "create_task":
