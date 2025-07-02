@@ -1222,7 +1222,27 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/api/calendar/events', async (req: Request, res: Response) => {
     try {
       const events = await storage.getCalendarEvents();
-      res.json(events);
+      
+      // Transform database fields to frontend-expected format
+      const transformedEvents = events.map(event => ({
+        eventId: event.id,
+        title: event.title,
+        description: event.description,
+        startTime: event.start_time,
+        endTime: event.end_time,
+        location: event.location,
+        isAllDay: event.is_all_day,
+        provider: 'google_calendar',
+        providerEventId: event.provider_event_id || event.id,
+        metadata: event.metadata || {},
+        calendarId: event.calendar_id || 'personal',
+        status: event.status,
+        createdBy: event.created_by,
+        createdAt: event.created_at,
+        updatedAt: event.updated_at
+      }));
+      
+      res.json(transformedEvents);
     } catch (error) {
       console.error('Error fetching calendar events:', error);
       res.status(500).json({ error: 'Failed to fetch calendar events' });
