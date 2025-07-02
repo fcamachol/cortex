@@ -581,6 +581,28 @@ export default function CalendarModule() {
     }
   });
 
+  // Manual sync mutation
+  const syncCalendarMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('/api/calendar/sync', 'POST');
+    },
+    onSuccess: () => {
+      toast({
+        title: "Calendar synced",
+        description: "Google Calendar events have been synchronized successfully."
+      });
+      refetchEvents();
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Sync failed",
+        description: error.message || "Failed to sync with Google Calendar.",
+        variant: "destructive"
+      });
+    }
+  });
+
   // Format current period for display based on view mode
   const formatCurrentPeriod = () => {
     if (viewMode === 'month') {

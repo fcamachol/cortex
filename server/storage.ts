@@ -2279,6 +2279,29 @@ class DatabaseStorage {
         }
     }
 
+    async getCalendarIntegration(integrationId: string): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                SELECT 
+                    id,
+                    user_id,
+                    provider_type,
+                    account_name,
+                    access_token,
+                    refresh_token,
+                    sync_status,
+                    last_sync_at,
+                    created_at
+                FROM cortex_scheduling.calendar_integrations 
+                WHERE id = ${integrationId}
+            `);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error fetching calendar integration:', error);
+            return null;
+        }
+    }
+
     async getCalendars(): Promise<any[]> {
         try {
             // Return default calendars for frontend display
