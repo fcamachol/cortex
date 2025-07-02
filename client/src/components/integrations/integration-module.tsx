@@ -22,7 +22,8 @@ export default function IntegrationModule() {
   // Google Calendar connection mutation
   const connectGoogleCalendarMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('/api/auth/google/calendar', 'GET');
+      const response = await apiRequest('GET', '/api/auth/google/calendar');
+      return response.json();
     },
     onSuccess: (data: any) => {
       if (data.authUrl) {
