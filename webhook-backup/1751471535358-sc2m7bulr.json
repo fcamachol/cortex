@@ -1,0 +1,28 @@
+{
+  "id": "1751471535358-sc2m7bulr",
+  "timestamp": "2025-07-02T15:52:15.358Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages-upsert",
+  "payload": {
+    "data": {
+      "instanceId": "c5215849-bfb9-413c-aa94-dfa911c8310a",
+      "instanceName": "live-test-1750199771",
+      "messageType": "conversation",
+      "message": {
+        "key": {
+          "id": "3AA3BAAF8A5B9610E00F",
+          "fromMe": false,
+          "remoteJid": "15103165094@s.whatsapp.net"
+        },
+        "messageTimestamp": 1751471535,
+        "pushName": "Franco Camacho",
+        "message": {
+          "conversation": "Nos vemos hoy a las 3 pm por meet"
+        }
+      },
+      "source": "web"
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

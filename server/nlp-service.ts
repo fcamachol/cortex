@@ -368,8 +368,8 @@ export class NLPService {
     ];
 
     for (const pattern of timePatterns) {
-      const matches = Array.from(content.matchAll(pattern));
-      for (const match of matches) {
+      let match;
+      while ((match = pattern.exec(content)) !== null) {
         try {
           let hour = parseInt(match[1]);
           let minute = match[2] && !isNaN(parseInt(match[2])) ? parseInt(match[2]) : 0;
@@ -648,7 +648,7 @@ export class NLPService {
   }
   
   private getMealDuration(mealType: string): number {
-    const durations = {
+    const durations: Record<string, number> = {
       breakfast: 45,   // 45 minutes
       lunch: 60,       // 1 hour
       dinner: 90,      // 1.5 hours
