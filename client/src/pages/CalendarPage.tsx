@@ -61,9 +61,9 @@ export default function CalendarPage() {
     endTime: '',
     allDay: false,
     location: '',
-    calendarId: 0,
+    calendarId: '',
     attendees: [] as string[],
-    meetLink: '',
+    hasGoogleMeet: false,
     reminders: [15] as number[],
     recurrence: 'none'
   });
@@ -162,6 +162,10 @@ export default function CalendarPage() {
   });
 
   const resetEventForm = () => {
+    // Get first available Google Calendar sub-calendar or fallback to local calendar
+    const firstGoogleCal = calendarProviders[0]?.subCalendars?.[0]?.id;
+    const fallbackCalendar = calendars.find(c => c.isDefault)?.id?.toString() || calendars[0]?.id?.toString() || '';
+    
     setEventForm({
       title: '',
       description: '',
@@ -169,9 +173,9 @@ export default function CalendarPage() {
       endTime: '',
       allDay: false,
       location: '',
-      calendarId: calendars.find(c => c.isDefault)?.id || calendars[0]?.id || 0,
+      calendarId: firstGoogleCal || fallbackCalendar,
       attendees: [],
-      meetLink: '',
+      hasGoogleMeet: false,
       reminders: [15],
       recurrence: 'none'
     });
@@ -553,20 +557,37 @@ export default function CalendarPage() {
                 <Label htmlFor="calendar">Calendario</Label>
                 <Select
                   value={eventForm.calendarId.toString()}
-                  onValueChange={(value) => setEventForm({...eventForm, calendarId: parseInt(value)})}
+                  onValueChange={(value) => setEventForm({...eventForm, calendarId: value})}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Seleccionar calendario" />
                   </SelectTrigger>
                   <SelectContent>
+                    {/* Google Calendar sub-calendars */}
+                    {calendarProviders.map((provider: any) => 
+                      provider.subCalendars?.map((subCal: any) => (
+                        <SelectItem key={subCal.id} value={subCal.id}>
+                          <div className="flex items-center space-x-2">
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: subCal.color || '#4285f4' }}
+                            />
+                            <span>{subCal.name}</span>
+                            {subCal.isPrimary && <span className="text-xs text-gray-500">(Principal)</span>}
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                    {/* Local calendars as fallback */}
                     {calendars.map((calendar) => (
-                      <SelectItem key={calendar.id} value={calendar.id.toString()}>
+                      <SelectItem key={`local-${calendar.id}`} value={calendar.id.toString()}>
                         <div className="flex items-center space-x-2">
                           <div
                             className="w-3 h-3 rounded-full"
                             style={{ backgroundColor: calendar.color }}
                           />
                           <span>{calendar.name}</span>
+                          <span className="text-xs text-gray-500">(Local)</span>
                         </div>
                       </SelectItem>
                     ))}
@@ -574,14 +595,20 @@ export default function CalendarPage() {
                 </Select>
               </div>
               
-              <div>
-                <Label htmlFor="meetLink">Enlace de Google Meet</Label>
-                <Input
-                  id="meetLink"
-                  value={eventForm.meetLink}
-                  onChange={(e) => setEventForm({...eventForm, meetLink: e.target.value})}
-                  placeholder="https://meet.google.com/..."
-                />
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="googleMeet"
+                    checked={eventForm.hasGoogleMeet}
+                    onCheckedChange={(checked) => setEventForm({...eventForm, hasGoogleMeet: checked})}
+                  />
+                  <Label htmlFor="googleMeet">Añadir videollamada de Google Meet</Label>
+                </div>
+                {eventForm.hasGoogleMeet && (
+                  <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                    Se generará automáticamente un enlace de Google Meet al crear el evento
+                  </div>
+                )}
               </div>
             </TabsContent>
             
