@@ -1865,9 +1865,13 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       // Get calendar integrations and their sub-calendars
       const integrations = await storage.getCalendarProviders();
+      console.log(`📅 Found ${integrations.length} calendar integrations`);
       const providers = [];
       
       for (const integration of integrations) {
+        console.log(`📅 Processing integration for ${integration.account_name}`);
+        console.log(`📅 Integration tokens - access: ${!!integration.access_token} (${integration.access_token?.length || 0} chars), refresh: ${!!integration.refresh_token} (${integration.refresh_token?.length || 0} chars)`);
+        console.log(`📅 Sync status: ${integration.sync_status}`);
         try {
           const calendarService = new GoogleCalendarService();
           // Set credentials directly

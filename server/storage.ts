@@ -2260,16 +2260,19 @@ class DatabaseStorage {
 
     async getCalendarProviders(): Promise<any[]> {
         try {
-            // Return cortex_scheduling calendar integrations
+            // Return cortex_scheduling calendar integrations with tokens
             const result = await db.execute(sql`
                 SELECT 
                     id,
                     provider_type,
                     account_name,
+                    access_token,
+                    refresh_token,
                     sync_status,
                     last_sync_at,
                     created_at
                 FROM cortex_scheduling.calendar_integrations 
+                WHERE sync_status = 'connected'
                 ORDER BY created_at DESC
             `);
             return result.rows;

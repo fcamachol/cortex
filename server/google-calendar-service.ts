@@ -50,9 +50,23 @@ export class GoogleCalendarService {
      * Set credentials for the OAuth2 client
      */
     setCredentials(credentials: GoogleCalendarCredentials) {
+        console.log('📅 Setting Google Calendar credentials:', {
+            hasAccessToken: !!credentials.accessToken,
+            hasRefreshToken: !!credentials.refreshToken,
+            accessTokenLength: credentials.accessToken?.length || 0,
+            refreshTokenLength: credentials.refreshToken?.length || 0
+        });
+
         this.oauth2Client.setCredentials({
             access_token: credentials.accessToken,
             refresh_token: credentials.refreshToken
+        });
+        
+        // Verify credentials were set
+        const setCredentials = this.oauth2Client.credentials;
+        console.log('📅 OAuth2 credentials verification:', {
+            hasAccessToken: !!setCredentials?.access_token,
+            hasRefreshToken: !!setCredentials?.refresh_token
         });
         
         // Initialize the calendar API client
@@ -64,6 +78,19 @@ export class GoogleCalendarService {
      */
     async getCalendarListDirect(): Promise<any[]> {
         try {
+            // Check if we have valid credentials
+            const credentials = this.oauth2Client.credentials;
+            if (!credentials?.access_token && !credentials?.refresh_token) {
+                throw new Error('No valid credentials available');
+            }
+
+            // Try to refresh the token if access_token is missing but refresh_token is available
+            if (!credentials.access_token && credentials.refresh_token) {
+                console.log('📅 Refreshing Google Calendar access token...');
+                const { credentials: refreshedCredentials } = await this.oauth2Client.refreshAccessToken();
+                this.oauth2Client.setCredentials(refreshedCredentials);
+            }
+
             const calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
             const response = await calendar.calendarList.list();
             
