@@ -2,6 +2,7 @@ import { storage } from './storage';
 import { SseManager } from './sse-manager';
 import * as chrono from 'chrono-node';
 import { randomUUID } from 'crypto';
+import { nlpService } from './nlp-service';
 import { 
     type InsertWhatsappMessage,
     type InsertWhatsappMessageReaction
@@ -186,25 +187,76 @@ export const ActionService = {
     async executeSimpleAction(rule: any, context: any): Promise<void> {
         console.log(`🎯 Executing simple action: ${rule.actionType} for rule: ${rule.name}`);
         
+        // First, determine which NLP parser to use based on action type
+        let nlpParser: string | null = null;
         switch (rule.actionType) {
             case 'create_task':
-                await this.createSimpleTaskAction(rule.actionConfig, context, rule);
+                nlpParser = 'task';
+                break;
+            case 'create_calendar_event':
+                nlpParser = 'calendar';
+                break;
+            case 'create_bill':
+                nlpParser = 'bill';
+                break;
+            default:
+                console.log(`⚠️  Unknown action type: ${rule.actionType}`);
+                return;
+        }
+
+        // Use NLP to parse the message content if available
+        let nlpData = null;
+        if (nlpParser && context.content) {
+            console.log(`🧠 Running NLP parsing with ${nlpParser} parser for content: "${context.content.substring(0, 100)}..."`);
+            try {
+                nlpData = await nlpService.parse(context.content, nlpParser);
+                console.log(`🧠 NLP parsing result:`, nlpData);
+            } catch (error) {
+                console.error(`❌ Error in NLP parsing:`, error);
+                // Continue without NLP data if parsing fails
+            }
+        } else {
+            console.log(`🧠 Skipping NLP parsing - no parser for ${rule.actionType} or no content available`);
+        }
+
+        // Execute the action with enriched context (original + NLP data)
+        const enrichedContext = {
+            ...context,
+            nlp: nlpData // Add NLP parsed data to context
+        };
+
+        switch (rule.actionType) {
+            case 'create_task':
+                await this.createEnhancedTaskAction(rule.actionConfig, enrichedContext, rule);
+                break;
+            case 'create_calendar_event':
+                await this.createEnhancedCalendarAction(rule.actionConfig, enrichedContext, rule);
+                break;
+            case 'create_bill':
+                await this.createEnhancedBillAction(rule.actionConfig, enrichedContext, rule);
                 break;
             default:
                 console.log(`⚠️  Unknown action type: ${rule.actionType}`);
         }
     },
 
-    async createSimpleTaskAction(config: any, context: any, rule: any): Promise<void> {
+    async createEnhancedTaskAction(config: any, context: any, rule: any): Promise<void> {
         try {
+            console.log(`🧠 Creating enhanced task with NLP data:`, context.nlp);
+            
+            // Use NLP data if available, otherwise fall back to templates and defaults
+            const nlpTask = context.nlp;
+            
             const taskData = {
                 id: randomUUID(),
-                title: this.processTemplate(config.title || 'New Task', context),
-                description: this.processTemplate(config.description || '', context),
-                status: config.status || rule.status || 'todo', // Use status from config first, then rule field, then default
-                priority: config.priority || 'medium',
-                createdByEntityId: 'cu_181de66a23864b2fac56779a82189691', // Default user entity ID
-                assignedToEntityId: 'cu_181de66a23864b2fac56779a82189691', // Assign to same user for now
+                title: nlpTask?.title || this.processTemplate(config.title || 'New Task', context),
+                description: nlpTask?.description || this.processTemplate(config.description || '', context),
+                status: config.status || rule.status || 'todo',
+                priority: nlpTask?.priority || config.priority || 'medium',
+                dueDate: nlpTask?.dueDate || null,
+                tags: nlpTask?.tags || [],
+                createdByEntityId: 'cu_181de66a23864b2fac56779a82189691',
+                assignedToEntityId: 'cu_181de66a23864b2fac56779a82189691',
                 triggeringMessageId: context.messageId,
                 triggeringInstanceName: context.instanceName,
                 createdAt: new Date(),
@@ -212,14 +264,88 @@ export const ActionService = {
             };
 
             const createdTask = await storage.createTask(taskData);
-            console.log(`✅ Task created from reaction: ${createdTask.title}`);
+            
+            if (nlpTask) {
+                console.log(`✅ Enhanced task created with NLP data: "${createdTask.title}" (priority: ${taskData.priority}, confidence: ${nlpTask.confidence})`);
+            } else {
+                console.log(`✅ Task created with template data: ${createdTask.title}`);
+            }
             
             // Send SSE notification
             SseManager.notifyClientsOfNewTask(createdTask);
             
             return createdTask;
         } catch (error) {
-            console.error('❌ Error creating task from reaction:', error);
+            console.error('❌ Error creating enhanced task:', error);
+            throw error;
+        }
+    },
+
+    async createEnhancedCalendarAction(config: any, context: any, rule: any): Promise<void> {
+        try {
+            console.log(`🧠 Creating enhanced calendar event with NLP data:`, context.nlp);
+            
+            const nlpEvent = context.nlp;
+            
+            const eventData = {
+                id: randomUUID(),
+                title: nlpEvent?.title || this.processTemplate(config.title || 'New Event', context),
+                description: nlpEvent?.description || this.processTemplate(config.description || '', context),
+                start_datetime: nlpEvent?.startTime || new Date(),
+                end_datetime: nlpEvent?.endTime || nlpEvent?.startTime || new Date(),
+                location_details: nlpEvent?.location || null,
+                attendees: nlpEvent?.attendees || [],
+                created_by_entity_id: 'cu_181de66a23864b2fac56779a82189691',
+                created_at: new Date(),
+                updated_at: new Date()
+            };
+
+            const createdEvent = await storage.createCalendarEvent(eventData);
+            
+            if (nlpEvent) {
+                console.log(`✅ Enhanced calendar event created: "${createdEvent.title}" (confidence: ${nlpEvent.confidence})`);
+            } else {
+                console.log(`✅ Calendar event created with template data: ${createdEvent.title}`);
+            }
+            
+            return createdEvent;
+        } catch (error) {
+            console.error('❌ Error creating enhanced calendar event:', error);
+            throw error;
+        }
+    },
+
+    async createEnhancedBillAction(config: any, context: any, rule: any): Promise<void> {
+        try {
+            console.log(`🧠 Creating enhanced bill with NLP data:`, context.nlp);
+            
+            const nlpBill = context.nlp;
+            
+            const billData = {
+                id: randomUUID(),
+                vendor_name: nlpBill?.vendor || this.processTemplate(config.vendor || 'Unknown Vendor', context),
+                amount: nlpBill?.amount || config.amount || 0,
+                currency: nlpBill?.currency || config.currency || 'MXN',
+                due_date: nlpBill?.dueDate || null,
+                category: nlpBill?.category || config.category || 'general',
+                description: nlpBill?.description || this.processTemplate(config.description || '', context),
+                status: 'pending',
+                created_by_entity_id: 'cu_181de66a23864b2fac56779a82189691',
+                created_at: new Date(),
+                updated_at: new Date()
+            };
+
+            const createdBill = await storage.createBillPayable(billData);
+            
+            if (nlpBill) {
+                console.log(`✅ Enhanced bill created: "${createdBill.vendor_name}" ${createdBill.amount} ${createdBill.currency} (confidence: ${nlpBill.confidence})`);
+            } else {
+                console.log(`✅ Bill created with template data: ${createdBill.vendor_name}`);
+            }
+            
+            return createdBill;
+        } catch (error) {
+            console.error('❌ Error creating enhanced bill:', error);
             throw error;
         }
     },

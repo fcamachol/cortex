@@ -1,0 +1,1417 @@
+# Complete System Architecture: Rule-Driven WhatsApp NLP Platform
+
+## System Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           WHATSAPP NLP PLATFORM                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────┐         ┌─────────────────┐      ┌─────────────────┐  │
+│  │  Evolution API  │ ──────> │ Webhook Handler │ ───> │ Database Layer  │  │
+│  │   (WhatsApp)    │         │   (Fast Store)  │      │  (PostgreSQL)   │  │
+│  └─────────────────┘         └─────────────────┘      └────────┬────────┘  │
+│                                                                 │            │
+│                                                                 ▼            │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                        ACTION PROCESSOR SERVICE                       │  │
+│  │  ┌─────────────────┐  ┌──────────────────┐  ┌───────────────────┐   │  │
+│  │  │   Queue Poller  │  │  Rules Engine    │  │   NLP Service     │   │  │
+│  │  │                 │  │                  │  │                   │   │  │
+│  │  │ • Fetch pending │  │ • Load rules     │  │ • Language detect │   │  │
+│  │  │ • Batch process │  │ • Match emoji    │  │ • Parse by type   │   │  │
+│  │  │ • Handle retry  │  │ • Apply config   │  │ • Extract entities│   │  │
+│  │  └────────┬────────┘  └────────┬─────────┘  └─────────┬─────────┘   │  │
+│  │           │                     │                       │             │  │
+│  │           └─────────────────────┴───────────────────────┘             │  │
+│  │                                 │                                      │  │
+│  │  ┌──────────────────────────────▼──────────────────────────────────┐  │  │
+│  │  │                      ACTION EXECUTORS                           │  │  │
+│  │  │  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐   │  │  │
+│  │  │  │ Task Creator │  │Event Creator │  │  Bill Creator     │   │  │  │
+│  │  │  └──────────────┘  └──────────────┘  └───────────────────┘   │  │  │
+│  │  └─────────────────────────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│  ┌─────────────────┐         ┌─────────────────┐      ┌─────────────────┐  │
+│  │ External APIs   │         │   Monitoring    │      │  Admin Panel    │  │
+│  │ • Google Cal    │         │ • Metrics       │      │ • Rule CRUD     │  │
+│  │ • WhatsApp      │         │ • Alerts        │      │ • Analytics     │  │
+│  │ • Email         │         │ • Dashboards    │      │ • User mgmt     │  │
+│  └─────────────────┘         └─────────────────┘      └─────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Core Components
+
+### 1. Webhook Handler
+**Purpose**: Receive and store WhatsApp events quickly
+
+```typescript
+// src/controllers/WebhookController.ts
+
+export class WebhookController {
+  async handleWebhook(req: Request, res: Response) {
+    const { instanceName } = req.params;
+    const payload = req.body;
+    
+    try {
+      // 1. Validate webhook signature
+      if (!this.validateSignature(req)) {
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+      
+      // 2. Store based on event type
+      switch (payload.event) {
+        case 'messages.upsert':
+          await this.storeMessage(payload, instanceName);
+          break;
+          
+        case 'messages.reaction':
+          await this.storeReaction(payload, instanceName);
+          // Queue for action processing
+          await this.queueReactionAction(payload);
+          break;
+          
+        case 'messages.update':
+          await this.updateMessage(payload);
+          break;
+      }
+      
+      // 3. Return quickly
+      res.status(200).json({ status: 'received' });
+      
+    } catch (error) {
+      console.error('Webhook error:', error);
+      // Still return 200 to prevent retries
+      res.status(200).json({ status: 'error logged' });
+    }
+  }
+  
+  private async queueReactionAction(payload: any) {
+    await db.query(`
+      INSERT INTO action_queue 
+      (event_type, event_data, status, priority)
+      VALUES ('reaction', $1, 'pending', 
+        CASE 
+          WHEN $2 = '🔴' THEN 'high'
+          ELSE 'normal'
+        END
+      )
+    `, [payload, payload.message.reactionMessage.text]);
+  }
+}
+```
+
+### 2. Database Schema
+
+```sql
+-- Core messaging tables
+CREATE TABLE whatsapp_messages (
+  id TEXT PRIMARY KEY,
+  instance_name TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  chat_id TEXT,
+  content TEXT,
+  timestamp TIMESTAMP NOT NULL,
+  raw_data JSONB,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE whatsapp_message_reactions (
+  id TEXT PRIMARY KEY,
+  message_id TEXT REFERENCES whatsapp_messages(id),
+  user_id TEXT NOT NULL,
+  reaction TEXT NOT NULL,
+  timestamp TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Action processing
+CREATE TABLE action_queue (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_type TEXT NOT NULL,
+  event_data JSONB NOT NULL,
+  status TEXT DEFAULT 'pending', -- pending, processing, completed, failed
+  priority TEXT DEFAULT 'normal', -- high, normal, low
+  attempts INTEGER DEFAULT 0,
+  max_attempts INTEGER DEFAULT 3,
+  last_error TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  processed_at TIMESTAMP,
+  completed_at TIMESTAMP
+);
+
+-- Action rules configuration
+CREATE TABLE "actionRules" (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  rule_name TEXT,
+  rule_type TEXT NOT NULL, -- 'simple_action', 'nlp_action'
+  config JSONB NOT NULL,
+  conditions JSONB DEFAULT '{}', -- Future: conditional rules
+  active BOOLEAN DEFAULT true,
+  created_by TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Example rules
+INSERT INTO "actionRules" (rule_name, rule_type, config) VALUES
+('General Task', 'nlp_action', '{
+  "trigger_emoji": "✅",
+  "action_type": "create_task",
+  "nlp_parser": "task",
+  "task_config": {
+    "default_priority": "medium",
+    "default_tags": ["todo"]
+  }
+}'),
+
+('Calendar Event', 'nlp_action', '{
+  "trigger_emoji": "📅",
+  "action_type": "create_calendar_event", 
+  "nlp_parser": "calendar",
+  "calendar_config": {
+    "default_duration": 60,
+    "send_invites": true
+  }
+}'),
+
+('Bill Payment', 'nlp_action', '{
+  "trigger_emoji": "💳",
+  "action_type": "create_bill",
+  "nlp_parser": "bill",
+  "bill_config": {
+    "send_reminders": true,
+    "default_priority": "high"
+  }
+}');
+
+-- Created entities
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  description TEXT,
+  priority TEXT DEFAULT 'medium',
+  status TEXT DEFAULT 'pending',
+  due_date TIMESTAMP,
+  tags TEXT[] DEFAULT '{}',
+  metadata JSONB DEFAULT '{}',
+  created_by TEXT NOT NULL,
+  assigned_to TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  completed_at TIMESTAMP
+);
+
+CREATE TABLE calendar_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  start_time TIMESTAMP NOT NULL,
+  end_time TIMESTAMP,
+  duration_minutes INTEGER,
+  location TEXT,
+  platform TEXT,
+  attendees TEXT[],
+  metadata JSONB DEFAULT '{}',
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE bills (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  vendor TEXT NOT NULL,
+  amount DECIMAL(10,2),
+  currency TEXT DEFAULT 'USD',
+  due_date DATE,
+  status TEXT DEFAULT 'pending',
+  metadata JSONB DEFAULT '{}',
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Analytics and monitoring
+CREATE TABLE action_execution_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  rule_id UUID REFERENCES "actionRules"(id),
+  queue_item_id UUID REFERENCES action_queue(id),
+  status TEXT NOT NULL,
+  execution_time_ms INTEGER,
+  error_message TEXT,
+  created_entities JSONB,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE nlp_processing_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  message_content TEXT,
+  parser_type TEXT,
+  language TEXT,
+  success BOOLEAN,
+  confidence FLOAT,
+  extracted_entities JSONB,
+  processing_time_ms INTEGER,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX idx_action_queue_pending ON action_queue(status, priority, created_at) 
+WHERE status = 'pending';
+
+CREATE INDEX idx_action_rules_emoji ON "actionRules"((config->>'trigger_emoji')) 
+WHERE active = true;
+
+CREATE INDEX idx_tasks_user ON tasks(created_by, status);
+CREATE INDEX idx_calendar_events_time ON calendar_events(start_time, created_by);
+```
+
+### 3. Action Processor Service
+
+```typescript
+// src/services/ActionProcessorService.ts
+
+export class ActionProcessorService {
+  private nlpService: NLPService;
+  private ruleEngine: RuleEngine;
+  private isProcessing = false;
+  
+  async start() {
+    console.log('Starting Action Processor Service...');
+    
+    // Process queue every 2 seconds
+    setInterval(() => {
+      if (!this.isProcessing) {
+        this.processQueue();
+      }
+    }, 2000);
+    
+    // Listen for high priority items
+    this.listenForHighPriority();
+  }
+  
+  private async processQueue() {
+    this.isProcessing = true;
+    const startTime = Date.now();
+    
+    try {
+      // Fetch batch of pending actions
+      const batch = await db.query(`
+        UPDATE action_queue
+        SET status = 'processing'
+        WHERE id IN (
+          SELECT id FROM action_queue
+          WHERE status = 'pending'
+          AND attempts < max_attempts
+          ORDER BY 
+            CASE priority 
+              WHEN 'high' THEN 1 
+              WHEN 'normal' THEN 2 
+              ELSE 3 
+            END,
+            created_at
+          LIMIT 10
+          FOR UPDATE SKIP LOCKED
+        )
+        RETURNING *
+      `);
+      
+      // Process each action
+      for (const queueItem of batch.rows) {
+        await this.processQueueItem(queueItem);
+      }
+      
+      const processingTime = Date.now() - startTime;
+      await this.recordMetrics(batch.rows.length, processingTime);
+      
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+  
+  private async processQueueItem(queueItem: any) {
+    const executionStart = Date.now();
+    
+    try {
+      // Extract reaction data
+      const reactionData = await this.getReactionData(queueItem.event_data);
+      
+      // Find matching action rules
+      const rules = await this.ruleEngine.findMatchingRules(
+        reactionData.reaction,
+        reactionData.user_id
+      );
+      
+      if (rules.length === 0) {
+        console.log(`No rules found for emoji: ${reactionData.reaction}`);
+        await this.markQueueItemComplete(queueItem.id, 'no_rules');
+        return;
+      }
+      
+      // Execute each matching rule
+      const results = [];
+      for (const rule of rules) {
+        const result = await this.executeRule(rule, reactionData);
+        results.push(result);
+      }
+      
+      // Mark queue item as completed
+      await this.markQueueItemComplete(queueItem.id, 'completed', results);
+      
+      // Record execution metrics
+      await this.logExecution(queueItem, rules, results, Date.now() - executionStart);
+      
+    } catch (error) {
+      await this.handleProcessingError(queueItem, error);
+    }
+  }
+  
+  private async executeRule(rule: ActionRule, reactionData: any) {
+    const { config } = rule;
+    
+    if (rule.rule_type === 'simple_action') {
+      return await this.executeSimpleAction(rule, reactionData);
+    }
+    
+    if (rule.rule_type === 'nlp_action') {
+      // Step 1: Parse with NLP
+      const parseResult = await this.nlpService.parse(
+        reactionData.message_content,
+        config.nlp_parser,
+        reactionData.language || 'auto',
+        config
+      );
+      
+      if (!parseResult.success) {
+        await this.sendParsingError(
+          reactionData.user_id,
+          parseResult.error,
+          config.trigger_emoji
+        );
+        return { success: false, error: parseResult.error };
+      }
+      
+      // Step 2: Execute action based on type
+      switch (config.action_type) {
+        case 'create_task':
+          return await this.createTask(parseResult.data, config, reactionData);
+          
+        case 'create_calendar_event':
+          return await this.createCalendarEvent(parseResult.data, config, reactionData);
+          
+        case 'create_bill':
+          return await this.createBill(parseResult.data, config, reactionData);
+          
+        default:
+          throw new Error(`Unknown action type: ${config.action_type}`);
+      }
+    }
+  }
+  
+  private async createTask(parsedData: any, ruleConfig: any, context: any) {
+    // Merge parsed data with rule defaults
+    const taskData = {
+      title: parsedData.title,
+      description: parsedData.description,
+      priority: parsedData.priority || ruleConfig.task_config?.default_priority || 'medium',
+      due_date: parsedData.dueDate,
+      tags: [
+        ...(ruleConfig.task_config?.default_tags || []),
+        ...(parsedData.tags || [])
+      ],
+      metadata: {
+        source: 'whatsapp_reaction',
+        emoji: ruleConfig.trigger_emoji,
+        rule_id: ruleConfig.id,
+        message_id: context.message_id,
+        ...parsedData.metadata
+      },
+      created_by: context.user_id,
+      assigned_to: parsedData.assignee || context.user_id
+    };
+    
+    // Create task in database
+    const task = await db.query(`
+      INSERT INTO tasks 
+      (title, description, priority, due_date, tags, metadata, created_by, assigned_to)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+    `, [
+      taskData.title,
+      taskData.description,
+      taskData.priority,
+      taskData.due_date,
+      taskData.tags,
+      taskData.metadata,
+      taskData.created_by,
+      taskData.assigned_to
+    ]);
+    
+    // Send confirmation
+    await this.sendTaskConfirmation(task.rows[0], context.user_id, ruleConfig);
+    
+    // Broadcast via SSE
+    await this.broadcastEntityCreated('task', task.rows[0]);
+    
+    return { 
+      success: true, 
+      entity_type: 'task', 
+      entity_id: task.rows[0].id 
+    };
+  }
+}
+```
+
+### 4. NLP Service
+
+```typescript
+// src/services/NLPService.ts
+
+import chrono from 'chrono-node';
+import { franc } from 'franc';
+
+export class NLPService {
+  
+  async parse(
+    message: string,
+    parserType: string,
+    language: string | 'auto',
+    ruleConfig?: any
+  ): Promise<ParseResult> {
+    // Auto-detect language if needed
+    const lang = language === 'auto' ? this.detectLanguage(message) : language;
+    
+    // Log for analytics
+    const startTime = Date.now();
+    
+    try {
+      let result: ParseResult;
+      
+      // Route to appropriate parser
+      switch (parserType) {
+        case 'task':
+          result = await this.parseTask(message, lang, ruleConfig);
+          break;
+          
+        case 'calendar':
+          result = await this.parseCalendarEvent(message, lang, ruleConfig);
+          break;
+          
+        case 'bill':
+          result = await this.parseBill(message, lang, ruleConfig);
+          break;
+          
+        case 'note':
+          result = await this.parseNote(message, lang, ruleConfig);
+          break;
+          
+        default:
+          result = { 
+            success: false, 
+            error: `Unknown parser type: ${parserType}` 
+          };
+      }
+      
+      // Log parsing attempt
+      await this.logParsing(
+        message,
+        parserType,
+        lang,
+        result,
+        Date.now() - startTime
+      );
+      
+      return result;
+      
+    } catch (error) {
+      console.error('NLP parsing error:', error);
+      return {
+        success: false,
+        error: 'Failed to parse message'
+      };
+    }
+  }
+  
+  private async parseTask(message: string, language: string, config?: any): Promise<ParseResult> {
+    const extracted = {
+      title: this.extractTaskTitle(message, language),
+      description: this.extractDescription(message, language),
+      priority: this.extractPriority(message, language),
+      dueDate: this.extractDueDate(message, language),
+      tags: this.extractHashtags(message),
+      assignee: this.extractAssignee(message),
+      metadata: {}
+    };
+    
+    // Validate required fields
+    if (!extracted.title) {
+      return {
+        success: false,
+        error: language === 'es' 
+          ? 'No pude identificar el título de la tarea'
+          : 'Could not identify task title',
+        partialData: extracted
+      };
+    }
+    
+    // Apply special handling based on config
+    if (config?.task_config?.force_today && !extracted.dueDate) {
+      extracted.dueDate = new Date();
+      extracted.dueDate.setHours(23, 59, 59);
+    }
+    
+    return {
+      success: true,
+      type: 'task',
+      data: extracted,
+      confidence: this.calculateTaskConfidence(extracted)
+    };
+  }
+  
+  private async parseCalendarEvent(message: string, language: string, config?: any): ParseResult {
+    const extracted = {
+      title: this.extractEventTitle(message, language),
+      dateTime: chrono.parseDate(message) || this.parseLocalizedDate(message, language),
+      duration: this.extractDuration(message, language),
+      platform: this.extractPlatform(message),
+      attendees: this.extractAttendees(message),
+      location: this.extractLocation(message, language),
+      recurrence: this.extractRecurrence(message, language)
+    };
+    
+    // Apply defaults from config
+    if (!extracted.duration && config?.calendar_config?.default_duration) {
+      extracted.duration = config.calendar_config.default_duration;
+    }
+    
+    // Validate
+    if (!extracted.dateTime) {
+      return {
+        success: false,
+        error: language === 'es'
+          ? 'No encontré fecha/hora para el evento'
+          : 'No date/time found for event',
+        partialData: extracted
+      };
+    }
+    
+    return {
+      success: true,
+      type: 'calendar',
+      data: extracted,
+      confidence: 0.9
+    };
+  }
+  
+  private async parseBill(message: string, language: string, config?: any): ParseResult {
+    // Check for multiple bills
+    const bills = this.extractMultipleBills(message, language);
+    
+    if (bills.length === 0) {
+      return {
+        success: false,
+        error: language === 'es'
+          ? 'No encontré información de facturas'
+          : 'No bill information found'
+      };
+    }
+    
+    if (bills.length === 1) {
+      return {
+        success: true,
+        type: 'bill',
+        data: bills[0],
+        confidence: bills[0].confidence
+      };
+    }
+    
+    // Multiple bills
+    return {
+      success: true,
+      type: 'multiple_bills',
+      data: {
+        bills: bills,
+        total: this.calculateTotal(bills),
+        count: bills.length
+      },
+      confidence: 0.9
+    };
+  }
+  
+  // Helper methods
+  private detectLanguage(message: string): string {
+    const detected = franc(message);
+    const langMap = {
+      'spa': 'es',
+      'eng': 'en',
+      'por': 'pt'
+    };
+    return langMap[detected] || 'en';
+  }
+  
+  private extractTaskTitle(message: string, language: string): string {
+    // Remove common task indicators
+    const indicators = language === 'es'
+      ? ['hacer', 'tarea:', 'recordar', 'pendiente:']
+      : ['todo:', 'task:', 'remember to', 'do:'];
+    
+    let title = message;
+    indicators.forEach(indicator => {
+      title = title.replace(new RegExp(`^${indicator}\\s*`, 'i'), '');
+    });
+    
+    // Take first line if multi-line
+    title = title.split('\n')[0].trim();
+    
+    // Capitalize first letter
+    return title.charAt(0).toUpperCase() + title.slice(1);
+  }
+  
+  private extractPriority(message: string, language: string): string | null {
+    const priorities = {
+      high: language === 'es' 
+        ? ['urgente', 'importante', 'crítico', 'alta prioridad']
+        : ['urgent', 'important', 'critical', 'high priority', 'asap'],
+      low: language === 'es'
+        ? ['baja prioridad', 'cuando puedas', 'no urgente']
+        : ['low priority', 'when possible', 'not urgent']
+    };
+    
+    const lower = message.toLowerCase();
+    
+    if (priorities.high.some(term => lower.includes(term))) return 'high';
+    if (priorities.low.some(term => lower.includes(term))) return 'low';
+    
+    return null;
+  }
+}
+```
+
+### 5. Rule Engine
+
+```typescript
+// src/services/RuleEngine.ts
+
+export class RuleEngine {
+  private rulesCache: Map<string, ActionRule[]> = new Map();
+  
+  async findMatchingRules(emoji: string, userId: string): Promise<ActionRule[]> {
+    // Check cache first
+    const cacheKey = `${emoji}-${userId}`;
+    if (this.rulesCache.has(cacheKey)) {
+      return this.rulesCache.get(cacheKey)!;
+    }
+    
+    // Query database
+    const rules = await db.query(`
+      SELECT * FROM "actionRules"
+      WHERE config->>'trigger_emoji' = $1
+      AND active = true
+      AND (
+        conditions = '{}'::jsonb
+        OR conditions IS NULL
+        OR check_conditions(conditions, $2)
+      )
+      ORDER BY created_at DESC
+    `, [emoji, userId]);
+    
+    // Cache for 5 minutes
+    this.rulesCache.set(cacheKey, rules.rows);
+    setTimeout(() => this.rulesCache.delete(cacheKey), 5 * 60 * 1000);
+    
+    return rules.rows;
+  }
+  
+  async createRule(ruleData: any): Promise<ActionRule> {
+    // Validate rule
+    this.validateRule(ruleData);
+    
+    // Check for conflicts
+    await this.checkConflicts(ruleData);
+    
+    // Insert rule
+    const result = await db.query(`
+      INSERT INTO "actionRules" (rule_name, rule_type, config, conditions)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `, [
+      ruleData.rule_name,
+      ruleData.rule_type,
+      ruleData.config,
+      ruleData.conditions || {}
+    ]);
+    
+    // Clear cache
+    this.rulesCache.clear();
+    
+    return result.rows[0];
+  }
+}
+```
+
+### 6. Monitoring & Analytics
+
+```typescript
+// src/services/MonitoringService.ts
+
+export class MonitoringService {
+  async getSystemHealth(): Promise<SystemHealth> {
+    const [queueHealth, processingStats, errorRate] = await Promise.all([
+      this.getQueueHealth(),
+      this.getProcessingStats(),
+      this.getErrorRate()
+    ]);
+    
+    return {
+      status: this.calculateOverallStatus(queueHealth, errorRate),
+      queue: queueHealth,
+      processing: processingStats,
+      errors: errorRate,
+      timestamp: new Date()
+    };
+  }
+  
+  private async getQueueHealth() {
+    const result = await db.query(`
+      SELECT 
+        status,
+        priority,
+        COUNT(*) as count,
+        AVG(EXTRACT(EPOCH FROM (NOW() - created_at))) as avg_age_seconds
+      FROM action_queue
+      WHERE created_at > NOW() - INTERVAL '1 hour'
+      GROUP BY status, priority
+    `);
+    
+    return {
+      byStatus: result.rows,
+      backlog: result.rows
+        .filter(r => r.status === 'pending')
+        .reduce((sum, r) => sum + parseInt(r.count), 0)
+    };
+  }
+}
+```
+
+## API Endpoints
+
+```typescript
+// src/routes/api.ts
+
+// Webhook endpoint
+app.post('/api/webhook/:instanceName', webhookController.handleWebhook);
+
+// Admin endpoints
+app.get('/api/rules', async (req, res) => {
+  const rules = await ruleEngine.getAllRules();
+  res.json(rules);
+});
+
+app.post('/api/rules', async (req, res) => {
+  const rule = await ruleEngine.createRule(req.body);
+  res.json(rule);
+});
+
+// Monitoring
+app.get('/api/health', async (req, res) => {
+  const health = await monitoringService.getSystemHealth();
+  res.json(health);
+});
+
+// Analytics
+app.get('/api/analytics/nlp', async (req, res) => {
+  const stats = await db.query(`
+    SELECT 
+      parser_type,
+      language,
+      COUNT(*) as total,
+      COUNT(*) FILTER (WHERE success) as successful,
+      AVG(confidence) as avg_confidence,
+      AVG(processing_time_ms) as avg_time
+    FROM nlp_processing_log
+    WHERE created_at > NOW() - INTERVAL '7 days'
+    GROUP BY parser_type, language
+  `);
+  res.json(stats.rows);
+});
+```
+
+## Deployment Architecture
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: whatsapp_nlp
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  api:
+    build: .
+    environment:
+      - NODE_ENV=production
+      - ROLE=api
+      - DATABASE_URL=postgres://app:${DB_PASSWORD}@postgres:5432/whatsapp_nlp
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+
+  processor:
+    build: .
+    environment:
+      - NODE_ENV=production
+      - ROLE=processor
+      - DATABASE_URL=postgres://app:${DB_PASSWORD}@postgres:5432/whatsapp_nlp
+      - PROCESS_INTERVAL=2000
+    depends_on:
+      - postgres
+      - api
+
+  monitoring:
+    image: grafana/grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  postgres_data:
+  grafana_data:
+```
+
+## Security Considerations
+
+```typescript
+// Webhook signature validation
+function validateWebhookSignature(req: Request): boolean {
+  const signature = req.headers['x-evolution-signature'];
+  const body = JSON.stringify(req.body);
+  
+  const expectedSignature = crypto
+    .createHmac('sha256', process.env.WEBHOOK_SECRET!)
+    .update(body)
+    .digest('hex');
+    
+  return signature === expectedSignature;
+}
+
+// Rate limiting
+const rateLimiter = new RateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100 // 100 requests per minute per user
+});
+
+// Data encryption for sensitive fields
+function encryptSensitive(data: any): any {
+  if (data.accountNumber) {
+    data.accountNumber = encrypt(data.accountNumber);
+  }
+  return data;
+}
+```
+
+## Scaling Strategy
+
+### Current (< 1K users/day)
+- Single API server
+- Single processor
+- Basic PostgreSQL
+
+### Growth (1K-10K users/day)
+- 2-3 API servers behind load balancer
+- 2-3 processors
+- PostgreSQL with read replicas
+- Redis for caching
+
+### Scale (10K+ users/day)
+- Auto-scaling API cluster
+- Multiple processor pools by priority
+- PostgreSQL cluster with partitioning
+- Dedicated queue service (SQS/RabbitMQ)
+- ElasticSearch for analytics
+
+## Key Features
+
+1. **Rule-Driven**: All behavior configured via actionRules
+2. **Queue-Based**: Reliable processing with retry logic
+3. **NLP Flexibility**: Multiple parsers for different content types
+4. **Scalable**: Horizontal scaling of processors
+5. **Observable**: Comprehensive logging and metrics
+6. **Extensible**: Easy to add new emoji rules and parsers
+
+## Complete Data Flow Example
+
+### Scenario: User creates a bill payment task
+
+```
+1. USER ACTION
+   Message: "Pagar luz CFE $890 vence 15 enero"
+   Reaction: 💳
+
+2. WEBHOOK RECEPTION
+   Evolution API → Webhook Handler
+   - Validates signature
+   - Stores reaction in DB
+   - Queues action with event data
+
+3. QUEUE PROCESSING
+   Action Processor picks up from queue
+   - Loads reaction and message data
+   - Queries actionRules for 💳
+
+4. RULE MATCHING
+   Finds rule:
+   {
+     "trigger_emoji": "💳",
+     "action_type": "create_bill",
+     "nlp_parser": "bill"
+   }
+
+5. NLP PARSING
+   NLP Service parses with 'bill' parser
+   - Detects language: Spanish
+   - Extracts: vendor=CFE, amount=$890, due=Jan 15
+   - Returns parsed data
+
+6. ACTION EXECUTION
+   Creates bill task:
+   - Title: "Pagar CFE - $890"
+   - Due date: January 15
+   - Priority: High (due soon)
+   - Tags: ['bill', 'electricity']
+
+7. CONFIRMATION
+   Sends WhatsApp message:
+   "💳 Tarea de pago creada:
+    Pagar CFE - $890
+    Vence: 15/01/2024
+    Prioridad: Alta"
+
+8. BROADCASTING
+   SSE notification to frontend
+   Updates dashboard in real-time
+```
+
+## Error Handling & Recovery
+
+### Webhook Failures
+```typescript
+// Webhook always returns 200 to prevent Evolution API retries
+try {
+  await processWebhook(payload);
+} catch (error) {
+  await logError(error);
+  // Still return success
+}
+res.status(200).send();
+```
+
+### Queue Processing Failures
+```typescript
+// Automatic retry with exponential backoff
+if (queueItem.attempts < queueItem.max_attempts) {
+  const backoffMs = Math.pow(2, queueItem.attempts) * 1000;
+  await db.query(`
+    UPDATE action_queue 
+    SET 
+      status = 'pending',
+      attempts = attempts + 1,
+      retry_after = NOW() + INTERVAL '${backoffMs} milliseconds'
+    WHERE id = $1
+  `, [queueItem.id]);
+}
+```
+
+### NLP Parsing Failures
+```typescript
+// Graceful degradation
+if (!parseResult.success) {
+  // Send helpful error to user
+  await sendMessage({
+    to: userId,
+    message: `${emoji} No pude procesar tu mensaje. 
+    Intenta ser más específico o usa este formato:
+    "${getExampleFormat(emoji, language)}"`
+  });
+}
+```
+
+## Performance Optimizations
+
+### Database Optimizations
+```sql
+-- Partial indexes for common queries
+CREATE INDEX idx_queue_pending_high 
+  ON action_queue(created_at) 
+  WHERE status = 'pending' AND priority = 'high';
+
+-- Materialized view for analytics
+CREATE MATERIALIZED VIEW daily_action_stats AS
+SELECT 
+  DATE(created_at) as date,
+  config->>'trigger_emoji' as emoji,
+  COUNT(*) as total_actions,
+  COUNT(*) FILTER (WHERE status = 'completed') as successful
+FROM action_queue q
+JOIN "actionRules" r ON r.id = (q.event_data->>'rule_id')::uuid
+GROUP BY 1, 2;
+
+-- Automatic vacuum for high-churn tables
+ALTER TABLE action_queue SET (autovacuum_vacuum_scale_factor = 0.1);
+```
+
+### Caching Strategy
+```typescript
+class CacheService {
+  private redis: Redis;
+  
+  // Cache user preferences
+  async getUserPreferences(userId: string) {
+    const cached = await this.redis.get(`user:${userId}:prefs`);
+    if (cached) return JSON.parse(cached);
+    
+    const prefs = await db.query(
+      'SELECT * FROM user_preferences WHERE user_id = $1',
+      [userId]
+    );
+    
+    await this.redis.setex(
+      `user:${userId}:prefs`, 
+      3600, // 1 hour
+      JSON.stringify(prefs.rows[0])
+    );
+    
+    return prefs.rows[0];
+  }
+  
+  // Cache active rules
+  async getActiveRules() {
+    const cached = await this.redis.get('rules:active');
+    if (cached) return JSON.parse(cached);
+    
+    const rules = await db.query(
+      'SELECT * FROM "actionRules" WHERE active = true'
+    );
+    
+    await this.redis.setex(
+      'rules:active',
+      300, // 5 minutes
+      JSON.stringify(rules.rows)
+    );
+    
+    return rules.rows;
+  }
+}
+```
+
+## Testing Strategy
+
+### Unit Tests
+```typescript
+// Test NLP parsers
+describe('NLP Service', () => {
+  describe('Task Parser', () => {
+    it('should extract task with due date', async () => {
+      const result = await nlpService.parse(
+        'Review presentation by Friday',
+        'task',
+        'en'
+      );
+      
+      expect(result.success).toBe(true);
+      expect(result.data.title).toBe('Review presentation');
+      expect(result.data.dueDate).toBeDefined();
+    });
+    
+    it('should handle Spanish dates', async () => {
+      const result = await nlpService.parse(
+        'Pagar luz antes del 15 de enero',
+        'bill',
+        'es'
+      );
+      
+      expect(result.data.dueDate.getDate()).toBe(15);
+      expect(result.data.dueDate.getMonth()).toBe(0); // January
+    });
+  });
+});
+```
+
+### Integration Tests
+```typescript
+// Test complete flow
+describe('Action Processing Flow', () => {
+  it('should create task from emoji reaction', async () => {
+    // 1. Simulate webhook
+    await request(app)
+      .post('/api/webhook/test-instance')
+      .send(mockReactionPayload('✅', 'Buy milk'));
+    
+    // 2. Process queue
+    await actionProcessor.processQueue();
+    
+    // 3. Verify task created
+    const tasks = await db.query(
+      'SELECT * FROM tasks WHERE title LIKE $1',
+      ['%Buy milk%']
+    );
+    
+    expect(tasks.rows).toHaveLength(1);
+    expect(tasks.rows[0].priority).toBe('medium');
+  });
+});
+```
+
+## Monitoring Dashboard
+
+### Key Metrics
+```typescript
+// Real-time dashboard data
+async function getDashboardMetrics() {
+  const [
+    queueDepth,
+    processingRate,
+    errorRate,
+    activeUsers,
+    topEmojis
+  ] = await Promise.all([
+    getQueueDepth(),
+    getProcessingRate(),
+    getErrorRate24h(),
+    getActiveUsers24h(),
+    getTopEmojis7d()
+  ]);
+  
+  return {
+    overview: {
+      queueDepth,
+      processingRate,
+      errorRate,
+      activeUsers
+    },
+    usage: {
+      topEmojis,
+      hourlyDistribution: await getHourlyDistribution(),
+      successRateByEmoji: await getSuccessRateByEmoji()
+    }
+  };
+}
+```
+
+### Alerting Rules
+```yaml
+# Prometheus alerts
+groups:
+  - name: whatsapp_nlp
+    rules:
+      - alert: HighQueueDepth
+        expr: action_queue_pending > 1000
+        for: 5m
+        annotations:
+          summary: "High queue depth: {{ $value }} pending items"
+          
+      - alert: LowParsingSuccess
+        expr: nlp_success_rate < 0.8
+        for: 10m
+        annotations:
+          summary: "Low NLP success rate: {{ $value }}"
+          
+      - alert: ProcessorDown
+        expr: up{job="action_processor"} == 0
+        for: 1m
+        annotations:
+          summary: "Action processor is down"
+```
+
+## Admin Panel Features
+
+### Rule Management
+```typescript
+// CRUD operations for rules
+class RuleManagementAPI {
+  // Create new rule
+  async createRule(req: Request, res: Response) {
+    const { emoji, actionType, parserType, config } = req.body;
+    
+    // Validate emoji not taken
+    const existing = await this.ruleEngine.findRuleByEmoji(emoji);
+    if (existing) {
+      return res.status(400).json({ 
+        error: 'Emoji already has an active rule' 
+      });
+    }
+    
+    const rule = await this.ruleEngine.createRule({
+      rule_name: req.body.name,
+      rule_type: 'nlp_action',
+      config: {
+        trigger_emoji: emoji,
+        action_type: actionType,
+        nlp_parser: parserType,
+        ...config
+      }
+    });
+    
+    res.json(rule);
+  }
+  
+  // Test rule without saving
+  async testRule(req: Request, res: Response) {
+    const { emoji, message, config } = req.body;
+    
+    // Simulate parsing
+    const parseResult = await this.nlpService.parse(
+      message,
+      config.nlp_parser,
+      'auto',
+      config
+    );
+    
+    res.json({
+      parseResult,
+      wouldCreate: this.simulateCreation(parseResult, config)
+    });
+  }
+}
+```
+
+### User Analytics
+```typescript
+// User behavior insights
+async function getUserAnalytics(userId: string) {
+  const [
+    totalActions,
+    favoriteEmojis,
+    peakHours,
+    successRate
+  ] = await Promise.all([
+    getTotalActions(userId),
+    getFavoriteEmojis(userId),
+    getPeakUsageHours(userId),
+    getSuccessRate(userId)
+  ]);
+  
+  return {
+    usage: {
+      totalActions,
+      actionsPerDay: totalActions / 30,
+      favoriteEmojis,
+      peakHours
+    },
+    quality: {
+      successRate,
+      averageConfidence: await getAverageConfidence(userId),
+      commonErrors: await getCommonErrors(userId)
+    }
+  };
+}
+```
+
+## Production Checklist
+
+### Pre-deployment
+- [ ] Database migrations tested
+- [ ] Environment variables configured
+- [ ] SSL certificates installed
+- [ ] Webhook secrets set
+- [ ] Rate limiting configured
+- [ ] Error tracking (Sentry) setup
+- [ ] Monitoring (Grafana) configured
+- [ ] Backup strategy implemented
+
+### Post-deployment
+- [ ] Webhook endpoint verified
+- [ ] Test each emoji rule
+- [ ] Monitor queue processing
+- [ ] Check error rates
+- [ ] Verify SSE broadcasting
+- [ ] Test admin panel
+- [ ] Document common issues
+
+## Troubleshooting Guide
+
+### Common Issues
+
+**Queue buildup**
+```sql
+-- Check queue status
+SELECT status, COUNT(*) 
+FROM action_queue 
+WHERE created_at > NOW() - INTERVAL '1 hour'
+GROUP BY status;
+
+-- Force reprocess stuck items
+UPDATE action_queue 
+SET status = 'pending', attempts = 0
+WHERE status = 'processing' 
+AND updated_at < NOW() - INTERVAL '10 minutes';
+```
+
+**NLP parsing failures**
+```sql
+-- Find problematic patterns
+SELECT 
+  message_content,
+  error_message,
+  COUNT(*) as occurrences
+FROM nlp_processing_log
+WHERE success = false
+AND created_at > NOW() - INTERVAL '24 hours'
+GROUP BY message_content, error_message
+ORDER BY occurrences DESC;
+```
+
+**Rule conflicts**
+```sql
+-- Find duplicate emoji rules
+SELECT 
+  config->>'trigger_emoji' as emoji,
+  COUNT(*) as rule_count,
+  ARRAY_AGG(id) as rule_ids
+FROM "actionRules"
+WHERE active = true
+GROUP BY 1
+HAVING COUNT(*) > 1;
+```
+
+## Future Enhancements
+
+### Phase 1 (Next Quarter)
+- Voice message transcription
+- Image text extraction (OCR)
+- Multi-language support (PT, FR)
+- Bulk operations
+- Template library
+
+### Phase 2 (6 Months)
+- AI-powered intent detection
+- Custom user rules
+- Workflow automation
+- Third-party integrations
+- Mobile app
+
+### Phase 3 (1 Year)
+- Machine learning optimization
+- Predictive actions
+- Team collaboration
+- API marketplace
+- White-label solution
+
+## Conclusion
+
+This architecture provides:
+- **Reliability**: Queue-based processing with retries
+- **Flexibility**: Rule-driven configuration
+- **Scalability**: Horizontal scaling ready
+- **Maintainability**: Clear separation of concerns
+- **Extensibility**: Easy to add new features
+
+The system can start simple and grow with your needs!
