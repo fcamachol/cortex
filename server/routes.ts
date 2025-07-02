@@ -1325,6 +1325,34 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.post('/api/calendar/sync', async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.body;
+      
+      // Get any active Google Calendar integration for this user
+      const integrations = await storage.getGoogleCalendarIntegrations();
+      const userIntegration = integrations.find(int => int.user_id === userId);
+      
+      if (!userIntegration) {
+        return res.status(404).json({ error: 'No Google Calendar integration found for user' });
+      }
+      
+      const { googleCalendarService } = await import('./google-calendar-service');
+      googleCalendarService.setCredentials({
+        accessToken: userIntegration.access_token,
+        refreshToken: userIntegration.refresh_token
+      });
+      
+      // Perform sync
+      await googleCalendarService.syncCalendarEvents(userId, userIntegration.id);
+      
+      res.json({ success: true, message: 'Calendar sync completed' });
+    } catch (error) {
+      console.error('Error syncing calendar:', error);
+      res.status(500).json({ error: 'Failed to sync calendar' });
+    }
+  });
+
   app.post('/api/calendar/sync/:integrationId', async (req: Request, res: Response) => {
     try {
       const { integrationId } = req.params;

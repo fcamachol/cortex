@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Settings } from "lucide-react";
@@ -12,6 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 export default function IntegrationModule() {
   const [showWhatsAppManager, setShowWhatsAppManager] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Fetch real calendar providers from backend
   const { data: calendarProviders = [], isLoading: providersLoading } = useQuery({
@@ -253,8 +254,12 @@ export default function IntegrationModule() {
                       variant="outline" 
                       size="sm"
                       onClick={() => handleConfigure(integration.id)}
+                      disabled={integration.id === 'google-calendar' && syncGoogleCalendarMutation.isPending}
                     >
-                      Configure
+                      {integration.id === 'google-calendar' ? 
+                        (syncGoogleCalendarMutation.isPending ? 'Syncing...' : 'Sync Calendar') 
+                        : 'Configure'
+                      }
                     </Button>
                   ) : (
                     <Button 
