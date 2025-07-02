@@ -12,7 +12,7 @@ async function sendReactionWebhook() {
                 remoteJid: "5215579188699@s.whatsapp.net",
                 fromMe: false,
                 id: "REACTION_TEST_" + Date.now(),
-                participant: "5215579188699@s.whatsapp.net"
+                participant: "15103165094@s.whatsapp.net"
             },
             message: {
                 reactionMessage: {

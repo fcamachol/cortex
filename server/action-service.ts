@@ -295,10 +295,19 @@ export const ActionService = {
                 config.shouldCreateMeetInvite ||             // Config specifies it
                 (nlpEvent?.attendees && nlpEvent.attendees.length > 1); // Multiple attendees likely need virtual access
             
-            const startTime = nlpEvent?.startTime || new Date();
+            // Ensure we always have valid start and end times
+            const now = new Date();
+            const startTime = nlpEvent?.startTime || now;
             // Use NLP-detected duration if available, otherwise fall back to config or default 60 minutes
             const durationMinutes = nlpEvent?.duration || config.durationMinutes || 60;
-            const endTime = nlpEvent?.endTime || new Date(startTime.getTime() + durationMinutes * 60000);
+            let endTime = nlpEvent?.endTime;
+            
+            // If no end time was parsed, calculate it from start time + duration
+            if (!endTime) {
+                endTime = new Date(startTime.getTime() + durationMinutes * 60000);
+            }
+            
+            console.log(`📅 Calendar times: start=${startTime.toISOString()}, end=${endTime.toISOString()}, duration=${durationMinutes}min`);
             
             const eventData = {
                 id: randomUUID(),
