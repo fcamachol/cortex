@@ -314,10 +314,12 @@ export class GoogleCalendarService {
                     // For all-day events, use the date as-is
                     processedStartTime = startTime;
                 } else {
-                    // For timed events, convert to Mexico City timezone
+                    // For timed events, convert to Mexico City timezone (-6 hours from UTC)
                     const startDate = new Date(startTime);
-                    const mexicoCityTime = toZonedTime(startDate, 'America/Mexico_City');
-                    processedStartTime = format(mexicoCityTime, 'yyyy-MM-dd HH:mm:ss', { timeZone: 'America/Mexico_City' });
+                    // Mexico City is UTC-6, so subtract 6 hours from UTC time
+                    const mexicoCityOffset = -6 * 60; // -6 hours in minutes
+                    const localTime = new Date(startDate.getTime() + (mexicoCityOffset * 60 * 1000));
+                    processedStartTime = localTime.toISOString().slice(0, 19).replace('T', ' ');
                 }
             }
             
@@ -326,8 +328,10 @@ export class GoogleCalendarService {
                     processedEndTime = endTime;
                 } else {
                     const endDate = new Date(endTime);
-                    const mexicoCityTime = toZonedTime(endDate, 'America/Mexico_City');
-                    processedEndTime = format(mexicoCityTime, 'yyyy-MM-dd HH:mm:ss', { timeZone: 'America/Mexico_City' });
+                    // Mexico City is UTC-6, so subtract 6 hours from UTC time
+                    const mexicoCityOffset = -6 * 60; // -6 hours in minutes
+                    const localTime = new Date(endDate.getTime() + (mexicoCityOffset * 60 * 1000));
+                    processedEndTime = localTime.toISOString().slice(0, 19).replace('T', ' ');
                 }
             }
 
