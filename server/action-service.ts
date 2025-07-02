@@ -294,7 +294,9 @@ export const ActionService = {
                 (nlpEvent?.attendees && nlpEvent.attendees.length > 1); // Multiple attendees likely need virtual access
             
             const startTime = nlpEvent?.startTime || new Date();
-            const endTime = nlpEvent?.endTime || new Date(startTime.getTime() + (config.durationMinutes || 60) * 60000);
+            // Use NLP-detected duration if available, otherwise fall back to config or default 60 minutes
+            const durationMinutes = nlpEvent?.duration || config.durationMinutes || 60;
+            const endTime = nlpEvent?.endTime || new Date(startTime.getTime() + durationMinutes * 60000);
             
             const eventData = {
                 id: randomUUID(),

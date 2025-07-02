@@ -528,6 +528,73 @@ export class NLPService {
            (hasTeamKeyword && hasMultipleAttendees && !hasPhysicalLocation) ||
            (hasMultipleAttendees && !hasPhysicalLocation);
   }
+
+  private detectMealEvent(content: string, language: 'es' | 'en'): { isMeal: boolean, mealType?: string, suggestedDuration?: number } {
+    const text = content.toLowerCase();
+    
+    // Spanish meal keywords
+    const spanishMealKeywords = {
+      general: ['comida', 'comer', 'comemos', 'comiendo', 'almorzar', 'cenar', 'desayunar'],
+      breakfast: ['desayuno', 'desayunar', 'desayunamos'],
+      lunch: ['almuerzo', 'almorzar', 'almorzamos', 'comida'],
+      dinner: ['cena', 'cenar', 'cenamos'],
+      snack: ['merienda', 'tentempié', 'refrigerio']
+    };
+    
+    // English meal keywords
+    const englishMealKeywords = {
+      general: ['meal', 'eat', 'eating', 'food', 'dining', 'lunch', 'dinner', 'breakfast'],
+      breakfast: ['breakfast', 'brunch'],
+      lunch: ['lunch', 'luncheon'],
+      dinner: ['dinner', 'supper'],
+      snack: ['snack', 'coffee break', 'tea time']
+    };
+    
+    const keywords = language === 'es' ? spanishMealKeywords : englishMealKeywords;
+    
+    // Check for specific meal types first
+    for (const [mealType, typeKeywords] of Object.entries(keywords)) {
+      if (mealType === 'general') continue;
+      
+      for (const keyword of typeKeywords) {
+        if (text.includes(keyword)) {
+          const duration = this.getMealDuration(mealType);
+          console.log(`🍽️ Specific meal detected: ${mealType} (${keyword}) - ${duration} minutes`);
+          return {
+            isMeal: true,
+            mealType: mealType,
+            suggestedDuration: duration
+          };
+        }
+      }
+    }
+    
+    // Check for general meal keywords
+    for (const keyword of keywords.general) {
+      if (text.includes(keyword)) {
+        console.log(`🍽️ General meal detected: ${keyword} - defaulting to 60 minutes`);
+        return {
+          isMeal: true,
+          mealType: 'meal',
+          suggestedDuration: 60 // Default 1 hour
+        };
+      }
+    }
+    
+    return { isMeal: false };
+  }
+  
+  private getMealDuration(mealType: string): number {
+    const durations = {
+      breakfast: 45,   // 45 minutes
+      lunch: 60,       // 1 hour
+      dinner: 90,      // 1.5 hours
+      snack: 30,       // 30 minutes
+      meal: 60         // Default 1 hour
+    };
+    
+    return durations[mealType] || 60;
+  }
 }
 
 export const nlpService = new NLPService();
