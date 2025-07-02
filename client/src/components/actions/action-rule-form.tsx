@@ -337,6 +337,8 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
 
   const renderActionConfig = () => {
     console.log('🎯 Rendering action config for actionType:', actionType);
+    console.log('🎯 Form action_type value:', form.getValues('action_type'));
+    console.log('🎯 ActionType comparison - actionType === "create_calendar_event":', actionType === "create_calendar_event");
     switch (actionType) {
       case "create_task":
         return (
