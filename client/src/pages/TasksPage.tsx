@@ -88,7 +88,7 @@ export function TasksPage() {
           console.log('Real-time task update received:', data.task);
           
           // Immediately invalidate and refetch tasks
-          queryClient.invalidateQueries({ queryKey: ['/api/crm/tasks'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/events/tasks'] });
           
           // Show notification toast
           toast({
@@ -114,32 +114,42 @@ export function TasksPage() {
   }, [queryClient, toast]);
 
   // Helper function to transform raw task data into hierarchical structure
-  const transformTasksData = (data: Task[]) => {
-    const taskMap = new Map<string, Task>(); // Changed to string for UUID support
+  const transformTasksData = (data: any[]) => {
+    const taskMap = new Map<string, Task>(); 
     const rootTasks: Task[] = [];
     
-    // First pass: create task map with existing subtasks preserved
-    data.forEach(task => {
-      taskMap.set(task.taskId, { 
-        ...task, 
-        subtasks: task.subtasks || [] // Preserve existing subtasks from API
-      });
+    // First pass: create task map with field mapping and preserved subtasks
+    data.forEach(rawTask => {
+      const task: Task = {
+        id: rawTask.id,
+        taskId: rawTask.id, // Map id to taskId for frontend compatibility
+        title: rawTask.title,
+        description: rawTask.description,
+        status: rawTask.status,
+        priority: rawTask.priority,
+        dueDate: rawTask.due_date, // Map due_date to dueDate
+        parentTaskId: rawTask.parent_task_id, // Map parent_task_id to parentTaskId
+        createdAt: rawTask.created_at,
+        updatedAt: rawTask.updated_at,
+        subtasks: rawTask.subtasks || [] // Preserve existing subtasks from API
+      };
+      taskMap.set(task.taskId, task);
     });
     
     // Second pass: build hierarchy from parentTaskId relationships
-    data.forEach(task => {
-      const taskWithSubtasks = taskMap.get(task.taskId)!;
-      if (task.parentTaskId) {
-        const parent = taskMap.get(task.parentTaskId);
+    data.forEach(rawTask => {
+      const task = taskMap.get(rawTask.id)!;
+      if (rawTask.parent_task_id) {
+        const parent = taskMap.get(rawTask.parent_task_id);
         if (parent) {
           // Only add if not already in subtasks array
           const existsInSubtasks = parent.subtasks!.some(st => st.taskId === task.taskId);
           if (!existsInSubtasks) {
-            parent.subtasks!.push(taskWithSubtasks);
+            parent.subtasks!.push(task);
           }
         }
       } else {
-        rootTasks.push(taskWithSubtasks);
+        rootTasks.push(task);
       }
     });
     
@@ -148,12 +158,15 @@ export function TasksPage() {
 
   // Fetch tasks with SSE-based updates
   const { data: tasks, isLoading: tasksLoading } = useQuery({
-    queryKey: ['/api/crm/tasks'],
-    select: (data) => {
-      // Transform and return all tasks for proper board rendering
+    queryKey: ['/api/events/tasks'],
+    select: (data: any) => {
+      console.log('Raw API data:', data?.slice(0, 2));
       
-      // Return ALL tasks, not just those with JID
-      return transformTasksData(data);
+      // Transform and return all tasks for proper board rendering
+      const transformed = transformTasksData(data || []);
+      console.log('Transformed data:', transformed?.slice(0, 2));
+      
+      return transformed;
     },
     refetchInterval: false, // Disable polling - use SSE for updates
     staleTime: 300000, // Cache for 5 minutes
