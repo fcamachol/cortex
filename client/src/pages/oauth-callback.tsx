@@ -34,7 +34,10 @@ export default function OAuthCallbackPage() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({ 
+            code,
+            userId: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42' // Development user ID
+          }),
           credentials: 'include',
         });
 
