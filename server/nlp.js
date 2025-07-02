@@ -139,12 +139,26 @@ class EnhancedBillParser {
     let amount = null;
     let currency = 'MXN'; // Default to Mexican pesos
     
-    // Try all currency patterns
+    // Try all currency patterns with Mexican formatting support
     for (const pattern of this.currencyPatterns) {
       const matches = content.match(pattern);
       if (matches) {
         const amountStr = matches[0].replace(/[^\d.,]/g, '');
-        const parsedAmount = parseFloat(amountStr.replace(/,/g, ''));
+        
+        // Mexican formatting: comma as thousands separator, period as decimal
+        // Examples: 5,000 = 5000, 1,234.56 = 1234.56
+        let parsedAmount;
+        
+        if (amountStr.includes(',') && amountStr.includes('.')) {
+          // Format like 1,234.56 - comma is thousands, period is decimal
+          parsedAmount = parseFloat(amountStr.replace(/,/g, ''));
+        } else if (amountStr.includes(',') && !amountStr.includes('.')) {
+          // Format like 5,000 - comma is thousands separator
+          parsedAmount = parseFloat(amountStr.replace(/,/g, ''));
+        } else {
+          // Simple number without comma
+          parsedAmount = parseFloat(amountStr);
+        }
         
         if (!isNaN(parsedAmount) && parsedAmount > 0) {
           amount = parsedAmount;
@@ -156,19 +170,21 @@ class EnhancedBillParser {
             currency = 'MXN';
           }
           
-          console.log(`💰 Amount extracted: ${amount} ${currency}`);
+          console.log(`💰 Amount extracted: ${amount} ${currency} (from: "${amountStr}")`);
           break;
         }
       }
     }
     
-    // Fallback: Look for standalone numbers
+    // Fallback: Look for standalone numbers with Mexican thousands separator support
     if (!amount) {
-      const numberPattern = /\b(\d{1,6}(?:\.\d{2})?)\b/g;
+      const numberPattern = /\b(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\b/g;
       const matches = content.match(numberPattern);
       if (matches) {
-        amount = parseFloat(matches[0]);
-        console.log(`💰 Amount extracted via fallback: ${amount} ${currency}`);
+        // Handle Mexican formatting - remove commas for thousands separator
+        const amountStr = matches[0];
+        amount = parseFloat(amountStr.replace(/,/g, ''));
+        console.log(`💰 Amount extracted via fallback: ${amount} ${currency} (from: "${amountStr}")`);
       }
     }
     
@@ -398,11 +414,25 @@ class EnhancedBillParser {
     // Clean line of bullet points
     const cleaned = line.replace(/^\s*[-*•]\s*/, '').trim();
     
-    // Extract amount
+    // Extract amount with Mexican formatting support
     const amountMatch = cleaned.match(/\$?\s*(\d{1,3}(?:[,.]\d{3})*(?:[,.]\d{2})?)/);
     if (!amountMatch) return null;
     
-    const amount = parseInt(amountMatch[1].replace(/[,.]/g, ''));
+    // Mexican formatting: comma as thousands separator, period as decimal
+    // Examples: 5,000 = 5000, 1,234.56 = 1234.56
+    const amountStr = amountMatch[1];
+    let amount;
+    
+    if (amountStr.includes(',') && amountStr.includes('.')) {
+      // Format like 1,234.56 - comma is thousands, period is decimal
+      amount = parseFloat(amountStr.replace(/,/g, ''));
+    } else if (amountStr.includes(',') && !amountStr.includes('.')) {
+      // Format like 5,000 - comma is thousands separator
+      amount = parseFloat(amountStr.replace(/,/g, ''));
+    } else {
+      // Simple number without comma
+      amount = parseFloat(amountStr);
+    }
     
     // Extract vendor (everything before amount or colon)
     let vendor = cleaned.split(/[\$\d]/)[0].trim();

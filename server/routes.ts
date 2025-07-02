@@ -289,6 +289,30 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // WhatsApp contact lookup by JID
+  app.get('/api/whatsapp/contacts/lookup/:jid', async (req: Request, res: Response) => {
+    try {
+      const { jid } = req.params;
+      
+      // Try to find contact by WhatsApp JID
+      const contact = await storage.getContactByWhatsappJid(jid);
+      
+      if (contact) {
+        res.json({
+          id: contact.id,
+          name: contact.name,
+          isCortexLinked: true,
+          whatsappJid: jid
+        });
+      } else {
+        res.status(404).json({ error: 'Contact not found' });
+      }
+    } catch (error) {
+      console.error('Error looking up contact by JID:', error);
+      res.status(500).json({ error: 'Failed to lookup contact' });
+    }
+  });
+
   app.get('/api/whatsapp/instances/:instanceName/status', async (req: Request, res: Response) => {
     try {
       const { instanceName } = req.params;

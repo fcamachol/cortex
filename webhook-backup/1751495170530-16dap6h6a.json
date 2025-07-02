@@ -1,0 +1,25 @@
+{
+  "id": "1751495170530-16dap6h6a",
+  "timestamp": "2025-07-02T22:26:10.530Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages-upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "live-test-1750199771",
+    "data": {
+      "key": {
+        "remoteJid": "15103165094@s.whatsapp.net",
+        "fromMe": false,
+        "id": "bill-contact-test-1751495170507"
+      },
+      "message": {
+        "conversation": "Pago 2500 a Carlos del Taller mecánico por reparación del carro"
+      },
+      "messageTimestamp": 1751495170,
+      "pushName": "Fernando",
+      "sender": "15103165094@s.whatsapp.net"
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

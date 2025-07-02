@@ -415,6 +415,25 @@ export const ActionService = {
         try {
             console.log(`🧠 Creating enhanced bill with improved NLP.js processing`);
             
+            // Extract contact information from WhatsApp context
+            const senderJid = context.senderJid || context.sender || context.from;
+            let createdByContactId = null;
+            
+            if (senderJid) {
+                try {
+                    // Look up contact by WhatsApp JID to link bill to contact
+                    const contact = await storage.getContactByWhatsappJid(senderJid);
+                    if (contact) {
+                        createdByContactId = contact.id; // Use contact ID for bill-to-contact linking
+                        console.log(`🔗 Linking bill to contact: ${contact.name || contact.id} (${senderJid})`);
+                    } else {
+                        console.log(`📝 No contact found for JID: ${senderJid}, bill will be unlinked`);
+                    }
+                } catch (error) {
+                    console.log(`⚠️ Could not lookup contact for ${senderJid}:`, error.message);
+                }
+            }
+            
             // Use the new enhanced NLP module for better Spanish parsing
             const messageContent = context.messageContent || context.content || context.message?.content || 'Pago 1900 a Lalo Costco';
             console.log(`🧠 Processing content for enhanced NLP: "${messageContent}"`);
@@ -439,7 +458,8 @@ export const ActionService = {
                         billNumber: `BILL-${Date.now()}-${createdBills.length + 1}`,
                         vendorEntityId: 'cv_unknown_vendor',
                         priority: bill.priority || 'medium',
-                        isOverdue: bill.isOverdue || false
+                        isOverdue: bill.isOverdue || false,
+                        createdByEntityId: createdByContactId // Link to contact using correct field name
                     };
                     
                     console.log(`💳 Creating multi-bill ${createdBills.length + 1}:`, billData);
@@ -464,7 +484,8 @@ export const ActionService = {
                 description: nlpBill?.description || this.processTemplate(config.description || '', context),
                 status: 'unpaid', // Fixed to match constraint
                 billNumber: `BILL-${Date.now()}`,
-                vendorEntityId: 'cv_unknown_vendor'
+                vendorEntityId: 'cv_unknown_vendor',
+                createdByEntityId: createdByContactId // Link to contact using correct field name
             };
 
             console.log(`💳 Creating bill with enhanced data:`, billData);
@@ -476,11 +497,16 @@ export const ActionService = {
                 console.log(`✅ Bill created with template data`);
             }
             
+            if (createdByContactId) {
+                console.log(`🔗 Bill successfully linked to contact: ${createdByContactId}`);
+            }
+            
             // Send SSE notification for bill creation
             SseManager.notifyClients({
                 type: 'bill_created',
                 bill: createdBill,
-                message: `Nueva factura creada: ${billData.vendor} - $${billData.amount} ${billData.currency}`
+                message: `Nueva factura creada: ${billData.vendor} - $${billData.amount} ${billData.currency}`,
+                linkedContact: createdByContactId
             });
             
             return createdBill;
@@ -1077,11 +1103,14 @@ export const ActionService = {
     },
 
     extractAmountFromText(text: string): number | null {
-        // Extract monetary amounts from text
-        const amountRegex = /\$?(\d+(?:\.\d{2})?)/g;
+        // Extract monetary amounts from text with Mexican formatting support
+        // Mexican format: 5,000 = 5000 (comma as thousands separator)
+        const amountRegex = /\$?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g;
         const matches = text.match(amountRegex);
         if (matches && matches.length > 0) {
-            const amount = parseFloat(matches[0].replace('$', ''));
+            // Remove $ and handle Mexican comma formatting
+            const amountStr = matches[0].replace('$', '').replace(/,/g, '');
+            const amount = parseFloat(amountStr);
             return isNaN(amount) ? null : amount;
         }
         return null;

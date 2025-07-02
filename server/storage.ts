@@ -251,6 +251,52 @@ class DatabaseStorage {
         }
     }
 
+    async getContactByWhatsappJid(whatsappJid: string): Promise<any> {
+        try {
+            // Try to find a Cortex entities person linked to this WhatsApp JID  
+            const cortexResult = await db.execute(sql`
+                SELECT id, first_name, last_name, whatsapp_jid 
+                FROM cortex_entities.persons 
+                WHERE whatsapp_jid = ${whatsappJid}
+                LIMIT 1
+            `);
+            
+            if (cortexResult.rows.length > 0) {
+                const contact = cortexResult.rows[0];
+                return {
+                    id: contact.id,
+                    name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown Contact',
+                    whatsappJid: contact.whatsapp_jid,
+                    isCortexLinked: true
+                };
+            }
+            
+            // If no Cortex contact found, check if WhatsApp contact exists
+            const whatsappResult = await db.execute(sql`
+                SELECT jid, instance_name, push_name, verified_name
+                FROM whatsapp.contacts 
+                WHERE jid = ${whatsappJid}
+                LIMIT 1
+            `);
+            
+            if (whatsappResult.rows.length > 0) {
+                const contact = whatsappResult.rows[0];
+                return {
+                    id: contact.jid, // Use JID as temporary ID for WhatsApp-only contacts
+                    name: contact.verified_name || contact.push_name || 'Unknown Contact',
+                    whatsappJid: contact.jid,
+                    instanceName: contact.instance_name,
+                    isCortexLinked: false
+                };
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('Error fetching contact by WhatsApp JID:', error);
+            throw error;
+        }
+    }
+
     // =============================
     // TASK METHODS (CORTEX)
     // =============================
@@ -769,10 +815,19 @@ class DatabaseStorage {
 
     async createPayable(payableData: any): Promise<any> {
         try {
+            // Prepare custom fields to include vendor name and currency from enhanced NLP
+            const customFields = {
+                vendor_name: payableData.vendor_name || 'Unknown',
+                currency: payableData.currency || 'MXN',
+                extraction_method: payableData.extraction_method || 'manual',
+                confidence: payableData.confidence || 1.0,
+                ...(payableData.custom_fields || {})
+            };
+
             const result = await db.execute(sql`
                 INSERT INTO cortex_finance.bills_payable (
                     bill_number, vendor_entity_id, description, amount, 
-                    bill_date, due_date, status, created_by_entity_id
+                    bill_date, due_date, status, created_by_entity_id, custom_fields
                 ) VALUES (
                     ${payableData.bill_number || `BILL-${Date.now()}`},
                     ${payableData.vendor_entity_id || 'cv_unknown_vendor'},
@@ -781,7 +836,8 @@ class DatabaseStorage {
                     ${payableData.bill_date || new Date().toISOString().split('T')[0]},
                     ${payableData.due_date || new Date().toISOString().split('T')[0]},
                     ${payableData.status || 'unpaid'},
-                    ${'7804247f-3ae8-4eb2-8c6d-2c44f967ad42'}
+                    ${'7804247f-3ae8-4eb2-8c6d-2c44f967ad42'},
+                    ${JSON.stringify(customFields)}
                 )
                 RETURNING *
             `);
@@ -805,8 +861,17 @@ class DatabaseStorage {
             due_date: billData.dueDate || new Date().toISOString().split('T')[0],
             status: billData.status || 'unpaid', // Changed from 'pending' to 'unpaid' to match constraint
             category: billData.category || 'General',
-            created_by_entity_id: '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'
+            // Link to contact if provided, otherwise use default user ID
+            created_by_entity_id: billData.createdByContactId || '7804247f-3ae8-4eb2-8c6d-2c44f967ad42',
+            // Enhanced NLP data for custom_fields
+            vendor_name: billData.vendor || 'Unknown',
+            currency: billData.currency || 'MXN',
+            extraction_method: billData.extractionMethod || 'nlp.js',
+            confidence: billData.confidence || 1.0
         };
+        
+        console.log(`🔗 Bill ${billData.createdByContactId ? 'linked to contact' : 'unlinked'}: ${payableData.created_by_entity_id}`);
+        console.log(`💰 Enhanced data: ${payableData.vendor_name} - ${payableData.amount} ${payableData.currency} (confidence: ${payableData.confidence})`);
         
         return await this.createPayable(payableData);
     }

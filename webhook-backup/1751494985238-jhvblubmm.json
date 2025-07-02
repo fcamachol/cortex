@@ -1,0 +1,33 @@
+{
+  "id": "1751494985238-jhvblubmm",
+  "timestamp": "2025-07-02T22:23:05.238Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages-upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "live-test-1750199771",
+    "data": {
+      "key": {
+        "remoteJid": "15103165094@s.whatsapp.net",
+        "fromMe": true,
+        "id": "bill-contact-test-1751494983048"
+      },
+      "messageType": "reactionMessage",
+      "message": {
+        "reactionMessage": {
+          "key": {
+            "remoteJid": "15103165094@s.whatsapp.net",
+            "fromMe": false,
+            "id": "bill-contact-test-1751494983048"
+          },
+          "text": "💳",
+          "senderTimestampMs": 1751494985235
+        }
+      },
+      "pushName": "Fernando",
+      "sender": "15103165094@s.whatsapp.net"
+    }
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
