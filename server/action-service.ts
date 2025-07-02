@@ -427,13 +427,19 @@ export const ActionService = {
                 
                 // 4. Execute the action for this rule (simple structure)
                 if (rule.action_type) {
-                    await this.executeAction(rule.action_type, rule.action_config || {}, {
-                        instanceId,
-                        triggerType,
-                        triggerValue,
-                        context,
-                        rule
-                    });
+                    console.log(`🎯 About to execute action: ${rule.action_type}`);
+                    try {
+                        await this.executeAction(rule.action_type, rule.action_config || {}, {
+                            instanceId,
+                            triggerType,
+                            triggerValue,
+                            context,
+                            rule
+                        });
+                        console.log(`✅ Action ${rule.action_type} completed successfully`);
+                    } catch (actionError) {
+                        console.error(`❌ Error executing action ${rule.action_type}:`, actionError);
+                    }
                 } else if (rule.actions && rule.actions.length > 0) {
                     // Support complex multi-action rules
                     for (const action of rule.actions) {
