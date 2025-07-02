@@ -490,7 +490,7 @@ export default function CalendarModule() {
   // Create event mutation
   const createEventMutation = useMutation({
     mutationFn: async (eventData: any) => {
-      return apiRequest('/api/calendar/events', 'POST', eventData);
+      return apiRequest('POST', '/api/calendar/events', eventData);
     },
     onSuccess: () => {
       toast({
@@ -529,7 +529,7 @@ export default function CalendarModule() {
   // Create task mutation
   const createTaskMutation = useMutation({
     mutationFn: async (taskData: any) => {
-      return apiRequest('/api/crm/tasks', 'POST', taskData);
+      return apiRequest('POST', '/api/crm/tasks', taskData);
     },
     onSuccess: () => {
       toast({
