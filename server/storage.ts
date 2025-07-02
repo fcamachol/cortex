@@ -2449,6 +2449,19 @@ class DatabaseStorage {
         }
     }
 
+    async getCortexSchedulingEventsByExternalId(externalEventId: string): Promise<any[]> {
+        try {
+            const result = await db.execute(sql`
+                SELECT * FROM cortex_scheduling.events 
+                WHERE external_event_id = ${externalEventId}
+            `);
+            return result.rows;
+        } catch (error) {
+            console.error('Error getting cortex scheduling events by external ID:', error);
+            throw error;
+        }
+    }
+
     async updateCalendarIntegrationSyncTime(integrationId: string, syncTime: Date): Promise<void> {
         try {
             await db.execute(sql`

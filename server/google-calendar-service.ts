@@ -290,6 +290,13 @@ export class GoogleCalendarService {
      */
     private async storeEventInCortex(event: any, calendar: any, userId: string, integrationId: string): Promise<void> {
         try {
+            // Check if event already exists to prevent duplicates
+            const existingEvents = await storage.getCortexSchedulingEventsByExternalId(event.id);
+            if (existingEvents && existingEvents.length > 0) {
+                console.log(`📅 Event already exists, skipping: ${event.summary} (${event.id})`);
+                return;
+            }
+
             const startTime = event.start?.dateTime || event.start?.date;
             const endTime = event.end?.dateTime || event.end?.date;
             const isAllDay = !event.start?.dateTime; // If no time, it's all day
@@ -319,6 +326,8 @@ export class GoogleCalendarService {
                 subcalendarColor: isBirthdayEvent ? '#f093fb' : (calendar.backgroundColor || '#4285f4'),
                 subcalendarId: calendar.id
             });
+
+            console.log(`📅 Stored new event: ${event.summary} from ${calendar.summary}`);
 
         } catch (error) {
             console.error('Error storing event in cortex:', error);
