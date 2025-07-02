@@ -1261,8 +1261,93 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get('/api/calendar/calendars', async (req: Request, res: Response) => {
     try {
-      const calendars = await storage.getCalendars();
-      res.json(calendars);
+      // Check if we have an active Google Calendar integration
+      const integrations = await storage.getGoogleCalendarIntegrations();
+      
+      if (integrations.length > 0) {
+        try {
+          // Use the first active integration to fetch Google Calendar subcalendars
+          const integration = integrations[0];
+          const { googleCalendarService } = await import('./google-calendar-service');
+          
+          // Set credentials from the integration
+          googleCalendarService.setCredentials({
+            accessToken: integration.access_token,
+            refreshToken: integration.refresh_token
+          });
+          
+          // Fetch calendar list directly using Google Calendar API
+          const { google } = await import('googleapis');
+          const calendar = google.calendar({ version: 'v3', auth: googleCalendarService.oauth2Client });
+          const response = await calendar.calendarList.list();
+          
+          const calendars = response.data.items || [];
+          console.log(`📅 Fetched ${calendars.length} Google Calendar subcalendars directly`);
+          
+          // Color mapping function
+          const convertGoogleColorToTailwind = (hexColor: string): string => {
+            const colorMap: { [key: string]: string } = {
+              '#4285f4': 'bg-blue-500',    // Default Google blue
+              '#33b679': 'bg-green-500',   // Green
+              '#8e24aa': 'bg-purple-500',  // Purple
+              '#e67c73': 'bg-red-500',     // Red
+              '#f09300': 'bg-orange-500',  // Orange
+              '#f4c20d': 'bg-yellow-500',  // Yellow
+              '#795548': 'bg-amber-800',   // Brown
+              '#616161': 'bg-gray-500',    // Gray
+              '#ff7043': 'bg-orange-600',  // Deep Orange
+              '#9c27b0': 'bg-purple-600',  // Deep Purple
+              '#3f51b5': 'bg-indigo-500',  // Indigo
+              '#2196f3': 'bg-blue-400',    // Light Blue
+              '#00bcd4': 'bg-cyan-500',    // Cyan
+              '#009688': 'bg-teal-500',    // Teal
+              '#4caf50': 'bg-green-400',   // Light Green
+              '#8bc34a': 'bg-lime-500',    // Lime
+              '#cddc39': 'bg-lime-400',    // Lime Yellow
+              '#ffeb3b': 'bg-yellow-400',  // Yellow
+              '#ffc107': 'bg-amber-500',   // Amber
+              '#ff9800': 'bg-orange-500',  // Orange
+              '#ff5722': 'bg-red-600',     // Deep Orange
+            };
+            
+            return colorMap[hexColor.toLowerCase()] || 'bg-blue-500';
+          };
+          
+          const formattedCalendars = calendars.map(cal => ({
+            id: cal.id,
+            name: cal.summary,
+            description: cal.description,
+            color: convertGoogleColorToTailwind(cal.backgroundColor || '#4285f4'),
+            hexColor: cal.backgroundColor || '#4285f4',
+            foregroundColor: cal.foregroundColor || '#ffffff',
+            isPrimary: cal.primary || false,
+            accessRole: cal.accessRole,
+            timezone: cal.timeZone,
+            isVisible: !cal.hidden,
+            visible: !cal.hidden,
+            provider: 'google_calendar'
+          }));
+          
+          res.json(formattedCalendars);
+        } catch (googleError) {
+          console.error('Error fetching Google calendars, falling back to local:', googleError);
+          // Return default local calendars if Google Calendar fails
+          const defaultCalendars = [
+            { id: 'personal', name: 'Personal', color: 'bg-blue-500', visible: true, provider: 'local' },
+            { id: 'work', name: 'Work', color: 'bg-red-500', visible: true, provider: 'local' },
+            { id: 'family', name: 'Family', color: 'bg-purple-500', visible: true, provider: 'local' },
+          ];
+          res.json(defaultCalendars);
+        }
+      } else {
+        // Return default local calendars if no Google integration
+        const defaultCalendars = [
+          { id: 'personal', name: 'Personal', color: 'bg-blue-500', visible: true, provider: 'local' },
+          { id: 'work', name: 'Work', color: 'bg-red-500', visible: true, provider: 'local' },
+          { id: 'family', name: 'Family', color: 'bg-purple-500', visible: true, provider: 'local' },
+        ];
+        res.json(defaultCalendars);
+      }
     } catch (error) {
       console.error('Error fetching calendars:', error);
       res.status(500).json({ error: 'Failed to fetch calendars' });
