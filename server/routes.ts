@@ -1281,14 +1281,16 @@ export async function registerRoutes(app: Express): Promise<void> {
             refreshToken: integration.refresh_token
           });
           
-          const googleEvent = await googleCalendarService.createCalendarEvent('primary', {
+          const googleEvent = await googleCalendarService.createCalendarEvent(eventData.calendarId || 'fcamacholombardo@gmail.com', {
             title: eventData.title,
             description: eventData.description || '',
             startTime: eventData.startTime,
             endTime: eventData.endTime,
             location: eventData.location || '',
             isAllDay: eventData.isAllDay || false,
-            timezone: 'America/Mexico_City'
+            timezone: 'America/Mexico_City',
+            attendees: eventData.attendees || eventData.invitados || [],
+            hasGoogleMeet: eventData.hasGoogleMeet || eventData.createMeetLink || false
           });
           
           // Create with Google Calendar metadata
@@ -1305,9 +1307,9 @@ export async function registerRoutes(app: Express): Promise<void> {
             organizerEmail: integration.email,
             attendees: eventData.attendees || [],
             createdBy: userId,
-            subcalendarName: integration.email || 'Personal Calendar',
+            subcalendarName: integration.account_name || 'fcamacholombardo@gmail.com',
             subcalendarColor: '#4285f4',
-            subcalendarId: 'primary'
+            subcalendarId: eventData.calendarId || 'fcamacholombardo@gmail.com'
           });
           
           console.log('✅ Calendar event created in Google Calendar and synced locally');

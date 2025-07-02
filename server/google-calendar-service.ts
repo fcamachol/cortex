@@ -401,7 +401,7 @@ export class GoogleCalendarService {
         try {
             const calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
             
-            const event = {
+            const event: any = {
                 summary: eventData.title,
                 description: eventData.description,
                 start: {
@@ -416,9 +416,22 @@ export class GoogleCalendarService {
                 attendees: eventData.attendees?.map((email: string) => ({ email })) || []
             };
 
+            // Add Google Meet integration if requested
+            if (eventData.hasGoogleMeet || eventData.conferenceData) {
+                event.conferenceData = {
+                    createRequest: {
+                        requestId: `meet-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        conferenceSolutionKey: {
+                            type: 'hangoutsMeet'
+                        }
+                    }
+                };
+            }
+
             const response = await calendar.events.insert({
                 calendarId: calendarId || 'primary',
-                requestBody: event
+                requestBody: event,
+                conferenceDataVersion: 1 // Required for conference data
             });
 
             return response.data;

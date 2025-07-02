@@ -86,6 +86,12 @@ export default function CalendarPage() {
     refetchInterval: 15000,
   });
 
+  // Fetch calendar providers (Google Calendar sub-calendars)
+  const { data: calendarProviders = [] } = useQuery({
+    queryKey: [`/api/calendar/providers`],
+    refetchInterval: 30000,
+  });
+
   // Create/update event mutation
   const eventMutation = useMutation({
     mutationFn: async (data: any) => {
