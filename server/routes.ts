@@ -1279,6 +1279,12 @@ export async function registerRoutes(app: Express): Promise<void> {
       
       // Exchange code for tokens
       const tokens = await googleCalendarService.getTokens(code);
+      console.log('🔑 OAuth tokens received:', {
+        access_token: tokens.access_token ? 'Set' : 'Missing',
+        refresh_token: tokens.refresh_token ? 'Set' : 'Missing',
+        expires_in: tokens.expires_in,
+        token_type: tokens.token_type
+      });
       
       // Set credentials and get user profile
       googleCalendarService.setCredentials({
@@ -1287,6 +1293,12 @@ export async function registerRoutes(app: Express): Promise<void> {
       });
       
       const profile = await googleCalendarService.getUserProfile();
+      console.log('👤 User profile:', profile);
+      
+      // Calculate token expiration (default to 1 hour if expires_in is missing)
+      const expiresIn = tokens.expires_in || 3600; // Default to 1 hour
+      const tokenExpiresAt = new Date(Date.now() + (expiresIn * 1000));
+      console.log('⏰ Token expires at:', tokenExpiresAt);
       
       // Create integration record
       const integration = await storage.createGoogleCalendarIntegration({
@@ -1295,7 +1307,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         accountName: profile.name || profile.email,
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
-        tokenExpiresAt: new Date(Date.now() + (tokens.expires_in * 1000))
+        tokenExpiresAt
       });
       
       // Start initial sync
