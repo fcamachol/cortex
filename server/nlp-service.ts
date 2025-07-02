@@ -18,6 +18,7 @@ interface ParsedCalendarEvent {
   duration?: number; // minutes
   location?: string;
   attendees: string[];
+  shouldCreateMeetInvite?: boolean;
   confidence: number;
 }
 
@@ -121,7 +122,11 @@ export class NLPService {
     // Extract description
     const description = this.extractDescription(content);
 
-    console.log(`🧠 Calendar event parsed: title="${title}", startTime=${startTime}, location="${location}", confidence=${confidence}`);
+    // Detect if Google Meet invite should be created
+    const shouldCreateMeetInvite = this.shouldCreateMeetInvite(content, language);
+    if (shouldCreateMeetInvite) confidence += 0.1;
+
+    console.log(`🧠 Calendar event parsed: title="${title}", startTime=${startTime}, location="${location}", meetInvite=${shouldCreateMeetInvite}, confidence=${confidence}`);
 
     return {
       title,
@@ -131,6 +136,7 @@ export class NLPService {
       duration,
       location,
       attendees,
+      shouldCreateMeetInvite,
       confidence: Math.min(confidence, 1.0)
     };
   }
@@ -462,6 +468,52 @@ export class NLPService {
     }
     
     return undefined;
+  }
+
+  private shouldCreateMeetInvite(content: string, language: 'es' | 'en'): boolean {
+    const text = content.toLowerCase();
+    
+    // Keywords that indicate a virtual meeting
+    const virtualMeetingKeywords = language === 'es' 
+      ? [
+          'zoom', 'meet', 'google meet', 'teams', 'skype', 'videollamada', 'videoconferencia',
+          'virtual', 'online', 'remoto', 'desde casa', 'por video', 'llamada',
+          'conectarse', 'enlace', 'link', 'reunión virtual', 'junta virtual'
+        ]
+      : [
+          'zoom', 'meet', 'google meet', 'teams', 'skype', 'video call', 'video conference',
+          'virtual', 'online', 'remote', 'from home', 'video', 'call',
+          'join', 'link', 'virtual meeting', 'online meeting'
+        ];
+
+    // Team meeting keywords (often virtual)
+    const teamKeywords = language === 'es'
+      ? ['equipo', 'team', 'standup', 'scrum', 'sprint', 'review', 'planning']
+      : ['team', 'standup', 'scrum', 'sprint', 'review', 'planning', 'sync'];
+
+    // Check for explicit virtual meeting indicators
+    const hasVirtualKeyword = virtualMeetingKeywords.some(keyword => text.includes(keyword));
+    
+    // Check for team meetings (commonly virtual)
+    const hasTeamKeyword = teamKeywords.some(keyword => text.includes(keyword));
+    
+    // Check for multiple attendees (more likely to need virtual access)
+    const attendeePattern = /(invite|invitar|incluir|con|with)\s+[\w\s,]+/gi;
+    const hasMultipleAttendees = attendeePattern.test(content);
+    
+    // Location analysis - if no physical location specified, likely virtual
+    const physicalLocationPattern = /(sala|room|oficina|office|conference|meeting room|building)/i;
+    const hasPhysicalLocation = physicalLocationPattern.test(content);
+    
+    console.log(`🧠 Meet invite analysis: virtual=${hasVirtualKeyword}, team=${hasTeamKeyword}, attendees=${hasMultipleAttendees}, physical=${hasPhysicalLocation}`);
+    
+    // Create meet invite if:
+    // 1. Explicitly mentions virtual meeting tools
+    // 2. Team meeting with multiple attendees and no physical location
+    // 3. Has multiple attendees but no specific physical location
+    return hasVirtualKeyword || 
+           (hasTeamKeyword && hasMultipleAttendees && !hasPhysicalLocation) ||
+           (hasMultipleAttendees && !hasPhysicalLocation);
   }
 }
 
