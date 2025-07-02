@@ -14,6 +14,7 @@ import { ScheduledJobsService } from './scheduled-jobs';
 import { webhookReliability } from './webhook-reliability';
 import { messageRecovery } from './message-recovery-system';
 import { db } from './db';
+import { GoogleCalendarService } from './google-calendar-service';
 import fs from 'fs/promises';
 import path from 'path';
 import {
@@ -1256,8 +1257,71 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post('/api/calendar/events', async (req: Request, res: Response) => {
     try {
-      const event = await storage.createCalendarEvent(req.body);
-      res.status(201).json(event);
+      const userId = '7804247f-3ae8-4eb2-8c6d-2c44f967ad42'; // TODO: Get from auth
+      const eventData = req.body;
+      
+      console.log('📅 Creating calendar event with Google Calendar sync:', eventData.title);
+      
+      // Try to get calendar integration and create in Google Calendar first
+      try {
+        const integration = await storage.getCalendarIntegration(userId);
+        if (integration && integration.accessToken) {
+          const googleCalendarService = new GoogleCalendarService();
+          await googleCalendarService.setCredentials(integration.accessToken, integration.refreshToken);
+          
+          const googleEvent = await googleCalendarService.createCalendarEvent('primary', {
+            title: eventData.title,
+            description: eventData.description || '',
+            startTime: eventData.startTime,
+            endTime: eventData.endTime,
+            location: eventData.location || '',
+            isAllDay: eventData.isAllDay || false,
+            timezone: 'America/Mexico_City'
+          });
+          
+          // Create with Google Calendar metadata
+          const localEvent = await storage.createCortexSchedulingEvent({
+            externalEventId: googleEvent.id,
+            title: eventData.title,
+            description: eventData.description || '',
+            startTime: new Date(eventData.startTime),
+            endTime: new Date(eventData.endTime),
+            isAllDay: eventData.isAllDay || false,
+            location: eventData.location || '',
+            meetingUrl: googleEvent.hangoutLink || '',
+            status: 'confirmed',
+            organizerEmail: integration.email,
+            attendees: eventData.attendees || [],
+            createdBy: userId,
+            subcalendarName: integration.email || 'Personal Calendar',
+            subcalendarColor: '#4285f4',
+            subcalendarId: 'primary'
+          });
+          
+          console.log('✅ Calendar event created in Google Calendar and synced locally');
+          return res.status(201).json(localEvent);
+        }
+      } catch (googleError) {
+        console.log('Google Calendar creation failed, creating local event:', googleError);
+      }
+      
+      // Fallback: create local event only
+      console.log('📅 Creating local calendar event in cortex_scheduling:', eventData.title);
+      const localEvent = await storage.createCortexSchedulingEvent({
+        title: eventData.title,
+        description: eventData.description || '',
+        startTime: new Date(eventData.startTime),
+        endTime: new Date(eventData.endTime),
+        isAllDay: eventData.isAllDay || false,
+        location: eventData.location || '',
+        status: 'confirmed',
+        createdBy: userId,
+        subcalendarName: 'Local Calendar',
+        subcalendarColor: '#9e9e9e'
+      });
+      
+      console.log('✅ Local calendar event created successfully:', eventData.title);
+      res.status(201).json(localEvent);
     } catch (error) {
       console.error('Error creating calendar event:', error);
       res.status(500).json({ error: 'Failed to create calendar event' });
