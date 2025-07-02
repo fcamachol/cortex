@@ -1371,9 +1371,22 @@ class DatabaseStorage {
                 dbTriggerType = 'whatsapp_message';
             }
             
-            // Use cortex_automation.action_rules table instead of legacy actions.action_rules
+            // Use cortex_automation.action_rules table with proper field mapping
             const result = await db.execute(sql`
-                SELECT * FROM cortex_automation.action_rules
+                SELECT 
+                    id as "ruleId",
+                    name,
+                    description,
+                    trigger_type,
+                    trigger_conditions,
+                    action_type,
+                    action_config,
+                    performer_filter,
+                    selected_instances,
+                    is_active as "isActive",
+                    created_at,
+                    updated_at
+                FROM cortex_automation.action_rules
                 WHERE trigger_type = ${dbTriggerType}
                 AND is_active = true
                 ORDER BY name
