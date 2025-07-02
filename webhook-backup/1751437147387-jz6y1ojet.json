@@ -1,0 +1,29 @@
+{
+  "id": "1751437147387-jz6y1ojet",
+  "timestamp": "2025-07-02T06:19:07.387Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "messages-reaction",
+  "payload": {
+    "data": {
+      "reaction": {
+        "text": "📅",
+        "key": {
+          "id": "3A723A7C7CBD2A5FBD64",
+          "fromMe": false,
+          "remoteJid": "5214611239748@s.whatsapp.net"
+        }
+      },
+      "key": {
+        "id": "3A723A7C7CBD2A5FBD64",
+        "fromMe": false,
+        "remoteJid": "5214611239748@s.whatsapp.net"
+      }
+    },
+    "instanceName": "instance-1750433520122",
+    "event": "messages.reaction",
+    "instanceId": "instance-1750433520122",
+    "reliabilityId": "1751437147329-calendar-test"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

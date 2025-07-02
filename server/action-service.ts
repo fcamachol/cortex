@@ -498,27 +498,71 @@ export const ActionService = {
         }
     },
 
-    checkRuleConditions(conditions: any[], context: any): boolean {
-        if (!conditions || conditions.length === 0) {
-            return true; // No conditions means rule applies to all
-        }
-
-        // For now, implement simple condition checking
-        // This can be expanded to handle complex condition groups later
-        for (const condition of conditions) {
-            if (condition.condition_type === 'message_event' && condition.field_name === 'event_type') {
-                if (condition.operator === 'equals' && condition.value !== context.eventType) {
-                    return false;
-                }
+    checkRuleConditions(conditions: any, context: any): boolean {
+        try {
+            console.log(`🔍 Checking rule conditions:`, { conditions, context });
+            
+            if (!conditions) {
+                console.log(`✅ No conditions - rule applies to all`);
+                return true;
             }
-            if (condition.condition_type === 'reaction_emoji' && condition.field_name === 'emoji') {
-                if (condition.operator === 'equals' && condition.value !== context.emoji) {
-                    return false;
-                }
-            }
-        }
 
-        return true;
+            // New cortex_automation format - object with specific keys
+            if (typeof conditions === 'object' && !Array.isArray(conditions)) {
+                // Check reaction conditions
+                if (conditions.reactions && Array.isArray(conditions.reactions)) {
+                    const emoji = context.emoji || context.triggerValue;
+                    if (!conditions.reactions.includes(emoji)) {
+                        console.log(`🔍 Emoji "${emoji}" not in allowed reactions:`, conditions.reactions);
+                        return false;
+                    }
+                    console.log(`✅ Emoji "${emoji}" matches reaction condition`);
+                    return true;
+                }
+                
+                // Check keyword conditions
+                if (conditions.keywords && Array.isArray(conditions.keywords)) {
+                    const content = context.content || context.messageContent || '';
+                    const hasKeyword = conditions.keywords.some((keyword: string) => 
+                        content.toLowerCase().includes(keyword.toLowerCase())
+                    );
+                    if (!hasKeyword) {
+                        console.log(`🔍 No matching keywords found in: ${content}`);
+                        return false;
+                    }
+                    console.log(`✅ Keyword condition matched`);
+                    return true;
+                }
+                
+                console.log(`✅ Object conditions passed - no specific conditions to check`);
+                return true;
+            }
+
+            // Legacy array format handling
+            if (Array.isArray(conditions)) {
+                console.log(`🔍 Processing legacy array conditions`);
+                for (const condition of conditions) {
+                    if (condition.condition_type === 'message_event' && condition.field_name === 'event_type') {
+                        if (condition.operator === 'equals' && condition.value !== context.eventType) {
+                            return false;
+                        }
+                    }
+                    if (condition.condition_type === 'reaction_emoji' && condition.field_name === 'emoji') {
+                        if (condition.operator === 'equals' && condition.value !== context.emoji) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+
+            console.log(`✅ Unknown condition format - defaulting to allow`);
+            return true;
+            
+        } catch (error) {
+            console.error(`❌ Error in checkRuleConditions:`, error);
+            return false;
+        }
     },
 
     async executeAction(actionType: string, config: any, triggerContext: any): Promise<void> {
