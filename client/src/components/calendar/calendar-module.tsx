@@ -333,6 +333,27 @@ export default function CalendarModule() {
       if (!response.ok) throw new Error('Failed to fetch events');
       const data = await response.json();
       
+      // Process real events from database with proper date formatting
+      if (data.length > 0) {
+        const processedEvents = data.map((event: any) => ({
+          eventId: event.eventId,
+          title: event.title,
+          description: event.description || '',
+          startTime: event.startTime.includes('T') ? event.startTime : `${event.startTime}+00:00`,
+          endTime: event.endTime.includes('T') ? event.endTime : `${event.endTime}+00:00`,
+          location: event.location || '',
+          isAllDay: event.isAllDay || false,
+          provider: event.provider || 'google_calendar',
+          calendarId: event.calendarId || event.subcalendarId || 'primary',
+          subcalendarName: event.subcalendarName || 'Calendar',
+          subcalendarColor: event.subcalendarColor || '#4285f4',
+          metadata: event.metadata || {}
+        }));
+        
+        console.log(`📅 Loaded ${processedEvents.length} calendar events from database`);
+        return processedEvents;
+      }
+      
       // Add some sample events for demonstration if no events exist
       if (data.length === 0) {
         const today = new Date();
