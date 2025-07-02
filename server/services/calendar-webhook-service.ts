@@ -58,12 +58,36 @@ export class CalendarWebhookService {
       // Get all calendars for this user
       const calendars = await this.googleCalendarService.getCalendarList(userId);
       
-      // Set up webhook for each calendar
-      for (const calendar of calendars) {
-        await this.createWebhookChannel(calendar.id, userId, integrationId);
+      // Filter calendars that support webhooks (exclude read-only and public calendars)
+      const webhookableCalendars = calendars.filter(calendar => {
+        // Skip public/shared calendars that don't support webhooks
+        // URL decode the calendar ID for proper matching
+        const decodedId = decodeURIComponent(calendar.id);
+        const isPublicCalendar = decodedId.includes('@group.v.calendar.google.com') || 
+                                 decodedId.includes('#holiday@') ||
+                                 calendar.accessRole === 'reader' ||
+                                 calendar.accessRole === 'freeBusyReader';
+        
+        console.log(`📅 Calendar "${calendar.summary}" (${calendar.id}): ${isPublicCalendar ? 'Skipping (read-only/public)' : 'Setting up webhook'} - Access: ${calendar.accessRole}`);
+        
+        return !isPublicCalendar;
+      });
+      
+      console.log(`📅 Setting up webhooks for ${webhookableCalendars.length} of ${calendars.length} calendars`);
+      
+      // Set up webhook for each supported calendar
+      let successCount = 0;
+      for (const calendar of webhookableCalendars) {
+        try {
+          await this.createWebhookChannel(calendar.id, userId, integrationId);
+          successCount++;
+        } catch (error) {
+          console.error(`❌ Failed to create webhook for calendar ${calendar.summary}:`, error.message);
+          // Continue with other calendars instead of failing completely
+        }
       }
 
-      console.log(`✅ Webhook channels created for ${calendars.length} calendars`);
+      console.log(`✅ Webhook channels created for ${successCount} of ${webhookableCalendars.length} supported calendars (${calendars.length} total calendars)`);
     } catch (error) {
       console.error('Error setting up calendar webhooks:', error);
       throw error;

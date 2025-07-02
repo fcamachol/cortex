@@ -10,6 +10,7 @@ interface GoogleCalendarCredentials {
 
 export class GoogleCalendarService {
     private oauth2Client: any;
+    private calendar: any;
 
     constructor() {
         const redirectUri = process.env.NODE_ENV === 'production' 
@@ -37,6 +38,9 @@ export class GoogleCalendarService {
             access_token: credentials.accessToken,
             refresh_token: credentials.refreshToken
         });
+        
+        // Initialize the calendar API client
+        this.calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
     }
 
     /**
@@ -548,6 +552,25 @@ export class GoogleCalendarService {
             return response.data.items || [];
         } catch (error) {
             console.error('Error getting calendar events:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get calendar metadata
+     */
+    async getCalendar(calendarId: string): Promise<any> {
+        try {
+            if (!this.calendar) {
+                throw new Error('Calendar service not initialized. Call setCredentials first.');
+            }
+            
+            const response = await this.calendar.calendars.get({
+                calendarId: calendarId
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error getting calendar metadata:', error);
             throw error;
         }
     }
