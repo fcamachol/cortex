@@ -2607,6 +2607,128 @@ class DatabaseStorage {
             throw error;
         }
     }
+
+    // =============================
+    // PROJECT METHODS
+    // =============================
+    
+    async getProjects(): Promise<any[]> {
+        try {
+            // Try to get projects from cortex_projects schema first
+            const result = await db.execute(sql`
+                SELECT 
+                    id,
+                    name as project_name,
+                    description,
+                    status,
+                    priority,
+                    start_date,
+                    end_date,
+                    budget,
+                    spent_amount,
+                    progress,
+                    tags,
+                    color,
+                    user_id,
+                    created_at,
+                    updated_at
+                FROM cortex_projects.projects
+                ORDER BY created_at DESC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.log('Cortex projects schema not available, trying CRM schema:', error.message);
+            try {
+                // Fallback to CRM schema if cortex_projects doesn't exist
+                const result = await db.execute(sql`
+                    SELECT 
+                        id,
+                        name as project_name,
+                        description,
+                        status,
+                        priority,
+                        start_date,
+                        end_date,
+                        budget,
+                        spent_amount,
+                        progress,
+                        tags,
+                        color,
+                        user_id,
+                        created_at,
+                        updated_at
+                    FROM crm.projects
+                    ORDER BY created_at DESC
+                `);
+                return result.rows;
+            } catch (crmError) {
+                console.log('CRM projects schema also not available:', crmError.message);
+                return [];
+            }
+        }
+    }
+
+    async getTasks(userId?: string): Promise<any[]> {
+        try {
+            // Try to get tasks from cortex_projects schema first
+            const result = await db.execute(sql`
+                SELECT 
+                    id,
+                    title,
+                    description,
+                    task_number,
+                    status,
+                    priority,
+                    due_date,
+                    start_date,
+                    completed_at,
+                    estimated_hours,
+                    actual_hours,
+                    tags,
+                    custom_fields,
+                    project_entity_id,
+                    parent_task_id,
+                    created_by_entity_id,
+                    assigned_to_entity_id,
+                    space_id,
+                    triggering_message_id,
+                    triggering_instance_name,
+                    progress_percentage,
+                    created_at,
+                    updated_at
+                FROM cortex_projects.tasks
+                ORDER BY created_at DESC
+            `);
+            return result.rows;
+        } catch (error) {
+            console.log('Cortex tasks schema not available, trying CRM schema:', error.message);
+            try {
+                // Fallback to CRM schema if cortex_projects doesn't exist
+                const result = await db.execute(sql`
+                    SELECT 
+                        id,
+                        title,
+                        description,
+                        status,
+                        priority,
+                        due_date,
+                        completed_at,
+                        estimated_hours,
+                        actual_hours,
+                        tags,
+                        user_id,
+                        created_at,
+                        updated_at
+                    FROM crm.tasks
+                    ORDER BY created_at DESC
+                `);
+                return result.rows;
+            } catch (crmError) {
+                console.log('CRM tasks schema also not available:', crmError.message);
+                return [];
+            }
+        }
+    }
 }
 
 export const storage = new DatabaseStorage();
