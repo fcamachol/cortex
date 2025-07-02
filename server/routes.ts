@@ -1222,6 +1222,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/api/calendar/events', async (req: Request, res: Response) => {
     try {
       const events = await storage.getCalendarEvents();
+
       
       // Transform database fields to frontend-expected format with subcalendar information
       const transformedEvents = events.map(event => ({
