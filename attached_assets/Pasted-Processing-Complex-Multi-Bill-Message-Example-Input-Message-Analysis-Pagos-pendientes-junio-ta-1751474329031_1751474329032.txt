@@ -1,0 +1,112 @@
+Processing Complex Multi-Bill Message Example
+Input Message Analysis
+*Pagos pendientes junio  *
+- tarjeta lisi fecha límite 7 junio pago para no generar intereses: $80,120
+- ⁠club se debe nov, dic, enero, feb, marzo, abril , mayo , jun 156,700( si puedes depositar algo aunque sea para no ir acumulando) 
+- ⁠Crédito: vence 4 de junio  se debe marzo y abril y mayo, junio   $93,380
+- ⁠colegiatura bella 6,600 
+- ⁠agua casa venció en mayo hay que pagarla $ 1,616
+- ⁠mantenimiento lomas 2,700
+- ⁠Braulio 600
+Step-by-Step Processing
+1. Initial Detection (when user reacts with 💳)
+typescript// The NLP service detects this is a multiple bills message due to:
+// - Bullet points (-)
+// - Multiple amounts ($80,120, 156,700, etc.)
+// - Title "Pagos pendientes junio"
+2. Bill Extraction Process
+typescriptprivate detectMultipleBills(message: string, language: string): any[] {
+  // Detected language: Spanish (from "Pagos pendientes", "tarjeta", etc.)
+  
+  // Split by line breaks and bullets
+  const lines = message.split(/\n-/).filter(line => line.trim());
+  
+  // Process each line as a potential bill
+  const bills = [];
+  
+  // Line 1: "tarjeta lisi fecha límite 7 junio pago para no generar intereses: $80,120"
+  bills.push({
+    vendor: "tarjeta lisi",
+    amount: { value: 80120, currency: "MXN" },
+    dueDate: new Date("2024-06-07"), // "7 junio"
+    billType: "credit_card",
+    notes: "pago para no generar intereses",
+    priority: "high", // Due soon + interest warning
+    originalText: "tarjeta lisi fecha límite 7 junio...",
+    confidence: 0.9
+  });
+  
+  // Line 2: "club se debe nov, dic, enero, feb, marzo, abril, mayo, jun 156,700"
+  bills.push({
+    vendor: "club",
+    amount: { value: 156700, currency: "MXN" },
+    dueDate: null, // No specific date
+    billType: "membership",
+    notes: "se debe nov, dic, enero, feb, marzo, abril, mayo, jun",
+    monthsOwed: 8, // Detected 8 months
+    priority: "high", // Multiple months overdue
+    originalText: "club se debe nov, dic...",
+    confidence: 0.85
+  });
+  
+  // Line 3: "Crédito: vence 4 de junio se debe marzo y abril y mayo, junio $93,380"
+  bills.push({
+    vendor: "Crédito",
+    amount: { value: 93380, currency: "MXN" },
+    dueDate: new Date("2024-06-04"), // "4 de junio"
+    billType: "loan",
+    notes: "se debe marzo y abril y mayo, junio",
+    monthsOwed: 4,
+    priority: "high", // Overdue + near due date
+    originalText: "Crédito: vence 4 de junio...",
+    confidence: 0.9
+  });
+  
+  // Line 4: "colegiatura bella 6,600"
+  bills.push({
+    vendor: "colegiatura bella",
+    amount: { value: 6600, currency: "MXN" },
+    dueDate: null, // Assumed current month
+    billType: "education",
+    priority: "medium",
+    originalText: "colegiatura bella 6,600",
+    confidence: 0.8
+  });
+  
+  // Line 5: "agua casa venció en mayo hay que pagarla $ 1,616"
+  bills.push({
+    vendor: "agua casa",
+    amount: { value: 1616, currency: "MXN" },
+    dueDate: new Date("2024-05-31"), // "venció en mayo"
+    billType: "water",
+    notes: "venció en mayo",
+    priority: "high", // Overdue
+    isOverdue: true,
+    originalText: "agua casa venció en mayo...",
+    confidence: 0.9
+  });
+  
+  // Line 6: "mantenimiento lomas 2,700"
+  bills.push({
+    vendor: "mantenimiento lomas",
+    amount: { value: 2700, currency: "MXN" },
+    dueDate: null,
+    billType: "maintenance",
+    priority: "medium",
+    originalText: "mantenimiento lomas 2,700",
+    confidence: 0.85
+  });
+  
+  // Line 7: "Braulio 600"
+  bills.push({
+    vendor: "Braulio",
+    amount: { value: 600, currency: "MXN" },
+    dueDate: null,
+    billType: "personal", // Appears to be a person's name
+    priority: "medium",
+    originalText: "Braulio 600",
+    confidence: 0.7
+  });
+  
+  return bills;
+}

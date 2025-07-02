@@ -3,7 +3,7 @@ import { SseManager } from './sse-manager';
 import * as chrono from 'chrono-node';
 import { randomUUID } from 'crypto';
 import { nlpService } from './nlp-service';
-import { parseEnhancedBill } from './nlp.js';
+import { parseEnhancedBill, parseEnhancedTask } from './nlp.js';
 import { 
     type InsertWhatsappMessage,
     type InsertWhatsappMessageReaction
@@ -247,8 +247,74 @@ export const ActionService = {
         try {
             console.log(`🧠 Creating enhanced task with NLP data:`, context.nlp);
             
-            // Use NLP data if available, otherwise fall back to templates and defaults
-            const nlpTask = context.nlp;
+            // Use the new enhanced NLP module for better task parsing
+            const messageContent = context.messageContent || context.content || context.message?.content || 'New Task';
+            console.log(`🧠 Processing content for enhanced task NLP: "${messageContent}"`);
+            const enhancedNlp = await parseEnhancedTask(messageContent);
+            console.log(`🧠 Enhanced task NLP result:`, enhancedNlp);
+            
+            // Handle multiple tasks
+            if (enhancedNlp?.type === 'multiple_tasks') {
+                console.log(`🧠 Processing multiple tasks: ${enhancedNlp.data.tasks.length} tasks detected`);
+                const createdTasks = [];
+                
+                for (const task of enhancedNlp.data.tasks) {
+                    const taskData = {
+                        id: randomUUID(),
+                        title: task.title || 'New Task',
+                        description: task.description || messageContent,
+                        status: 'todo',
+                        priority: task.priority || 'medium',
+                        dueDate: task.dueDate || null,
+                        tags: [],
+                        createdByEntityId: 'cu_181de66a23864b2fac56779a82189691',
+                        assignedToEntityId: 'cu_181de66a23864b2fac56779a82189691',
+                        triggeringMessageId: context.messageId,
+                        triggeringInstanceName: context.instanceName,
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                    };
+                    
+                    console.log(`📝 Creating multi-task ${createdTasks.length + 1}: "${task.title}"`);
+                    const createdTask = await storage.createTask(taskData);
+                    createdTasks.push(createdTask);
+                    
+                    // Create subtasks if any
+                    if (task.subtasks?.length) {
+                        console.log(`📝 Creating ${task.subtasks.length} subtasks for "${task.title}"`);
+                        for (const subtask of task.subtasks) {
+                            const subtaskData = {
+                                id: randomUUID(),
+                                title: subtask.title,
+                                description: `Subtask of: ${task.title}`,
+                                status: 'todo',
+                                priority: 'medium',
+                                dueDate: task.dueDate,
+                                tags: ['subtask'],
+                                createdByEntityId: 'cu_181de66a23864b2fac56779a82189691',
+                                assignedToEntityId: 'cu_181de66a23864b2fac56779a82189691',
+                                triggeringMessageId: context.messageId,
+                                triggeringInstanceName: context.instanceName,
+                                parentTaskId: createdTask.id, // Link to parent task
+                                createdAt: new Date(),
+                                updatedAt: new Date()
+                            };
+                            
+                            const createdSubtask = await storage.createTask(subtaskData);
+                            console.log(`📝 Subtask created: "${createdSubtask.title}"`);
+                        }
+                    }
+                    
+                    // Send SSE notification for each task
+                    SseManager.notifyClientsOfNewTask(createdTask);
+                }
+                
+                console.log(`✅ Multiple tasks created: ${createdTasks.length} tasks from multi-task message`);
+                return;
+            }
+            
+            // Single task processing
+            const nlpTask = enhancedNlp || context.nlp;
             
             const taskData = {
                 id: randomUUID(),
@@ -355,7 +421,37 @@ export const ActionService = {
             const enhancedNlp = await parseEnhancedBill(messageContent);
             console.log(`🧠 Enhanced NLP.js result:`, enhancedNlp);
             
-            // Fallback to original NLP if available
+            // Handle multiple bills
+            if (enhancedNlp?.type === 'multiple_bills') {
+                console.log(`🧠 Processing multiple bills: ${enhancedNlp.data.bills.length} bills detected`);
+                const createdBills = [];
+                
+                for (const bill of enhancedNlp.data.bills) {
+                    const billData = {
+                        id: randomUUID(),
+                        vendor: bill.vendor || 'Unknown Vendor',
+                        amount: bill.amount?.value || 0,
+                        currency: bill.amount?.currency || 'MXN',
+                        dueDate: bill.dueDate,
+                        category: bill.billType || 'general',
+                        description: bill.notes || bill.originalText,
+                        status: 'unpaid',
+                        billNumber: `BILL-${Date.now()}-${createdBills.length + 1}`,
+                        vendorEntityId: 'cv_unknown_vendor',
+                        priority: bill.priority || 'medium',
+                        isOverdue: bill.isOverdue || false
+                    };
+                    
+                    console.log(`💳 Creating multi-bill ${createdBills.length + 1}:`, billData);
+                    const createdBill = await storage.createBillPayable(billData);
+                    createdBills.push(createdBill);
+                }
+                
+                console.log(`✅ Multiple bills created: ${createdBills.length} bills from multi-bill message`);
+                return createdBills;
+            }
+            
+            // Single bill processing
             const nlpBill = enhancedNlp || context.nlp;
             
             const billData = {

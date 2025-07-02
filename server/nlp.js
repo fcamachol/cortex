@@ -265,6 +265,239 @@ class EnhancedBillParser {
   }
 
   /**
+   * Multi-entity detection - determines if message contains multiple bills or tasks
+   */
+  detectMultipleEntities(content) {
+    const lines = content.split('\n').filter(line => line.trim());
+    
+    // Count bullet points and list indicators
+    const bulletLines = lines.filter(line => 
+      /^\s*[-*•]\s/.test(line) || /^\s*\d+\.\s/.test(line)
+    ).length;
+    
+    // Count amounts for bills
+    const amountMatches = content.match(/\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})?/g) || [];
+    
+    // Count task indicators
+    const taskIndicators = lines.filter(line => 
+      /^\s*[-*•]\s.*(?:task|proyecto|hacer|completar|realizar)/i.test(line) ||
+      /(?:design|create|write|code|backend|frontend|wireframe)/i.test(line)
+    ).length;
+    
+    return {
+      isMultipleBills: bulletLines >= 3 && amountMatches.length >= 3,
+      isMultipleTasks: bulletLines >= 2 && (taskIndicators >= 1 || /project|tasks|todo/i.test(content)),
+      bulletCount: bulletLines,
+      amountCount: amountMatches.length,
+      taskIndicatorCount: taskIndicators
+    };
+  }
+
+  /**
+   * Enhanced task parser with subtask detection
+   */
+  extractMultipleTasks(message, language = 'es') {
+    const tasks = [];
+    const lines = message.split('\n');
+    
+    let currentTask = null;
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      
+      // Detect indentation level
+      const indent = line.length - trimmed.length;
+      const isSubtask = indent >= 2 || /^\s{2,}[-*•]/.test(line);
+      
+      if (isSubtask && currentTask) {
+        // Add as subtask
+        if (!currentTask.subtasks) currentTask.subtasks = [];
+        currentTask.subtasks.push({
+          title: this.cleanTaskText(trimmed),
+          completed: false
+        });
+      } else {
+        // New main task
+        if (currentTask) tasks.push(currentTask);
+        
+        currentTask = {
+          title: this.cleanTaskText(trimmed),
+          priority: this.extractPriority(trimmed, language) || 'medium',
+          dueDate: chronoEs.parseDate(trimmed),
+          subtasks: []
+        };
+      }
+    }
+    
+    if (currentTask) tasks.push(currentTask);
+    return tasks;
+  }
+
+  /**
+   * Clean task text from bullets and formatting
+   */
+  cleanTaskText(text) {
+    return text
+      .replace(/^\s*[-*•]\s*/, '')
+      .replace(/^\s*\d+\.\s*/, '')
+      .trim();
+  }
+
+  /**
+   * Extract task priority from text
+   */
+  extractPriority(text, language) {
+    const priorityPatterns = {
+      high: /urgent|critical|importante|urgente|alta|high/i,
+      medium: /normal|medium|media|moderado/i,
+      low: /low|baja|minor|opcional/i
+    };
+    
+    for (const [priority, pattern] of Object.entries(priorityPatterns)) {
+      if (pattern.test(text)) return priority;
+    }
+    
+    return 'medium';
+  }
+
+  /**
+   * Multiple bills detection and extraction
+   */
+  detectMultipleBills(message, language = 'es') {
+    console.log(`🧠 Detecting multiple bills in message: "${message.substring(0, 100)}..."`);
+    
+    // Split by line breaks and bullets
+    const lines = message.split(/\n/).filter(line => line.trim());
+    const bills = [];
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('*')) continue; // Skip titles
+      
+      // Check if line contains amount and vendor info
+      const hasAmount = /\$?\s*\d{1,3}(?:[,.]\d{3})*(?:[,.]\d{2})?/.test(trimmed);
+      if (!hasAmount) continue;
+      
+      const bill = this.extractSingleBillFromLine(trimmed, language);
+      if (bill) {
+        bills.push(bill);
+      }
+    }
+    
+    console.log(`🧠 Extracted ${bills.length} bills from multi-bill message`);
+    return bills;
+  }
+
+  /**
+   * Extract single bill from a line
+   */
+  extractSingleBillFromLine(line, language) {
+    console.log(`🏪 Processing bill line: "${line}"`);
+    
+    // Clean line of bullet points
+    const cleaned = line.replace(/^\s*[-*•]\s*/, '').trim();
+    
+    // Extract amount
+    const amountMatch = cleaned.match(/\$?\s*(\d{1,3}(?:[,.]\d{3})*(?:[,.]\d{2})?)/);
+    if (!amountMatch) return null;
+    
+    const amount = parseInt(amountMatch[1].replace(/[,.]/g, ''));
+    
+    // Extract vendor (everything before amount or colon)
+    let vendor = cleaned.split(/[\$\d]/)[0].trim();
+    if (!vendor) {
+      vendor = cleaned.split(':')[0].trim();
+    }
+    vendor = vendor.replace(/^\s*[-*•]\s*/, '').trim();
+    
+    // Extract due date if present
+    let dueDate = null;
+    const dateText = cleaned.toLowerCase();
+    if (language === 'es') {
+      // Spanish date patterns
+      const spanishDates = chronoEs.parse(cleaned);
+      if (spanishDates.length > 0) {
+        dueDate = spanishDates[0].start.date();
+      }
+    }
+    
+    // Determine bill type and priority
+    const billType = this.categorizeBillType(vendor, cleaned);
+    const priority = this.determineBillPriority(cleaned, dueDate);
+    
+    // Check if overdue
+    const isOverdue = dueDate && dueDate < new Date();
+    
+    return {
+      vendor: vendor || 'Unknown',
+      amount: { value: amount, currency: 'MXN' },
+      dueDate,
+      billType,
+      notes: cleaned,
+      priority,
+      isOverdue,
+      originalText: line,
+      confidence: this.calculateBillConfidence(vendor, amount, cleaned)
+    };
+  }
+
+  /**
+   * Categorize bill type based on vendor and content
+   */
+  categorizeBillType(vendor, content) {
+    const types = {
+      credit_card: /tarjeta|card|credit/i,
+      membership: /club|gym|membership|suscripción/i,
+      loan: /crédito|préstamo|loan/i,
+      education: /colegiatura|escuela|school|universidad/i,
+      utilities: /agua|luz|gas|electric|water|internet/i,
+      maintenance: /mantenimiento|maintenance|repair/i,
+      personal: /\b[A-Z][a-z]+\b.*\d+$/ // Name pattern with amount
+    };
+    
+    for (const [type, pattern] of Object.entries(types)) {
+      if (pattern.test(vendor + ' ' + content)) {
+        return type;
+      }
+    }
+    
+    return 'general';
+  }
+
+  /**
+   * Determine bill priority based on content and due date
+   */
+  determineBillPriority(content, dueDate) {
+    // High priority indicators
+    if (/urgent|crítico|intereses|vence|overdue|venció/i.test(content)) {
+      return 'high';
+    }
+    
+    // Due soon (within 7 days)
+    if (dueDate) {
+      const daysDiff = Math.floor((dueDate - new Date()) / (1000 * 60 * 60 * 24));
+      if (daysDiff <= 7) return 'high';
+      if (daysDiff <= 30) return 'medium';
+    }
+    
+    return 'medium';
+  }
+
+  /**
+   * Calculate confidence score for bill extraction
+   */
+  calculateBillConfidence(vendor, amount, content) {
+    let confidence = 0.5;
+    
+    if (vendor && vendor.length > 2) confidence += 0.2;
+    if (amount > 0) confidence += 0.2;
+    if (/\$|pesos?|mx[np]?/i.test(content)) confidence += 0.1;
+    
+    return Math.min(confidence, 1.0);
+  }
+
+  /**
    * Main parsing method for bills using enhanced NLP.js architecture
    */
   async parseBill(content) {
@@ -273,7 +506,23 @@ class EnhancedBillParser {
     const language = this.detectLanguage(content);
     console.log(`🌐 Language detected: ${language}`);
     
-    // Use async vendor extraction with NLP.js
+    // Check if this is a multi-entity message
+    const multiCheck = this.detectMultipleEntities(content);
+    console.log(`🔍 Multi-entity detection:`, multiCheck);
+    
+    if (multiCheck.isMultipleBills) {
+      console.log(`🧠 Processing multiple bills detected`);
+      const bills = this.detectMultipleBills(content, language);
+      return {
+        type: 'multiple_bills',
+        data: { bills },
+        language,
+        confidence: 0.9,
+        extractionMethod: 'multi-entity nlp.js'
+      };
+    }
+    
+    // Single bill processing
     const vendor = await this.extractVendor(content);
     const { amount, currency } = this.extractAmount(content);
     const dueDate = this.extractDueDate(content);
@@ -287,6 +536,7 @@ class EnhancedBillParser {
     if (category && category !== 'general') confidence += 0.1;
     
     const result = {
+      type: 'single_bill',
       vendor,
       amount,
       currency,
@@ -301,6 +551,51 @@ class EnhancedBillParser {
     console.log(`🧠 Enhanced NLP.js parsing result:`, result);
     return result;
   }
+
+  /**
+   * Main parsing method for tasks using enhanced NLP.js architecture
+   */
+  async parseTask(content) {
+    console.log(`🧠 Enhanced task parsing with NLP.js: "${content}"`);
+    
+    const language = this.detectLanguage(content);
+    console.log(`🌐 Language detected: ${language}`);
+    
+    // Check if this is a multi-entity message
+    const multiCheck = this.detectMultipleEntities(content);
+    console.log(`🔍 Multi-entity detection:`, multiCheck);
+    
+    if (multiCheck.isMultipleTasks) {
+      console.log(`🧠 Processing multiple tasks detected`);
+      const tasks = this.extractMultipleTasks(content, language);
+      return {
+        type: 'multiple_tasks',
+        data: { tasks },
+        language,
+        confidence: 0.9,
+        extractionMethod: 'multi-entity nlp.js'
+      };
+    }
+    
+    // Single task processing
+    const title = this.cleanTaskText(content);
+    const priority = this.extractPriority(content, language);
+    const dueDate = chronoEs.parseDate(content);
+    
+    const result = {
+      type: 'single_task',
+      title,
+      priority,
+      dueDate,
+      description: content,
+      language,
+      confidence: 0.8,
+      extractionMethod: 'nlp.js + patterns'
+    };
+    
+    console.log(`🧠 Enhanced NLP.js task parsing result:`, result);
+    return result;
+  }
 }
 
 // Export the enhanced parser
@@ -309,4 +604,24 @@ export const enhancedBillParser = new EnhancedBillParser();
 // Main parsing function for integration (async)
 export async function parseEnhancedBill(content) {
   return await enhancedBillParser.parseBill(content);
+}
+
+// Task parsing function for integration (async)
+export async function parseEnhancedTask(content) {
+  return await enhancedBillParser.parseTask(content);
+}
+
+// Multi-entity detection function
+export function detectMultipleEntities(content) {
+  return enhancedBillParser.detectMultipleEntities(content);
+}
+
+// Multiple bills extraction
+export function extractMultipleBills(content, language = 'es') {
+  return enhancedBillParser.detectMultipleBills(content, language);
+}
+
+// Multiple tasks extraction
+export function extractMultipleTasks(content, language = 'es') {
+  return enhancedBillParser.extractMultipleTasks(content, language);
 }
