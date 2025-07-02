@@ -1310,8 +1310,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         tokenExpiresAt
       });
       
-      // Start initial sync
-      await googleCalendarService.syncCalendarEvents(userId, integration.id);
+      // Skip initial sync during OAuth to make it faster
+      // Sync will happen on-demand when calendar data is needed
+      console.log('✅ Google Calendar integration completed successfully');
       
       res.json({ 
         success: true, 
