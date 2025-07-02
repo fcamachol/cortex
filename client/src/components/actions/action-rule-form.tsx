@@ -248,6 +248,25 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   const triggerType = frontendTriggerTypeState;
   const actionType = form.watch("action_type");
 
+  // Reset action config when action type changes
+  useEffect(() => {
+    console.log('🔄 Action type changed to:', actionType);
+    if (actionType === "create_calendar_event") {
+      setActionConfig({
+        title: '',
+        durationMinutes: 60,
+        location: ''
+      });
+    } else if (actionType === "create_task") {
+      setActionConfig({
+        title: '',
+        description: '',
+        priority: 'medium',
+        status: 'todo'
+      });
+    }
+  }, [actionType]);
+
   const renderTriggerConfig = () => {
     switch (triggerType) {
       case "reaction":
@@ -317,6 +336,7 @@ export function ActionRuleForm({ rule, onClose, onSave }: ActionRuleFormProps) {
   };
 
   const renderActionConfig = () => {
+    console.log('🎯 Rendering action config for actionType:', actionType);
     switch (actionType) {
       case "create_task":
         return (
