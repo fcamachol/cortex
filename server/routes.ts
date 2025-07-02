@@ -1876,19 +1876,8 @@ export async function registerRoutes(app: Express): Promise<void> {
             refreshToken: integration.refresh_token
           });
           
-          // Get sub-calendars using the existing method - bypass user ID requirement
-          const calendar = google.calendar({ version: 'v3', auth: calendarService.oauth2Client });
-          const response = await calendar.calendarList.list();
-          const subCalendars = response.data.items?.map(cal => ({
-            id: cal.id,
-            name: cal.summary,
-            description: cal.description,
-            accessRole: cal.accessRole,
-            isPrimary: cal.primary || false,
-            timezone: cal.timeZone,
-            isVisible: !cal.hidden,
-            provider: 'google_calendar'
-          })) || [];
+          // Get sub-calendars using the new direct method
+          const subCalendars = await calendarService.getCalendarListDirect();
           
           // Filter out read-only calendars like "Festivos en México"
           const editableSubCalendars = subCalendars.filter((subCal: any) => 

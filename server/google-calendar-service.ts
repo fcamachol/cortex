@@ -60,6 +60,34 @@ export class GoogleCalendarService {
     }
 
     /**
+     * Get calendar list with proper error handling and token refresh
+     */
+    async getCalendarListDirect(): Promise<any[]> {
+        try {
+            const calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
+            const response = await calendar.calendarList.list();
+            
+            const calendars = response.data.items || [];
+            console.log(`📅 Found ${calendars.length} Google Calendar subcalendars`);
+
+            return calendars.map(cal => ({
+                id: cal.id,
+                name: cal.summary,
+                description: cal.description,
+                accessRole: cal.accessRole,
+                isPrimary: cal.primary || false,
+                timezone: cal.timeZone,
+                isVisible: !cal.hidden,
+                provider: 'google_calendar'
+            }));
+            
+        } catch (error) {
+            console.error('Error fetching calendar list:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Get authorization URL for Google Calendar integration
      */
     getAuthUrl(): string {
