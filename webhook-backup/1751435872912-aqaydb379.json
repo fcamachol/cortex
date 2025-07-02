@@ -1,0 +1,22 @@
+{
+  "id": "1751435872912-aqaydb379",
+  "timestamp": "2025-07-02T05:57:52.912Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "messages-upsert",
+  "payload": {
+    "key": {
+      "remoteJid": "5214611239748@s.whatsapp.net",
+      "fromMe": false,
+      "id": "meal-range-1751435872829"
+    },
+    "message": {
+      "conversation": "comemos de 2-4 en casa con la familia",
+      "messageTimestamp": 1751435872829
+    },
+    "messageTimestamp": 1751435872829,
+    "pushName": "Test User",
+    "instanceId": "instance-1750433520122"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

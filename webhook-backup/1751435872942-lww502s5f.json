@@ -1,0 +1,24 @@
+{
+  "id": "1751435872942-lww502s5f",
+  "timestamp": "2025-07-02T05:57:52.942Z",
+  "instanceId": "instance-1750433520122",
+  "eventType": "messages-reaction",
+  "payload": {
+    "key": {
+      "remoteJid": "5214611239748@s.whatsapp.net",
+      "fromMe": false,
+      "id": "meal-range-1751435872829"
+    },
+    "reaction": {
+      "text": "📅",
+      "key": {
+        "remoteJid": "5214611239748@s.whatsapp.net",
+        "fromMe": false,
+        "id": "meal-range-1751435872829"
+      }
+    },
+    "instanceId": "instance-1750433520122"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

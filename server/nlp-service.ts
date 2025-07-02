@@ -305,7 +305,50 @@ export class NLPService {
   }
 
   private extractEventTiming(content: string, language: 'es' | 'en'): { startTime?: Date, endTime?: Date, duration?: number } {
-    // Extract time patterns like "a las 3pm", "at 3pm", "15:30"
+    // First, check for time ranges like "de 2-4", "from 2 to 4", "2-4pm"
+    const rangePatterns = [
+      /de\s*(\d{1,2})\s*[-–]\s*(\d{1,2})/gi,  // Spanish: "de 2-4"
+      /from\s*(\d{1,2})\s*to\s*(\d{1,2})/gi,  // English: "from 2 to 4"
+      /(\d{1,2})\s*[-–]\s*(\d{1,2})\s*(am|pm)?/gi  // General: "2-4pm"
+    ];
+
+    for (const pattern of rangePatterns) {
+      const match = content.match(pattern);
+      if (match) {
+        try {
+          let startHour = parseInt(match[1]);
+          let endHour = parseInt(match[2]);
+          const period = match[3]?.toLowerCase();
+
+          // Handle PM period for both times
+          if (period === 'pm' && startHour !== 12) {
+            startHour += 12;
+            endHour += 12;
+          }
+
+          const startTime = new Date();
+          startTime.setHours(startHour, 0, 0, 0);
+          
+          const endTime = new Date();
+          endTime.setHours(endHour, 0, 0, 0);
+
+          // Calculate duration from the range
+          const durationMinutes = (endHour - startHour) * 60;
+
+          console.log(`🕐 Time range detected: ${startHour}:00 - ${endHour}:00 (${durationMinutes} minutes)`);
+          
+          return {
+            startTime,
+            endTime,
+            duration: durationMinutes
+          };
+        } catch (error) {
+          console.log(`❌ Error parsing time range: ${error}`);
+        }
+      }
+    }
+
+    // If no range found, extract individual time patterns like "a las 3pm", "at 3pm", "15:30"
     const timePatterns = [
       /(\d{1,2}):(\d{2})/g,
       /(\d{1,2})\s*(am|pm)/gi,
@@ -356,6 +399,11 @@ export class NLPService {
         }
         break;
       }
+    }
+
+    // Default to 60 minutes if no duration detected and only one time found
+    if (!duration && times.length === 1) {
+      duration = 60;
     }
 
     return {
