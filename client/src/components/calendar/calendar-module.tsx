@@ -670,7 +670,9 @@ export default function CalendarModule() {
       
       // Check if event's calendar is visible using local state
       const calendar = subCalendars?.find((cal: any) => 
-        cal.id === event.calendarId || cal.provider === event.provider
+        cal.id === event.calendarId || 
+        cal.id === event.subcalendarId ||
+        cal.provider === event.provider
       );
       
       if (!calendar) return isInDateRange;
@@ -682,10 +684,32 @@ export default function CalendarModule() {
       
       return isInDateRange && isCalendarVisible;
     }).map((event: any) => {
-      const calendar = subCalendars?.find((cal: any) => cal.id === event.calendarId || cal.provider === event.provider);
+      // Try multiple ways to find the matching calendar
+      const calendar = subCalendars?.find((cal: any) => 
+        cal.id === event.calendarId || 
+        cal.id === event.subcalendarId ||
+        cal.provider === event.provider ||
+        cal.name === event.subcalendarName
+      );
+      
+      // Use subcalendarColor from event data if available, otherwise calendar color
+      const eventColor = event.subcalendarColor || calendar?.color || '#9CA3AF';
+      
+      // Debug logging to understand the data structure
+      if (event.title && event.title.includes('Familia')) {
+        console.log('Family event debug:', {
+          eventTitle: event.title,
+          eventCalendarId: event.calendarId,
+          eventSubcalendarId: event.subcalendarId,
+          eventSubcalendarColor: event.subcalendarColor,
+          foundCalendar: calendar,
+          finalColor: eventColor
+        });
+      }
+      
       return {
         ...event,
-        color: calendar ? calendar.color : '#9CA3AF'
+        color: eventColor
       };
     });
   };
