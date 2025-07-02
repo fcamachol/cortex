@@ -9,7 +9,7 @@ interface GoogleCalendarCredentials {
 }
 
 export class GoogleCalendarService {
-    private oauth2Client: any;
+    public oauth2Client: any;
     private calendar: any;
 
     constructor() {
@@ -28,6 +28,22 @@ export class GoogleCalendarService {
             process.env.GOOGLE_CLIENT_SECRET,
             redirectUri
         );
+    }
+    
+    /**
+     * Set calendar integration using stored credentials
+     */
+    async setIntegration(integrationId: string): Promise<void> {
+        const integration = await storage.getCalendarIntegration(integrationId);
+        
+        if (!integration) {
+            throw new Error('Calendar integration not found');
+        }
+        
+        this.setCredentials({
+            accessToken: integration.access_token,
+            refreshToken: integration.refresh_token
+        });
     }
 
     /**

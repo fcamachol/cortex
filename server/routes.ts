@@ -15,6 +15,7 @@ import { webhookReliability } from './webhook-reliability';
 import { messageRecovery } from './message-recovery-system';
 import { db } from './db';
 import { GoogleCalendarService } from './google-calendar-service';
+import { google } from 'googleapis';
 import fs from 'fs/promises';
 import path from 'path';
 import {
@@ -1869,8 +1870,25 @@ export async function registerRoutes(app: Express): Promise<void> {
       for (const integration of integrations) {
         try {
           const calendarService = new GoogleCalendarService();
-          await calendarService.setIntegration(integration.id);
-          const subCalendars = await calendarService.getSubCalendars();
+          // Set credentials directly
+          calendarService.setCredentials({
+            accessToken: integration.access_token,
+            refreshToken: integration.refresh_token
+          });
+          
+          // Get sub-calendars using the existing method - bypass user ID requirement
+          const calendar = google.calendar({ version: 'v3', auth: calendarService.oauth2Client });
+          const response = await calendar.calendarList.list();
+          const subCalendars = response.data.items?.map(cal => ({
+            id: cal.id,
+            name: cal.summary,
+            description: cal.description,
+            accessRole: cal.accessRole,
+            isPrimary: cal.primary || false,
+            timezone: cal.timeZone,
+            isVisible: !cal.hidden,
+            provider: 'google_calendar'
+          })) || [];
           
           // Filter out read-only calendars like "Festivos en México"
           const editableSubCalendars = subCalendars.filter((subCal: any) => 
