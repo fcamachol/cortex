@@ -324,9 +324,14 @@ export default function CalendarPage() {
     
     // Get the first available Google Calendar sub-calendar or fallback to local calendar
     const defaultCalendarId = () => {
-      // Try to get first Google Calendar sub-calendar
-      const firstGoogleCal = calendarProviders[0]?.subCalendars?.[0]?.id;
-      if (firstGoogleCal) return firstGoogleCal;
+      // Try to get first editable Google Calendar sub-calendar (excluding festivos/holidays)
+      const firstEditableGoogleCal = calendarProviders[0]?.subCalendars?.find(subCal => 
+        !subCal.name.toLowerCase().includes('festivos') &&
+        !subCal.name.toLowerCase().includes('holidays') &&
+        subCal.accessRole !== 'reader'
+      )?.id;
+      
+      if (firstEditableGoogleCal) return firstEditableGoogleCal;
       
       // Fallback to local calendar
       return calendars.find(c => c.isDefault)?.id?.toString() || calendars[0]?.id?.toString() || 'personal';
@@ -579,9 +584,14 @@ export default function CalendarPage() {
                     <SelectValue placeholder="Seleccionar calendario" />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* Google Calendar sub-calendars */}
+                    {/* Google Calendar sub-calendars (exclude read-only calendars) */}
                     {calendarProviders.map((provider: any) => 
-                      provider.subCalendars?.map((subCal: any) => (
+                      provider.subCalendars?.filter((subCal: any) => 
+                        // Exclude Mexican holidays calendar and other read-only public calendars
+                        !subCal.name.toLowerCase().includes('festivos') &&
+                        !subCal.name.toLowerCase().includes('holidays') &&
+                        subCal.accessRole !== 'reader'
+                      ).map((subCal: any) => (
                         <SelectItem key={subCal.id} value={subCal.id}>
                           <div className="flex items-center space-x-2">
                             <div

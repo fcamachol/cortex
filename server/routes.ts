@@ -1862,7 +1862,37 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get('/api/calendar/providers', async (req: Request, res: Response) => {
     try {
-      const providers = await storage.getCalendarProviders();
+      // Get calendar integrations and their sub-calendars
+      const integrations = await storage.getCalendarProviders();
+      const providers = [];
+      
+      for (const integration of integrations) {
+        try {
+          const calendarService = new GoogleCalendarService();
+          await calendarService.setIntegration(integration.id);
+          const subCalendars = await calendarService.getSubCalendars();
+          
+          // Filter out read-only calendars like "Festivos en México"
+          const editableSubCalendars = subCalendars.filter((subCal: any) => 
+            !subCal.name.toLowerCase().includes('festivos') &&
+            !subCal.name.toLowerCase().includes('holidays') &&
+            subCal.accessRole !== 'reader'
+          );
+          
+          providers.push({
+            id: integration.id,
+            name: `Google Calendar (${integration.account_name})`,
+            type: integration.provider_type,
+            accountName: integration.account_name,
+            subCalendars: editableSubCalendars
+          });
+          
+          console.log(`📅 Fetched ${editableSubCalendars.length} editable subcalendars for ${integration.account_name}`);
+        } catch (serviceError) {
+          console.error(`Error fetching subcalendars for ${integration.account_name}:`, serviceError);
+        }
+      }
+      
       res.json(providers);
     } catch (error) {
       console.error('Error fetching calendar providers:', error);
