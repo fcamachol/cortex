@@ -1,0 +1,35 @@
+{
+  "id": "1751438697655-urzquim5j",
+  "timestamp": "2025-07-02T06:44:57.655Z",
+  "instanceId": "live-test-1750199771",
+  "eventType": "messages-upsert",
+  "payload": {
+    "event": "messages.upsert",
+    "instance": "live-test-1750199771",
+    "data": {
+      "key": {
+        "remoteJid": "5215579188699@s.whatsapp.net",
+        "fromMe": false,
+        "id": "REACTION_TEST_1751438697583",
+        "participant": "15103165094@s.whatsapp.net"
+      },
+      "message": {
+        "reactionMessage": {
+          "text": "📅",
+          "key": {
+            "remoteJid": "5215579188699@s.whatsapp.net",
+            "fromMe": true,
+            "id": "3AA3BAAF8A5B9610E00E"
+          }
+        }
+      },
+      "messageTimestamp": 1751438697,
+      "pushName": "Test User"
+    },
+    "destination": "https://cf94481b-abb0-462d-99ce-66c0beae05d0-00-25qqlo4pnl49g.worf.replit.dev",
+    "date_time": "2025-07-02T06:44:57.583Z",
+    "sender": "5215579188699@s.whatsapp.net"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
