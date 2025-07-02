@@ -16,6 +16,12 @@ export class GoogleCalendarService {
             ? `https://${process.env.REPL_SLUG}.replit.app/oauth/callback`
             : `https://${process.env.REPLIT_DOMAINS}/oauth/callback`;
             
+        console.log('🔐 Google OAuth Configuration:');
+        console.log('  - Environment:', process.env.NODE_ENV || 'development');
+        console.log('  - Redirect URI:', redirectUri);
+        console.log('  - Client ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing');
+        console.log('  - Client Secret:', process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'Missing');
+            
         this.oauth2Client = new google.auth.OAuth2(
             process.env.GOOGLE_CLIENT_ID,
             process.env.GOOGLE_CLIENT_SECRET,
