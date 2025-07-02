@@ -425,8 +425,17 @@ export const ActionService = {
             for (const rule of matchingRules) {
                 console.log(`⚡ Executing action rule: ${rule.name} for instance: ${instanceId}`);
                 
-                // 4. Execute each action for this rule
-                if (rule.actions && rule.actions.length > 0) {
+                // 4. Execute the action for this rule (simple structure)
+                if (rule.action_type) {
+                    await this.executeAction(rule.action_type, rule.action_config || {}, {
+                        instanceId,
+                        triggerType,
+                        triggerValue,
+                        context,
+                        rule
+                    });
+                } else if (rule.actions && rule.actions.length > 0) {
+                    // Support complex multi-action rules
                     for (const action of rule.actions) {
                         await this.executeAction(action.action_type, action.parameters, {
                             instanceId,
@@ -496,6 +505,13 @@ export const ActionService = {
 
     async executeAction(actionType: string, config: any, triggerContext: any): Promise<void> {
         console.log(`🎯 Executing action: ${actionType}`);
+        console.log(`🔍 Action config:`, config);
+        console.log(`🔍 Trigger context:`, {
+            instanceId: triggerContext.instanceId,
+            triggerType: triggerContext.triggerType,
+            triggerValue: triggerContext.triggerValue,
+            contextData: triggerContext.context
+        });
         const startTime = Date.now();
         
         try {
