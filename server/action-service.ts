@@ -287,6 +287,12 @@ export const ActionService = {
             
             const nlpEvent = context.nlp;
             
+            // Determine if a Google Meet invite should be created
+            const shouldCreateMeetInvite = 
+                nlpEvent?.shouldCreateMeetInvite ||          // NLP detected virtual meeting
+                config.shouldCreateMeetInvite ||             // Config specifies it
+                (nlpEvent?.attendees && nlpEvent.attendees.length > 1); // Multiple attendees likely need virtual access
+            
             const eventData = {
                 id: randomUUID(),
                 title: nlpEvent?.title || this.processTemplate(config.title || 'New Event', context),
@@ -304,8 +310,16 @@ export const ActionService = {
             
             if (nlpEvent) {
                 console.log(`✅ Enhanced calendar event created: "${createdEvent.title}" (confidence: ${nlpEvent.confidence})`);
+                if (shouldCreateMeetInvite) {
+                    console.log(`📹 Google Meet invite ${nlpEvent.shouldCreateMeetInvite ? 'detected by NLP' : 'configured'} for this event`);
+                }
             } else {
                 console.log(`✅ Calendar event created with template data: ${createdEvent.title}`);
+            }
+            
+            // TODO: Integrate with Google Calendar service to create actual Google Meet invite if shouldCreateMeetInvite is true
+            if (shouldCreateMeetInvite) {
+                console.log(`🔗 Would create Google Meet invite for: ${createdEvent.title}`);
             }
             
             return createdEvent;

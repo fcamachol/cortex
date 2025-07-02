@@ -33,10 +33,10 @@ async function testTaskCreationWorkflow() {
 
 async function testCalendarWorkflow() {
     console.log('\n🧪 TEST 2: CALENDAR EVENT WITH 📅 EMOJI');
-    console.log('📝 Scenario: Team meeting with specific details');
+    console.log('📝 Scenario: Virtual team meeting (should create Google Meet invite)');
     
     const messageId = `calendar-test-${Date.now()}`;
-    const calendarMessage = "Team standup meeting tomorrow at 2:30 PM in conference room B. Invite Sarah, Mike, and the development team to discuss sprint progress and roadmap.";
+    const calendarMessage = "Team standup meeting tomorrow at 2:30 PM via Google Meet. Invite Sarah, Mike, and the development team to discuss sprint progress and roadmap remotely.";
     
     // Send message
     await sendMessage(messageId, calendarMessage);
@@ -47,8 +47,9 @@ async function testCalendarWorkflow() {
     console.log('📅 Expected NLP extraction:');
     console.log('   • Title: "Team standup meeting"');
     console.log('   • Time: Tomorrow 2:30 PM');
-    console.log('   • Location: Conference room B');
+    console.log('   • Location: Virtual/Google Meet');
     console.log('   • Attendees: Sarah, Mike, development team');
+    console.log('   📹 Should create Google Meet invite: YES (virtual keywords detected)');
 }
 
 async function testBillWorkflow() {
