@@ -95,8 +95,8 @@ export const ActionService = {
                 }
                 
                 // Check reaction matching for reaction triggers
-                if (triggerType === 'reaction' && rule.triggerConditions?.reactions) {
-                    const allowedReactions = rule.triggerConditions.reactions;
+                if (triggerType === 'reaction' && rule.trigger_conditions?.reactions) {
+                    const allowedReactions = rule.trigger_conditions.reactions;
                     if (Array.isArray(allowedReactions) && !allowedReactions.includes(triggerValue)) {
                         console.log(`⏭️  Skipping rule "${rule.name}" - reaction ${triggerValue} not in allowed list`);
                         return false;
@@ -110,7 +110,7 @@ export const ActionService = {
             const matchingRules = [];
             for (const rule of initialMatchingRules) {
                 // Check performer filter - only execute if the right person is reacting
-                if (rule.performerFilter === 'user_only') {
+                if (rule.performer_filter === 'user_only') {
                     const reactorJid = context.reactorJid || context.senderJid;
                     const instanceName = context.instanceName;
                     
@@ -189,18 +189,19 @@ export const ActionService = {
         
         // First, determine which NLP parser to use based on action type
         let nlpParser: string | null = null;
-        switch (rule.actionType) {
+        switch (rule.action_type) {
             case 'create_task':
                 nlpParser = 'task';
                 break;
             case 'create_calendar_event':
                 nlpParser = 'calendar';
                 break;
-            case 'create_bill':
+            case 'create_bill_payable':
+            case 'create_bill_receivable':
                 nlpParser = 'bill';
                 break;
             default:
-                console.log(`⚠️  Unknown action type: ${rule.actionType}`);
+                console.log(`⚠️  Unknown action type: ${rule.action_type}`);
                 return;
         }
 
@@ -225,18 +226,18 @@ export const ActionService = {
             nlp: nlpData // Add NLP parsed data to context
         };
 
-        switch (rule.actionType) {
+        switch (rule.action_type) {
             case 'create_task':
-                await this.createEnhancedTaskAction(rule.actionConfig, enrichedContext, rule);
+                await this.createEnhancedTaskAction(rule.action_config, enrichedContext, rule);
                 break;
             case 'create_calendar_event':
-                await this.createEnhancedCalendarAction(rule.actionConfig, enrichedContext, rule);
+                await this.createEnhancedCalendarAction(rule.action_config, enrichedContext, rule);
                 break;
             case 'create_bill':
-                await this.createEnhancedBillAction(rule.actionConfig, enrichedContext, rule);
+                await this.createEnhancedBillAction(rule.action_config, enrichedContext, rule);
                 break;
             default:
-                console.log(`⚠️  Unknown action type: ${rule.actionType}`);
+                console.log(`⚠️  Unknown action type: ${rule.action_type}`);
         }
     },
 
