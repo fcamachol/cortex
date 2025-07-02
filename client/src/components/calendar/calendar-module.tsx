@@ -695,17 +695,7 @@ export default function CalendarModule() {
       // Use subcalendarColor from event data if available, otherwise calendar color
       const eventColor = event.subcalendarColor || calendar?.color || '#9CA3AF';
       
-      // Debug logging to understand the data structure
-      if (event.title && event.title.includes('Familia')) {
-        console.log('Family event debug:', {
-          eventTitle: event.title,
-          eventCalendarId: event.calendarId,
-          eventSubcalendarId: event.subcalendarId,
-          eventSubcalendarColor: event.subcalendarColor,
-          foundCalendar: calendar,
-          finalColor: eventColor
-        });
-      }
+
       
       return {
         ...event,
@@ -1321,10 +1311,13 @@ export default function CalendarModule() {
                                             "text-xs px-2 py-1 rounded-sm cursor-pointer mb-1 truncate flex items-center gap-1",
                                             event.isTask 
                                               ? "bg-blue-100 text-blue-800 border border-blue-200" 
-                                              : `text-white ${event.color}`,
+                                              : "text-white",
                                             snapshot.isDragging && "opacity-50"
                                           )}
-                                          style={provided.draggableProps.style}
+                                          style={{
+                                            ...provided.draggableProps.style,
+                                            ...(event.isTask ? {} : { backgroundColor: event.color })
+                                          }}
                                         >
                                           {event.isTask && (
                                             <div className="w-3 h-3 rounded-full border-2 border-blue-600 bg-white flex-shrink-0"></div>
