@@ -108,8 +108,21 @@ export class NLPService {
     const title = this.extractTitle(content);
     
     // Extract dates and times
-    const { startTime, endTime, duration } = this.extractEventTiming(content, language);
+    let { startTime, endTime, duration } = this.extractEventTiming(content, language);
     if (startTime) confidence += 0.2;
+
+    // Detect meal events and set appropriate duration
+    const isMealEvent = this.detectMealEvent(content, language);
+    if (isMealEvent.isMeal) {
+      confidence += 0.3; // High confidence for meal detection
+      duration = isMealEvent.suggestedDuration;
+      console.log(`🍽️ Meal event detected: ${isMealEvent.mealType} (${duration} minutes)`);
+      
+      // If we have start time but no end time, calculate end time from duration
+      if (startTime && !endTime && duration) {
+        endTime = new Date(startTime.getTime() + duration * 60000);
+      }
+    }
 
     // Extract location
     const location = this.extractLocation(content, language);

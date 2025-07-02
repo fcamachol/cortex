@@ -1,0 +1,24 @@
+{
+  "id": "1751435544421-53x4elc31",
+  "timestamp": "2025-07-02T05:52:24.421Z",
+  "instanceId": "28AACF7E-8C0C-42D1-8139-E47418746C55",
+  "eventType": "messages-reaction",
+  "payload": {
+    "key": {
+      "remoteJid": "5214611239748@s.whatsapp.net",
+      "fromMe": false,
+      "id": "physical-meeting-1751435544413"
+    },
+    "reaction": {
+      "text": "📅",
+      "key": {
+        "remoteJid": "5214611239748@s.whatsapp.net",
+        "fromMe": false,
+        "id": "physical-meeting-1751435544413"
+      }
+    },
+    "instanceId": "28AACF7E-8C0C-42D1-8139-E47418746C55"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}

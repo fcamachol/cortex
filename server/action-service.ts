@@ -293,14 +293,16 @@ export const ActionService = {
                 config.shouldCreateMeetInvite ||             // Config specifies it
                 (nlpEvent?.attendees && nlpEvent.attendees.length > 1); // Multiple attendees likely need virtual access
             
+            const startTime = nlpEvent?.startTime || new Date();
+            const endTime = nlpEvent?.endTime || new Date(startTime.getTime() + (config.durationMinutes || 60) * 60000);
+            
             const eventData = {
                 id: randomUUID(),
                 title: nlpEvent?.title || this.processTemplate(config.title || 'New Event', context),
                 description: nlpEvent?.description || this.processTemplate(config.description || '', context),
-                start_datetime: nlpEvent?.startTime || new Date(),
-                end_datetime: nlpEvent?.endTime || nlpEvent?.startTime || new Date(),
-                location_details: nlpEvent?.location || null,
-                attendees: nlpEvent?.attendees || [],
+                start_time: startTime,
+                end_time: endTime,
+                location: nlpEvent?.location || null,
                 created_by_entity_id: 'cu_181de66a23864b2fac56779a82189691',
                 created_at: new Date(),
                 updated_at: new Date()

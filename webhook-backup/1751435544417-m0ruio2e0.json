@@ -1,0 +1,22 @@
+{
+  "id": "1751435544417-m0ruio2e0",
+  "timestamp": "2025-07-02T05:52:24.417Z",
+  "instanceId": "28AACF7E-8C0C-42D1-8139-E47418746C55",
+  "eventType": "messages-upsert",
+  "payload": {
+    "key": {
+      "remoteJid": "5214611239748@s.whatsapp.net",
+      "fromMe": false,
+      "id": "physical-meeting-1751435544413"
+    },
+    "message": {
+      "conversation": "Client meeting tomorrow at 3pm in conference room A",
+      "messageTimestamp": 1751435544413
+    },
+    "messageTimestamp": 1751435544413,
+    "pushName": "Test User",
+    "instanceId": "28AACF7E-8C0C-42D1-8139-E47418746C55"
+  },
+  "processingStatus": "completed",
+  "retryCount": 0
+}
