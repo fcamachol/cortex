@@ -2376,6 +2376,37 @@ class DatabaseStorage {
         }
     }
 
+    async getActiveGoogleCalendarIntegration(userId: string): Promise<any> {
+        try {
+            const result = await db.execute(sql`
+                SELECT 
+                    id,
+                    user_id,
+                    provider_type,
+                    provider_account_id,
+                    account_name,
+                    access_token,
+                    refresh_token,
+                    token_expires_at,
+                    sync_status,
+                    sync_direction,
+                    last_sync_at,
+                    created_at,
+                    updated_at
+                FROM cortex_scheduling.calendar_integrations 
+                WHERE provider_type = 'google' 
+                  AND sync_status = 'active'
+                  AND user_id = ${userId}
+                ORDER BY created_at DESC
+                LIMIT 1
+            `);
+            return result.rows[0] || null;
+        } catch (error) {
+            console.error('Error getting active Google Calendar integration:', error);
+            return null;
+        }
+    }
+
     async createCortexSchedulingEvent(eventData: any): Promise<any> {
         try {
             const result = await db.execute(sql`

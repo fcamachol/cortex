@@ -70,6 +70,78 @@ export class GoogleCalendarService {
     }
 
     /**
+     * Get Google Calendar list with metadata (colors, names, etc.)
+     */
+    async getCalendarList(userId: string): Promise<any[]> {
+        try {
+            const integration = await storage.getActiveGoogleCalendarIntegration(userId);
+            if (!integration) {
+                throw new Error('No active Google Calendar integration found');
+            }
+
+            this.setCredentials({
+                accessToken: integration.access_token,
+                refreshToken: integration.refresh_token
+            });
+
+            const calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
+            const response = await calendar.calendarList.list();
+            
+            const calendars = response.data.items || [];
+            console.log(`📅 Found ${calendars.length} Google Calendar subcalendars`);
+
+            return calendars.map(cal => ({
+                id: cal.id,
+                name: cal.summary,
+                description: cal.description,
+                color: this.convertGoogleColorToTailwind(cal.backgroundColor || '#4285f4'),
+                hexColor: cal.backgroundColor || '#4285f4',
+                foregroundColor: cal.foregroundColor || '#ffffff',
+                isPrimary: cal.primary || false,
+                accessRole: cal.accessRole,
+                timezone: cal.timeZone,
+                isVisible: !cal.hidden,
+                provider: 'google_calendar'
+            }));
+            
+        } catch (error) {
+            console.error('Error fetching calendar list:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Convert Google Calendar hex colors to Tailwind CSS classes
+     */
+    private convertGoogleColorToTailwind(hexColor: string): string {
+        const colorMap: { [key: string]: string } = {
+            '#4285f4': 'bg-blue-500',    // Default Google blue
+            '#33b679': 'bg-green-500',   // Green
+            '#8e24aa': 'bg-purple-500',  // Purple
+            '#e67c73': 'bg-red-500',     // Red
+            '#f09300': 'bg-orange-500',  // Orange
+            '#f4c20d': 'bg-yellow-500',  // Yellow
+            '#795548': 'bg-amber-800',   // Brown
+            '#616161': 'bg-gray-500',    // Gray
+            '#ff7043': 'bg-orange-600',  // Deep Orange
+            '#9c27b0': 'bg-purple-600',  // Deep Purple
+            '#3f51b5': 'bg-indigo-500',  // Indigo
+            '#2196f3': 'bg-blue-400',    // Light Blue
+            '#00bcd4': 'bg-cyan-500',    // Cyan
+            '#009688': 'bg-teal-500',    // Teal
+            '#4caf50': 'bg-green-400',   // Light Green
+            '#8bc34a': 'bg-lime-500',    // Lime
+            '#cddc39': 'bg-lime-400',    // Lime Yellow
+            '#ffeb3b': 'bg-yellow-400',  // Yellow
+            '#ffc107': 'bg-amber-500',   // Amber
+            '#ff9800': 'bg-orange-500',  // Orange
+            '#ff5722': 'bg-red-600',     // Deep Orange
+        };
+        
+        return colorMap[hexColor.toLowerCase()] || 'bg-blue-500';
+    }
+
+    /**
      * Sync Google Calendar events to cortex_scheduling schema
      */
     async syncCalendarEvents(userId: string, integrationId: string): Promise<void> {
