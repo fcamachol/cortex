@@ -328,7 +328,43 @@ export class NLPService {
 
       // Use the first result as primary time
       const firstResult = results[0];
-      const startTime = firstResult.start.date();
+      let startTime = firstResult.start.date();
+      
+      // INTELLIGENT TIME CORRECTION BASED ON CURRENT TIME CONTEXT
+      // If no explicit AM/PM specified, use context and current time to determine
+      if (!content.toLowerCase().includes('am') && !content.toLowerCase().includes('pm')) {
+        const hour = startTime.getHours();
+        const minute = startTime.getMinutes();
+        const now = new Date();
+        const currentHour = now.getHours();
+        
+        // If parsed as early morning (1-11 AM) but we need to determine AM vs PM
+        if (hour >= 1 && hour <= 11) {
+          let shouldUsePM = false;
+          
+          // RULE 1: If it's currently past the parsed time today, must be PM
+          if (startTime < now && startTime.toDateString() === now.toDateString()) {
+            shouldUsePM = true;
+            console.log(`⏰ Time ${hour}:${minute.toString().padStart(2, '0')} already passed today at ${currentHour}:${now.getMinutes()}, assuming PM`);
+          }
+          
+          // RULE 2: Check for evening context indicators
+          const eveningIndicators = ['tarde', 'noche', 'evening', 'meet', 'reunión', 'junta', 'cita'];
+          const hasEveningContext = eveningIndicators.some(indicator => 
+            content.toLowerCase().includes(indicator)
+          );
+          
+          // RULE 3: Times 4:00-11:59 are very likely PM in meeting context
+          // Times 6:00-11:59 are almost always PM
+          const isLikelyEvening = hour >= 6 || (hour >= 4 && hasEveningContext);
+          
+          if (shouldUsePM || isLikelyEvening) {
+            console.log(`🌅 Time correction: ${hour}:${minute.toString().padStart(2, '0')} AM → ${hour + 12}:${minute.toString().padStart(2, '0')} PM (context: past time=${shouldUsePM}, evening=${isLikelyEvening})`);
+            startTime = new Date(startTime);
+            startTime.setHours(hour + 12);
+          }
+        }
+      }
       
       // Check if there's an end time in the same result
       let endTime: Date | undefined;
@@ -336,6 +372,13 @@ export class NLPService {
       
       if (firstResult.end) {
         endTime = firstResult.end.date();
+        // Apply same PM correction to end time if needed
+        if (language === 'es' && endTime.getHours() >= 1 && endTime.getHours() <= 11) {
+          const startHour = startTime.getHours();
+          if (startHour >= 12) { // If start time was corrected to PM
+            endTime.setHours(endTime.getHours() + 12);
+          }
+        }
         duration = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
         console.log(`🕐 Time range detected: ${startTime.toLocaleTimeString()} - ${endTime.toLocaleTimeString()} (${duration} minutes)`);
       } else {
