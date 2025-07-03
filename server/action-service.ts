@@ -388,20 +388,66 @@ export const ActionService = {
                 updated_at: new Date()
             };
 
-            const createdEvent = await storage.createCalendarEvent(eventData);
+            // Create event with Google Calendar integration if Meet invite needed
+            let finalEvent = null;
             
-            if (nlpEvent) {
-                console.log(`✅ Enhanced calendar event created: "${createdEvent.title}" (confidence: ${nlpEvent.confidence})`);
-                if (shouldCreateMeetInvite) {
-                    console.log(`📹 Google Meet invite ${nlpEvent.shouldCreateMeetInvite ? 'detected by NLP' : 'configured'} for this event`);
+            if (shouldCreateMeetInvite) {
+                console.log(`📹 Creating Google Calendar event with Meet invite...`);
+                try {
+                    // Get Google Calendar integration
+                    const integrations = await storage.getGoogleCalendarIntegrations();
+                    
+                    if (integrations.length > 0) {
+                        const integration = integrations[0]; // Use first active integration
+                        const { GoogleCalendarService } = await import('./google-calendar-service.js');
+                        const googleCalendarService = new GoogleCalendarService();
+                        
+                        // Set credentials
+                        googleCalendarService.setCredentials({
+                            accessToken: integration.access_token,
+                            refreshToken: integration.refresh_token
+                        });
+                        
+                        // Create Google Calendar event with Meet link
+                        const googleEventData = {
+                            title: eventData.title,
+                            description: eventData.description,
+                            startTime: startTime.toISOString(),
+                            endTime: endTime.toISOString(),
+                            timezone: 'America/Mexico_City',
+                            location: eventData.location,
+                            hasGoogleMeet: true // This triggers Meet link creation
+                        };
+                        
+                        const googleEvent = await googleCalendarService.createCalendarEvent('primary', googleEventData);
+                        console.log(`✅ Google Calendar event created with Meet link: ${googleEvent.hangoutLink}`);
+                        
+                        // Update local event with Google Calendar data
+                        eventData.meeting_url = googleEvent.hangoutLink || '';
+                        eventData.external_event_id = googleEvent.id;
+                        eventData.calendar_provider = 'google';
+                        
+                        finalEvent = await storage.createCalendarEvent(eventData);
+                        console.log(`🔗 Local event updated with Meet link: ${finalEvent.meeting_url}`);
+                    } else {
+                        console.log(`⚠️ No Google Calendar integration found, creating local event without Meet link`);
+                        finalEvent = await storage.createCalendarEvent(eventData);
+                    }
+                } catch (googleError) {
+                    console.error(`❌ Google Calendar creation failed, creating local event:`, googleError);
+                    finalEvent = await storage.createCalendarEvent(eventData);
                 }
             } else {
-                console.log(`✅ Calendar event created with template data: ${createdEvent.title}`);
+                finalEvent = await storage.createCalendarEvent(eventData);
             }
             
-            // TODO: Integrate with Google Calendar service to create actual Google Meet invite if shouldCreateMeetInvite is true
-            if (shouldCreateMeetInvite) {
-                console.log(`🔗 Would create Google Meet invite for: ${createdEvent.title}`);
+            if (nlpEvent) {
+                console.log(`✅ Enhanced calendar event created: "${finalEvent.title}" (confidence: ${nlpEvent.confidence})`);
+                if (shouldCreateMeetInvite && finalEvent.meeting_url) {
+                    console.log(`📹 Google Meet link created: ${finalEvent.meeting_url}`);
+                }
+            } else {
+                console.log(`✅ Calendar event created with template data: ${finalEvent.title}`);
             }
             
             return createdEvent;
