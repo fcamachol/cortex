@@ -506,6 +506,27 @@ class DatabaseStorage {
         }
     }
 
+    async deleteTask(taskId: string): Promise<void> {
+        try {
+            console.log(`🗑️ Deleting task: ${taskId}`);
+            
+            // Delete any subtasks first (if they exist)
+            await db.execute(sql`
+                DELETE FROM cortex_projects.tasks WHERE parent_task_id = ${taskId}
+            `);
+            
+            // Delete the main task
+            const result = await db.execute(sql`
+                DELETE FROM cortex_projects.tasks WHERE id = ${taskId}
+            `);
+            
+            console.log(`✅ Task ${taskId} deleted successfully`);
+        } catch (error) {
+            console.error('Error deleting task:', error);
+            throw error;
+        }
+    }
+
     // =============================
     // WHATSAPP CONVERSATION METHODS
     // =============================

@@ -786,11 +786,28 @@ export async function registerRoutes(app: Express): Promise<void> {
       const { taskId } = req.params;
       const updates = req.body;
       
-      const updatedTask = await storage.updateTask(parseInt(taskId), updates);
+      const updatedTask = await storage.updateTask(taskId, updates); // Use string taskId
       res.json(updatedTask);
     } catch (error) {
       console.error('Error updating task:', error);
       res.status(500).json({ error: 'Failed to update task' });
+    }
+  });
+
+  app.delete('/api/crm/tasks/:taskId', async (req: Request, res: Response) => {
+    try {
+      const { taskId } = req.params;
+      console.log(`🗑️ DELETE request for task: ${taskId}`);
+      
+      await storage.deleteTask(taskId);
+      
+      res.json({
+        success: true,
+        message: 'Task deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      res.status(500).json({ error: 'Failed to delete task' });
     }
   });
 
