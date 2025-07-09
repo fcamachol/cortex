@@ -16,6 +16,7 @@ import DatabaseViewer from "@/pages/database-viewer";
 import { GroupManagement } from "@/pages/GroupManagement";
 import { RealtimeMonitor } from "@/pages/RealtimeMonitor";
 import LoginPage from "@/pages/LoginPage";
+import RegisterPage from "@/pages/RegisterPage";
 import SignupPage from "@/pages/SignupPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import OAuthCallbackPage from "@/pages/oauth-callback";
@@ -46,6 +47,7 @@ function UnauthenticatedRoutes() {
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
+      <Route path="/register" component={RegisterPage} />
       <Route path="/signup" component={SignupPage} />
       <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route component={LoginPage} />

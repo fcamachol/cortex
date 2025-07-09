@@ -29,6 +29,8 @@ import { cortexFoundationStorage } from './cortex-foundation-storage';
 import { spawn } from 'child_process';
 import { promises as fsPromises } from 'fs';
 import { lookup } from 'mime-types';
+import { authService } from './auth-service';
+import { authenticateToken, optionalAuth } from './auth-middleware';
 
 
 
@@ -84,7 +86,144 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Server-Sent Events endpoint for real-time updates
   app.get('/api/events', SseManager.handleNewConnection);
 
-  // Authentication routes
+  // NEW AUTHENTICATION ROUTES - Cortex Foundation
+  app.post('/api/auth/register', async (req: Request, res: Response) => {
+    try {
+      const { email, password, fullName, firstName, lastName, timezone } = req.body;
+      
+      if (!email || !password || !fullName || !firstName || !lastName) {
+        return res.status(400).json({ 
+          message: 'Email, password, full name, first name, and last name are required' 
+        });
+      }
+
+      const result = await authService.register({
+        email,
+        password,
+        fullName,
+        firstName,
+        lastName,
+        timezone,
+        locale: 'en_US'
+      });
+
+      res.json({
+        message: 'User registered successfully',
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        user: result.user
+      });
+    } catch (error) {
+      console.error('Registration error:', error);
+      res.status(400).json({ 
+        message: error instanceof Error ? error.message : 'Registration failed' 
+      });
+    }
+  });
+
+  app.post('/api/auth/login', async (req: Request, res: Response) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ 
+          message: 'Email and password are required' 
+        });
+      }
+
+      const result = await authService.login({ email, password });
+
+      res.json({
+        message: 'Login successful',
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        user: result.user
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(401).json({ 
+        message: error instanceof Error ? error.message : 'Login failed' 
+      });
+    }
+  });
+
+  app.post('/api/auth/refresh', async (req: Request, res: Response) => {
+    try {
+      const { refreshToken } = req.body;
+      
+      if (!refreshToken) {
+        return res.status(400).json({ 
+          message: 'Refresh token is required' 
+        });
+      }
+
+      const result = await authService.refreshToken(refreshToken);
+
+      res.json({
+        message: 'Token refreshed successfully',
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        user: result.user
+      });
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      res.status(401).json({ 
+        message: error instanceof Error ? error.message : 'Token refresh failed' 
+      });
+    }
+  });
+
+  app.get('/api/auth/me', authenticateToken, async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'User not authenticated' });
+      }
+
+      const user = await authService.getUserById(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      res.json({
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profilePictureUrl: user.profilePictureUrl,
+          timezone: user.timezone,
+          locale: user.locale,
+          isEmailVerified: user.isEmailVerified,
+          isActive: user.isActive,
+          isAdmin: user.isAdmin,
+          createdAt: user.createdAt,
+          lastLoginAt: user.lastLoginAt,
+          lastSeenAt: user.lastSeenAt
+        }
+      });
+    } catch (error) {
+      console.error('Get user error:', error);
+      res.status(500).json({ 
+        message: 'Failed to get user information' 
+      });
+    }
+  });
+
+  app.post('/api/auth/logout', authenticateToken, async (req: Request, res: Response) => {
+    try {
+      // In a more sophisticated implementation, you might want to blacklist the token
+      // For now, we'll just return a success message
+      res.json({ message: 'Logout successful' });
+    } catch (error) {
+      console.error('Logout error:', error);
+      res.status(500).json({ 
+        message: 'Logout failed' 
+      });
+    }
+  });
+
+  // LEGACY AUTHENTICATION ROUTES (keeping for backward compatibility)
   app.post('/api/auth/signup', async (req: Request, res: Response) => {
     try {
       const { email, password, fullName } = req.body;

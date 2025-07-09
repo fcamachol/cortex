@@ -2,9 +2,20 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { apiRequest } from '@/lib/queryClient';
 
 interface User {
-  userId: string;
+  id: string;
   email: string;
-  fullName?: string | null;
+  fullName: string;
+  firstName: string;
+  lastName: string;
+  profilePictureUrl?: string;
+  timezone: string;
+  locale: string;
+  isEmailVerified: boolean;
+  isActive: boolean;
+  isAdmin: boolean;
+  createdAt: Date;
+  lastLoginAt?: Date;
+  lastSeenAt?: Date;
 }
 
 interface AuthContextType {
@@ -24,15 +35,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check if user is already authenticated on app start
   useEffect(() => {
-    // For development, bypass authentication
-    if (process.env.NODE_ENV === 'development') {
-      setUser({ userId: 'dev-user', email: 'dev@example.com', fullName: 'Development User' });
-      setIsLoading(false);
-      return;
-    }
-    
-    const token = localStorage.getItem('auth_token');
-    if (token) {
+    const accessToken = localStorage.getItem('accessToken');
+    if (accessToken) {
       checkAuthStatus();
     } else {
       setIsLoading(false);
@@ -41,9 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuthStatus = async () => {
     try {
+      const accessToken = localStorage.getItem('accessToken');
       const response = await fetch('/api/auth/me', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       });
 
@@ -51,14 +56,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
         setUser(data.user);
       } else {
-        localStorage.removeItem('auth_token');
+        // Try to refresh token
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (refreshToken) {
+          await refreshAuthToken();
+        } else {
+          clearAuthTokens();
+        }
       }
     } catch (error) {
       console.error('Auth check failed:', error);
-      localStorage.removeItem('auth_token');
+      clearAuthTokens();
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const refreshAuthToken = async () => {
+    try {
+      const refreshToken = localStorage.getItem('refreshToken');
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('accessToken', data.accessToken);
+        localStorage.setItem('refreshToken', data.refreshToken);
+        setUser(data.user);
+        return true;
+      } else {
+        clearAuthTokens();
+        return false;
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      clearAuthTokens();
+      return false;
+    }
+  };
+
+  const clearAuthTokens = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    setUser(null);
   };
 
   const login = async (email: string, password: string) => {
@@ -73,11 +118,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Login failed');
+        throw new Error(errorData.message || 'Login failed');
       }
 
       const data = await response.json();
-      localStorage.setItem('auth_token', data.token);
+      localStorage.setItem('accessToken', data.accessToken);
+      localStorage.setItem('refreshToken', data.refreshToken);
       setUser(data.user);
     } catch (error) {
       throw error;
@@ -86,30 +132,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = async (email: string, password: string, fullName?: string) => {
     try {
-      const response = await fetch('/api/auth/signup', {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, fullName }),
+        body: JSON.stringify({ 
+          email, 
+          password, 
+          fullName: fullName || '',
+          firstName: fullName?.split(' ')[0] || '',
+          lastName: fullName?.split(' ').slice(1).join(' ') || ''
+        }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Signup failed');
+        throw new Error(errorData.message || 'Registration failed');
       }
 
       const data = await response.json();
-      localStorage.setItem('auth_token', data.token);
+      localStorage.setItem('accessToken', data.accessToken);
+      localStorage.setItem('refreshToken', data.refreshToken);
       setUser(data.user);
     } catch (error) {
       throw error;
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('auth_token');
-    setUser(null);
+  const logout = async () => {
+    try {
+      const accessToken = localStorage.getItem('accessToken');
+      if (accessToken) {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      clearAuthTokens();
+    }
   };
 
   return (
