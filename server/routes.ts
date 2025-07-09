@@ -89,18 +89,17 @@ export async function registerRoutes(app: Express): Promise<void> {
   // NEW AUTHENTICATION ROUTES - Cortex Foundation
   app.post('/api/auth/register', async (req: Request, res: Response) => {
     try {
-      const { email, password, fullName, firstName, lastName, timezone } = req.body;
+      const { email, password, firstName, lastName, timezone } = req.body;
       
-      if (!email || !password || !fullName || !firstName || !lastName) {
+      if (!email || !password || !firstName || !lastName) {
         return res.status(400).json({ 
-          message: 'Email, password, full name, first name, and last name are required' 
+          message: 'Email, password, first name, and last name are required' 
         });
       }
 
       const result = await authService.register({
         email,
         password,
-        fullName,
         firstName,
         lastName,
         timezone,
