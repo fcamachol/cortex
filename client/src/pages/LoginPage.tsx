@@ -36,40 +36,32 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     setIsSubmitting(true);
     try {
-      const response = await apiRequest("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify({
+      const response = await apiRequest(
+        "POST",
+        "/api/auth/login",
+        {
           email: data.email,
           password: data.password,
-        }),
+        }
+      );
+
+      const result = await response.json();
+      
+      // Store tokens in localStorage
+      localStorage.setItem('accessToken', result.accessToken);
+      localStorage.setItem('refreshToken', result.refreshToken);
+      
+      toast({
+        title: "Welcome Back!",
+        description: `Login successful. Welcome, ${result.user.firstName}!`,
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        
-        // Store tokens in localStorage
-        localStorage.setItem('accessToken', result.accessToken);
-        localStorage.setItem('refreshToken', result.refreshToken);
-        
-        toast({
-          title: "Welcome Back!",
-          description: `Login successful. Welcome, ${result.user.firstName}!`,
-        });
-
-        // Redirect to dashboard
-        setLocation("/dashboard");
-      } else {
-        const error = await response.json();
-        toast({
-          title: "Login Failed",
-          description: error.message || "Invalid email or password.",
-          variant: "destructive",
-        });
-      }
+      // Redirect to dashboard
+      setLocation("/dashboard");
     } catch (error) {
       toast({
         title: "Login Failed",
-        description: "An unexpected error occurred. Please try again.",
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
