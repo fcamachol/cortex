@@ -27,7 +27,6 @@ export interface LoginCredentials {
 export interface RegisterData {
   email: string;
   password: string;
-  fullName: string;
   firstName: string;
   lastName: string;
   timezone?: string;
@@ -59,11 +58,12 @@ export class AuthService {
     const userId = `cu_${nanoid(32)}`;
 
     // Create user record
+    const fullName = `${userData.firstName} ${userData.lastName}`;
     const insertUserData: InsertCortexFoundationUser = {
       id: userId,
       email: userData.email.toLowerCase(),
       passwordHash,
-      fullName: userData.fullName,
+      fullName,
       firstName: userData.firstName,
       lastName: userData.lastName,
       timezone: userData.timezone || "UTC",
@@ -94,7 +94,7 @@ export class AuthService {
     const workspaceData: InsertCortexFoundationWorkspace = {
       name: `${userData.firstName}'s Workspace`,
       slug: `${userData.firstName.toLowerCase()}-workspace-${nanoid(8)}`,
-      description: `Personal workspace for ${userData.fullName}`,
+      description: `Personal workspace for ${fullName}`,
       ownerUserId: userId,
       planType: "free",
       maxUsers: 5,

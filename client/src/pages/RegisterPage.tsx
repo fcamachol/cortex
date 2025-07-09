@@ -16,7 +16,6 @@ const registerSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
-  fullName: z.string().min(2, "Full name must be at least 2 characters"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   timezone: z.string().optional(),
@@ -40,7 +39,6 @@ export default function RegisterPage() {
       email: "",
       password: "",
       confirmPassword: "",
-      fullName: "",
       firstName: "",
       lastName: "",
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -50,16 +48,12 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterForm) => {
     setIsSubmitting(true);
     try {
-      const response = await apiRequest("/api/auth/register", {
-        method: "POST",
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-          fullName: data.fullName,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          timezone: data.timezone,
-        }),
+      const response = await apiRequest("POST", "/api/auth/register", {
+        email: data.email,
+        password: data.password,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        timezone: data.timezone,
       });
 
       if (response.ok) {
@@ -158,26 +152,7 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Full Name
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="fullName"
-                    type="text"
-                    placeholder="John Doe"
-                    className="pl-10"
-                    {...form.register("fullName")}
-                  />
-                </div>
-                {form.formState.errors.fullName && (
-                  <p className="text-sm text-red-600 dark:text-red-400">
-                    {form.formState.errors.fullName.message}
-                  </p>
-                )}
-              </div>
+
 
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
